@@ -160,6 +160,16 @@ WHU 默认路径：
 10% train / 100% validation。小于 1 时按图像级确定性抽样；训练使用
 `SUBSET_SEED`，验证使用 `SUBSET_SEED + 10000`。
 
+验证执行契约与 WHU1024 历史基线一致：
+
+- validation batch size 默认固定为 `1`；
+- 四卡 DDP 时只有全局 rank 0 顺序遍历完整 validation，其他 rank 在既有
+  epoch-end 同步点等待，不重复累计全分辨率预测 mask；
+- `VAL_EVERY_N_EPOCHS` 决定验证周期；
+- 无有效 GT 的图像不计算 validation loss，但仍进入 COCO 评估以计入假阳性；
+- bbox 和 segm 都使用 detector score 排序，并共享同一 COCO detection 对象；
+- validation 后执行 CUDA cache 和 Python GC 清理。
+
 ### 4.4 训练：`portable_sam2_explicit_coarse/train/`
 
 | 文件 | 用途 |
@@ -175,6 +185,7 @@ WHU 默认路径：
 - `--init-from`：只加载模型权重开始新实验；
 - `--resume-from`：恢复模型、优化器、epoch 等完整训练状态；
 - `--max-train-batches`、`--max-val-batches`：快速 smoke；
+- `--val-batch-size`：验证 batch size，默认 `1`，保持 WHU1024 历史基线口径；
 - `--shape-prior-lr-mult`、`--densebr-lr-mult`：新模块学习率倍率。
 
 新 checkpoint schema version 为 `1`，其中 `config_snapshot` 保存：
@@ -385,6 +396,8 @@ bash scripts/reproduce_legacy_segm.sh
 | `DENSEBR_ENABLED` | `0/1`。 |
 | `TRAIN_SUBSET_RATIO` | 训练集比例；消融运行器默认 `0.1`，训练器 API 默认 `1.0`。 |
 | `VAL_SUBSET_RATIO` | 验证集比例；消融运行器和训练器 API 均默认 `1.0`。 |
+| `VAL_BATCH_SIZE` | 验证 batch size，默认 `1`；全部启动入口保持历史基线口径。 |
+| `VAL_EVERY_N_EPOCHS` | 每多少个 epoch 验证一次，默认 `1`。 |
 | `SUBSET_SEED` | 子集与训练随机种子，默认 `44`。 |
 | `MAX_EPOCHS` | 最大 epoch，默认 `80`。 |
 | `CHECKPOINT_DIR` | 实验输出目录；消融运行器会按实验和子集自动隔离。 |
@@ -419,6 +432,9 @@ bash scripts/reproduce_legacy_segm.sh
 
 ## 8. 文档同步记录
 
+- 2026-07-28：修复新主线 DDP validation 回归；全部实验默认恢复 WHU1024
+  历史基线的 rank-0-only 完整验证、`val_batch_size=1`、验证周期、空 GT 图像
+  计入 COCO、detector-score 排序和验证后内存清理契约。
 - 2026-07-28：消融公共运行器新增终端 stdout/stderr 自动落盘；默认写入项目内
   `logs/ablations/`，并在日志开头记录解析后的完整实验超参快照、git commit
   与精确 torchrun 命令。

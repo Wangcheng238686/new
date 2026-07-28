@@ -17,6 +17,7 @@ NPROC_PER_NODE="${NPROC_PER_NODE:-4}"
 BATCH_SIZE="${BATCH_SIZE:-2}"
 GRAD_ACCUM_STEPS="${GRAD_ACCUM_STEPS:-1}"
 LEARNING_RATE="${LEARNING_RATE:-5e-4}"
+VAL_BATCH_SIZE="${VAL_BATCH_SIZE:-1}"
 CHECKPOINT_DIR="${CHECKPOINT_DIR:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/${EXPLICIT_PROMPT_MODE}_densebr${DENSEBR_ENABLED}}"
 
 exec "${PYTHON}" -m torch.distributed.run \
@@ -31,6 +32,7 @@ exec "${PYTHON}" -m torch.distributed.run \
   --grad-accum-steps "${GRAD_ACCUM_STEPS}" \
   --epochs "${MAX_EPOCHS}" \
   --lr "${LEARNING_RATE}" \
+  --val-batch-size "${VAL_BATCH_SIZE}" \
   --checkpoint-dir "${CHECKPOINT_DIR}" \
   --seed 44 \
   --amp 0 \
@@ -46,4 +48,3 @@ exec "${PYTHON}" -m torch.distributed.run \
   --prompt-encoder-lr-mult 0.0 \
   --shape-prior-lr-mult 1.0 \
   --densebr-lr-mult 1.0
-

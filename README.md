@@ -117,6 +117,11 @@ TRAIN_SUBSET_RATIO=1.0 VAL_SUBSET_RATIO=1.0 \
 数据、优化器、EMA、初始化/续训路径、有效全局 batch size、git commit 和完整
 torchrun 命令。可用 `LOG_DIR` 覆盖日志目录，或用 `LOG_FILE` 指定精确文件。
 
+全部新主线实验的 validation 默认保持 WHU1024 历史基线口径：`batch_size=1`，
+四卡 DDP 只由 rank 0 遍历完整验证集，其余 rank 等待同步；空 GT 图像仍进入
+COCO 评估，bbox/segm 都按 detector score 排序。这样既保持指标可比性，也避免
+每个 rank 重复累计 1024 分辨率 mask 导致主机内存 OOM。
+
 ## 坐标与梯度契约
 
 - coarse mask：ROI-local，默认 `64×64`；

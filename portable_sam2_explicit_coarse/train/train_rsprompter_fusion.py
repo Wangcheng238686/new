@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import gc
 import logging
 import math
 import os
@@ -1018,7 +1019,12 @@ def main():
     )
 
     parser.add_argument("--val-ratio", type=float, default=0.0)
-    parser.add_argument("--val-batch-size", type=int, default=None)
+    parser.add_argument(
+        "--val-batch-size",
+        type=int,
+        default=1,
+        help="Validation batch size (legacy WHU1024 baseline default: 1)",
+    )
     parser.add_argument("--val-every-n-epochs", type=int, default=1)
     parser.add_argument("--early-stopping-patience", type=int, default=15)
     parser.add_argument("--early-stopping-start-epoch", type=int, default=1)
@@ -1178,6 +1184,10 @@ def main():
         raise ValueError("early_stopping_patience must be >= 0")
     if float(args.early_stopping_min_delta) < 0:
         raise ValueError("early_stopping_min_delta must be >= 0")
+    if int(args.val_batch_size) < 1:
+        raise ValueError("val_batch_size must be >= 1")
+    if int(args.val_every_n_epochs) < 1:
+        raise ValueError("val_every_n_epochs must be >= 1")
 
     project_root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(project_root))
@@ -1382,6 +1392,20 @@ def main():
             seed=int(args.seed),
         )
     )
+    # Preserve the proven WHU1024 baseline validation contract: rank 0 runs
+    # the complete validation loader while the other DDP ranks wait at the
+    # existing end-of-epoch synchronization point.  Iterating the unsharded
+    # loader on every rank duplicates full-resolution mask accumulation and
+    # can exhaust host memory.
+    if distributed and not is_main:
+        val_loader = None
+    if is_main:
+        logger.info(
+            "Validation policy: rank0_only=%d batch_size=%d every_n_epochs=%d",
+            int(distributed),
+            int(args.val_batch_size),
+            int(args.val_every_n_epochs),
+        )
 
     num_batches_per_epoch = len(train_loader)
     if args.max_train_batches > 0:
@@ -2051,7 +2075,10 @@ def main():
             and bool(args.ema_eval)
             and (epoch + 1) >= max(1, int(args.ema_eval_start_epoch))
         )
-        if val_loader is not None:
+        if (
+            val_loader is not None
+            and (epoch + 1) % int(args.val_every_n_epochs) == 0
+        ):
             if use_ema_this_epoch:
                 ema.apply_to(model)
                 ema_applied_for_eval = True
@@ -2064,11 +2091,14 @@ def main():
             all_img_metas: List[dict] = []
             total_val_loss = 0.0
             val_batches = 0
+            skipped_no_gt_val_loss_batches = 0
+            seen_val_batches = 0
 
             with torch.no_grad():
                 for batch_idx, batch in enumerate(val_loader):
                     if args.max_val_batches > 0 and batch_idx >= args.max_val_batches:
                         break
+                    seen_val_batches += 1
 
                     imgs = batch["imgs"].to(device)
                     img_metas = batch["img_metas"]
@@ -2125,7 +2155,9 @@ def main():
                         ds.gt_instances = gt_instances
                         data_samples.append(ds.to(device))
 
-                    # Skip validation batch if all images have no valid GT
+                    # Match the historical baseline: loss requires positive
+                    # GT, but GT-empty images still participate in COCO
+                    # evaluation so their false positives are counted.
                     val_batch_has_valid_gt = False
                     for ds in data_samples:
                         labels = getattr(ds.gt_instances, "labels", torch.tensor([]))
@@ -2133,11 +2165,7 @@ def main():
                             val_batch_has_valid_gt = True
                             break
                     if not val_batch_has_valid_gt:
-                        if is_main:
-                            logger.debug(
-                                "Skip val batch with no valid GT instances (epoch=%d)", epoch + 1
-                            )
-                        continue
+                        skipped_no_gt_val_loss_batches += 1
 
                     # Synchronize data preprocessing for both images and ground truth
                     processed = data_preprocessor(
@@ -2151,21 +2179,28 @@ def main():
                     model_for_eval = model.module if hasattr(model, "module") else model
 
                     # ---- Compute loss ----
-                    loss_dict = model_for_eval.loss(model_inputs, data_samples)
-                    loss_dict = _apply_detection_loss_weight(
-                        loss_dict, det_loss_weight, device
-                    )
-                    val_loss_parts = []
-                    for k, v in loss_dict.items():
-                        if "loss" not in k.lower():
-                            continue
-                        if isinstance(v, torch.Tensor):
-                            val_loss_parts.append(v)
-                        elif isinstance(v, (list, tuple)):
-                            val_loss_parts.extend(x for x in v if isinstance(x, torch.Tensor))
-                    loss = sum(val_loss_parts) if val_loss_parts else torch.tensor(0.0, device=device)
-                    total_val_loss += float(loss.detach().item())
-                    val_batches += 1
+                    if val_batch_has_valid_gt:
+                        loss_dict = model_for_eval.loss(model_inputs, data_samples)
+                        loss_dict = _apply_detection_loss_weight(
+                            loss_dict, det_loss_weight, device
+                        )
+                        val_loss_parts = []
+                        for k, v in loss_dict.items():
+                            if "loss" not in k.lower():
+                                continue
+                            if isinstance(v, torch.Tensor):
+                                val_loss_parts.append(v)
+                            elif isinstance(v, (list, tuple)):
+                                val_loss_parts.extend(
+                                    x for x in v if isinstance(x, torch.Tensor)
+                                )
+                        loss = (
+                            sum(val_loss_parts)
+                            if val_loss_parts
+                            else torch.tensor(0.0, device=device)
+                        )
+                        total_val_loss += float(loss.detach().item())
+                        val_batches += 1
 
                     # ---- Run prediction for COCO evaluation ----
                     outputs = model_for_eval.predict(model_inputs, data_samples, rescale=False)
@@ -2187,6 +2222,21 @@ def main():
 
                         all_img_metas.append(meta)
 
+            if skipped_no_gt_val_loss_batches > 0:
+                logger.warning(
+                    (
+                        "Epoch %d skipped val loss on batches with no valid GT: "
+                        "%d/%d (%.2f%%); these batches were still included in "
+                        "COCO evaluation"
+                    ),
+                    epoch + 1,
+                    skipped_no_gt_val_loss_batches,
+                    seen_val_batches,
+                    100.0
+                    * skipped_no_gt_val_loss_batches
+                    / max(1, seen_val_batches),
+                )
+
             val_loss = total_val_loss / max(1, val_batches)
 
             # ---- COCO-style evaluation ----
@@ -2197,30 +2247,34 @@ def main():
             if is_main:
                 logger.info(f"Validation samples: GT={total_gt}, DT={total_dt}")
 
-            if total_gt > 0 and is_main:
-                coco_gt, coco_segm_dt = build_coco_gt_and_dt(
-                    all_gt, all_dt, all_img_metas, score_key="mask_scores"
+            if total_gt > 0:
+                # Historical WHU1024 evaluation uses detector scores for both
+                # bbox and segmentation ranking and one shared COCO DT object.
+                coco_gt, coco_dt = build_coco_gt_and_dt(
+                    all_gt, all_dt, all_img_metas, score_key="scores"
+                )
+                if eval_bbox:
+                    bbox_metrics = run_coco_eval(coco_gt, coco_dt, iou_type="bbox")
+                    val_metrics.update(bbox_metrics)
+                    logger.info(
+                        "Validation bbox/mAP: %.4f bbox/mAP_75: %.4f",
+                        bbox_metrics.get("bbox/mAP", 0.0),
+                        bbox_metrics.get("bbox/mAP_75", 0.0),
+                    )
+
+                segm_metrics = run_coco_eval(coco_gt, coco_dt, iou_type="segm")
+                val_metrics.update(segm_metrics)
+                logger.info(
+                    "Validation segm/mAP: %.4f",
+                    segm_metrics.get("segm/mAP", 0.0),
                 )
 
-                # Run segm evaluation
-                segm_metrics = run_coco_eval(coco_gt, coco_segm_dt, iou_type="segm")
-                val_metrics.update(segm_metrics)
-
-                if is_main:
-                    logger.info(f"Validation segm/mAP: {segm_metrics.get('segm/mAP', 0.0):.4f}")
-
-                if eval_bbox:
-                    _, coco_bbox_dt = build_coco_gt_and_dt(
-                        all_gt, all_dt, all_img_metas, score_key="scores"
-                    )
-                    bbox_metrics = run_coco_eval(coco_gt, coco_bbox_dt, iou_type="bbox")
-                    val_metrics.update(bbox_metrics)
-                    if is_main:
-                        logger.info(
-                            "Validation bbox/mAP: %.4f bbox/mAP_75: %.4f",
-                            bbox_metrics.get("bbox/mAP", 0.0),
-                            bbox_metrics.get("bbox/mAP_75", 0.0),
-                        )
+        # Match the baseline's post-validation cleanup and reduce allocator
+        # fragmentation across long runs.  Non-main ranks reach this point
+        # early and then wait at the existing epoch-end DDP synchronization.
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
 
         stop_training = False
         if is_main:

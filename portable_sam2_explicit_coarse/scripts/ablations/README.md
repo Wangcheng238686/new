@@ -25,6 +25,7 @@ complete official validation split:
 ```bash
 TRAIN_SUBSET_RATIO=0.1
 VAL_SUBSET_RATIO=1.0
+VAL_BATCH_SIZE=1
 ```
 
 Override both explicitly when a different screening ratio is needed:
@@ -39,6 +40,12 @@ Use `TRAIN_SUBSET_RATIO=1.0 VAL_SUBSET_RATIO=1.0` for a full-data run.
 Subsets are deterministic image-level samples. Train uses `SUBSET_SEED`
 (default 44); validation uses `SUBSET_SEED + 10000`. All ablations therefore see
 the same sample IDs when the ratio and seed are unchanged.
+
+Validation also follows the historical WHU1024 baseline execution contract:
+only global rank 0 iterates the full validation loader, the other DDP ranks
+wait at epoch-end synchronization, and bbox/segm COCO evaluation uses detector
+scores. Empty-GT images remain in COCO evaluation so false positives are
+counted. `VAL_BATCH_SIZE` can be overridden, but `1` is the comparison default.
 
 ## Smoke and dry-run
 
