@@ -1,0 +1,12 @@
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/logs/
+**/work_dirs/
+**/inference_results/
+*.pth
+*.pt
+*.log
+.vscode/
+.idea/
+

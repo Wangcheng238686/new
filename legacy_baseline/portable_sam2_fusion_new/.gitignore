@@ -1,0 +1,7 @@
+# Inference result visualizations
+inference_results/**/visualizations/
+inference_results/**/*.jpg
+inference_results/**/*.png
+
+# Claude Code skills
+.claude/skills/
