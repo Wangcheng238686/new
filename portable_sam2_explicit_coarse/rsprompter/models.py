@@ -506,8 +506,21 @@ class RSSimpleFPN(BaseModule):
 
 @MODELS.register_module()
 class RSPrompterAnchor(MaskRCNN):
-    def __init__(self, shared_image_embedding, decoder_freeze=True, *args, **kwargs):
+    def __init__(
+        self,
+        shared_image_embedding,
+        decoder_freeze=True,
+        sam_image_embedding_stride=32,
+        *args,
+        **kwargs,
+    ):
         peft_config = kwargs.get("backbone", {}).get("peft_config", {})
+        self.sam_image_embedding_stride = int(sam_image_embedding_stride)
+        if self.sam_image_embedding_stride not in (16, 32):
+            raise ValueError(
+                "sam_image_embedding_stride must be 16 (official) or 32 "
+                f"(legacy), got {self.sam_image_embedding_stride}"
+            )
         super().__init__(*args, **kwargs)
         mask_head = getattr(getattr(self, "roi_head", None), "mask_head", None)
         uses_prompt_encoder_pe = getattr(mask_head, "prompt_encoder", None) is not None
@@ -570,16 +583,51 @@ class RSPrompterAnchor(MaskRCNN):
         
         return pos_embed
 
+    def _select_sam_image_embeddings(
+        self, vision_outputs, batch_inputs: Tensor
+    ) -> Tensor:
+        """Select stride-16 official or stride-32 legacy SAM decoder features."""
+        expected_hw = (
+            int(batch_inputs.shape[-2]) // self.sam_image_embedding_stride,
+            int(batch_inputs.shape[-1]) // self.sam_image_embedding_stride,
+        )
+        candidates = []
+        if isinstance(vision_outputs, tuple):
+            if torch.is_tensor(vision_outputs[0]):
+                candidates.append(vision_outputs[0])
+            if len(vision_outputs) > 1 and isinstance(
+                vision_outputs[1], (list, tuple)
+            ):
+                candidates.extend(
+                    feature
+                    for feature in vision_outputs[1]
+                    if torch.is_tensor(feature)
+                )
+        elif isinstance(vision_outputs, SamVisionEncoderOutput):
+            candidates.append(vision_outputs[0])
+        matches = [
+            feature for feature in candidates if feature.shape[-2:] == expected_hw
+        ]
+        if not matches:
+            available = [tuple(feature.shape[-2:]) for feature in candidates]
+            raise RuntimeError(
+                "SAM image embedding selection failed: expected spatial size "
+                f"{expected_hw} for stride={self.sam_image_embedding_stride}, "
+                f"available={available}"
+            )
+        return matches[0]
+
     def extract_feat(self, batch_inputs: Tensor) -> Tuple[Tensor]:
         vision_outputs = self.backbone(batch_inputs)
         if isinstance(vision_outputs, SamVisionEncoderOutput):
-            image_embeddings = vision_outputs[0]
             vision_hidden_states = vision_outputs[1]
         elif isinstance(vision_outputs, tuple):
-            image_embeddings = vision_outputs[0]
             vision_hidden_states = vision_outputs
         else:
             raise NotImplementedError
+        image_embeddings = self._select_sam_image_embeddings(
+            vision_outputs, batch_inputs
+        )
 
         mask_head = getattr(getattr(self, "roi_head", None), "mask_head", None)
         if getattr(mask_head, "prompt_encoder", None) is not None:
@@ -713,6 +761,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         _ratio("SP/n2_valid_ratio", "SP/n2_valid_count", "SP/roi_count")
         _ratio("SP/empty_ratio", "SP/empty_count", "SP/roi_count")
         _ratio("SP/full_ratio", "SP/full_count", "SP/roi_count")
+        _ratio("SP/all_invalid_ratio", "SP/all_invalid_count", "SP/roi_count")
         _ratio("SP/p1_in_gt_fg", "SP/p1_in_gt_fg_count", "SP/p1_gt_valid_count")
         _ratio("SP/p2_in_gt_fg", "SP/p2_in_gt_fg_count", "SP/p2_gt_valid_count")
         _ratio("SP/n1_in_gt_bg", "SP/n1_in_gt_bg_count", "SP/n1_gt_valid_count")
@@ -817,7 +866,6 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                 else roi_img_ids_override
             ),
             high_res_features=high_res_features,
-            pafpn_features=x[:2],
             boxes=rois[:, 1:] if rois is not None else boxes_override,
         )
         if len(mask_head_out) != 6:
@@ -1022,6 +1070,9 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             rcnn_train_cfg=self.train_cfg,
         )
         mask_results.update(loss_mask=mask_loss_and_target["loss_mask"])
+        mask_results["loss_mask"].update(
+            mask_loss_and_target.get("debug_stats", {})
+        )
         if getattr(self.mask_head, "quality_head_enabled", False):
             mask_targets = mask_loss_and_target["mask_targets"]
             quality_preds = mask_results["quality_predictions"]

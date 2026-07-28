@@ -1,8 +1,8 @@
 """Explicit ROI-local coarse-mask prompt generation and point mining.
 
 Canonical shape-point route:
-- ROI feature + global SAM2 visual context + box geometry
-- gated Spatial FiLM
+- ROI feature -> lightweight coarse-mask decoder
+- optional global SAM2 context + box-conditioned Spatial FiLM ablation
 - ROI-local coarse mask
 - adaptive hard 2P2N point mining (stop-gradient)
 
@@ -110,7 +110,9 @@ def _logit(value: float) -> float:
 class ShapePriorInjector(nn.Module):
     """Generate an explicitly supervised ROI-local coarse-mask prompt.
 
-    Canonical fusion is ``gated_spatial_film``::
+    The default ``roi_only`` route sends the local RoI feature directly to the
+    coarse decoder and does not construct any context/box/FiLM parameters.
+    ``gated_spatial_film`` is retained as an explicit ablation::
 
         gamma = tanh(gamma_head(context))
         beta  = tanh(beta_head(context))
@@ -133,16 +135,15 @@ class ShapePriorInjector(nn.Module):
         gate_init="zero",
         spatial_attn=True,
         coarse_mask_output_size=64,
-        fusion_type="legacy_multiplicative",
+        fusion_type="roi_only",
         context_gate_init=0.10,
         gamma_activation="tanh",
         beta_activation="tanh",
         zero_init_gamma=True,
         zero_init_beta=True,
-        **kwargs,
     ):
         super().__init__()
-        del context_source, gate_init, kwargs
+        del context_source, gate_init
         self.context_source = "visual"
         self.num_context_tokens = int(num_context_tokens)
         self.d_inner = int(d_inner)
@@ -158,21 +159,48 @@ class ShapePriorInjector(nn.Module):
         self._last_debug_stats: Dict[str, Tensor] = {}
 
         if self.fusion_type not in {
+            "roi_only",
             "legacy_multiplicative",
             "gated_spatial_film",
         }:
             raise ValueError(
-                "fusion_type must be legacy_multiplicative or "
+                "fusion_type must be roi_only, legacy_multiplicative or "
                 f"gated_spatial_film, got {self.fusion_type!r}"
             )
         if self.fusion_type == "gated_spatial_film" and not self.spatial_attn:
             raise ValueError("gated_spatial_film requires spatial_attn=True")
 
-        self.visual_context_proj = nn.Linear(int(visual_context_dim), d_inner)
-        self.token_pool = nn.AdaptiveAvgPool1d(self.num_context_tokens)
-        self.box_pe = RoIBoxEncoding(out_dim=d_inner)
+        if self.fusion_type == "roi_only":
+            # A true no-FiLM route: do not leave inactive context parameters in
+            # the optimizer/checkpoint and do not spend compute producing them.
+            self.visual_context_proj = None
+            self.context_grid = 0
+            self.token_pool = None
+            self.box_pe = None
+            self.roi_proj = None
+            self.visual_cross_attn = None
+            self.cond_proj = None
+            self.spatial_roi_proj = None
+            self.spatial_cross_attn = None
+            self.spatial_cond_proj = None
+            self.gamma_head = None
+            self.beta_head = None
+            self.register_parameter("context_gate_raw", None)
+        else:
+            self.visual_context_proj = nn.Linear(int(visual_context_dim), d_inner)
+            context_grid = int(round(math.sqrt(self.num_context_tokens)))
+            if context_grid * context_grid != self.num_context_tokens:
+                raise ValueError(
+                    "num_context_tokens must be a perfect square for 2D pooling, "
+                    f"got {self.num_context_tokens}"
+                )
+            self.context_grid = context_grid
+            self.token_pool = nn.AdaptiveAvgPool2d(
+                (self.context_grid, self.context_grid)
+            )
+            self.box_pe = RoIBoxEncoding(out_dim=d_inner)
 
-        if self.spatial_attn:
+        if self.fusion_type != "roi_only" and self.spatial_attn:
             self.roi_proj = None
             self.visual_cross_attn = None
             self.cond_proj = None
@@ -215,7 +243,7 @@ class ShapePriorInjector(nn.Module):
                 )
                 nn.init.zeros_(self.spatial_cond_proj[-1].weight)
                 nn.init.zeros_(self.spatial_cond_proj[-1].bias)
-        else:
+        elif self.fusion_type != "roi_only":
             self.roi_proj = nn.Linear(roi_feat_channels, d_inner)
             self.visual_cross_attn = nn.MultiheadAttention(
                 d_inner, num_heads, batch_first=True
@@ -235,15 +263,15 @@ class ShapePriorInjector(nn.Module):
             out_size=self.coarse_mask_output_size,
         )
 
-    def forward_context_visual(self, visual_context: Tensor) -> Tensor:
-        tokens = visual_context.flatten(2).transpose(1, 2)
+    def forward_context_visual(self, visual_context: Tensor) -> Optional[Tensor]:
+        if self.fusion_type == "roi_only":
+            return None
+        pooled = self.token_pool(visual_context)
+        tokens = pooled.flatten(2).transpose(1, 2)
         return self._project_context(tokens)
 
     def _project_context(self, tokens: Tensor) -> Tensor:
-        ctx = self.visual_context_proj(tokens)
-        ctx = ctx.transpose(1, 2)
-        ctx = self.token_pool(ctx)
-        return ctx.transpose(1, 2)
+        return self.visual_context_proj(tokens)
 
     @staticmethod
     def _activate(value: Tensor, name: str) -> Tensor:
@@ -255,22 +283,30 @@ class ShapePriorInjector(nn.Module):
 
     def forward_roi(
         self,
-        ctx_tokens: Tensor,
+        ctx_tokens: Optional[Tensor],
         roi_feats: Tensor,
         roi_boxes: Tensor,
         roi_img_ids: Tensor,
         **kwargs,
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         del kwargs
-        kv = ctx_tokens[roi_img_ids.long()]
         debug: Dict[str, Tensor] = {}
 
-        if self.spatial_attn:
+        if self.fusion_type == "roi_only":
+            modulated = roi_feats
+            attn = None
+            debug["CONTEXT/enabled"] = roi_feats.new_zeros(())
+        elif self.spatial_attn:
+            if ctx_tokens is None:
+                raise ValueError("context fusion requires visual context tokens")
+            kv = ctx_tokens[roi_img_ids.long()]
             h_roi, w_roi = roi_feats.shape[-2:]
             roi_spatial = self.spatial_roi_proj(roi_feats)
             roi_tokens = roi_spatial.flatten(2).transpose(1, 2)
             roi_tokens = roi_tokens + self.box_pe(roi_boxes, self.img_size)[:, None, :]
-            enriched, attn = self.spatial_cross_attn(roi_tokens, kv, kv)
+            enriched, attn = self.spatial_cross_attn(
+                roi_tokens, kv, kv, need_weights=False
+            )
             enriched = enriched.transpose(1, 2).reshape(
                 -1, self.d_inner, h_roi, w_roi
             )
@@ -289,9 +325,14 @@ class ShapePriorInjector(nn.Module):
                 modulated = roi_feats * (1.0 + cond)
                 debug["CONTEXT/legacy_cond_abs_mean"] = cond.detach().abs().mean()
         else:
+            if ctx_tokens is None:
+                raise ValueError("context fusion requires visual context tokens")
+            kv = ctx_tokens[roi_img_ids.long()]
             roi_global = roi_feats.mean(dim=(2, 3))
             q = self.roi_proj(roi_global) + self.box_pe(roi_boxes, self.img_size)
-            delta, attn = self.visual_cross_attn(q[:, None], kv, kv)
+            delta, attn = self.visual_cross_attn(
+                q[:, None], kv, kv, need_weights=False
+            )
             cond = self.cond_proj(delta[:, 0])
             modulated = roi_feats * (1.0 + cond[:, :, None, None])
             debug["CONTEXT/legacy_cond_abs_mean"] = cond.detach().abs().mean()
@@ -379,7 +420,7 @@ class ShapePointMiner(nn.Module):
         self.current_epoch = max(1, int(epoch_number))
 
     def _warmup_stage(self) -> int:
-        if not self.training or not bool(self.point_warmup_cfg.get("enabled", True)):
+        if not bool(self.point_warmup_cfg.get("enabled", True)):
             return 2
         no_point_end = int(self.point_warmup_cfg.get("no_point_epochs", 5))
         full_start = int(self.point_warmup_cfg.get("full_2p2n_start_epoch", 11))
@@ -519,6 +560,7 @@ class ShapePointMiner(nn.Module):
                 "point_distance_sum": zero,
                 "point_pair_count": zero,
                 "point_overlap_count": zero,
+                "all_invalid_count": zero,
             }
 
         with torch.no_grad():
@@ -527,6 +569,9 @@ class ShapePointMiner(nn.Module):
             flat_fg = foreground.flatten(1)
             has_fg = flat_fg.any(dim=1)
             full_fg = flat_fg.all(dim=1)
+            has_strict_fg = (
+                prob.flatten(1).max(dim=1).values > self.foreground_thr + 1e-6
+            )
             inside = self._inside_distance(foreground.float())
             norm_inside = inside / float(max(1, min(h, w)))
             pos_score = norm_inside * prob
@@ -539,6 +584,17 @@ class ShapePointMiner(nn.Module):
             p1_yx, p1_valid = self._pick_platform_center(
                 p1_candidates.float(), pos_score
             )
+            # A real foreground may be thin or below the high-confidence
+            # threshold. Fall back to its best interior pixel instead of
+            # invalidating the complete positive branch.
+            fallback_p1_yx, fallback_p1_valid = self._pick_platform_center(
+                foreground.float(), pos_score
+            )
+            use_p1_fallback = has_strict_fg & (~p1_valid) & fallback_p1_valid
+            p1_yx = torch.where(
+                use_p1_fallback[:, None], fallback_p1_yx, p1_yx
+            )
+            p1_valid = p1_valid | use_p1_fallback
 
             # Empty foreground: select the maximum-probability plateau only if
             # it reaches the explicit low-confidence fallback threshold.
@@ -559,6 +615,15 @@ class ShapePointMiner(nn.Module):
             p2_yx, p2_valid = self._pick_platform_center(
                 p2_candidates.float(), pos_score
             )
+            fallback_p2_candidates = foreground & far_from_p1
+            fallback_p2_yx, fallback_p2_valid = self._pick_platform_center(
+                fallback_p2_candidates.float(), pos_score
+            )
+            use_p2_fallback = p1_valid & (~p2_valid) & fallback_p2_valid
+            p2_yx = torch.where(
+                use_p2_fallback[:, None], fallback_p2_yx, p2_yx
+            )
+            p2_valid = p2_valid | use_p2_fallback
 
             outer = foreground.float()
             for _ in range(self.outer_ring_radius):
@@ -584,6 +649,15 @@ class ShapePointMiner(nn.Module):
             n1_yx, n1_valid = self._pick_platform_center(
                 n1_candidates.float(), n1_score
             )
+            fallback_n1_candidates = (~foreground) & (~full_fg)[:, None, None, None]
+            fallback_n1_yx, fallback_n1_valid = self._pick_platform_center(
+                fallback_n1_candidates.float(), n1_score
+            )
+            use_n1_fallback = (~n1_valid) & fallback_n1_valid
+            n1_yx = torch.where(
+                use_n1_fallback[:, None], fallback_n1_yx, n1_yx
+            )
+            n1_valid = n1_valid | use_n1_fallback
 
             safe_radius = max(
                 1,
@@ -604,6 +678,76 @@ class ShapePointMiner(nn.Module):
             n2_yx, n2_valid = self._pick_platform_center(
                 safe_bg.float(), 1.0 - prob
             )
+            fallback_n2_candidates = (
+                (~foreground)
+                & far_from_n1
+                & far_from_p1_n
+                & n1_valid[:, None, None, None]
+            )
+            fallback_n2_yx, fallback_n2_valid = self._pick_platform_center(
+                fallback_n2_candidates.float(), 1.0 - prob
+            )
+            use_n2_fallback = (~n2_valid) & fallback_n2_valid
+            n2_yx = torch.where(
+                use_n2_fallback[:, None], fallback_n2_yx, n2_yx
+            )
+            n2_valid = n2_valid | use_n2_fallback
+
+            if not self.adaptive_validity:
+                # Fixed-validity control: always provide two positive and two
+                # negative extrema. Confidence/topology thresholds still define
+                # the adaptive route above, but must not silently affect this
+                # ablation. Distance masks keep the second point separated.
+                full_canvas = torch.ones_like(foreground, dtype=torch.bool)
+                if h * w < 4:
+                    raise ValueError(
+                        "fixed-validity 2P2N requires at least four coarse-mask pixels"
+                    )
+                p1_yx, _ = self._pick_platform_center(full_canvas, prob)
+                fixed_far_from_p1 = self._distance_mask(
+                    p1_yx, h, w, min_pos_dist, prob.dtype
+                ).unsqueeze(1)
+                p2_yx, p2_valid = self._pick_platform_center(
+                    fixed_far_from_p1, prob
+                )
+                positive_exclusion = self._distance_mask(
+                    p1_yx, h, w, max(1.0, min_neg_dist), prob.dtype
+                ).unsqueeze(1)
+                positive_exclusion = positive_exclusion & self._distance_mask(
+                    p2_yx, h, w, max(1.0, min_neg_dist), prob.dtype
+                ).unsqueeze(1)
+                n1_yx, n1_valid = self._pick_platform_center(
+                    full_canvas & positive_exclusion, 1.0 - prob
+                )
+                fixed_far_from_n1 = self._distance_mask(
+                    n1_yx, h, w, min_neg_dist, prob.dtype
+                ).unsqueeze(1)
+                fixed_far_from_p1 = self._distance_mask(
+                    p1_yx, h, w, min_neg_dist, prob.dtype
+                ).unsqueeze(1)
+                fixed_far_from_p2 = self._distance_mask(
+                    p2_yx, h, w, min_neg_dist, prob.dtype
+                ).unsqueeze(1)
+                n2_candidates = (
+                    full_canvas
+                    & fixed_far_from_n1
+                    & fixed_far_from_p1
+                    & fixed_far_from_p2
+                )
+                n2_yx, n2_valid = self._pick_platform_center(
+                    n2_candidates, 1.0 - prob
+                )
+
+                if not bool((p2_valid & n1_valid & n2_valid).all()):
+                    raise RuntimeError(
+                        "fixed-validity 2P2N could not find four mutually "
+                        "separated points; reduce the configured distance ratios"
+                    )
+
+                p1_valid = torch.ones(n, device=device, dtype=torch.bool)
+                p2_valid = torch.ones(n, device=device, dtype=torch.bool)
+                n1_valid = torch.ones(n, device=device, dtype=torch.bool)
+                n2_valid = torch.ones(n, device=device, dtype=torch.bool)
 
             local_yx = torch.stack([p1_yx, p2_yx, n1_yx, n2_yx], dim=1)
             labels = torch.stack(
@@ -724,6 +868,7 @@ class ShapePointMiner(nn.Module):
                     pos_pair_valid.sum() + neg_pair_valid.sum()
                 ).detach(),
                 "point_overlap_count": overlap_count.detach(),
+                "all_invalid_count": (labels < 0).all(dim=1).sum().detach(),
                 "warmup_stage": mask_logits.new_tensor(float(stage)),
             }
         return coords, labels, stats

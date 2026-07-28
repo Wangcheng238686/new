@@ -83,12 +83,16 @@ bash scripts/infer_whu_checkpoint.sh /path/to/model.pth \
 旧 checkpoint 若没有嵌入 `model_config`，需额外传入
 `--config configs/对应配置.py`。
 
-当前 B0–C5 全部消融路线均支持该推理入口。后续所有影响模型结构、模块开关、
+当前 B0/B1、M0/M1、C1–C5 全部消融路线均支持该推理入口。后续所有影响模型结构、模块开关、
 张量形状或 forward/predict 行为的新参数，都必须由配置解析进 `cfg.model`，确保
 checkpoint 能完整记录并由推理器无歧义重建；训练、数据和运行时参数分别保存在
 `training_args`、`data_config` 和 `runtime_config`。
 
 ## 消融矩阵
+
+B0/B1保留旧基线的零初始化可训练MLP image PE；公共矩阵的detector loss默认在
+全部epoch保持权重1.0。训练日志会同步打印最终mask的ROI target填充率和logit/
+概率统计，用于快速排除全空mask回归。
 
 消融入口统一放在
 `portable_sam2_explicit_coarse/scripts/ablations/`，覆盖 aggregator/PAFPN、
@@ -101,8 +105,19 @@ cd portable_sam2_explicit_coarse
 # 全矩阵 smoke；不会开始训练
 bash scripts/ablations/smoke_all.sh
 
-# 消融默认使用 10% train / 100% validation
+# 消融当前默认使用 20% train / 100% validation
 bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
+
+# MLP final-mask 坐标契约消融：B0/B1 的 full-image 对照
+bash scripts/ablations/m0_aggregator_mlp_full_image.sh
+bash scripts/ablations/m1_pafpn_mlp_full_image.sh
+
+# SAM2 image embedding 分辨率消融：B0-64 与 C5-64
+bash scripts/ablations/r0_b0_aggregator_mlp_emb64.sh
+bash scripts/ablations/r1_c5_pafpn_coarse_densebr_emb64.sh
+
+# 默认 nohup + setsid 后台运行；前台调试时显式关闭
+RUN_IN_BACKGROUND=0 bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
 
 # 比例仍可独立覆盖；全量训练需显式设置 TRAIN_SUBSET_RATIO=1.0
 TRAIN_SUBSET_RATIO=1.0 VAL_SUBSET_RATIO=1.0 \
@@ -112,24 +127,39 @@ TRAIN_SUBSET_RATIO=1.0 VAL_SUBSET_RATIO=1.0 \
 矩阵定义、参数覆盖和 dry-run 用法见
 `portable_sam2_explicit_coarse/scripts/ablations/README.md`。
 
-每个消融入口会把 stdout/stderr 同时输出到终端并自动保存到项目内
-`portable_sam2_explicit_coarse/logs/ablations/`。日志开头包含解析后的架构、
+每个训练入口默认通过 `nohup setsid` 脱离终端运行，启动后打印后台 PID
+和日志路径并立即返回，但不创建 PID 文件；关闭终端不会终止 torchrun。stdout/stderr 自动保存到项目内
+`portable_sam2_explicit_coarse/logs/ablations/`。设置 `RUN_IN_BACKGROUND=0` 可恢复
+前台运行。日志开头包含解析后的架构、
 数据、优化器、EMA、初始化/续训路径、有效全局 batch size、git commit 和完整
 torchrun 命令。可用 `LOG_DIR` 覆盖日志目录，或用 `LOG_FILE` 指定精确文件。
+并行实验可从最外层脚本传入独立端口，例如
+`bash scripts/ablations/b0_aggregator_mlp.sh --master-port 29601`；命令行端口优先于
+`MASTER_PORT` 环境变量，二者都未提供时自动派生端口。
+所有训练入口还通过公共运行器共享 `TORCH_DDP_TIMEOUT_SECONDS=1800`，避免
+rank-0-only 完整验证和 COCO 评估超过 PyTorch 默认 600 秒；可在最外围脚本前设置
+该环境变量覆盖。
 
 全部新主线实验的 validation 默认保持 WHU1024 历史基线口径：`batch_size=1`，
 四卡 DDP 只由 rank 0 遍历完整验证集，其余 rank 等待同步；空 GT 图像仍进入
-COCO 评估，bbox/segm 都按 detector score 排序。这样既保持指标可比性，也避免
+COCO 评估，bbox/segm 都按 detector score 排序，bbox 主摘要和 best-bbox
+checkpoint 默认使用 `bbox/mAP`（`bbox/mAP_75` 仍保留在详细指标中）。这样既保持指标可比性，也避免
 每个 rank 重复累计 1024 分辨率 mask 导致主机内存 OOM。
 
 ## 坐标与梯度契约
 
 - coarse mask：ROI-local，默认 `64×64`；
-- PromptEncoder mask canvas：full-image，1024 输入时为 `128×128`；
-- 最终 SAM2 mask：full-image low-resolution mask；
+- PromptEncoder mask canvas：full-image；legacy 32×32 image embedding 对应
+  `128×128`，官方64×64变体对应 `256×256`；
+- 最终 SAM2 mask logits：B0/B1 保留旧 ROI-local target + bbox paste 复现口径；
+  M0/M1 与 C1–C5 使用 SAM2 原生 full-image 网格监督，推理只 resize 到图像尺寸一次；
+  validation 与 checkpoint 推理按 checkpoint 中的坐标配置共用对应路径；
 - 训练 prompt box：Shared2FC 正样本 proposal；
 - 推理 prompt box：最终检测框；
 - 2P2N 点挖掘对 coarse logits 使用 stop-gradient；
+- fixed 2P2N 强制四点互斥；warm-up 在训练与验证使用同一 epoch 阶段；无效槽在
+  PromptEncoder 后显式置零，整批无有效点时直接使用空 sparse prompt；
 - dense mask 经冻结 PromptEncoder 时不使用 `torch.no_grad()`，因此最终 mask
   loss 仍可回传到 coarse head 和 DenseBR；
 - DenseBR 输出是 coarse loss、2P2N 和 dense canvas 的唯一 coarse-logit 来源。
+  dense embedding 的变化被限制在 proposal box 内，box 外保持 no-mask 基底。

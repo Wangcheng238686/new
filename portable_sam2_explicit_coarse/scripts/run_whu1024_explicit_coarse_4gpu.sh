@@ -11,40 +11,28 @@ export WHU1024_DATA_ROOT="${WHU1024_DATA_ROOT:-/data/wangcheng/dataset/WHU}"
 export MAX_EPOCHS="${MAX_EPOCHS:-80}"
 export EXPLICIT_PROMPT_MODE="${EXPLICIT_PROMPT_MODE:-points_box_dense}"
 export DENSEBR_ENABLED="${DENSEBR_ENABLED:-0}"
+export TRAIN_SUBSET_RATIO="${TRAIN_SUBSET_RATIO:-1.0}"
+export VAL_SUBSET_RATIO="${VAL_SUBSET_RATIO:-1.0}"
+export CHECKPOINT_DIR="${CHECKPOINT_DIR:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/${EXPLICIT_PROMPT_MODE}_densebr${DENSEBR_ENABLED}_semanticfix_${SHAPE_CONTEXT_FUSION:-roi_only}}"
+export RUN_TAG="${RUN_TAG:-explicit_${EXPLICIT_PROMPT_MODE}_densebr${DENSEBR_ENABLED}_semanticfix_${SHAPE_CONTEXT_FUSION:-roi_only}}"
 
-PYTHON="${PYTHON:-/data/wangcheng/envs/cvt2/bin/python}"
-NPROC_PER_NODE="${NPROC_PER_NODE:-4}"
-BATCH_SIZE="${BATCH_SIZE:-2}"
-GRAD_ACCUM_STEPS="${GRAD_ACCUM_STEPS:-1}"
-LEARNING_RATE="${LEARNING_RATE:-5e-4}"
-VAL_BATCH_SIZE="${VAL_BATCH_SIZE:-1}"
-CHECKPOINT_DIR="${CHECKPOINT_DIR:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/${EXPLICIT_PROMPT_MODE}_densebr${DENSEBR_ENABLED}}"
+case "${EXPLICIT_PROMPT_MODE}:${DENSEBR_ENABLED}" in
+  points:0)
+    WRAPPER="scripts/ablations/c2_pafpn_coarse_points.sh"
+    ;;
+  points_box:0)
+    WRAPPER="scripts/ablations/c3_pafpn_coarse_points_box.sh"
+    ;;
+  points_box_dense:0)
+    WRAPPER="scripts/ablations/c4_pafpn_coarse_points_box_dense.sh"
+    ;;
+  points_box_dense:1)
+    WRAPPER="scripts/ablations/c5_pafpn_coarse_densebr.sh"
+    ;;
+  *)
+    echo "Unsupported EXPLICIT_PROMPT_MODE/DENSEBR_ENABLED combination: ${EXPLICIT_PROMPT_MODE}/${DENSEBR_ENABLED}" >&2
+    exit 2
+    ;;
+esac
 
-exec "${PYTHON}" -m torch.distributed.run \
-  --nproc_per_node="${NPROC_PER_NODE}" \
-  --master_port="${MASTER_PORT:-29500}" \
-  train/train_rsprompter_fusion.py \
-  --config configs/whu1024_baseplus_explicit_coarse.py \
-  --data-root "${WHU1024_DATA_ROOT}" \
-  --use-whu-coco \
-  --image-size 1024 1024 \
-  --batch-size "${BATCH_SIZE}" \
-  --grad-accum-steps "${GRAD_ACCUM_STEPS}" \
-  --epochs "${MAX_EPOCHS}" \
-  --lr "${LEARNING_RATE}" \
-  --val-batch-size "${VAL_BATCH_SIZE}" \
-  --checkpoint-dir "${CHECKPOINT_DIR}" \
-  --seed 44 \
-  --amp 0 \
-  --ema-enabled 1 \
-  --ema-decay 0.999 \
-  --ema-eval 1 \
-  --ema-save-best 1 \
-  --val-every-n-epochs 1 \
-  --early-stopping-patience 10 \
-  --early-stopping-start-epoch 20 \
-  --mask-decoder-lr-mult 1.0 \
-  --no-mask-lr-mult 0.0 \
-  --prompt-encoder-lr-mult 0.0 \
-  --shape-prior-lr-mult 1.0 \
-  --densebr-lr-mult 1.0
+exec bash "${WRAPPER}" "$@"

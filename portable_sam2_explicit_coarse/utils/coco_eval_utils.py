@@ -67,7 +67,12 @@ def build_coco_gt_and_dt(
             ann_id += 1
 
         dt_bboxes = dt["bboxes"]
-        dt_scores = dt.get(score_key, dt["scores"])
+        if score_key not in dt:
+            raise KeyError(
+                f"Configured COCO score key {score_key!r} is missing from "
+                "predictions; refusing a silent score fallback"
+            )
+        dt_scores = dt[score_key]
         dt_masks = dt["masks"]
 
         if hasattr(dt_masks, "masks"):

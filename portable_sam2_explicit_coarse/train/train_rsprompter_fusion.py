@@ -7,6 +7,7 @@ import math
 import os
 import sys
 from collections import OrderedDict
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -97,7 +98,12 @@ def build_coco_gt_and_dt(
 
         # Predictions
         dt_bboxes = dt["bboxes"]
-        dt_scores = dt.get(score_key, dt["scores"])
+        if score_key not in dt:
+            raise KeyError(
+                f"Configured COCO score key {score_key!r} is missing from "
+                "predictions; refusing a silent score fallback"
+            )
+        dt_scores = dt[score_key]
         dt_masks = dt["masks"]
 
         if hasattr(dt_masks, "masks"):
@@ -298,6 +304,42 @@ def _extract_instances_numpy(instances, img_shape: Tuple[int, int]) -> dict:
     return out
 
 
+def _summarize_mask_density(all_dt: List[dict]) -> Tuple[float, float]:
+    """Return average binary mask fill ratio and masks per validation image."""
+    weighted_fill = 0.0
+    total_masks = 0
+    for dt in all_dt:
+        masks = dt.get("masks")
+        if masks is None or len(masks) == 0:
+            continue
+        masks = masks.astype(np.float32)
+        weighted_fill += float(masks.mean()) * len(masks)
+        total_masks += len(masks)
+    return (
+        weighted_fill / max(total_masks, 1),
+        total_masks / max(len(all_dt), 1),
+    )
+
+
+def _resolve_ddp_timeout_seconds() -> int:
+    raw_value = os.environ.get(
+        "TORCH_DDP_TIMEOUT_SECONDS", os.environ.get("NCCL_TIMEOUT", "1800")
+    )
+    try:
+        timeout_seconds = int(raw_value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "TORCH_DDP_TIMEOUT_SECONDS must be a positive integer, "
+            f"got {raw_value!r}"
+        ) from exc
+    if timeout_seconds < 1:
+        raise ValueError(
+            "TORCH_DDP_TIMEOUT_SECONDS must be >= 1, "
+            f"got {timeout_seconds}"
+        )
+    return timeout_seconds
+
+
 def _init_distributed() -> Dict[str, int]:
     world_size = int(os.environ.get("WORLD_SIZE", "1"))
     rank = int(os.environ.get("RANK", "0"))
@@ -305,7 +347,11 @@ def _init_distributed() -> Dict[str, int]:
     launched_by_torchrun = os.environ.get("LOCAL_RANK", None) is not None
     should_init = (world_size > 1) or launched_by_torchrun
     if should_init and not dist.is_initialized():
-        dist.init_process_group(backend="nccl", init_method="env://")
+        dist.init_process_group(
+            backend="nccl",
+            init_method="env://",
+            timeout=timedelta(seconds=_resolve_ddp_timeout_seconds()),
+        )
         if torch.cuda.is_available():
             torch.cuda.set_device(local_rank)
     distributed = dist.is_initialized()
@@ -437,21 +483,21 @@ def _build_optimizer(
             {
                 "params": params_mask_decoder,
                 "lr": lr * mask_decoder_lr_mult,
-                "weight_decay": weight_decay * 0.1,
+                "weight_decay": weight_decay,
                 "name": "mask_decoder",
             }
         )
-        audit_groups.append(("mask_decoder", params_mask_decoder, names_mask_decoder, lr * mask_decoder_lr_mult, weight_decay * 0.1))
+        audit_groups.append(("mask_decoder", params_mask_decoder, names_mask_decoder, lr * mask_decoder_lr_mult, weight_decay))
     if params_no_mask:
         param_groups.append(
             {
                 "params": params_no_mask,
                 "lr": lr * no_mask_lr_mult,
-                "weight_decay": 0.0,
+                "weight_decay": weight_decay,
                 "name": "no_mask_embed",
             }
         )
-        audit_groups.append(("no_mask_embed", params_no_mask, names_no_mask, lr * no_mask_lr_mult, 0.0))
+        audit_groups.append(("no_mask_embed", params_no_mask, names_no_mask, lr * no_mask_lr_mult, weight_decay))
     if params_prompt_encoder:
         param_groups.append(
             {
@@ -567,6 +613,16 @@ def _get_model_core(model: torch.nn.Module) -> torch.nn.Module:
     return model.module if hasattr(model, "module") else model
 
 
+def _assert_no_mask_embedding_contract(
+    model: torch.nn.Module, context: str
+) -> None:
+    model_core = _get_model_core(model)
+    mask_head = getattr(getattr(model_core, "roi_head", None), "mask_head", None)
+    validator = getattr(mask_head, "assert_no_mask_embedding_contract", None)
+    if validator is not None:
+        validator(context)
+
+
 class ExponentialMovingAverage:
     """EMA shadow weights used only for eval/export, never for backprop."""
 
@@ -601,12 +657,14 @@ class ExponentialMovingAverage:
         current_state = model_core.state_dict()
         self.backup_state = {k: v.detach().clone() for k, v in current_state.items()}
         model_core.load_state_dict(self.ema_state, strict=False)
+        _assert_no_mask_embedding_contract(model_core, "EMA state load")
 
     def restore(self, model: torch.nn.Module):
         if self.backup_state is None:
             return
         model_core = _get_model_core(model)
         model_core.load_state_dict(self.backup_state, strict=False)
+        _assert_no_mask_embedding_contract(model_core, "EMA state restore")
         self.backup_state = None
 
     def state_dict(self) -> Dict:
@@ -748,6 +806,65 @@ def _log_uav_debug_stats(
         logger.info("[DEBUG-%s] epoch=%d step=%d %s", prefix, epoch + 1, step, payload)
 
 
+_DENSE_RESIDUAL_MONITOR_KEYS = (
+    "DENSE/residual_alpha",
+    "DENSE/source_delta_norm",
+    "DENSE/applied_delta_norm",
+    "DENSE/source_delta_ratio",
+    "DENSE/applied_delta_ratio",
+)
+
+
+def _accumulate_dense_residual_monitor(
+    model: torch.nn.Module,
+    sums: Dict[str, float],
+    counts: Dict[str, int],
+) -> None:
+    """Accumulate detached dense-residual diagnostics from the latest forward."""
+    model_core = model.module if hasattr(model, "module") else model
+    getter = getattr(model_core, "get_prompt_debug_stats", None)
+    if getter is None:
+        return
+    stats = getter() or {}
+    for key in _DENSE_RESIDUAL_MONITOR_KEYS:
+        value = stats.get(key)
+        if torch.is_tensor(value):
+            if value.numel() != 1:
+                continue
+            value = float(value.detach().float().item())
+        if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+            continue
+        sums[key] += float(value)
+        counts[key] += 1
+
+
+def _reduce_dense_residual_monitor(
+    sums: Dict[str, float],
+    counts: Dict[str, int],
+    device: torch.device,
+    distributed: bool,
+) -> Dict[str, float]:
+    """Return rank-aggregated epoch means for the fixed dense monitor fields."""
+    packed = torch.tensor(
+        [
+            item
+            for key in _DENSE_RESIDUAL_MONITOR_KEYS
+            for item in (sums[key], float(counts[key]))
+        ],
+        dtype=torch.float64,
+        device=device,
+    )
+    if distributed and dist.is_initialized():
+        dist.all_reduce(packed, op=dist.ReduceOp.SUM)
+    result = {}
+    for index, key in enumerate(_DENSE_RESIDUAL_MONITOR_KEYS):
+        total = float(packed[2 * index].item())
+        count = float(packed[2 * index + 1].item())
+        if count > 0:
+            result[key] = total / count
+    return result
+
+
 def _save_checkpoint(
     path: Path,
     model: torch.nn.Module,
@@ -818,6 +935,7 @@ def _load_checkpoint(
                 logger.info("  missing (first 20): %s", _resume_msg.missing_keys[:20])
             if _resume_msg.unexpected_keys:
                 logger.info("  unexpected (first 20): %s", _resume_msg.unexpected_keys[:20])
+    _assert_no_mask_embedding_contract(model_to_load, "RESUME checkpoint load")
     if optimizer is not None and "optimizer" in ckpt:
         optimizer.load_state_dict(ckpt["optimizer"])
     if scheduler is not None and "scheduler" in ckpt:
@@ -863,6 +981,7 @@ def _load_init_checkpoint(
         compatible[name] = value
 
     load_result = model_to_load.load_state_dict(compatible, strict=False)
+    _assert_no_mask_embedding_contract(model_to_load, "INIT_FROM checkpoint load")
     return {
         "loaded": len(compatible),
         "excluded": excluded,
@@ -934,9 +1053,9 @@ def main():
     parser.add_argument(
         "--data-root", type=str, default="/data/wangcheng/dataset/university-test/S"
     )
-    parser.add_argument("--batch-size", type=int, default=2)
-    parser.add_argument("--epochs", type=int, default=50)
-    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--epochs", type=int, default=80)
+    parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument(
         "--checkpoint-dir", type=str, default="/tmp/portable_sam_fusion_ckpts"
     )
@@ -1026,14 +1145,20 @@ def main():
         help="Validation batch size (legacy WHU1024 baseline default: 1)",
     )
     parser.add_argument("--val-every-n-epochs", type=int, default=1)
-    parser.add_argument("--early-stopping-patience", type=int, default=15)
-    parser.add_argument("--early-stopping-start-epoch", type=int, default=1)
-    parser.add_argument("--early-stopping-min-delta", type=float, default=0.0)
+    parser.add_argument("--early-stopping-patience", type=int, default=10)
+    parser.add_argument("--early-stopping-start-epoch", type=int, default=20)
+    parser.add_argument("--early-stopping-min-delta", type=float, default=5e-4)
+    parser.add_argument(
+        "--early-stopping-smooth-window",
+        type=int,
+        default=5,
+        help="Moving-average window for the resolved early-stopping metric.",
+    )
     parser.add_argument("--det-loss-stage1-end", type=int, default=5)
     parser.add_argument("--det-loss-stage2-end", type=int, default=10)
     parser.add_argument("--det-loss-weight-stage1", type=float, default=1.0)
-    parser.add_argument("--det-loss-weight-stage2", type=float, default=0.75)
-    parser.add_argument("--det-loss-weight-stage3", type=float, default=0.50)
+    parser.add_argument("--det-loss-weight-stage2", type=float, default=1.0)
+    parser.add_argument("--det-loss-weight-stage3", type=float, default=1.0)
     parser.add_argument(
         "--max-nonfinite-batches",
         type=int,
@@ -1041,7 +1166,7 @@ def main():
         help="Abort after this many synchronized non-finite batches; 0 disables abort.",
     )
 
-    parser.add_argument("--sat-backbone-lr-mult", type=float, default=0.5)
+    parser.add_argument("--sat-backbone-lr-mult", type=float, default=1.0)
     parser.add_argument("--sat-other-lr-mult", type=float, default=1.0)
     parser.add_argument(
         "--bbox-head-lr-mult",
@@ -1050,8 +1175,8 @@ def main():
         help="Use >0 to place bbox_head in a separate optimizer group",
     )
     parser.add_argument("--drone-lr-mult", type=float, default=0.5)
-    parser.add_argument("--mask-decoder-lr-mult", type=float, default=0.05)
-    parser.add_argument("--no-mask-lr-mult", type=float, default=0.1)
+    parser.add_argument("--mask-decoder-lr-mult", type=float, default=1.0)
+    parser.add_argument("--no-mask-lr-mult", type=float, default=1.0)
     parser.add_argument("--prompt-encoder-lr-mult", type=float, default=0.1)
     parser.add_argument("--shape-prior-lr-mult", type=float, default=1.0)
     parser.add_argument("--densebr-lr-mult", type=float, default=1.0)
@@ -1063,10 +1188,10 @@ def main():
     )
     parser.add_argument("--quality-head-lr-mult", type=float, default=1.0)
     parser.add_argument("--scene-align-lr-mult", type=float, default=2.0, help="Learning rate multiplier for scene alignment parameters")
-    parser.add_argument("--grad-accum-steps", type=int, default=1)
+    parser.add_argument("--grad-accum-steps", type=int, default=2)
     parser.add_argument("--max-scenes", type=int, default=1000, help="Maximum number of scenes for scene-specific alignment")
     parser.add_argument("--warmup-epochs", type=int, default=0, help="Number of warmup epochs for learning rate scheduling")
-    parser.add_argument("--warmup-iters", type=int, default=0, help="Number of warmup iterations (overrides warmup-epochs if > 0)")
+    parser.add_argument("--warmup-iters", type=int, default=100, help="Number of warmup optimizer steps (overrides warmup-epochs if > 0)")
     parser.add_argument("--weight-decay", type=float, default=0.05, help="Weight decay for optimizer")
     parser.add_argument("--dropout", type=float, default=0.0, help="Dropout rate for regularization")
     parser.add_argument("--max-train-batches", type=int, default=0)
@@ -1074,8 +1199,8 @@ def main():
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
 
     # --- AMP / EMA (训练基础设施) ---
-    parser.add_argument("--amp", type=int, default=1, help="Enable AMP mixed precision when set to 1")
-    parser.add_argument("--ema-enabled", type=int, default=0, help="Enable EMA shadow weights")
+    parser.add_argument("--amp", type=int, default=0, help="Enable AMP mixed precision when set to 1")
+    parser.add_argument("--ema-enabled", type=int, default=1, help="Enable EMA shadow weights")
     parser.add_argument("--ema-decay", type=float, default=0.999, help="EMA decay in (0,1)")
     parser.add_argument("--ema-update-every", type=int, default=1, help="Update EMA every N optimizer steps")
     parser.add_argument("--ema-eval", type=int, default=1, help="Use EMA shadow weights for validation")
@@ -1184,6 +1309,8 @@ def main():
         raise ValueError("early_stopping_patience must be >= 0")
     if float(args.early_stopping_min_delta) < 0:
         raise ValueError("early_stopping_min_delta must be >= 0")
+    if int(args.early_stopping_smooth_window) < 1:
+        raise ValueError("early_stopping_smooth_window must be >= 1")
     if int(args.val_batch_size) < 1:
         raise ValueError("val_batch_size must be >= 1")
     if int(args.val_every_n_epochs) < 1:
@@ -1231,6 +1358,10 @@ def main():
     checkpoint_dir = Path(args.checkpoint_dir)
     if is_main:
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(
+            "DDP process-group timeout: %d seconds",
+            _resolve_ddp_timeout_seconds(),
+        )
 
     cfg = Config.fromfile(args.config)
 
@@ -1282,6 +1413,19 @@ def main():
 
     model_for_preproc = model.module if hasattr(model, "module") else model
     data_preprocessor = model_for_preproc.data_preprocessor
+    evaluation_mask_head = model_for_preproc.roi_head.mask_head
+    segm_score_mode = getattr(evaluation_mask_head, "segm_score_mode", "detector")
+    segm_score_key = getattr(evaluation_mask_head, "segm_score_key", "scores")
+    if segm_score_mode not in {"detector", "mask_quality"}:
+        raise RuntimeError(f"Invalid segmentation score mode: {segm_score_mode!r}")
+    if segm_score_key not in {"scores", "mask_scores"}:
+        raise RuntimeError(f"Invalid segmentation score key: {segm_score_key!r}")
+    if is_main:
+        logger.info(
+            "Evaluation score contract: bbox=scores segm=%s mode=%s",
+            segm_score_key,
+            segm_score_mode,
+        )
 
     enable_drone_branch = getattr(model_for_preproc, "enable_drone_branch", False)
     if args.use_drone and not enable_drone_branch:
@@ -1484,13 +1628,29 @@ def main():
 
     # === 构建训练 config 快照 (保存到 checkpoint, 推理时可直接加载) ===
     eval_bbox = _env_flag("EVAL_BBOX", "1")
-    save_bbox_best_metric = os.environ.get("SAVE_BBOX_BEST_METRIC", "bbox/mAP_75")
+    # Historical WHU1024 baseline reports/selects bbox/mAP as its primary bbox
+    # metric.  Keep mAP_75 in the detailed metrics, but do not silently use it
+    # as the headline or best-bbox checkpoint criterion.
+    save_bbox_best_metric = os.environ.get("SAVE_BBOX_BEST_METRIC", "bbox/mAP")
     save_composite_best = _env_flag("SAVE_COMPOSITE_BEST", "0")
     composite_metric_spec = os.environ.get(
         "SAVE_COMPOSITE_WEIGHTS", "0.5*bbox/mAP_75+0.5*segm/mAP_75"
     )
     early_stopping_metric_spec = os.environ.get(
         "EARLY_STOPPING_METRIC", "segm/mAP"
+    )
+    resolved_mask_head_cfg = cfg.model.roi_head.mask_head
+    resolved_point_warmup = dict(
+        resolved_mask_head_cfg.get("point_warmup_cfg", {})
+    )
+    resolved_shape_point_miner = dict(
+        resolved_mask_head_cfg.get("shape_point_miner_cfg", {})
+    )
+    resolved_coarse_loss = dict(
+        resolved_mask_head_cfg.get("coarse_mask_loss_cfg", {})
+    )
+    resolved_shape_prior = dict(
+        resolved_mask_head_cfg.get("shape_prior_cfg", {})
     )
     config_snapshot = {
         "checkpoint_schema_version": 1,
@@ -1514,6 +1674,7 @@ def main():
             "sam2_repo": os.environ.get("SAM2_REPO", ""),
             "sam2_checkpoint": os.environ.get("SAM2_CKPT", ""),
             "sam2_model_size": os.environ.get("SAM2_MODEL_SIZE", ""),
+            "ddp_timeout_seconds": _resolve_ddp_timeout_seconds(),
         },
         "train_subset_ratio": float(train_subset_ratio),
         "val_subset_ratio": float(val_subset_ratio),
@@ -1537,6 +1698,9 @@ def main():
         "early_stopping_patience": int(args.early_stopping_patience),
         "early_stopping_start_epoch": int(args.early_stopping_start_epoch),
         "early_stopping_min_delta": float(args.early_stopping_min_delta),
+        "early_stopping_smooth_window": int(
+            args.early_stopping_smooth_window
+        ),
         "det_loss_schedule": {
             "stage1_end": int(args.det_loss_stage1_end),
             "stage2_end": int(args.det_loss_stage2_end),
@@ -1545,22 +1709,39 @@ def main():
             "stage3_weight": float(args.det_loss_weight_stage3),
         },
         "point_warmup": {
-            "no_point_epochs": os.environ.get("POINT_WARMUP_NO_POINT_EPOCHS", ""),
-            "one_pair_epochs": os.environ.get("POINT_WARMUP_ONE_PAIR_EPOCHS", ""),
-            "full_2p2n_start_epoch": os.environ.get("POINT_WARMUP_FULL_START_EPOCH", ""),
+            "enabled": bool(resolved_point_warmup.get("enabled", False)),
+            "no_point_epochs": int(
+                resolved_point_warmup.get("no_point_epochs", 0)
+            ),
+            "one_pair_epochs": int(
+                resolved_point_warmup.get("one_pair_epochs", 0)
+            ),
+            "full_2p2n_start_epoch": int(
+                resolved_point_warmup.get("full_2p2n_start_epoch", 1)
+            ),
+        },
+        "shape_point_mining": {
+            "adaptive_validity": bool(
+                resolved_shape_point_miner.get("adaptive_validity", False)
+            ),
         },
         "shape_loss_schedule": {
-            "stage1_end": os.environ.get("SHAPE_LOSS_STAGE1_END", ""),
-            "stage1_weight": os.environ.get("SHAPE_LOSS_WEIGHT_STAGE1", ""),
-            "stage2_weight": os.environ.get("SHAPE_LOSS_WEIGHT_STAGE2", ""),
+            "mode": resolved_coarse_loss.get("schedule_mode", "fixed"),
+            "fixed_weight": float(resolved_coarse_loss.get("weight", 0.0)),
+            "ranges": [
+                dict(item)
+                for item in resolved_coarse_loss.get("weight_schedule", [])
+            ],
         },
         "shape_dense_gate": {
-            "mode": os.environ.get("SHAPE_SCALE_MODE", ""),
-            "init": os.environ.get("SHAPE_SCALE_INIT", ""),
+            "mode": resolved_shape_prior.get("shape_scale_mode", ""),
+            "init": resolved_shape_prior.get("prompt_scale_init", ""),
         },
         "freeze_decoder": os.environ.get("FREEZE_DECODER", ""),
         "freeze_no_mask": os.environ.get("FREEZE_NO_MASK", ""),
-        "shape_prior_loss_weight": os.environ.get("SHAPE_PRIOR_LOSS_WEIGHT", ""),
+        "shape_prior_loss_weight": float(
+            resolved_mask_head_cfg.get("shape_prior_loss_weight", 0.0)
+        ),
         "densebr_enabled": os.environ.get("DENSEBR_ENABLED", "0"),
         "densebr_enable_epoch": int(args.densebr_enable_epoch),
         "densebr_type": "canonical_prompt_refiner",
@@ -1672,6 +1853,7 @@ def main():
     best_early_stopping_score = float("-inf")
     best_densebr_active_segm_map = 0.0
     early_counter = 0
+    early_stopping_metric_history = []
     history = {"epochs": [], "train_losses": [], "val_losses": [], "val_metrics": [], "learning_rates": []}
 
     # EMA shadow weights (eval/save-best only, never for backprop)
@@ -1733,6 +1915,12 @@ def main():
             best.get("best_densebr_active_segm_map", best_densebr_active_segm_map)
         )
         early_counter = int(best.get("early_counter", early_counter))
+        early_stopping_metric_history = list(
+            best.get(
+                "early_stopping_metric_history",
+                early_stopping_metric_history,
+            )
+        )
         history = ckpt.get("history", history) or history
         if ema is not None and "ema_state" in ckpt:
             ema.load_state_dict(ckpt["ema_state"])
@@ -1767,6 +1955,7 @@ def main():
         if densebr_delayed and epoch_number == int(args.densebr_enable_epoch):
             early_counter = 0
             best_early_stopping_score = float("-inf")
+            early_stopping_metric_history = []
             if is_main:
                 logger.info(
                     "DenseBR activated at epoch %d; reset early-stopping state for refinement phase",
@@ -1787,13 +1976,14 @@ def main():
 
         total_loss = 0.0
         loss_meter = {}
+        dense_monitor_sums = {key: 0.0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
+        dense_monitor_counts = {key: 0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
         num_batches = 0
         grad_accum = args.grad_accum_steps
         train_batches_limit = len(train_loader)
         if args.max_train_batches > 0:
             train_batches_limit = min(train_batches_limit, args.max_train_batches)
         optimizer.zero_grad(set_to_none=True)
-        skipped_empty = 0
         for batch_idx, batch in enumerate(train_loader):
             if args.max_train_batches > 0 and batch_idx >= args.max_train_batches:
                 break
@@ -1849,16 +2039,11 @@ def main():
                 ds.gt_instances = gt_instances
                 data_samples.append(ds.to(device))
 
-            batch_has_valid_gt = False
-            for ds in data_samples:
-                labels = getattr(ds.gt_instances, "labels", torch.tensor([]))
-                if labels.numel() > 0 and (labels >= 0).any():
-                    batch_has_valid_gt = True
-                    break
-            if not batch_has_valid_gt:
-                skipped_empty += 1
-                continue
-            
+            # Match the historical WHU1024 baseline: empty-GT training batches
+            # still enter the detector loss. A rank-local early continue here
+            # would make DDP ranks execute different collective sequences when
+            # their DistributedSampler shards contain different empty images.
+
             # Synchronize data preprocessing for both images and ground truth
             processed = data_preprocessor(
                 {"inputs": imgs, "data_samples": data_samples}, training=True
@@ -1910,6 +2095,9 @@ def main():
                         x.detach().item() for x in v if isinstance(x, torch.Tensor)
                     )
                     loss_meter[k] = loss_meter.get(k, 0.0) + val
+            _accumulate_dense_residual_monitor(
+                model, dense_monitor_sums, dense_monitor_counts
+            )
 
             finite_flag = torch.isfinite(loss).to(dtype=torch.int32)
             if distributed and dist.is_initialized():
@@ -2021,17 +2209,18 @@ def main():
             total_loss += float(loss.detach().item())
             num_batches += 1
         avg_loss = total_loss / max(1, num_batches)
-        if skipped_empty > 0 and is_main:
-            logger.info(
-                "Epoch %d: skipped %d batches with no valid GT (empty / background images)",
-                epoch + 1, skipped_empty,
-            )
-
         # Collect LRs for all groups
         lr_groups = {}
         for group in optimizer.param_groups:
             name = group.get("name", "unknown")
             lr_groups[name] = group["lr"]
+
+        dense_monitor_epoch = _reduce_dense_residual_monitor(
+            dense_monitor_sums,
+            dense_monitor_counts,
+            device=device,
+            distributed=distributed,
+        )
 
         if is_main:
             loss_str = []
@@ -2039,6 +2228,18 @@ def main():
                 avg_k = v / max(1, num_batches)
                 loss_str.append(f"{k}={avg_k:.4f}")
             logger.info(f"Epoch {epoch + 1} detailed losses: {', '.join(loss_str)}")
+            if dense_monitor_epoch:
+                logger.info(
+                    "Epoch %d dense residual monitor: alpha=%.6f "
+                    "source_delta_norm=%.4f applied_delta_norm=%.4f "
+                    "source_delta_ratio=%.6f applied_delta_ratio=%.6f",
+                    epoch_number,
+                    dense_monitor_epoch.get("DENSE/residual_alpha", float("nan")),
+                    dense_monitor_epoch.get("DENSE/source_delta_norm", float("nan")),
+                    dense_monitor_epoch.get("DENSE/applied_delta_norm", float("nan")),
+                    dense_monitor_epoch.get("DENSE/source_delta_ratio", float("nan")),
+                    dense_monitor_epoch.get("DENSE/applied_delta_ratio", float("nan")),
+                )
             averaged_components = {
                 key: value / max(1, num_batches) for key, value in loss_meter.items()
             }
@@ -2243,26 +2444,49 @@ def main():
             val_metrics = {}
             total_gt = sum(len(g["labels"]) for g in all_gt)
             total_dt = sum(len(d["scores"]) for d in all_dt if "scores" in d)
+            avg_mask_fill, avg_masks_per_image = _summarize_mask_density(all_dt)
 
             if is_main:
-                logger.info(f"Validation samples: GT={total_gt}, DT={total_dt}")
+                logger.info(
+                    (
+                        "Validation samples: GT=%d, DT=%d, "
+                        "avg_masks_per_image=%.2f, avg_mask_fill=%.4f"
+                    ),
+                    total_gt,
+                    total_dt,
+                    avg_masks_per_image,
+                    avg_mask_fill,
+                )
 
             if total_gt > 0:
-                # Historical WHU1024 evaluation uses detector scores for both
-                # bbox and segmentation ranking and one shared COCO DT object.
-                coco_gt, coco_dt = build_coco_gt_and_dt(
+                # The segmentation score contract is stored in cfg.model and
+                # consumed identically by validation and checkpoint inference.
+                # Bbox candidate selection/ranking always remains detector-score based.
+                coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
                     all_gt, all_dt, all_img_metas, score_key="scores"
                 )
                 if eval_bbox:
-                    bbox_metrics = run_coco_eval(coco_gt, coco_dt, iou_type="bbox")
+                    bbox_metrics = run_coco_eval(
+                        coco_gt, coco_bbox_dt, iou_type="bbox"
+                    )
                     val_metrics.update(bbox_metrics)
                     logger.info(
                         "Validation bbox/mAP: %.4f bbox/mAP_75: %.4f",
                         bbox_metrics.get("bbox/mAP", 0.0),
                         bbox_metrics.get("bbox/mAP_75", 0.0),
                     )
-
-                segm_metrics = run_coco_eval(coco_gt, coco_dt, iou_type="segm")
+                if segm_score_key == "scores":
+                    coco_segm_dt = coco_bbox_dt
+                else:
+                    _, coco_segm_dt = build_coco_gt_and_dt(
+                        all_gt,
+                        all_dt,
+                        all_img_metas,
+                        score_key=segm_score_key,
+                    )
+                segm_metrics = run_coco_eval(
+                    coco_gt, coco_segm_dt, iou_type="segm"
+                )
                 val_metrics.update(segm_metrics)
                 logger.info(
                     "Validation segm/mAP: %.4f",
@@ -2347,24 +2571,55 @@ def main():
                         f"{sorted(val_metrics.keys())}"
                     )
                 if current_early_stopping_score is not None:
+                    early_stopping_metric_history.append(
+                        float(current_early_stopping_score)
+                    )
+                    smooth_window = max(
+                        1, int(args.early_stopping_smooth_window)
+                    )
+                    smoothed_early_stopping_score = float(
+                        np.mean(
+                            early_stopping_metric_history[-smooth_window:]
+                        )
+                    )
                     improved = (
-                        current_early_stopping_score
+                        smoothed_early_stopping_score
                         > best_early_stopping_score
                         + float(args.early_stopping_min_delta)
                     )
                     if improved:
-                        best_early_stopping_score = current_early_stopping_score
+                        best_early_stopping_score = (
+                            smoothed_early_stopping_score
+                        )
                         early_counter = 0
                         logger.info(
-                            "New best early-stop metric (%s): %.4f",
+                            "New best early-stop metric (%s): raw=%.4f "
+                            "smooth(%d)=%.4f",
                             early_stopping_metric_spec,
+                            current_early_stopping_score,
+                            smooth_window,
                             best_early_stopping_score,
                         )
                     elif epoch_number >= int(args.early_stopping_start_epoch):
                         early_counter += 1
+                        logger.info(
+                            "Early-stop metric (%s): raw=%.4f smooth(%d)=%.4f "
+                            "best=%.4f counter=%d",
+                            early_stopping_metric_spec,
+                            current_early_stopping_score,
+                            smooth_window,
+                            smoothed_early_stopping_score,
+                            best_early_stopping_score,
+                            early_counter,
+                        )
                     else:
                         logger.info(
-                            "Early-stop counter disabled before epoch %d",
+                            "Early-stop metric (%s): raw=%.4f smooth(%d)=%.4f; "
+                            "counter disabled before epoch %d",
+                            early_stopping_metric_spec,
+                            current_early_stopping_score,
+                            smooth_window,
+                            smoothed_early_stopping_score,
                             int(args.early_stopping_start_epoch),
                         )
 
@@ -2382,6 +2637,12 @@ def main():
                 "early_counter": int(early_counter),
                 "early_stopping_start_epoch": int(args.early_stopping_start_epoch),
                 "early_stopping_min_delta": float(args.early_stopping_min_delta),
+                "early_stopping_smooth_window": int(
+                    args.early_stopping_smooth_window
+                ),
+                "early_stopping_metric_history": list(
+                    early_stopping_metric_history
+                ),
             }
 
             # Save best model: write to new file first, verify, then delete old.

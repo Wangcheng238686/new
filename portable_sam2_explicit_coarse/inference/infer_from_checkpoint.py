@@ -536,11 +536,36 @@ def main() -> None:
     model_config, config_source = _resolve_model_config(args, snapshot)
     device = _resolve_device(args.device)
     model = _register_and_build(model_config)
+    mask_head = model.roi_head.mask_head
+    final_mask_coordinate_mode = getattr(
+        mask_head, "final_mask_coordinate_mode", None
+    )
+    if final_mask_coordinate_mode not in {"roi_local", "full_image"}:
+        raise RuntimeError(
+            "Checkpoint inference requires an explicit final-mask coordinate "
+            "contract; resolved final_mask_coordinate_mode="
+            f"{final_mask_coordinate_mode!r}"
+        )
+    segm_score_mode = getattr(mask_head, "segm_score_mode", "detector")
+    segm_score_key = getattr(mask_head, "segm_score_key", "scores")
+    if segm_score_mode not in {"detector", "mask_quality"}:
+        raise RuntimeError(
+            f"Checkpoint has invalid segm_score_mode={segm_score_mode!r}"
+        )
+    if segm_score_key not in {"scores", "mask_scores"}:
+        raise RuntimeError(
+            f"Checkpoint has invalid segm_score_key={segm_score_key!r}"
+        )
     load_report = _load_model_state(
         model,
         _select_state_dict(checkpoint, args.weights),
         allow_nonstrict=args.allow_nonstrict,
     )
+    no_mask_validator = getattr(
+        mask_head, "assert_no_mask_embedding_contract", None
+    )
+    if no_mask_validator is not None:
+        no_mask_validator(f"checkpoint inference ({args.weights})")
     model.to(device)
     model.eval()
     logger.info(
@@ -549,6 +574,11 @@ def main() -> None:
         args.weights,
         not args.allow_nonstrict,
         device,
+    )
+    logger.info(
+        "Evaluation score contract: bbox=scores segm=%s mode=%s",
+        segm_score_key,
+        segm_score_mode,
     )
     if args.build_only:
         print("checkpoint model build/load: OK")
@@ -624,7 +654,7 @@ def main() -> None:
             all_gt,
             all_dt,
             all_metas,
-            score_key="mask_scores",
+            score_key=segm_score_key,
         )
         metrics.update(run_coco_eval(coco_gt, coco_segm_dt, iou_type="segm"))
         _, coco_bbox_dt = build_coco_gt_and_dt(
@@ -648,6 +678,14 @@ def main() -> None:
         "dataset": contract,
         "device": str(device),
         "score_thr": float(args.score_thr),
+        "bbox_score_key": "scores",
+        "segm_score_key": segm_score_key,
+        "segm_score_mode": segm_score_mode,
+        "mask_postprocess": (
+            "roi_local_bbox_paste"
+            if final_mask_coordinate_mode == "roi_local"
+            else "full_image_resize"
+        ),
         "processed_images": len(all_metas),
         "ground_truth_instances": total_gt,
         "predicted_instances": len(prediction_records),

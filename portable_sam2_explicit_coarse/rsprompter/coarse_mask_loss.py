@@ -43,6 +43,7 @@ class CoarseMaskLoss(nn.Module):
         dice_smooth: float = 1e-6,
         boundary_tolerance: int = 2,
         compute_metrics: bool = False,
+        schedule_mode: Optional[str] = None,
         weight_schedule: Optional[List[Dict]] = None,
     ):
         super().__init__()
@@ -56,6 +57,11 @@ class CoarseMaskLoss(nn.Module):
         self.boundary_tolerance = int(boundary_tolerance)
         self.compute_metrics = bool(compute_metrics)
         self.weight_schedule = [dict(item) for item in (weight_schedule or [])]
+        # Backward compatibility: older self-describing coarse checkpoints
+        # stored weight_schedule but not schedule_mode.
+        self.schedule_mode = (
+            "two_stage" if self.weight_schedule else "fixed"
+        ) if schedule_mode is None else str(schedule_mode)
         self.current_epoch = 1
         self._validate_weight_schedule()
         if self.distance_weight > 0:
@@ -66,6 +72,15 @@ class CoarseMaskLoss(nn.Module):
 
 
     def _validate_weight_schedule(self) -> None:
+        if self.schedule_mode not in {"fixed", "two_stage"}:
+            raise ValueError(
+                "coarse loss schedule_mode must be fixed or two_stage, "
+                f"got {self.schedule_mode!r}"
+            )
+        if self.schedule_mode == "fixed" and self.weight_schedule:
+            raise ValueError("fixed coarse loss schedule must not define weight_schedule")
+        if self.schedule_mode == "two_stage" and len(self.weight_schedule) != 2:
+            raise ValueError("two_stage coarse loss schedule requires exactly two ranges")
         previous_end = 0
         for item in self.weight_schedule:
             start = int(item["start_epoch"])

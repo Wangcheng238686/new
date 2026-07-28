@@ -14,9 +14,33 @@ sam2_ckpt_path = os.environ.get(
     "SAM2_CKPT",
     "/data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt",
 )
+sam_image_embedding_stride = int(
+    os.environ.get("SAM_IMAGE_EMBED_STRIDE", "32")
+)
+if sam_image_embedding_stride not in (16, 32):
+    raise ValueError(
+        "SAM_IMAGE_EMBED_STRIDE must be 16 (official 64x64) or "
+        f"32 (legacy 32x32), got {sam_image_embedding_stride}"
+    )
+sam_image_embedding_size = 1024 // sam_image_embedding_stride
+final_mask_coordinate_mode = os.environ.get(
+    "FINAL_MASK_COORDINATE_MODE", "roi_local"
+).strip().lower()
+if final_mask_coordinate_mode not in {"roi_local", "full_image"}:
+    raise ValueError(
+        "FINAL_MASK_COORDINATE_MODE must be roi_local or full_image, "
+        f"got {final_mask_coordinate_mode!r}"
+    )
+segm_score_mode = os.environ.get("SEGM_SCORE_MODE", "detector").strip().lower()
+if segm_score_mode not in {"detector", "mask_quality"}:
+    raise ValueError(
+        "SEGM_SCORE_MODE must be detector or mask_quality, "
+        f"got {segm_score_mode!r}"
+    )
 
 model = dict(
     type="RSPrompterAnchor",
+    sam_image_embedding_stride=sam_image_embedding_stride,
     data_preprocessor=dict(
         batch_augments=[
             dict(
@@ -29,7 +53,10 @@ model = dict(
             )
         ]
     ),
-    shared_image_embedding=dict(image_size=1024),
+    shared_image_embedding=dict(
+        image_size=1024,
+        embedding_stride=sam_image_embedding_stride,
+    ),
     backbone=dict(
         checkpoint_path=sam2_ckpt_path,
         init_cfg=dict(type="Pretrained", checkpoint=sam2_ckpt_path),
@@ -46,11 +73,14 @@ model = dict(
         mask_head=dict(
             sam2_mask_decoder=dict(checkpoint_path=sam2_ckpt_path),
             prompt_encoder_image_size=1024,
-            prompt_encoder_embed_size=32,
+            prompt_encoder_embed_size=sam_image_embedding_size,
             prompt_sparse_mode="point",
             prompt_encoder_enabled=False,
             freeze_mask_decoder=False,
-            freeze_no_mask_embed=True,
+            freeze_no_mask_embed=False,
+            load_no_mask_pretrained=False,
+            final_mask_coordinate_mode=final_mask_coordinate_mode,
+            segm_score_mode=segm_score_mode,
             shape_prior_cfg=dict(enabled=False),
             densebr_cfg=dict(enabled=False),
         ),

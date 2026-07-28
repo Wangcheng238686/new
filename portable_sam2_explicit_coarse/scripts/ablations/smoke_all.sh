@@ -5,11 +5,15 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MATRIX=(
   b0_aggregator_mlp.sh
   b1_pafpn_mlp.sh
+  m0_aggregator_mlp_full_image.sh
+  m1_pafpn_mlp_full_image.sh
   c1_aggregator_coarse_points.sh
   c2_pafpn_coarse_points.sh
   c3_pafpn_coarse_points_box.sh
   c4_pafpn_coarse_points_box_dense.sh
   c5_pafpn_coarse_densebr.sh
+  r0_b0_aggregator_mlp_emb64.sh
+  r1_c5_pafpn_coarse_densebr_emb64.sh
 )
 
 echo "[1/3] config and command penetration checks"
@@ -30,8 +34,12 @@ if [ "${FULL_MODEL_SMOKE:-1}" = "1" ]; then
   for script in \
     b0_aggregator_mlp.sh \
     b1_pafpn_mlp.sh \
+    m0_aggregator_mlp_full_image.sh \
+    m1_pafpn_mlp_full_image.sh \
     c1_aggregator_coarse_points.sh \
-    c5_pafpn_coarse_densebr.sh
+    c5_pafpn_coarse_densebr.sh \
+    r0_b0_aggregator_mlp_emb64.sh \
+    r1_c5_pafpn_coarse_densebr_emb64.sh
   do
     echo "---- model ${script}"
     DRY_RUN=1 CHECK_DATA=0 PREFLIGHT_MODEL=1 \

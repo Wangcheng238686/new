@@ -23,6 +23,7 @@ from mmdet.models.utils import empty_instances, unpack_gt_instances
 from mmdet.registry import MODELS
 from mmdet.structures import DetDataSample, SampleList
 from mmdet.structures.bbox import bbox2roi
+from mmdet.structures.mask.mask_target import mask_target
 from mmdet.utils import ConfigType, InstanceList, OptConfigType
 
 from .ckpt_utils import load_module_state_dict_strict
@@ -79,36 +80,69 @@ def _load_sam2_checkpoint(checkpoint_path: str, map_location: str = "cpu") -> Di
     return checkpoint
 
 
+def _resolve_sam2_checkpoint_path(checkpoint_path: Optional[str]) -> Optional[str]:
+    """Resolve a SAM2 checkpoint path with the same rule for every submodule."""
+    if not checkpoint_path or os.path.isabs(checkpoint_path):
+        return checkpoint_path
+    project_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+    return os.path.join(project_root, checkpoint_path)
+
+
+def _load_pretrained_no_mask_embedding(checkpoint_path: Optional[str]) -> Tensor:
+    """Load SAM2's no-mask embedding or fail instead of returning zeros."""
+    resolved_path = _resolve_sam2_checkpoint_path(checkpoint_path)
+    if not resolved_path or not os.path.isfile(resolved_path):
+        raise RuntimeError(
+            "Pretrained no-mask embedding was requested, but the SAM2 "
+            f"checkpoint does not exist: {resolved_path!r}"
+        )
+    checkpoint = _load_sam2_checkpoint(resolved_path)
+    key = "sam_prompt_encoder.no_mask_embed.weight"
+    if key not in checkpoint:
+        raise RuntimeError(
+            f"Pretrained no-mask embedding key {key!r} is missing from "
+            f"{resolved_path}. Check checkpoint integrity and SAM2 model size."
+        )
+    value = checkpoint[key]
+    if tuple(value.shape) != (1, 256):
+        raise RuntimeError(
+            f"Invalid pretrained no-mask embedding shape for {key!r}: "
+            f"expected (1, 256), got {tuple(value.shape)}"
+        )
+    if not torch.isfinite(value).all():
+        raise RuntimeError(f"Pretrained no-mask embedding {key!r} contains non-finite values")
+    return value.detach().reshape(1, 256, 1, 1).clone()
+
+
 @MODELS.register_module()
 class RSSAM2PositionalEmbedding(BaseModule):
-    """SAM2 uses a different positional embedding scheme.
+    """Legacy learnable image PE used by the historical MLP baseline.
 
-    Provides the image-level positional encoding fed to the SAM2 MaskDecoder's
-    TwoWayTransformer. This module is only used when the frozen SAM2
-    PromptEncoder is absent (i.e. the ``rsprompter_mlp`` route); the
-    ``explicit_mask`` route uses ``PromptEncoder.get_dense_pe()`` instead and
-    never instantiates this class.
-
-    The legacy implementation exposed a learnable ``pos_embed`` parameter that
-    was zero-initialised and never loaded from a checkpoint. Because SAM2's
-    Large ckpt has no matching key, the MLP route fed an all-zero positional
-    encoding to the decoder, which collapsed the mask logits (mask output
-    drifted to a strong-negative bias, loss_mask stuck near 0.9). ``get_dense_pe``
-    now generates a fixed sinusoidal positional encoding (matching SAM2's own
-    ``PositionEmbeddingSine`` used inside PromptEncoder) so the decoder receives
-    valid spatial cues regardless of the untrained ``pos_embed``.
+    B0/B1 intentionally reproduce the old bridge: a zero-initialized,
+    trainable ``pos_embed`` is interpolated by ``RSPrompterAnchor`` to the
+    selected image-embedding resolution.  This is not SAM2 PromptEncoder's
+    random Fourier PE; coarse experiments use the real PromptEncoder instead.
     """
 
     def __init__(
         self,
         image_size: int = 1024,
         patch_size: int = 16,
+        embedding_stride: int = 32,
         embed_dim: int = 256,
         init_cfg: Optional[Dict] = None,
     ):
         super().__init__(init_cfg=init_cfg)
         self.image_size = image_size
         self.patch_size = patch_size
+        self.embedding_stride = int(embedding_stride)
+        if self.embedding_stride not in (16, 32):
+            raise ValueError(
+                "embedding_stride must be 16 (official) or 32 (legacy), got "
+                f"{self.embedding_stride}"
+            )
         self.grid_size = image_size // patch_size
         self.embed_dim = embed_dim
 
@@ -124,53 +158,9 @@ class RSSAM2PositionalEmbedding(BaseModule):
 
         self.shared_image_embedding = PositionalEmbeddingWrapper(self.pos_embed)
 
-        # Fixed sinusoidal encoder matching SAM2 PromptEncoder.pe_layer, so the
-        # MLP route gets the same positional cue the explicit route receives.
-        self._fixed_pe: Optional[nn.Module] = None
-        if PositionEmbeddingSine is not None:
-            self._fixed_pe = PositionEmbeddingSine(
-                num_pos_feats=embed_dim,
-                normalize=True,
-                warmup_cache=False,
-            )
-        self._pe_cache: Dict[Tuple[int, int], Tensor] = {}
-
-    def _sinusoidal_pe(self, size: int, device, dtype) -> Tensor:
-        """Return [1, C, size, size] fixed sinusoidal positional encoding."""
-        cache_key = (size, str(device))
-        cached = self._pe_cache.get(cache_key)
-        if cached is not None and cached.device == device:
-            return cached.to(dtype)
-        if self._fixed_pe is not None:
-            dummy = torch.zeros(1, self.embed_dim, size, size, device=device)
-            pe = self._fixed_pe(dummy)
-        else:
-            # Fallback (sam2 package unavailable): manual 2D sinusoidal encoding.
-            import math
-            num_pos_feats = self.embed_dim // 2
-            y_embed = torch.arange(1, size + 1, dtype=torch.float32, device=device)
-            y_embed = y_embed / (y_embed[-1] + 1e-6) * 2 * math.pi
-            dim_t = torch.arange(num_pos_feats, dtype=torch.float32, device=device)
-            dim_t = 10000 ** (2 * (dim_t // 2) / num_pos_feats)
-            pos_x = y_embed[:, None] / dim_t[None, :]
-            pos_x = torch.stack((pos_x[:, 0::2].sin(), pos_x[:, 1::2].cos()), dim=2).flatten(1)
-            pe = torch.cat([pos_x, pos_x], dim=1)  # [size, embed_dim]
-            pe = pe.permute(1, 0).unsqueeze(0).unsqueeze(-1).expand(1, self.embed_dim, size, size)
-        pe = pe.to(dtype)
-        self._pe_cache[cache_key] = pe
-        return pe
-
     def get_dense_pe(self) -> Tensor:
-        """Returns positional encoding in SAM2 format: [1, C, H, W].
-
-        Emits a fixed sinusoidal encoding at the decoder's image-embedding
-        resolution (32x32 for 1024 input). The learnable pos_embed is ignored.
-        """
-        return self._sinusoidal_pe(
-            size=self.image_size // 32,  # SAM2 image_embedding stride = 32
-            device=self.pos_embed.device,
-            dtype=self.pos_embed.dtype,
-        )
+        """Return the trainable legacy PE in SAM2's [1,C,H,W] layout."""
+        return self.pos_embed.permute(0, 3, 1, 2)
 
     def forward(self, x: Tensor) -> Tensor:
         return self.get_dense_pe()
@@ -1023,7 +1013,7 @@ class RSSAM2PAFPN(BaseModule):
             inputs = inputs[1]
         if not isinstance(inputs, (tuple, list)) or len(inputs) == 0:
             raise ValueError(f"Unexpected inputs to RSSAM2PAFPN: {type(inputs)}")
-        return tuple(x.float() for x in inputs)
+        return tuple(inputs)
 
     def forward(self, inputs) -> Tuple[Tensor, ...]:
         inputs = self._parse_inputs(inputs)
@@ -1092,11 +1082,12 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         # 问题 1（审查重构）：拆分为 coarse / final 两个独立坐标语义，禁止一个开关同时控制。
         # - coarse_mask_coordinate_mode：coarse mask（ShapePriorInjector 输出）的坐标系，
         #   固定 "roi_local"（coarse mask 在 ROI 局部生成与监督）。
-        # - final_mask_coordinate_mode：最终实例 mask（SAM2 MaskDecoder 输出）的坐标系，
-        #   固定 "full_image"（整图低分辨率，与 image_embeddings 对齐）。
+        # - final_mask_coordinate_mode：最终实例 mask 的监督/后处理坐标系。
+        #   B0/B1 用 "roi_local" 复现旧口径；显式 coarse 路线使用 SAM2 原生
+        #   "full_image" 网格，训练对齐整图 target，推理只 resize 一次。
         # 旧的统一 mask_coordinate_mode 参数保留为兼容入口（见下方解析）。
         coarse_mask_coordinate_mode: str = "roi_local",
-        final_mask_coordinate_mode: str = "full_image",
+        final_mask_coordinate_mode: str = "roi_local",
         mask_coordinate_mode: Optional[str] = None,  # 兼容旧参数，None 时用上面两个默认
         roi_mask_size: int = 28,
         # 问题 13：mask_head 级别的 checkpoint 严格加载配置（透传给 PE；decoder/backbone 各自接收）
@@ -1105,6 +1096,7 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         coarse_mask_loss_cfg: Optional[Dict] = None,
         # 批次2 子任务3：dense prompt transform 配置
         dense_prompt_cfg: Optional[Dict] = None,
+        restrict_dense_prompt_to_box: bool = True,
         # P2: explicit point miner / training-only box prompt jitter configs
         shape_point_miner_cfg: Optional[Dict] = None,
         point_warmup_cfg: Optional[Dict] = None,
@@ -1113,11 +1105,13 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         # ===== 冻结策略 =====
         freeze_mask_decoder: bool = False,         # SAM2 MaskDecoder 可训练 (canonical 契约 §10/§14.1)
         freeze_no_mask_embed: bool = True,         # 冻结 no_mask_embed (True=加载ckpt并冻结 / False=零初始化可训练)
+        load_no_mask_pretrained: bool = True,       # False 复现旧 MLP 基线的零初始化 no_mask_embed
         # ===== 阶段2: shape prior =====
         shape_prior_cfg: Optional[Dict] = None,    # dict(enabled=True, context_source="visual", ...) 或 None
         shape_prior_loss_weight: float = 0.5,       # 辅助 dice_bce loss 权重
         densebr_cfg: Optional[Dict] = None,
         quality_head_cfg: Optional[Dict] = None,
+        segm_score_mode: str = "detector",
         loss_mask: ConfigType = dict(type="CrossEntropyLoss", use_mask=True, loss_weight=1.0),
         init_cfg=None,
         *args,
@@ -1201,14 +1195,12 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                 )
             self.coarse_mask_coordinate_mode = _legacy
             self.final_mask_coordinate_mode = _legacy
-        # 审查断言：当前架构中 coarse 始终 ROI-local，final 始终 full-image
+        # Coarse logits are always ROI-local.  Final SAM2 logits may retain the
+        # historical ROI-local interpretation for the frozen B0/B1 reproduction,
+        # or use their native full-image grid in the explicit-coarse route.
         assert self.coarse_mask_coordinate_mode == "roi_local", (
             "coarse_mask_coordinate_mode must be 'roi_local' in current architecture "
             "(coarse mask is generated and supervised per-ROI)"
-        )
-        assert self.final_mask_coordinate_mode == "full_image", (
-            "final_mask_coordinate_mode must be 'full_image' in current architecture "
-            "(SAM2 MaskDecoder outputs full-image low-res mask)"
         )
         self.roi_mask_size = int(roi_mask_size)
         # 问题 3：PromptEncoder 严格加载/冻结统一配置。
@@ -1250,7 +1242,23 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
             raise ValueError("quality_head loss_beta must be positive")
         if self.quality_head_score_alpha < 0:
             raise ValueError("quality_head score_alpha must be non-negative")
+        self.segm_score_mode = str(segm_score_mode).strip().lower()
+        if self.segm_score_mode not in {"detector", "mask_quality"}:
+            raise ValueError(
+                "segm_score_mode must be 'detector' or 'mask_quality', got "
+                f"{self.segm_score_mode!r}"
+            )
+        if self.segm_score_mode == "mask_quality" and not self.quality_head_enabled:
+            raise ValueError(
+                "segm_score_mode='mask_quality' requires quality_head_cfg.enabled=True; "
+                "refusing to silently fall back to detector scores"
+            )
+        self.segm_score_key = (
+            "mask_scores" if self.segm_score_mode == "mask_quality" else "scores"
+        )
         self.shape_base_dense_mode = str(shape_base_dense_mode)
+        self.load_no_mask_pretrained = bool(load_no_mask_pretrained)
+        self.freeze_no_mask_embed = bool(freeze_no_mask_embed)
         if self.shape_base_dense_mode not in {"no_mask", "zero"}:
             raise ValueError(
                 "shape_base_dense_mode must be 'no_mask' or 'zero', got "
@@ -1312,26 +1320,41 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                 )
 
         if self.shape_base_dense_mode == "no_mask":
-            # Keep the base embedding in SAM2's pretrained distribution.
-            _ck_path = sam2_mask_decoder.get("checkpoint_path")
-            _no_mask = None
-            _loaded_no_mask = False
-            if _ck_path and os.path.exists(_ck_path):
-                _ck = _load_sam2_checkpoint(_ck_path)
-                _nm_key = "sam_prompt_encoder.no_mask_embed.weight"
-                if _nm_key in _ck:
-                    _no_mask = _ck[_nm_key].reshape(1, 256, 1, 1)
-                    _loaded_no_mask = True
-            if _no_mask is None:
+            # C1-C5 require the exact SAM2 embedding.  Missing paths/keys used
+            # to fall through to zeros here, even when the config explicitly
+            # requested pretrained loading.  That is now a hard error.
+            _no_mask_ckpt = (
+                self._pe_cfg_path or sam2_mask_decoder.get("checkpoint_path")
+            )
+            if self.load_no_mask_pretrained:
+                _no_mask = _load_pretrained_no_mask_embedding(_no_mask_ckpt)
+                self.no_mask_pretrained_loaded = True
+            else:
                 _no_mask = torch.zeros(1, 256, 1, 1)
+                self.no_mask_pretrained_loaded = False
             self.no_mask_embed = nn.Parameter(_no_mask)
             self.no_mask_embed.requires_grad_(not freeze_no_mask_embed)
+            self.register_buffer(
+                "_pretrained_no_mask_reference",
+                _no_mask.detach().clone()
+                if self.no_mask_pretrained_loaded
+                else torch.empty(0),
+                persistent=False,
+            )
             if is_main_process():
-                src = "SAM2 ckpt" if _loaded_no_mask else "zeros"
+                src = "SAM2 ckpt" if self.no_mask_pretrained_loaded else "intentional zeros"
                 state = "frozen" if freeze_no_mask_embed else "trainable"
-                print(f"[MaskHead] Initialized no_mask_embed from {src}, {state}")
+                abs_mean = float(self.no_mask_embed.detach().abs().mean().item())
+                print(
+                    f"[MaskHead] Initialized no_mask_embed from {src}, "
+                    f"{state}, abs_mean={abs_mean:.8f}"
+                )
         else:
+            self.no_mask_pretrained_loaded = False
             self.register_parameter("no_mask_embed", None)
+            self.register_buffer(
+                "_pretrained_no_mask_reference", torch.empty(0), persistent=False
+            )
             if is_main_process():
                 print("[MaskHead] base dense disabled")
 
@@ -1383,12 +1406,9 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
             # 问题 3：require_pretrained 默认 True——ckpt 不存在或 missing key 时直接 raise，
             # 避免静默随机初始化导致 PE 几何编码错误却继续训练。
             if load_pe_pretrained or self._pe_require_pretrained:
-                _ck_path = self._pe_cfg_path or sam2_mask_decoder.get("checkpoint_path")
-                if _ck_path and not os.path.isabs(_ck_path):
-                    _ck_path = os.path.join(
-                        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                        _ck_path,
-                    )
+                _ck_path = _resolve_sam2_checkpoint_path(
+                    self._pe_cfg_path or sam2_mask_decoder.get("checkpoint_path")
+                )
                 if _ck_path and os.path.exists(_ck_path):
                     _ck = _load_sam2_checkpoint(_ck_path)
                     _pe_state = {
@@ -1417,6 +1437,18 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                                 self.checkpoint_load_cfg.get("allowed_unexpected_patterns", [])
                             ),
                         )
+                        if self.load_no_mask_pretrained:
+                            _pe_no_mask = (
+                                self.prompt_encoder.no_mask_embed.weight.detach()
+                                .reshape_as(self.no_mask_embed)
+                            )
+                            if not torch.equal(
+                                _pe_no_mask.cpu(), self.no_mask_embed.detach().cpu()
+                            ):
+                                raise RuntimeError(
+                                    "PromptEncoder and MaskHead loaded different "
+                                    "pretrained no-mask embeddings"
+                                )
                 else:
                     _msg = (f"PromptEncoder pretrained weights not found at {_ck_path}. "
                             f"require_pretrained={self._pe_require_pretrained}.")
@@ -1524,6 +1556,7 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         # 批次2 子任务3：dense prompt transform 配置。
         # 默认 raw_logits + outside_fill=0 + clamp_range=None（严格等价旧 _shape_prior_to_prompt_mask）。
         self.dense_prompt_cfg = dict(dense_prompt_cfg or {})
+        self.restrict_dense_prompt_to_box = bool(restrict_dense_prompt_to_box)
         self.dense_prompt_cfg.setdefault("transform", "raw_logits")
         self.dense_prompt_cfg.setdefault("outside_fill_logit", 0.0)
         self.dense_prompt_cfg.setdefault("gamma", 1.0)
@@ -1547,7 +1580,13 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         if _shape_prior_enabled:
             import math as _math
             from .shape_prior import ShapePriorInjector
-            _mh_keys = {"enabled"}  # mask_head 自己处理的字段, 不传给 injector
+            _mh_keys = {
+                "enabled",
+                "use_shape_dense",
+                "shape_scale_mode",
+                "prompt_scale_init",
+                "shape_scale_init",
+            }  # mask_head 自己处理的字段, 不传给 injector
             _sp_cfg = {k: v for k, v in shape_prior_cfg.items() if k not in _mh_keys}
             _sp_cfg.setdefault("roi_feat_channels", in_channels)
             self.shape_injector = ShapePriorInjector(**_sp_cfg)
@@ -1632,6 +1671,44 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         self.loss_mask = MODELS.build(loss_mask)
         self.class_agnostic = class_agnostic
 
+        self.assert_no_mask_embedding_contract("model construction")
+
+    def assert_no_mask_embedding_contract(self, context: str = "runtime") -> None:
+        """Fail if a required frozen SAM2 no-mask embedding drifted or fell back."""
+        if not self.load_no_mask_pretrained:
+            return
+        if not self.no_mask_pretrained_loaded:
+            raise RuntimeError(
+                f"{context}: pretrained no-mask embedding was requested but not loaded"
+            )
+        if self.no_mask_embed is None:
+            raise RuntimeError(f"{context}: required MaskHead no_mask_embed is absent")
+        expected = self._pretrained_no_mask_reference
+        actual = self.no_mask_embed.detach()
+        if tuple(actual.shape) != (1, 256, 1, 1):
+            raise RuntimeError(
+                f"{context}: invalid MaskHead no_mask_embed shape {tuple(actual.shape)}"
+            )
+        if not torch.isfinite(actual).all():
+            raise RuntimeError(f"{context}: MaskHead no_mask_embed contains non-finite values")
+        if expected.numel() != actual.numel():
+            raise RuntimeError(f"{context}: pretrained no-mask reference is unavailable")
+        max_diff = float(
+            (actual.float().cpu() - expected.float().cpu()).abs().max().item()
+        )
+        if max_diff != 0.0:
+            raise RuntimeError(
+                f"{context}: MaskHead no_mask_embed no longer matches the SAM2 "
+                f"pretrained value (max_abs_diff={max_diff:.6g}); reject silent "
+                "zero/random/checkpoint overwrite"
+            )
+        if self.no_mask_embed.requires_grad != (not self.freeze_no_mask_embed):
+            raise RuntimeError(
+                f"{context}: no_mask_embed requires_grad="
+                f"{self.no_mask_embed.requires_grad} "
+                f"does not match freeze_no_mask_embed={self.freeze_no_mask_embed}"
+            )
+
     def init_weights(self) -> None:
         BaseModule.init_weights(self)
 
@@ -1680,10 +1757,25 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
             raise RuntimeError(
                 "_select_explicit_prompt_inputs is only valid for shape_point"
             )
-        points = (coords, labels)
+        # A warm-up/all-invalid batch must be a true no-point prompt. Passing
+        # four label=-1 entries would create four learned not-a-point tokens.
+        points = None if bool((labels < 0).all()) else (coords, labels)
         boxes_for_pe = boxes if self.explicit_use_box_prompt else None
         masks_for_pe = masks if self.explicit_use_dense_prompt else None
         return points, boxes_for_pe, masks_for_pe
+
+    @staticmethod
+    def _neutralize_invalid_point_tokens(
+        sparse_embeddings: Tensor, labels: Tensor
+    ) -> Tensor:
+        """Zero invalid point slots while preserving any following box tokens."""
+        point_count = int(labels.shape[1])
+        point_tokens = sparse_embeddings[:, :point_count]
+        valid = (labels >= 0).unsqueeze(-1).to(dtype=point_tokens.dtype)
+        point_tokens = point_tokens * valid
+        return torch.cat(
+            [point_tokens, sparse_embeddings[:, point_count:]], dim=1
+        )
 
     def _effective_shape_dense_alpha(self):
         """批次2 子任务4：返回 shape dense gate 的有效值（三模式统一）。
@@ -1702,6 +1794,26 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         elif self.shape_scale_mode == "global_sigmoid":
             return torch.sigmoid(self.shape_dense_alpha_raw)
         return None
+
+    def _dense_embedding_box_support(
+        self, boxes: Tensor, spatial_size: Tuple[int, int], dtype: torch.dtype
+    ) -> Tensor:
+        """Restrict dense-prompt embedding changes to the proposal box."""
+        height, width = int(spatial_size[0]), int(spatial_size[1])
+        yy = (
+            torch.arange(height, device=boxes.device, dtype=boxes.dtype) + 0.5
+        ) * (float(self.prompt_encoder_image_size) / float(height))
+        xx = (
+            torch.arange(width, device=boxes.device, dtype=boxes.dtype) + 0.5
+        ) * (float(self.prompt_encoder_image_size) / float(width))
+        x1, y1, x2, y2 = boxes.detach().unbind(dim=1)
+        support = (
+            (xx[None, None, None, :] >= x1[:, None, None, None])
+            & (xx[None, None, None, :] < x2[:, None, None, None])
+            & (yy[None, None, :, None] >= y1[:, None, None, None])
+            & (yy[None, None, :, None] < y2[:, None, None, None])
+        )
+        return support.to(dtype=dtype)
 
     def _pe_mask_input_size(self) -> Tuple[int, int]:
         """批次2 子任务3：读取 PromptEncoder 的 mask 输入尺寸（不硬编码）。
@@ -1782,7 +1894,6 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         image_positional_embeddings,
         roi_img_ids=None,
         high_res_features=None,
-        pafpn_features=None,
         boxes=None,
     ):
         img_bs = image_embeddings.shape[0]
@@ -1960,11 +2071,27 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                         coords, labels, boxes, masks_for_pe
                     )
                 )
-                sparse_pe, dense_pe_from_pe = self.prompt_encoder(
-                    points=points_for_pe,
-                    boxes=boxes_for_pe,
-                    masks=masks_for_pe,
-                )
+                if (
+                    points_for_pe is None
+                    and boxes_for_pe is None
+                    and masks_for_pe is None
+                ):
+                    # PromptEncoder cannot infer an ROI batch size when every
+                    # modality is absent. Construct the true empty sparse set
+                    # directly; the canonical base dense embedding is built
+                    # below for all ``roi_bs`` instances.
+                    sparse_pe = image_embeddings.new_empty((roi_bs, 0, 256))
+                    dense_pe_from_pe = None
+                else:
+                    sparse_pe, dense_pe_from_pe = self.prompt_encoder(
+                        points=points_for_pe,
+                        boxes=boxes_for_pe,
+                        masks=masks_for_pe,
+                    )
+                    if points_for_pe is not None:
+                        sparse_pe = self._neutralize_invalid_point_tokens(
+                            sparse_pe, labels
+                        )
                 debug_stats["PROMPT/use_box_token"] = float(
                     self.explicit_use_box_prompt
                 )
@@ -2037,6 +2164,11 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
             base_dense = torch.zeros_like(base_dense)
 
         if dense_pe is not None:
+            if self.restrict_dense_prompt_to_box:
+                support = self._dense_embedding_box_support(
+                    boxes, image_embedding_size, dense_pe.dtype
+                )
+                dense_pe = base_dense + support * (dense_pe - base_dense)
             # 所有模式统一走门控残差: base_dense + prompt_scale * (dense_pe - base_dense)
             # points_box_dense: bounded global-sigmoid interpolation between
             # pretrained no-mask and shape dense embedding.
@@ -2044,9 +2176,20 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
             dense_delta = dense_pe - base_dense
             dense_embeddings = base_dense + prompt_scale * dense_delta
             if dense_embeddings.numel() > 0:
-                debug_stats["DENSE/base_norm"] = base_dense.detach().float().flatten(1).norm(dim=1).mean()
+                _base_norm = base_dense.detach().float().flatten(1).norm(dim=1)
+                _source_delta_norm = dense_delta.detach().float().flatten(1).norm(dim=1)
+                _applied_delta_norm = (
+                    dense_embeddings.detach().float() - base_dense.detach().float()
+                ).flatten(1).norm(dim=1)
+                _norm_denom = _base_norm.clamp_min(1e-6)
+                debug_stats["DENSE/residual_alpha"] = prompt_scale.detach().float().mean()
+                debug_stats["DENSE/base_norm"] = _base_norm.mean()
                 debug_stats["DENSE/shape_norm"] = dense_pe.detach().float().flatten(1).norm(dim=1).mean()
                 debug_stats["DENSE/final_norm"] = dense_embeddings.detach().float().flatten(1).norm(dim=1).mean()
+                debug_stats["DENSE/source_delta_norm"] = _source_delta_norm.mean()
+                debug_stats["DENSE/applied_delta_norm"] = _applied_delta_norm.mean()
+                debug_stats["DENSE/source_delta_ratio"] = (_source_delta_norm / _norm_denom).mean()
+                debug_stats["DENSE/applied_delta_ratio"] = (_applied_delta_norm / _norm_denom).mean()
         else:
             dense_embeddings = base_dense
 
@@ -2109,6 +2252,14 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                 native_iou=iou_predictions,
                 boxes=boxes,
             )
+        # Persist the latest forward diagnostics for the trainer.  Previously
+        # these values lived only in this local dictionary, so the logger could
+        # not observe the effective dense residual even when debug logging was
+        # enabled.  Detach tensors to avoid retaining the autograd graph.
+        self._last_uav_debug_stats = {
+            key: value.detach() if torch.is_tensor(value) else value
+            for key, value in debug_stats.items()
+        }
         return (
             low_res_masks,
             iou_predictions,
@@ -2124,36 +2275,55 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         batch_gt_instances: InstanceList,
         rcnn_train_cfg: ConfigDict,
     ) -> Tensor:
-        """最终实例 mask 的监督 target（始终 full_image 整图 GT）。
+        """Build ROI-local final-mask targets for historical B0/B1 reproduction.
 
-        审查 3.1 指出：最终 mask 由 SAM2 MaskDecoder 在整图 image_embeddings 上输出，
-        其坐标系固定为 full_image，因此 get_targets 必须始终返回整图 GT。
-        ROI-local 的 coarse mask 监督请用 get_coarse_targets()。
+        This legacy adapter deliberately interprets each decoder output as an
+        ROI-local map, crops the assigned GT by the proposal and uses standard
+        MMDetection bbox paste at prediction time.
         """
         pos_proposals = [res.pos_priors for res in sampling_results]
         pos_assigned_gt_inds = [res.pos_assigned_gt_inds for res in sampling_results]
         gt_masks = [res.masks for res in batch_gt_instances]
-        mask_targets_list = []
-        mask_size = rcnn_train_cfg.mask_size
-        device = pos_proposals[0].device
-        # 最终 mask 始终 full_image（整图 GT），与 SAM2 MaskDecoder 输出坐标系一致
-        # 性能优化：去重 GT 索引，避免重复 to_tensor 渲染整图 mask
-        for pos_gt_inds, gt_mask in zip(pos_assigned_gt_inds, gt_masks):
-            if len(pos_gt_inds) == 0:
-                mask_targets = torch.zeros((0,) + mask_size, device=device, dtype=torch.float32)
-            else:
-                pos_gt_inds_cpu = pos_gt_inds.cpu()
-                unique_gt_inds, inverse_idx = torch.unique(
-                    pos_gt_inds_cpu, return_inverse=True
-                )
-                # 只渲染唯一 GT 的整图 mask，再按 inverse_idx 映射回每个 proposal
-                unique_targets = gt_mask[unique_gt_inds].to_tensor(
-                    dtype=torch.float32, device=device
-                )
-                mask_targets = unique_targets[inverse_idx]
-            mask_targets_list.append(mask_targets)
-        mask_targets = torch.cat(mask_targets_list)
-        return mask_targets
+        return mask_target(
+            pos_proposals,
+            pos_assigned_gt_inds,
+            gt_masks,
+            rcnn_train_cfg,
+        )
+
+    def get_full_image_targets(
+        self,
+        sampling_results: List[SamplingResult],
+        batch_gt_instances: InstanceList,
+        target_size: Tuple[int, int],
+        device: torch.device,
+    ) -> Tensor:
+        """Build one native full-image target for every positive proposal."""
+        targets = []
+        target_h, target_w = int(target_size[0]), int(target_size[1])
+        for result, gt_instances in zip(sampling_results, batch_gt_instances):
+            assigned = result.pos_assigned_gt_inds
+            if assigned.numel() == 0:
+                continue
+            gt_masks = gt_instances.masks
+            unique_ids, inverse = torch.unique(
+                assigned.detach().cpu(), return_inverse=True
+            )
+            unique_masks = gt_masks[unique_ids].to_tensor(
+                dtype=torch.float32, device=device
+            )
+            selected = unique_masks[inverse.to(device=unique_masks.device)]
+            selected = F.interpolate(
+                selected[:, None],
+                size=(target_h, target_w),
+                mode="nearest",
+            )[:, 0]
+            targets.append(selected)
+        if not targets:
+            return torch.zeros(
+                (0, target_h, target_w), device=device, dtype=torch.float32
+            )
+        return torch.cat(targets, dim=0)
 
     def get_coarse_targets(
         self,
@@ -2164,9 +2334,11 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
     ) -> Tensor:
         """coarse mask（ShapePriorInjector 输出）的 ROI-local 监督 target。
 
-        审查 3.1 / 2.7：coarse mask 在 ROI 局部坐标系生成与监督，与最终 SAM2 mask
-        （full_image）分离。本方法按 positive proposal box crop GT mask 并 resize 到
-        [M,H,W]（pred 原生分辨率），供 CoarseMaskLoss 使用。
+        coarse mask 在 ROI 局部坐标系生成与监督。本方法按 positive proposal box
+        crop GT mask 并 resize 到 [M,H,W]（pred 原生分辨率），供
+        CoarseMaskLoss 使用。最终 SAM2 mask 也遵循 ROI-local 坐标契约，但使用
+        MMDetection 的 ``mask_target`` 独立生成旧 B0/B1 监督；显式 coarse
+        路线的最终 SAM2 mask 使用 full-image target，两者不共享 loss。
 
         性能优化：先对去重后的 GT mask 调一次 to_tensor（避免重复渲染整图 mask），
         再逐 ROI crop+resize（crop/resize 本身轻量，瓶颈在 to_tensor 的整图渲染）。
@@ -2265,11 +2437,30 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         batch_gt_instances: InstanceList,
         rcnn_train_cfg: ConfigDict,
     ) -> dict:
-        mask_targets = self.get_targets(sampling_results=sampling_results, batch_gt_instances=batch_gt_instances, rcnn_train_cfg=rcnn_train_cfg)
+        if self.final_mask_coordinate_mode == "full_image":
+            mask_targets = self.get_full_image_targets(
+                sampling_results,
+                batch_gt_instances,
+                target_size=mask_preds.shape[-2:],
+                device=mask_preds.device,
+            )
+        else:
+            mask_targets = self.get_targets(
+                sampling_results=sampling_results,
+                batch_gt_instances=batch_gt_instances,
+                rcnn_train_cfg=rcnn_train_cfg,
+            )
         pos_labels = torch.cat([res.pos_gt_labels for res in sampling_results])
-        mask_preds = F.interpolate(mask_preds, size=mask_targets.shape[-2:], mode="bilinear", align_corners=False)
+        if mask_preds.shape[-2:] != mask_targets.shape[-2:]:
+            mask_preds = F.interpolate(
+                mask_preds,
+                size=mask_targets.shape[-2:],
+                mode="bilinear",
+                align_corners=False,
+            )
 
         loss = dict()
+        debug_stats = dict()
         if mask_preds.size(0) == 0:
             loss_mask = mask_preds.sum()
         else:
@@ -2277,8 +2468,21 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                 loss_mask = self.loss_mask(mask_preds, mask_targets, torch.zeros_like(pos_labels))
             else:
                 loss_mask = self.loss_mask(mask_preds, mask_targets, pos_labels)
+            mask_probs = mask_preds.sigmoid().detach()
+            debug_stats = dict(
+                debug_mask_pos_rois=mask_preds.new_tensor(float(mask_preds.size(0))),
+                debug_mask_logit_mean=mask_preds.detach().mean(),
+                debug_mask_logit_std=mask_preds.detach().std(unbiased=False),
+                debug_mask_prob_mean=mask_probs.mean(),
+                debug_mask_prob_ge05=(mask_probs >= 0.5).float().mean(),
+                debug_mask_target_fill=mask_targets.detach().float().mean(),
+            )
         loss["loss_mask"] = loss_mask
-        return dict(loss_mask=loss, mask_targets=mask_targets)
+        return dict(
+            loss_mask=loss,
+            mask_targets=mask_targets,
+            debug_stats=debug_stats,
+        )
 
     def _predict_by_feat_single(
         self,
@@ -2290,39 +2494,40 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         rescale: bool = False,
         activate_map: bool = False,
     ) -> Tensor:
-        import numpy as np
+        if self.final_mask_coordinate_mode == "roi_local":
+            return super()._predict_by_feat_single(
+                mask_preds=mask_preds,
+                bboxes=bboxes,
+                labels=labels,
+                img_meta=img_meta,
+                rcnn_test_cfg=rcnn_test_cfg,
+                rescale=rescale,
+                activate_map=activate_map,
+            )
 
-        _ = labels
-        scale_factor = bboxes.new_tensor(img_meta["scale_factor"]).repeat((1, 2))
-        img_h, img_w = img_meta["ori_shape"][:2]
+        # SAM2 decodes on the full image-embedding grid.  Resize that grid once
+        # to the requested image canvas; never paste it through the bbox again.
+        del bboxes
+        if not self.class_agnostic:
+            row = torch.arange(mask_preds.shape[0], device=mask_preds.device)
+            mask_preds = mask_preds[row, labels][:, None]
+        elif mask_preds.shape[1] != 1:
+            mask_preds = mask_preds[:, :1]
         if not activate_map:
             mask_preds = mask_preds.sigmoid()
-        else:
-            mask_preds = bboxes.new_tensor(mask_preds)
-
         if rescale:
-            bboxes /= scale_factor
+            image_h, image_w = img_meta["ori_shape"][:2]
         else:
-            w_scale, h_scale = scale_factor[0, 0], scale_factor[0, 1]
-            img_h = np.round(img_h * h_scale.item()).astype(np.int32)
-            img_w = np.round(img_w * w_scale.item()).astype(np.int32)
-        threshold = rcnn_test_cfg.mask_thr_binary
-        im_mask = F.interpolate(
+            image_h, image_w = img_meta.get(
+                "img_shape", img_meta["ori_shape"]
+            )[:2]
+        mask_probs = F.interpolate(
             mask_preds,
-            size=img_meta["batch_input_shape"],
+            size=(int(image_h), int(image_w)),
             mode="bilinear",
             align_corners=False,
-        ).squeeze(1)
-
-        scale_factor_w, scale_factor_h = img_meta["scale_factor"]
-        ori_rescaled_size = (img_h * scale_factor_h, img_w * scale_factor_w)
-        im_mask = im_mask[:, : int(ori_rescaled_size[0]), : int(ori_rescaled_size[1])]
-
-        h, w = img_meta["ori_shape"]
-        im_mask = F.interpolate(im_mask.unsqueeze(1), size=(h, w), mode="bilinear", align_corners=False).squeeze(1)
-
+        )[:, 0]
+        threshold = float(rcnn_test_cfg.mask_thr_binary)
         if threshold >= 0:
-            im_mask = im_mask >= threshold
-        else:
-            im_mask = (im_mask * 255).to(dtype=torch.uint8)
-        return im_mask
+            return mask_probs >= threshold
+        return (mask_probs * 255).to(torch.uint8)

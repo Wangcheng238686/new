@@ -76,6 +76,14 @@ class DenseBR(nn.Module):
         zero_init_residual: bool = True,
     ) -> None:
         super().__init__()
+        for name, value in (
+            ("roi_in_channels", roi_in_channels),
+            ("roi_channels", roi_channels),
+            ("cue_channels", cue_channels),
+            ("mid_channels", mid_channels),
+        ):
+            if int(value) <= 0:
+                raise ValueError(f"DenseBR {name} must be positive, got {value}")
         if delta_logit_max <= 0:
             raise ValueError("DenseBR delta_logit_max must be positive")
         if beta_max <= 0:
