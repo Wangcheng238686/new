@@ -112,6 +112,11 @@ TRAIN_SUBSET_RATIO=1.0 VAL_SUBSET_RATIO=1.0 \
 矩阵定义、参数覆盖和 dry-run 用法见
 `portable_sam2_explicit_coarse/scripts/ablations/README.md`。
 
+每个消融入口会把 stdout/stderr 同时输出到终端并自动保存到项目内
+`portable_sam2_explicit_coarse/logs/ablations/`。日志开头包含解析后的架构、
+数据、优化器、EMA、初始化/续训路径、有效全局 batch size、git commit 和完整
+torchrun 命令。可用 `LOG_DIR` 覆盖日志目录，或用 `LOG_FILE` 指定精确文件。
+
 ## 坐标与梯度契约
 
 - coarse mask：ROI-local，默认 `64×64`；

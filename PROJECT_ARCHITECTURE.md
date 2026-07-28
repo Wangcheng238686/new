@@ -249,7 +249,7 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | 文件 | 用途 |
 |---|---|
 | `README.md` | 消融矩阵、子集和 dry-run 用法。 |
-| `_run_ablation.sh` | 所有消融共享的受控运行器；固定架构变量、执行契约校验并组装 torchrun。 |
+| `_run_ablation.sh` | 所有消融共享的受控运行器；固定架构变量、执行契约校验、打印解析后超参快照、组装 torchrun，并将 stdout/stderr 同步保存到项目内日志。 |
 | `validate_ablation_contract.py` | 校验解析后配置、真实数据子集和可选完整模型实例是否与脚本声明一致。 |
 | `smoke_all.sh` | 检查全部消融，并对 B0、B1、C1、C5 做代表性完整模型构建。 |
 | `b0_aggregator_mlp.sh` | Aggregator + 旧 MLP 基线桥接。 |
@@ -272,9 +272,15 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 
 ### 4.8 运行产物
 
-`portable_sam2_explicit_coarse/logs/` 保存历史运行日志和 `.params` 快照，不是模型
-源码。新的 checkpoint 默认写到 `/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/`，
-不应提交 checkpoint、临时日志、`__pycache__` 或数据集。
+`portable_sam2_explicit_coarse/logs/ablations/` 是当前 B0–C5 消融运行器的默认
+日志目录。每次运行生成独立 `.log`，stdout/stderr 会同时显示在终端并落盘；日志
+开头的 `resolved_hyperparameters_begin/end` 块记录解析后的架构路线、数据比例、
+优化器、EMA、初始化/续训、有效全局 batch size、git commit 和精确 torchrun
+命令。`logs/` 下其余目录保留历史运行日志和 `.params` 快照，均不是模型源码。
+
+新的 checkpoint 默认写到
+`/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/`，不应提交
+checkpoint、临时日志、`__pycache__` 或数据集；项目内 `logs/` 已由 Git 忽略。
 
 推理默认在 checkpoint 同级创建 `inference_<split>/`：
 
@@ -311,6 +317,10 @@ FULL_MODEL_SMOKE=0 bash scripts/ablations/smoke_all.sh
 ```bash
 bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
 ```
+
+该命令会在终端打印实际日志文件路径，并默认写入
+`logs/ablations/<run_tag>_tr0.1_va1.0_<timestamp>_pid<pid>.log`。需要外置日志时
+可设置 `LOG_DIR`，需要固定文件名时可设置 `LOG_FILE`。
 
 显式启动完整数据实验：
 
@@ -378,6 +388,8 @@ bash scripts/reproduce_legacy_segm.sh
 | `SUBSET_SEED` | 子集与训练随机种子，默认 `44`。 |
 | `MAX_EPOCHS` | 最大 epoch，默认 `80`。 |
 | `CHECKPOINT_DIR` | 实验输出目录；消融运行器会按实验和子集自动隔离。 |
+| `LOG_DIR` | 消融终端日志目录，默认 `<项目主代码>/logs/ablations`。 |
+| `LOG_FILE` | 消融日志的精确文件路径；设置后优先于 `LOG_DIR` 自动命名。 |
 | `INIT_FROM` | 初始化 checkpoint。 |
 | `RESUME_FROM` | 完整断点恢复 checkpoint。 |
 | `CUDA_VISIBLE_DEVICES` | 可见 GPU，默认 `0,1,2,3`。 |
@@ -407,6 +419,9 @@ bash scripts/reproduce_legacy_segm.sh
 
 ## 8. 文档同步记录
 
+- 2026-07-28：消融公共运行器新增终端 stdout/stderr 自动落盘；默认写入项目内
+  `logs/ablations/`，并在日志开头记录解析后的完整实验超参快照、git commit
+  与精确 torchrun 命令。
 - 2026-07-28：明确 checkpoint 推理覆盖全部 B0–C5；建立未来参数持久化契约，
   要求所有影响模型结构或 forward/predict 行为的新参数强制进入 `cfg.model`，
   并通过严格 checkpoint round-trip。

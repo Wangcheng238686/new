@@ -59,3 +59,30 @@ Useful common overrides include `MAX_EPOCHS`, `BATCH_SIZE`,
 `GRAD_ACCUM_STEPS`, `LEARNING_RATE`, `NPROC_PER_NODE`, `CUDA_VISIBLE_DEVICES`,
 `MAX_TRAIN_BATCHES`, `MAX_VAL_BATCHES`, `INIT_FROM`, `RESUME_FROM`, and
 `CHECKPOINT_DIR`.
+
+## Terminal logs and hyperparameter snapshots
+
+Every ablation wrapper automatically mirrors both stdout and stderr to the
+terminal and to a project-local log:
+
+```text
+logs/ablations/<run_tag>_tr<train_ratio>_va<val_ratio>_<timestamp>_pid<pid>.log
+```
+
+The log begins with a `resolved_hyperparameters_begin` /
+`resolved_hyperparameters_end` block. It records the resolved architecture
+route, dataset ratios, optimizer and EMA settings, effective global batch size,
+initialization/resume paths, data/checkpoint locations, git commit, and the
+exact torchrun command. This is the resolved execution snapshot, so it should
+be used for experiment review rather than relying only on wrapper defaults.
+
+Override the directory or the exact file when needed:
+
+```bash
+LOG_DIR=/path/to/logs bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
+
+LOG_FILE=/path/to/exact.log \
+  DRY_RUN=1 bash scripts/ablations/b0_aggregator_mlp.sh
+```
+
+Project-local runtime logs are ignored by Git.

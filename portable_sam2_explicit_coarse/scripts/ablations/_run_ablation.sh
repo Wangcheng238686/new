@@ -52,6 +52,7 @@ export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/portable_sam2_explicit_coarse_mpl}"
 
 PYTHON="${PYTHON:-/data/wangcheng/envs/cvt2/bin/python}"
 NPROC_PER_NODE="${NPROC_PER_NODE:-4}"
+MASTER_PORT="${MASTER_PORT:-29500}"
 BATCH_SIZE="${BATCH_SIZE:-2}"
 GRAD_ACCUM_STEPS="${GRAD_ACCUM_STEPS:-1}"
 LEARNING_RATE="${LEARNING_RATE:-5e-4}"
@@ -59,11 +60,36 @@ TRAIN_SUBSET_RATIO="${TRAIN_SUBSET_RATIO:-0.1}"
 VAL_SUBSET_RATIO="${VAL_SUBSET_RATIO:-1.0}"
 SUBSET_SEED="${SUBSET_SEED:-44}"
 CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
+AMP="${AMP:-0}"
+EMA_ENABLED="${EMA_ENABLED:-1}"
+EMA_DECAY="${EMA_DECAY:-0.999}"
+EMA_EVAL="${EMA_EVAL:-1}"
+EMA_SAVE_BEST="${EMA_SAVE_BEST:-1}"
+VAL_EVERY_N_EPOCHS="${VAL_EVERY_N_EPOCHS:-1}"
+EARLY_STOPPING_PATIENCE="${EARLY_STOPPING_PATIENCE:-10}"
+EARLY_STOPPING_START_EPOCH="${EARLY_STOPPING_START_EPOCH:-20}"
+MASK_DECODER_LR_MULT="${MASK_DECODER_LR_MULT:-1.0}"
+SHAPE_PRIOR_LR_MULT="${SHAPE_PRIOR_LR_MULT:-1.0}"
+DENSEBR_LR_MULT="${DENSEBR_LR_MULT:-1.0}"
+MAX_TRAIN_BATCHES="${MAX_TRAIN_BATCHES:-0}"
+MAX_VAL_BATCHES="${MAX_VAL_BATCHES:-0}"
+INIT_FROM="${INIT_FROM:-}"
+INIT_EXCLUDE_PREFIXES="${INIT_EXCLUDE_PREFIXES:-}"
+RESUME_FROM="${RESUME_FROM:-}"
 export CUDA_VISIBLE_DEVICES
+export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 
 RUN_TAG="${RUN_TAG:-${ABLATION_ID}}"
 SUBSET_TAG="tr${TRAIN_SUBSET_RATIO}_va${VAL_SUBSET_RATIO}"
 CHECKPOINT_DIR="${CHECKPOINT_DIR:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/${RUN_TAG}_${SUBSET_TAG}}"
+RUN_TIMESTAMP="${RUN_TIMESTAMP:-$(date +%Y%m%d_%H%M%S)}"
+LOG_SAFE_TAG="${RUN_TAG//\//_}"
+LOG_DIR="${LOG_DIR:-${PROJECT_ROOT}/logs/ablations}"
+LOG_FILE="${LOG_FILE:-${LOG_DIR}/${LOG_SAFE_TAG}_${SUBSET_TAG}_${RUN_TIMESTAMP}_pid$$.log}"
+mkdir -p "$(dirname "${LOG_FILE}")"
+exec > >(tee -a "${LOG_FILE}") 2>&1
+
+echo "terminal_log=${LOG_FILE}"
 
 VALIDATE_ARGS=(
   --config "${CONFIG_PATH}"
@@ -88,7 +114,7 @@ fi
 CMD=(
   "${PYTHON}" -m torch.distributed.run
   "--nproc_per_node=${NPROC_PER_NODE}"
-  "--master_port=${MASTER_PORT:-29500}"
+  "--master_port=${MASTER_PORT}"
   train/train_rsprompter_fusion.py
   --config "${CONFIG_PATH}"
   --data-root "${WHU1024_DATA_ROOT}"
@@ -102,46 +128,97 @@ CMD=(
   --train-subset-ratio "${TRAIN_SUBSET_RATIO}"
   --val-subset-ratio "${VAL_SUBSET_RATIO}"
   --seed "${SUBSET_SEED}"
-  --amp "${AMP:-0}"
-  --ema-enabled "${EMA_ENABLED:-1}"
-  --ema-decay "${EMA_DECAY:-0.999}"
-  --ema-eval "${EMA_EVAL:-1}"
-  --ema-save-best "${EMA_SAVE_BEST:-1}"
-  --val-every-n-epochs "${VAL_EVERY_N_EPOCHS:-1}"
-  --early-stopping-patience "${EARLY_STOPPING_PATIENCE:-10}"
-  --early-stopping-start-epoch "${EARLY_STOPPING_START_EPOCH:-20}"
-  --mask-decoder-lr-mult "${MASK_DECODER_LR_MULT:-1.0}"
+  --amp "${AMP}"
+  --ema-enabled "${EMA_ENABLED}"
+  --ema-decay "${EMA_DECAY}"
+  --ema-eval "${EMA_EVAL}"
+  --ema-save-best "${EMA_SAVE_BEST}"
+  --val-every-n-epochs "${VAL_EVERY_N_EPOCHS}"
+  --early-stopping-patience "${EARLY_STOPPING_PATIENCE}"
+  --early-stopping-start-epoch "${EARLY_STOPPING_START_EPOCH}"
+  --mask-decoder-lr-mult "${MASK_DECODER_LR_MULT}"
   --no-mask-lr-mult 0.0
   --prompt-encoder-lr-mult 0.0
-  --shape-prior-lr-mult "${SHAPE_PRIOR_LR_MULT:-1.0}"
-  --densebr-lr-mult "${DENSEBR_LR_MULT:-1.0}"
+  --shape-prior-lr-mult "${SHAPE_PRIOR_LR_MULT}"
+  --densebr-lr-mult "${DENSEBR_LR_MULT}"
 )
 
-if [ "${MAX_TRAIN_BATCHES:-0}" -gt 0 ]; then
+if [ "${MAX_TRAIN_BATCHES}" -gt 0 ]; then
   CMD+=(--max-train-batches "${MAX_TRAIN_BATCHES}")
 fi
-if [ "${MAX_VAL_BATCHES:-0}" -gt 0 ]; then
+if [ "${MAX_VAL_BATCHES}" -gt 0 ]; then
   CMD+=(--max-val-batches "${MAX_VAL_BATCHES}")
 fi
-if [ -n "${INIT_FROM:-}" ]; then
+if [ -n "${INIT_FROM}" ]; then
   CMD+=(--init-from "${INIT_FROM}")
 fi
-if [ -n "${INIT_EXCLUDE_PREFIXES:-}" ]; then
+if [ -n "${INIT_EXCLUDE_PREFIXES}" ]; then
   CMD+=(--init-exclude-prefixes "${INIT_EXCLUDE_PREFIXES}")
 fi
-if [ -n "${RESUME_FROM:-}" ]; then
+if [ -n "${RESUME_FROM}" ]; then
   CMD+=(--resume-from "${RESUME_FROM}")
 fi
 
+GIT_COMMIT="$(git -C "${PROJECT_ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)"
+EFFECTIVE_GLOBAL_BATCH_SIZE=$((BATCH_SIZE * GRAD_ACCUM_STEPS * NPROC_PER_NODE))
+
 echo "============================================================"
-echo "ablation=${ABLATION_ID} neck=${NECK_TYPE} prompt=${PROMPT_ROUTE}"
-echo "explicit_mode=${EXPECTED_EXPLICIT_MODE} densebr=${DENSEBR_ENABLED}"
-echo "subset=train:${TRAIN_SUBSET_RATIO} val:${VAL_SUBSET_RATIO} seed:${SUBSET_SEED}"
+echo "resolved_hyperparameters_begin"
+echo "timestamp=${RUN_TIMESTAMP}"
+echo "git_commit=${GIT_COMMIT}"
+echo "ablation_id=${ABLATION_ID}"
+echo "run_tag=${RUN_TAG}"
+echo "neck_type=${NECK_TYPE}"
+echo "prompt_route=${PROMPT_ROUTE}"
+echo "prompt_generator_mode=${PROMPT_GENERATOR_MODE}"
+echo "prompt_sparse_mode=${PROMPT_SPARSE_MODE}"
+echo "prompt_encoder_enabled=${PROMPT_ENCODER_ENABLED}"
+echo "shape_prior_enabled=${SHAPE_PRIOR_ENABLED}"
+echo "explicit_prompt_mode=${EXPECTED_EXPLICIT_MODE}"
+echo "densebr_enabled=${DENSEBR_ENABLED}"
+echo "train_subset_ratio=${TRAIN_SUBSET_RATIO}"
+echo "val_subset_ratio=${VAL_SUBSET_RATIO}"
+echo "subset_seed=${SUBSET_SEED}"
+echo "python=${PYTHON}"
+echo "nproc_per_node=${NPROC_PER_NODE}"
+echo "master_port=${MASTER_PORT}"
+echo "cuda_visible_devices=${CUDA_VISIBLE_DEVICES}"
+echo "batch_size_per_rank=${BATCH_SIZE}"
+echo "grad_accum_steps=${GRAD_ACCUM_STEPS}"
+echo "effective_global_batch_size=${EFFECTIVE_GLOBAL_BATCH_SIZE}"
+echo "epochs=${MAX_EPOCHS}"
+echo "learning_rate=${LEARNING_RATE}"
+echo "amp=${AMP}"
+echo "ema_enabled=${EMA_ENABLED}"
+echo "ema_decay=${EMA_DECAY}"
+echo "ema_eval=${EMA_EVAL}"
+echo "ema_save_best=${EMA_SAVE_BEST}"
+echo "val_every_n_epochs=${VAL_EVERY_N_EPOCHS}"
+echo "early_stopping_patience=${EARLY_STOPPING_PATIENCE}"
+echo "early_stopping_start_epoch=${EARLY_STOPPING_START_EPOCH}"
+echo "mask_decoder_lr_mult=${MASK_DECODER_LR_MULT}"
+echo "no_mask_lr_mult=0.0"
+echo "prompt_encoder_lr_mult=0.0"
+echo "shape_prior_lr_mult=${SHAPE_PRIOR_LR_MULT}"
+echo "densebr_lr_mult=${DENSEBR_LR_MULT}"
+echo "max_train_batches=${MAX_TRAIN_BATCHES}"
+echo "max_val_batches=${MAX_VAL_BATCHES}"
+echo "init_from=${INIT_FROM}"
+echo "init_exclude_prefixes=${INIT_EXCLUDE_PREFIXES}"
+echo "resume_from=${RESUME_FROM}"
+echo "check_data=${CHECK_DATA:-0}"
+echo "preflight_model=${PREFLIGHT_MODEL:-0}"
+echo "dry_run=${DRY_RUN:-0}"
+echo "sam2_repo=${SAM2_REPO}"
+echo "sam2_checkpoint=${SAM2_CKPT}"
+echo "data_root=${WHU1024_DATA_ROOT}"
 echo "config=${CONFIG_PATH}"
 echo "checkpoint_dir=${CHECKPOINT_DIR}"
+echo "log_file=${LOG_FILE}"
 printf 'command='
 printf ' %q' "${CMD[@]}"
 printf '\n'
+echo "resolved_hyperparameters_end"
 echo "============================================================"
 
 if [ "${DRY_RUN:-0}" = "1" ]; then
