@@ -18,6 +18,41 @@ from .satellite_drone_dataset import (
 logger = logging.getLogger(__name__)
 
 
+def _validate_subset_ratio(value: float, name: str) -> float:
+    value = float(value)
+    if not 0.0 < value <= 1.0:
+        raise ValueError(f"{name} must be in (0, 1], got {value}")
+    return value
+
+
+def _subset_whu_dataset(dataset, ratio: float, seed: int, split: str):
+    """Apply a deterministic image-level subset while preserving sample order."""
+    ratio = _validate_subset_ratio(ratio, f"{split}_subset_ratio")
+    full_size = len(dataset)
+    if ratio >= 1.0 or full_size == 0:
+        dataset.subset_ratio = ratio
+        dataset.full_size = full_size
+        dataset.subset_indices = list(range(full_size))
+        return dataset
+
+    subset_size = max(1, int(full_size * ratio))
+    rng = np.random.RandomState(int(seed))
+    indices = sorted(rng.permutation(full_size)[:subset_size].tolist())
+    dataset.samples = [dataset.samples[index] for index in indices]
+    dataset.subset_ratio = ratio
+    dataset.full_size = full_size
+    dataset.subset_indices = indices
+    logger.info(
+        "WHU %s subset: %d/%d images (ratio=%.6f, seed=%d)",
+        split,
+        len(dataset),
+        full_size,
+        ratio,
+        int(seed),
+    )
+    return dataset
+
+
 def _seed_worker(worker_id: int):
     worker_seed = torch.initial_seed() % (2**32)
     np.random.seed(worker_seed)
@@ -107,6 +142,8 @@ def create_train_loader(
     whu_single_class: bool = True,
     whu_enable_category_mapping: bool = False,
     whu_category_mapping: Optional[dict] = None,
+    train_subset_ratio: float = 1.0,
+    val_subset_ratio: float = 1.0,
 ):
     generator = torch.Generator()
     generator.manual_seed(int(seed))
@@ -181,6 +218,12 @@ def create_train_loader(
             multi_scale_mode=multi_scale_mode,
             multi_scale_img_scale=multi_scale_img_scale,
         )
+        train_dataset = _subset_whu_dataset(
+            train_dataset,
+            ratio=train_subset_ratio,
+            seed=int(seed),
+            split="train",
+        )
         collate_fn = rtmdet_collate_fn
 
         val_loader = None
@@ -197,6 +240,12 @@ def create_train_loader(
                 vflip_prob=0.0,
                 gaussian_noise_prob=0.0,
                 random_erasing_prob=0.0,
+            )
+            val_dataset = _subset_whu_dataset(
+                val_dataset,
+                ratio=val_subset_ratio,
+                seed=int(seed) + 10000,
+                split="val",
             )
             val_loader = DataLoader(
                 val_dataset,

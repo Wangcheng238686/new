@@ -52,6 +52,27 @@ EXPLICIT_PROMPT_MODE=points_box bash scripts/run_whu1024_explicit_coarse_4gpu.sh
 默认数据与预训练权重路径保持旧基线口径，并可通过 `WHU1024_DATA_ROOT`、
 `SAM2_CKPT`、`SAM2_REPO`、`CHECKPOINT_DIR` 覆盖。
 
+## 消融矩阵
+
+消融入口统一放在
+`portable_sam2_explicit_coarse/scripts/ablations/`，覆盖 aggregator/PAFPN、
+旧 MLP/coarse、box、dense prompt 和 DenseBR。每次启动前都会检查解析后的配置
+是否与脚本声明一致。
+
+```bash
+cd portable_sam2_explicit_coarse
+
+# 全矩阵 smoke；不会开始训练
+bash scripts/ablations/smoke_all.sh
+
+# 默认使用完整 train/validation；也可以独立抽取确定性子集
+TRAIN_SUBSET_RATIO=0.1 VAL_SUBSET_RATIO=0.2 \
+  bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
+```
+
+矩阵定义、参数覆盖和 dry-run 用法见
+`portable_sam2_explicit_coarse/scripts/ablations/README.md`。
+
 ## 坐标与梯度契约
 
 - coarse mask：ROI-local，默认 `64×64`；
@@ -63,4 +84,3 @@ EXPLICIT_PROMPT_MODE=points_box bash scripts/run_whu1024_explicit_coarse_4gpu.sh
 - dense mask 经冻结 PromptEncoder 时不使用 `torch.no_grad()`，因此最终 mask
   loss 仍可回传到 coarse head 和 DenseBR；
 - DenseBR 输出是 coarse loss、2P2N 和 dense canvas 的唯一 coarse-logit 来源。
-

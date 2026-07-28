@@ -956,8 +956,20 @@ def main():
     parser.add_argument(
         "--subset-ratio",
         type=float,
+        default=None,
+        help="Deprecated compatibility alias: set both train and val subset ratios.",
+    )
+    parser.add_argument(
+        "--train-subset-ratio",
+        type=float,
         default=1.0,
-        help="只加载前 N 比例的 train/val 样本（0<N<1），用于快速消融",
+        help="Deterministic fraction of WHU training images to load; default 1.0.",
+    )
+    parser.add_argument(
+        "--val-subset-ratio",
+        type=float,
+        default=1.0,
+        help="Deterministic fraction of WHU validation images to load; default 1.0.",
     )
     parser.add_argument(
         "--drone-data-root",
@@ -1316,24 +1328,33 @@ def main():
 
     from data import create_train_loader
 
+    train_subset_ratio = float(args.train_subset_ratio)
+    val_subset_ratio = float(args.val_subset_ratio)
+    if args.subset_ratio is not None:
+        if args.train_subset_ratio != 1.0 or args.val_subset_ratio != 1.0:
+            raise ValueError(
+                "--subset-ratio cannot be combined with --train-subset-ratio "
+                "or --val-subset-ratio"
+            )
+        train_subset_ratio = val_subset_ratio = float(args.subset_ratio)
+    for name, value in (
+        ("train_subset_ratio", train_subset_ratio),
+        ("val_subset_ratio", val_subset_ratio),
+    ):
+        if not 0.0 < value <= 1.0:
+            raise ValueError(f"{name} must be in (0, 1], got {value}")
+
     train_loader, val_loader, train_dataset = (
         create_train_loader(
             data_root=args.data_root,
             batch_size=args.batch_size,
-            mosaic_prob=0.0,
-            rotate_prob=0.0,
-            scale_prob=0.0,
             # Horizontal flip is safe for dual-stream after fix:
             # only intrinsics cx is adjusted (cx -> W-cx); extrinsics are unchanged.
             flip_prob=0.5,
             vflip_prob=0.0,
-            crop_prob=0.0,
-            color_jitter_prob=0.0,
-            hue_prob=0.0,
-            sharpness_prob=0.0,
-                gaussian_noise_prob=0.0,
+            gaussian_noise_prob=0.0,
             gaussian_noise_std=0.02,
-                random_erasing_prob=0.0,
+            random_erasing_prob=0.0,
             random_erasing_scale=(0.02, 0.15),
             random_erasing_ratio=(0.3, 3.3),
             image_size=tuple(args.image_size),
@@ -1348,8 +1369,14 @@ def main():
             val_batch_size=args.val_batch_size,
             random_sample=args.random_sample,
             normalize_drone=args.normalize_drone,
-            use_whu_coco=args.use_whu_coco,
-            subset_ratio=args.subset_ratio,
+            dataset_format="whu_coco" if args.use_whu_coco else "labelme",
+            whu_train_ann_file="2.4 annotation/annotation/train.json",
+            whu_val_ann_file="2.4 annotation/annotation/validation.json",
+            whu_train_img_subdir="2.1 train/train",
+            whu_val_img_subdir="2.3 valid/validation",
+            train_subset_ratio=train_subset_ratio,
+            val_subset_ratio=val_subset_ratio,
+            seed=int(args.seed),
         )
     )
 
@@ -1440,6 +1467,8 @@ def main():
     )
     config_snapshot = {
         "config_path": str(args.config),
+        "train_subset_ratio": float(train_subset_ratio),
+        "val_subset_ratio": float(val_subset_ratio),
         "prompt_generator_mode": os.environ.get(
             "PROMPT_GENERATOR_MODE", "explicit_mask"
         ),

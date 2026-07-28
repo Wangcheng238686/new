@@ -47,6 +47,12 @@ model = dict(
             sam2_mask_decoder=dict(checkpoint_path=sam2_ckpt_path),
             prompt_encoder_image_size=1024,
             prompt_encoder_embed_size=32,
+            prompt_sparse_mode="point",
+            prompt_encoder_enabled=False,
+            freeze_mask_decoder=False,
+            freeze_no_mask_embed=True,
+            shape_prior_cfg=dict(enabled=False),
+            densebr_cfg=dict(enabled=False),
         ),
     ),
 )
