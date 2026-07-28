@@ -38,6 +38,9 @@ model = dict(
     neck=dict(
         in_channels="sam2_hiera_base_plus",
     ),
+    train_cfg=dict(
+        rcnn=dict(mask_size=(1024, 1024)),
+    ),
     roi_head=dict(
         bbox_head=dict(num_classes=1),
         mask_head=dict(
@@ -49,12 +52,29 @@ model = dict(
 )
 
 dataset_type = "WHUCocoSingleClass"
+train_pipeline = [
+    dict(type="LoadImageFromFile"),
+    dict(type="LoadAnnotations", with_bbox=True, with_mask=True, poly2mask=False),
+    dict(type="Resize", scale=(1024, 1024), keep_ratio=False),
+    dict(type="RandomFlip", prob=0.5),
+    dict(type="PackDetInputs"),
+]
+test_pipeline = [
+    dict(type="LoadImageFromFile"),
+    dict(type="Resize", scale=(1024, 1024), keep_ratio=False),
+    dict(type="LoadAnnotations", with_bbox=True, with_mask=True, poly2mask=False),
+    dict(
+        type="PackDetInputs",
+        meta_keys=("img_id", "img_path", "ori_shape", "img_shape", "scale_factor"),
+    ),
+]
 train_dataloader = dict(
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
         ann_file="2.4 annotation/annotation/train.json",
         data_prefix=dict(img="2.1 train/train"),
+        pipeline=train_pipeline,
     )
 )
 val_dataloader = dict(
@@ -63,6 +83,8 @@ val_dataloader = dict(
         data_root=data_root,
         ann_file="2.4 annotation/annotation/validation.json",
         data_prefix=dict(img="2.3 valid/validation"),
+        pipeline=test_pipeline,
+        test_mode=True,
     )
 )
 test_dataloader = dict(
@@ -71,6 +93,8 @@ test_dataloader = dict(
         data_root=data_root,
         ann_file="2.4 annotation/annotation/test.json",
         data_prefix=dict(img="2.2 test/test"),
+        pipeline=test_pipeline,
+        test_mode=True,
     )
 )
 val_evaluator = dict(
@@ -79,4 +103,3 @@ val_evaluator = dict(
 test_evaluator = dict(
     ann_file=os.path.join(data_root, "2.4 annotation/annotation/test.json")
 )
-
