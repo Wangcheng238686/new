@@ -55,6 +55,34 @@ EXPLICIT_PROMPT_MODE=points_box bash scripts/run_whu1024_explicit_coarse_4gpu.sh
 默认数据与预训练权重路径保持旧基线口径，并可通过 `WHU1024_DATA_ROOT`、
 `SAM2_CKPT`、`SAM2_REPO`、`CHECKPOINT_DIR` 覆盖。
 
+## 从权重推理
+
+新 checkpoint 会嵌入解析后的完整模型配置、训练超参、数据协议和 SAM2 运行时
+信息。推理脚本只需指定 checkpoint，默认在完整 WHU validation 上输出 bbox/segm
+COCO 指标和预测 JSON：
+
+```bash
+cd portable_sam2_explicit_coarse
+
+bash scripts/infer_whu_checkpoint.sh \
+  /data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/EXPERIMENT/best_model.pth
+```
+
+使用 WHU test 或自定义 COCO 测试集：
+
+```bash
+bash scripts/infer_whu_checkpoint.sh /path/to/model.pth --split test
+
+bash scripts/infer_whu_checkpoint.sh /path/to/model.pth \
+  --split custom \
+  --data-root /path/to/dataset \
+  --ann-file annotations/test.json \
+  --image-subdir test/images
+```
+
+旧 checkpoint 若没有嵌入 `model_config`，需额外传入
+`--config configs/对应配置.py`。
+
 ## 消融矩阵
 
 消融入口统一放在

@@ -766,6 +766,9 @@ def _save_checkpoint(
     path.parent.mkdir(parents=True, exist_ok=True)
     model_to_save = model.module if hasattr(model, "module") else model
     ckpt = {
+        "checkpoint_schema_version": int(
+            (config_snapshot or {}).get("checkpoint_schema_version", 0)
+        ),
         "model": model_to_save.state_dict(),
         "optimizer": optimizer.state_dict(),
         "scheduler": scheduler.state_dict(),
@@ -1466,7 +1469,28 @@ def main():
         "EARLY_STOPPING_METRIC", "segm/mAP"
     )
     config_snapshot = {
+        "checkpoint_schema_version": 1,
         "config_path": str(args.config),
+        "training_args": dict(vars(args)),
+        "data_config": {
+            "dataset_format": "whu_coco" if args.use_whu_coco else "labelme",
+            "data_root": str(args.data_root),
+            "image_size": list(args.image_size),
+            "single_class": True,
+            "validation": {
+                "ann_file": "2.4 annotation/annotation/validation.json",
+                "image_subdir": "2.3 valid/validation",
+            },
+            "test": {
+                "ann_file": "2.4 annotation/annotation/test.json",
+                "image_subdir": "2.2 test/test",
+            },
+        },
+        "runtime_config": {
+            "sam2_repo": os.environ.get("SAM2_REPO", ""),
+            "sam2_checkpoint": os.environ.get("SAM2_CKPT", ""),
+            "sam2_model_size": os.environ.get("SAM2_MODEL_SIZE", ""),
+        },
         "train_subset_ratio": float(train_subset_ratio),
         "val_subset_ratio": float(val_subset_ratio),
         "prompt_generator_mode": os.environ.get(
@@ -1692,7 +1716,12 @@ def main():
                 logger.info("Restored EMA shadow weights from checkpoint")
         # 恢复 config 快照 (从 checkpoint 加载, 保证续训一致)
         if "config_snapshot" in ckpt:
-            config_snapshot = ckpt["config_snapshot"]
+            saved_snapshot = ckpt["config_snapshot"]
+            if isinstance(saved_snapshot, dict):
+                # Preserve the resumed run's recorded values while retaining
+                # new schema fields for checkpoints produced by newer code.
+                config_snapshot = {**config_snapshot, **saved_snapshot}
+                config_snapshot["checkpoint_schema_version"] = 1
         if is_main:
             logger.info(
                 "Resumed from %s (start_epoch=%d, best_segm_map=%.4f, best_bbox_score=%.4f, best_composite_score=%.4f)",

@@ -46,6 +46,9 @@ flowchart LR
     I --> O["SAM2 MaskDecoder"]
     M --> O
     O --> P["实例 mask + bbox/segm COCO 指标"]
+    Q["自描述 checkpoint<br/>model_config + 超参 + 数据协议"] --> R["infer_from_checkpoint.py"]
+    R --> C
+    P --> S["predictions.json<br/>metrics.json<br/>run_manifest.json"]
 ```
 
 ### 2.1 两条 Prompt 路线
@@ -174,11 +177,38 @@ WHU 默认路径：
 - `--max-train-batches`、`--max-val-batches`：快速 smoke；
 - `--shape-prior-lr-mult`、`--densebr-lr-mult`：新模块学习率倍率。
 
-### 4.5 运行脚本：`portable_sam2_explicit_coarse/scripts/`
+新 checkpoint schema version 为 `1`，其中 `config_snapshot` 保存：
+
+- 完整解析后的 `model_config`；
+- 完整 `training_args`；
+- validation/test 数据路径、图像尺寸和类别协议；
+- SAM2 repo、checkpoint 和型号；
+- Prompt 路线、neck、DenseBR、训练计划及学习率倍率。
+
+恢复旧 checkpoint 续训时会保留旧实验记录，并补入新 schema 中缺失的字段。
+
+### 4.5 推理：`portable_sam2_explicit_coarse/inference/`
+
+| 文件 | 用途 |
+|---|---|
+| `__init__.py` | checkpoint 推理包标记。 |
+| `infer_from_checkpoint.py` | 读取指定 checkpoint，恢复自描述模型配置，严格加载 model/EMA 权重，在 WHU validation、test 或自定义 COCO split 上推理与评估。 |
+
+推理默认使用 `checkpoint["model"]`。`--weights ema` 可显式读取
+`checkpoint["ema_state"]["ema_state"]`；训练产生的 best checkpoint 在启用 EMA
+评估时，其 `model` 本身已经是当轮用于验证的权重。
+
+新 checkpoint 不需要额外 `.py` 配置。旧 checkpoint 缺少
+`config_snapshot.model_config` 时可通过 `--config` 回退。模型构建仍需要项目内
+SAM2 Python 包和对应 Base+ 预训练 checkpoint；路径可通过 `--sam2-repo`、
+`--sam2-ckpt` 覆盖。
+
+### 4.6 运行脚本：`portable_sam2_explicit_coarse/scripts/`
 
 | 文件 | 用途 |
 |---|---|
 | `run_whu1024_explicit_coarse_4gpu.sh` | 默认四卡 PAFPN + points+box+dense 主线入口；`DENSEBR_ENABLED=1` 开启 DenseBR。 |
+| `infer_whu_checkpoint.sh` | 指定 checkpoint 的单卡推理 shell 入口；其余参数透传给 Python 推理器。 |
 | `smoke_test_components.sh` | 启动轻量组件测试。 |
 | `smoke_test_components.py` | 检查 PAFPN、shape prior、2P2N、dense canvas、DenseBR 和梯度契约。 |
 
@@ -198,21 +228,27 @@ WHU 默认路径：
 | `c4_pafpn_coarse_points_box_dense.sh` | C3 + dense mask prompt。 |
 | `c5_pafpn_coarse_densebr.sh` | C4 + DenseBR。 |
 
-### 4.6 工具与通用函数
+### 4.7 工具与通用函数
 
 | 文件 | 用途 |
 |---|---|
 | `tools/mask_to_coco_whu512.py` | 将 WHU 二值 mask 转为 COCO polygon 标注；属于数据准备工具，不是训练必需步骤。 |
 | `utils/__init__.py` | 通用工具包标记。 |
-| `utils/coco_eval_utils.py` | 构造 COCO GT/DT 并执行 bbox/segm COCOeval。 |
+| `utils/coco_eval_utils.py` | 构造 COCO GT/DT 并执行 bbox/segm COCOeval；支持 bbox score 和 mask score 两种评估分数。 |
 | `utils/transforms.py` | `AdaptiveResize` MMDetection transform。 |
 | `.gitignore` | 忽略本地缓存、运行产物等。 |
 
-### 4.7 运行产物
+### 4.8 运行产物
 
 `portable_sam2_explicit_coarse/logs/` 保存历史运行日志和 `.params` 快照，不是模型
 源码。新的 checkpoint 默认写到 `/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/`，
 不应提交 checkpoint、临时日志、`__pycache__` 或数据集。
+
+推理默认在 checkpoint 同级创建 `inference_<split>/`：
+
+- `predictions.json`：带 bbox、score、mask score 和 COCO RLE mask 的预测；
+- `metrics.json`：有标注测试集上的 bbox/segm COCO 指标；
+- `run_manifest.json`：checkpoint、配置来源、严格加载结果、数据协议和输出摘要。
 
 ## 5. 常用操作
 
@@ -256,6 +292,35 @@ bash scripts/ablations/c5_pafpn_coarse_densebr.sh
 ```bash
 DRY_RUN=1 CHECK_DATA=1 PREFLIGHT_MODEL=1 \
 bash scripts/ablations/c5_pafpn_coarse_densebr.sh
+```
+
+从 checkpoint 在完整 validation 上推理：
+
+```bash
+bash scripts/infer_whu_checkpoint.sh /path/to/best_model.pth
+```
+
+在 WHU test split 上推理：
+
+```bash
+bash scripts/infer_whu_checkpoint.sh /path/to/best_model.pth --split test
+```
+
+自定义 COCO 测试集：
+
+```bash
+bash scripts/infer_whu_checkpoint.sh /path/to/best_model.pth \
+  --split custom \
+  --data-root /path/to/dataset \
+  --ann-file annotations/test.json \
+  --image-subdir test/images
+```
+
+只查看 checkpoint 元数据或只验证模型重建：
+
+```bash
+bash scripts/infer_whu_checkpoint.sh /path/to/model.pth --inspect-only
+bash scripts/infer_whu_checkpoint.sh /path/to/model.pth --build-only --device cpu
 ```
 
 复现冻结历史基线：
@@ -308,6 +373,9 @@ bash scripts/reproduce_legacy_segm.sh
 
 ## 8. 文档同步记录
 
+- 2026-07-28：新增自描述 checkpoint schema 和 checkpoint 驱动推理入口；支持
+  validation/test/custom COCO split、严格 model/EMA 权重加载、bbox/segm COCO
+  评估以及 predictions/metrics/manifest 输出。
 - 2026-07-28：将全部消融 wrapper 的默认数据口径改为 10% train / 100%
   validation；全量实验需显式设置 `TRAIN_SUBSET_RATIO=1.0`。
 - 2026-07-28：建立项目架构、逐文件用途、运行入口和文档同步规则；覆盖当前

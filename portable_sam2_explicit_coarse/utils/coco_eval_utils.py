@@ -27,6 +27,7 @@ def build_coco_gt_and_dt(
     all_dt: List[dict],
     img_metas_list: List[dict],
     category_name: str = "building",
+    score_key: str = "scores",
 ) -> Tuple:
     """Build pycocotools COCO objects for GT and detections."""
     from pycocotools.coco import COCO
@@ -66,7 +67,7 @@ def build_coco_gt_and_dt(
             ann_id += 1
 
         dt_bboxes = dt["bboxes"]
-        dt_scores = dt["scores"]
+        dt_scores = dt.get(score_key, dt["scores"])
         dt_masks = dt["masks"]
 
         if hasattr(dt_masks, "masks"):
