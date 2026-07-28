@@ -152,8 +152,10 @@ WHU 默认路径：
 2.4 annotation/annotation/validation.json
 ```
 
-`TRAIN_SUBSET_RATIO` 和 `VAL_SUBSET_RATIO` 默认均为 `1.0`。小于 1 时按图像级
-确定性抽样；训练使用 `SUBSET_SEED`，验证使用 `SUBSET_SEED + 10000`。
+训练器和 DataLoader API 的比例默认均为 `1.0`；消融运行器将
+`TRAIN_SUBSET_RATIO` 默认设为 `0.1`，`VAL_SUBSET_RATIO` 默认保持 `1.0`，即
+10% train / 100% validation。小于 1 时按图像级确定性抽样；训练使用
+`SUBSET_SEED`，验证使用 `SUBSET_SEED + 10000`。
 
 ### 4.4 训练：`portable_sam2_explicit_coarse/train/`
 
@@ -236,19 +238,16 @@ bash scripts/ablations/smoke_all.sh
 FULL_MODEL_SMOKE=0 bash scripts/ablations/smoke_all.sh
 ```
 
-启动完整数据实验：
+按消融默认口径启动 10% train / 100% validation：
 
 ```bash
 bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
 ```
 
-启动快速子集实验：
+显式启动完整数据实验：
 
 ```bash
-TRAIN_SUBSET_RATIO=0.1 \
-VAL_SUBSET_RATIO=0.2 \
-SUBSET_SEED=44 \
-MAX_EPOCHS=10 \
+TRAIN_SUBSET_RATIO=1.0 VAL_SUBSET_RATIO=1.0 \
 bash scripts/ablations/c5_pafpn_coarse_densebr.sh
 ```
 
@@ -277,8 +276,8 @@ bash scripts/reproduce_legacy_segm.sh
 | `NECK_TYPE` | `aggregator` 或 `pafpn`；消融 wrapper 会固定。 |
 | `EXPLICIT_PROMPT_MODE` | `points`、`points_box` 或 `points_box_dense`。 |
 | `DENSEBR_ENABLED` | `0/1`。 |
-| `TRAIN_SUBSET_RATIO` | 训练集比例，默认 `1.0`。 |
-| `VAL_SUBSET_RATIO` | 验证集比例，默认 `1.0`。 |
+| `TRAIN_SUBSET_RATIO` | 训练集比例；消融运行器默认 `0.1`，训练器 API 默认 `1.0`。 |
+| `VAL_SUBSET_RATIO` | 验证集比例；消融运行器和训练器 API 均默认 `1.0`。 |
 | `SUBSET_SEED` | 子集与训练随机种子，默认 `44`。 |
 | `MAX_EPOCHS` | 最大 epoch，默认 `80`。 |
 | `CHECKPOINT_DIR` | 实验输出目录；消融运行器会按实验和子集自动隔离。 |
@@ -309,5 +308,7 @@ bash scripts/reproduce_legacy_segm.sh
 
 ## 8. 文档同步记录
 
+- 2026-07-28：将全部消融 wrapper 的默认数据口径改为 10% train / 100%
+  validation；全量实验需显式设置 `TRAIN_SUBSET_RATIO=1.0`。
 - 2026-07-28：建立项目架构、逐文件用途、运行入口和文档同步规则；覆盖当前
   PAFPN、MLP/coarse 双路线、PromptEncoder、DenseBR、消融矩阵和数据子集协议。

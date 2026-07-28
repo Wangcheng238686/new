@@ -19,19 +19,22 @@ are fixed by the wrapper and cannot be inherited from stale environment values.
 
 ## Dataset subsets
 
-Both default to the full official split:
+The ablation wrappers default to 10% of the official training split and the
+complete official validation split:
 
 ```bash
-TRAIN_SUBSET_RATIO=1.0
+TRAIN_SUBSET_RATIO=0.1
 VAL_SUBSET_RATIO=1.0
 ```
 
-Quick comparison example:
+Override both explicitly when a different screening ratio is needed:
 
 ```bash
 TRAIN_SUBSET_RATIO=0.1 VAL_SUBSET_RATIO=0.2 \
   bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
 ```
+
+Use `TRAIN_SUBSET_RATIO=1.0 VAL_SUBSET_RATIO=1.0` for a full-data run.
 
 Subsets are deterministic image-level samples. Train uses `SUBSET_SEED`
 (default 44); validation uses `SUBSET_SEED + 10000`. All ablations therefore see

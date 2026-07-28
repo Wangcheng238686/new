@@ -68,8 +68,11 @@ cd portable_sam2_explicit_coarse
 # 全矩阵 smoke；不会开始训练
 bash scripts/ablations/smoke_all.sh
 
-# 默认使用完整 train/validation；也可以独立抽取确定性子集
-TRAIN_SUBSET_RATIO=0.1 VAL_SUBSET_RATIO=0.2 \
+# 消融默认使用 10% train / 100% validation
+bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
+
+# 比例仍可独立覆盖；全量训练需显式设置 TRAIN_SUBSET_RATIO=1.0
+TRAIN_SUBSET_RATIO=1.0 VAL_SUBSET_RATIO=1.0 \
   bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
 ```
 
