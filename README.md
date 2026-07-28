@@ -83,6 +83,11 @@ bash scripts/infer_whu_checkpoint.sh /path/to/model.pth \
 旧 checkpoint 若没有嵌入 `model_config`，需额外传入
 `--config configs/对应配置.py`。
 
+当前 B0–C5 全部消融路线均支持该推理入口。后续所有影响模型结构、模块开关、
+张量形状或 forward/predict 行为的新参数，都必须由配置解析进 `cfg.model`，确保
+checkpoint 能完整记录并由推理器无歧义重建；训练、数据和运行时参数分别保存在
+`training_args`、`data_config` 和 `runtime_config`。
+
 ## 消融矩阵
 
 消融入口统一放在

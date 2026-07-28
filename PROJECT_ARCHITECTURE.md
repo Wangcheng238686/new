@@ -203,6 +203,38 @@ WHU 默认路径：
 SAM2 Python 包和对应 Base+ 预训练 checkpoint；路径可通过 `--sam2-repo`、
 `--sam2-ckpt` 覆盖。
 
+#### 推理支持范围与参数持久化契约
+
+当前 B0–C5 全部消融路线都支持 checkpoint 驱动推理，包括
+aggregator/PAFPN、MLP/coarse、points、box、dense prompt 和 DenseBR。推理器不按
+实验名称猜测结构，而是读取 checkpoint 中已经解析完成的 `model_config` 构建
+模型，并以 `strict=True` 加载权重。
+
+后续新增参数必须遵守以下归档规则：
+
+| 参数类型 | 必须进入的位置 | 说明 |
+|---|---|---|
+| 影响模型结构、模块开关、张量形状或 forward/predict 行为 | `cfg.model` | 强制要求；checkpoint 中的 `model_config` 是推理重建的唯一模型事实来源。 |
+| 训练优化参数，如学习率、epoch、梯度累积 | `training_args` | 由完整 `vars(args)` 自动保存；若同时影响模型推理行为，也必须进入 `cfg.model`。 |
+| 数据路径、split、图像尺寸、类别映射、预处理 | `data_config` | 供推理器重建测试集；其中会改变模型结构的尺寸还必须同步进入 `cfg.model`。 |
+| SAM2 repo、基础 checkpoint、型号等外部依赖 | `runtime_config` | 记录默认解析值，并允许推理 CLI 显式覆盖。 |
+| 评估阈值、输出或 evaluator 行为 | 推理 CLI 或后续 `inference_config` | 不得通过未记录的临时环境变量改变正式评估口径。 |
+
+禁止只在 shell 环境变量或训练代码局部变量中增加影响模型行为的参数。环境变量可
+作为实验入口，但配置文件必须把它解析进 `cfg.model`，然后才能构建模型和保存
+checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反推实验结构。
+
+每次新增模型参数时必须同时完成：
+
+1. 在相应 MMEngine 配置中给出明确默认值，并写入 `cfg.model`；
+2. 在目标模型类构造函数中接收并校验该参数；
+3. 确认训练保存的 `config_snapshot.model_config` 包含解析后的实际值；
+4. 使用 `--build-only` 对新 checkpoint 做严格 round-trip，要求 missing 和
+   unexpected keys 均为 0；
+5. 若旧 checkpoint 无法兼容，提升 `checkpoint_schema_version` 并提供明确迁移或
+   `--config` 回退策略；
+6. 同步本文档的架构、文件用途、参数和推理支持说明。
+
 ### 4.6 运行脚本：`portable_sam2_explicit_coarse/scripts/`
 
 | 文件 | 用途 |
@@ -361,8 +393,10 @@ bash scripts/reproduce_legacy_segm.sh
 4. 修改数据划分、路径或抽样：更新第 4.3 节；
 5. 修改训练 CLI、checkpoint 或评估协议：更新第 4.4、5 节；
 6. 新增实验 wrapper：更新消融表、命令示例和 `scripts/ablations/README.md`；
-7. 运行与改动风险相称的 smoke，并确保文档描述的是实际解析后的行为；
-8. 将本文档与对应代码放进同一个 Git 提交。
+7. 新增影响模型或推理行为的参数：强制并入 `cfg.model`，并执行 checkpoint
+   round-trip；
+8. 运行与改动风险相称的 smoke，并确保文档描述的是实际解析后的行为；
+9. 将本文档与对应代码放进同一个 Git 提交。
 
 如果代码与文档冲突，以经过检查的代码行为为依据修正文档，不要保留未经验证的
 计划性描述。
@@ -373,6 +407,9 @@ bash scripts/reproduce_legacy_segm.sh
 
 ## 8. 文档同步记录
 
+- 2026-07-28：明确 checkpoint 推理覆盖全部 B0–C5；建立未来参数持久化契约，
+  要求所有影响模型结构或 forward/predict 行为的新参数强制进入 `cfg.model`，
+  并通过严格 checkpoint round-trip。
 - 2026-07-28：新增自描述 checkpoint schema 和 checkpoint 驱动推理入口；支持
   validation/test/custom COCO split、严格 model/EMA 权重加载、bbox/segm COCO
   评估以及 predictions/metrics/manifest 输出。
