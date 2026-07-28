@@ -12,6 +12,9 @@
 topology-token 路线已从主代码删除。`legacy_baseline/` 是旧项目复现包的冻结
 副本，不参与新主线 import，只用于验证和复现历史基线。
 
+完整的模型接线、目录结构、逐文件用途和参数说明见
+[`PROJECT_ARCHITECTURE.md`](PROJECT_ARCHITECTURE.md)。
+
 ## 历史基线复现
 
 ```bash
