@@ -5,5 +5,5 @@ export RUN_TAG="${RUN_TAG:-c1_aggregator_coarse_points_semanticfix_${SHAPE_CONTE
 export NECK_TYPE="aggregator"
 export PROMPT_ROUTE="coarse"
 export EXPLICIT_PROMPT_MODE="points"
-export DENSEBR_ENABLED=0
+export P2_BOUNDARY_REFINER_ENABLED=0
 exec bash "$(cd "$(dirname "$0")" && pwd)/_run_ablation.sh" "$@"

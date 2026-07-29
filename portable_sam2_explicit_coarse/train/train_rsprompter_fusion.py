@@ -42,6 +42,35 @@ def _mask_to_rle(binary_mask: np.ndarray) -> dict:
     return rle
 
 
+def _masks_to_rles(binary_masks: np.ndarray) -> List[dict]:
+    """Batch-encode N binary masks as JSON-safe COCO RLE records."""
+    from pycocotools import mask as mask_util
+
+    masks = np.asarray(binary_masks, dtype=np.uint8)
+    if masks.ndim == 2:
+        masks = masks[None, ...]
+    if masks.ndim != 3:
+        raise ValueError(f"Expected masks with shape [N,H,W], got {masks.shape}")
+    if len(masks) == 0:
+        return []
+
+    # pycocotools batch encode expects [H,W,N] in Fortran order. Encoding here
+    # lets validation release dense 1024x1024 masks immediately per image.
+    encoded = mask_util.encode(
+        np.asfortranarray(np.moveaxis(masks, 0, -1))
+    )
+    if isinstance(encoded, dict):
+        encoded = [encoded]
+    rles = []
+    for rle in encoded:
+        rle = dict(rle)
+        counts = rle.get("counts")
+        if isinstance(counts, bytes):
+            rle["counts"] = counts.decode("utf-8")
+        rles.append(rle)
+    return rles
+
+
 def _xyxy_to_xywh(bbox: np.ndarray) -> np.ndarray:
     """Convert [x1, y1, x2, y2] to [x, y, w, h]."""
     out = bbox.copy()
@@ -73,16 +102,18 @@ def build_coco_gt_and_dt(
         # GT annotations
         gt_bboxes = gt["bboxes"]
         gt_labels = gt["labels"]
-        gt_masks = gt["masks"]
-
-        if hasattr(gt_masks, "masks"):
-            gt_masks = gt_masks.masks
+        gt_rles = gt.get("rles")
+        gt_masks = gt.get("masks")
+        if gt_rles is None:
+            if hasattr(gt_masks, "masks"):
+                gt_masks = gt_masks.masks
+            gt_rles = _masks_to_rles(gt_masks)
 
         num_gt = len(gt_labels)
         for i in range(num_gt):
             bbox_xywh = _xyxy_to_xywh(gt_bboxes[i]).tolist()
             area = float(bbox_xywh[2] * bbox_xywh[3])
-            seg_rle = _mask_to_rle(gt_masks[i])
+            seg_rle = gt_rles[i]
             annotations.append(
                 {
                     "id": ann_id,
@@ -104,15 +135,17 @@ def build_coco_gt_and_dt(
                 "predictions; refusing a silent score fallback"
             )
         dt_scores = dt[score_key]
-        dt_masks = dt["masks"]
-
-        if hasattr(dt_masks, "masks"):
-            dt_masks = dt_masks.masks
+        dt_rles = dt.get("rles")
+        dt_masks = dt.get("masks")
+        if dt_rles is None:
+            if hasattr(dt_masks, "masks"):
+                dt_masks = dt_masks.masks
+            dt_rles = _masks_to_rles(dt_masks)
 
         num_dt = len(dt_scores)
         for i in range(num_dt):
             bbox_xywh = _xyxy_to_xywh(dt_bboxes[i]).tolist()
-            seg_rle = _mask_to_rle(dt_masks[i])
+            seg_rle = dt_rles[i]
             predictions.append(
                 {
                     "image_id": img_id,
@@ -255,8 +288,10 @@ def _save_verified_best_checkpoint(
     return True
 
 
-def _extract_instances_numpy(instances, img_shape: Tuple[int, int]) -> dict:
-    """Extract bboxes, labels, scores, masks from InstanceData to numpy."""
+def _extract_instances_numpy(
+    instances, img_shape: Tuple[int, int], encode_masks: bool = False
+) -> dict:
+    """Extract InstanceData, optionally replacing dense masks with COCO RLE."""
     bboxes = instances.bboxes
     if isinstance(bboxes, torch.Tensor):
         bboxes = bboxes.detach().cpu().numpy()
@@ -293,7 +328,18 @@ def _extract_instances_numpy(instances, img_shape: Tuple[int, int]) -> dict:
     if masks is None or len(masks) == 0:
         masks = np.zeros((0, h, w), dtype=np.uint8)
 
-    out = {"bboxes": bboxes, "labels": labels, "masks": masks}
+    out = {"bboxes": bboxes, "labels": labels}
+    if encode_masks:
+        mask_count = len(masks)
+        out["rles"] = _masks_to_rles(masks)
+        out["mask_count"] = mask_count
+        out["mask_fill_sum"] = (
+            float(np.count_nonzero(masks)) / float(max(1, h * w))
+            if mask_count > 0
+            else 0.0
+        )
+    else:
+        out["masks"] = masks
     if scores is not None:
         out["scores"] = scores
     if hasattr(instances, "mask_scores"):
@@ -309,11 +355,15 @@ def _summarize_mask_density(all_dt: List[dict]) -> Tuple[float, float]:
     weighted_fill = 0.0
     total_masks = 0
     for dt in all_dt:
+        if "mask_count" in dt and "mask_fill_sum" in dt:
+            total_masks += int(dt["mask_count"])
+            weighted_fill += float(dt["mask_fill_sum"])
+            continue
         masks = dt.get("masks")
         if masks is None or len(masks) == 0:
             continue
-        masks = masks.astype(np.float32)
-        weighted_fill += float(masks.mean()) * len(masks)
+        pixels_per_mask = int(np.prod(masks.shape[1:]))
+        weighted_fill += float(np.count_nonzero(masks)) / max(1, pixels_per_mask)
         total_masks += len(masks)
     return (
         weighted_fill / max(total_masks, 1),
@@ -426,7 +476,7 @@ def _build_optimizer(
     no_mask_lr_mult: float = 0.1,
     prompt_encoder_lr_mult: float = 0.1,
     shape_prior_lr_mult: float = 1.0,
-    densebr_lr_mult: float = 1.0,
+    p2_boundary_refiner_lr_mult: float = 1.0,
     quality_head_lr_mult: float = 1.0,
     scene_align_lr_mult: float = 2.0,
     weight_decay: float = 0.05,
@@ -441,10 +491,8 @@ def _build_optimizer(
     names_prompt_encoder = []
     params_shape_prior = []
     names_shape_prior = []
-    params_densebr = []
-    names_densebr = []
-    params_densebr_scalar = []
-    names_densebr_scalar = []
+    params_p2_boundary_refiner = []
+    names_p2_boundary_refiner = []
     params_quality_head = []
     names_quality_head = []
     params_bbox_head = []
@@ -491,13 +539,9 @@ def _build_optimizer(
         elif "roi_head.mask_head.prompt_encoder" in match_name:
             params_prompt_encoder.append(param)
             names_prompt_encoder.append(name)
-        elif "roi_head.mask_head.densebr" in match_name:
-            if match_name.endswith(".beta_logit"):
-                params_densebr_scalar.append(param)
-                names_densebr_scalar.append(name)
-            else:
-                params_densebr.append(param)
-                names_densebr.append(name)
+        elif "roi_head.mask_head.p2_boundary_refiner" in match_name:
+            params_p2_boundary_refiner.append(param)
+            names_p2_boundary_refiner.append(name)
         elif (
             "roi_head.mask_head.shape_injector" in match_name
             or "roi_head.mask_head.shape_prompt_scale" in match_name
@@ -565,25 +609,24 @@ def _build_optimizer(
             }
         )
         audit_groups.append(("shape_prior", params_shape_prior, names_shape_prior, lr * shape_prior_lr_mult, weight_decay))
-    if params_densebr:
+    if params_p2_boundary_refiner:
         param_groups.append(
             {
-                "params": params_densebr,
-                "lr": lr * densebr_lr_mult,
-                "name": "densebr",
+                "params": params_p2_boundary_refiner,
+                "lr": lr * p2_boundary_refiner_lr_mult,
+                "weight_decay": weight_decay,
+                "name": "p2_boundary_refiner",
             }
         )
-        audit_groups.append(("densebr", params_densebr, names_densebr, lr * densebr_lr_mult, weight_decay))
-    if params_densebr_scalar:
-        param_groups.append(
-            {
-                "params": params_densebr_scalar,
-                "lr": lr * densebr_lr_mult,
-                "weight_decay": 0.0,
-                "name": "densebr_scalar",
-            }
+        audit_groups.append(
+            (
+                "p2_boundary_refiner",
+                params_p2_boundary_refiner,
+                names_p2_boundary_refiner,
+                lr * p2_boundary_refiner_lr_mult,
+                weight_decay,
+            )
         )
-        audit_groups.append(("densebr_scalar", params_densebr_scalar, names_densebr_scalar, lr * densebr_lr_mult, 0.0))
     if params_quality_head:
         param_groups.append(
             {
@@ -742,28 +785,6 @@ class ExponentialMovingAverage:
                 self.ema_state[key] = source.clone()
 
 
-def _set_densebr_only_train_mode(model: torch.nn.Module) -> None:
-    """Keep the loaded C2 baseline deterministic while training DenseBR."""
-    model_core = model.module if hasattr(model, "module") else model
-    model_core.eval()
-    mask_head = getattr(getattr(model_core, "roi_head", None), "mask_head", None)
-    densebr = getattr(mask_head, "densebr", None)
-    if densebr is None:
-        raise RuntimeError("--train-densebr-only requires an enabled DenseBR module")
-    densebr.train()
-
-
-def _set_densebr_runtime_active(model: torch.nn.Module, active: bool) -> bool:
-    """Enable or bypass DenseBR while preserving one stable model layout."""
-    model_core = model.module if hasattr(model, "module") else model
-    mask_head = getattr(getattr(model_core, "roi_head", None), "mask_head", None)
-    densebr = getattr(mask_head, "densebr", None)
-    if densebr is None:
-        return False
-    mask_head.densebr_runtime_active = bool(active)
-    return True
-
-
 def _get_quality_head(model: torch.nn.Module) -> torch.nn.Module:
     model_core = model.module if hasattr(model, "module") else model
     mask_head = getattr(getattr(model_core, "roi_head", None), "mask_head", None)
@@ -795,7 +816,9 @@ def _log_trainable_state(model: torch.nn.Module):
         "no_mask_embed": getattr(mask_head, "no_mask_embed", None) if mask_head is not None else None,
         "prompt_encoder": getattr(mask_head, "prompt_encoder", None) if mask_head is not None else None,
         "shape_injector": getattr(mask_head, "shape_injector", None) if mask_head is not None else None,
-        "densebr": getattr(mask_head, "densebr", None) if mask_head is not None else None,
+        "p2_boundary_refiner": getattr(
+            mask_head, "p2_boundary_refiner", None
+        ) if mask_head is not None else None,
         "quality_head": _get_quality_head(model_core)
         if mask_head is not None and getattr(mask_head, "quality_head_enabled", False)
         else None,
@@ -913,6 +936,140 @@ def _reduce_dense_residual_monitor(
     return result
 
 
+_P2BR_EPOCH_FIELDS = (
+    "roi_count",
+    "valid_support_count",
+    "rejected_support_count",
+    "search_coverage_sum",
+    "delta_abs_sum",
+    "delta_nonzero_sum",
+    "delta_saturated_sum",
+    "projected_feature_norm_sum",
+    "highpass_feature_norm_sum",
+    "raw_dice_sum",
+    "raw_iou_sum",
+    "refined_dice_sum",
+    "refined_iou_sum",
+    "raw_boundary_tp",
+    "raw_boundary_fp",
+    "raw_boundary_fn",
+    "refined_boundary_tp",
+    "refined_boundary_fp",
+    "refined_boundary_fn",
+    "boundary_loss_local_sum",
+    "boundary_loss_valid_roi_count",
+    "boundary_loss_support_pixels",
+    "boundary_loss_foreground_pixels",
+)
+
+
+def _stat_scalar(stats: Dict[str, Any], key: str) -> Optional[float]:
+    value = stats.get(key)
+    if torch.is_tensor(value):
+        if value.numel() != 1:
+            return None
+        value = float(value.detach().float().item())
+    if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+        return None
+    return float(value)
+
+
+def _accumulate_p2br_epoch_monitor(
+    model: torch.nn.Module, sums: Dict[str, float]
+) -> None:
+    model_core = model.module if hasattr(model, "module") else model
+    getter = getattr(model_core, "get_prompt_debug_stats", None)
+    if getter is None:
+        return
+    stats = getter() or {}
+    roi_count = _stat_scalar(stats, "P2BR/roi_count")
+    if roi_count is None:
+        return
+    direct = {
+        "roi_count": "P2BR/roi_count",
+        "valid_support_count": "P2BR/valid_support_count",
+        "rejected_support_count": "P2BR/rejected_support_count",
+        "search_coverage_sum": "P2BR/search_coverage_sum",
+        "delta_abs_sum": "P2BR/delta_abs_sum",
+        "delta_nonzero_sum": "P2BR/delta_nonzero_sum",
+        "delta_saturated_sum": "P2BR/delta_saturated_sum",
+        "projected_feature_norm_sum": "P2BR/projected_feature_norm_sum",
+        "highpass_feature_norm_sum": "P2BR/highpass_feature_norm_sum",
+        "raw_boundary_tp": "COARSE/raw_boundary_tp",
+        "raw_boundary_fp": "COARSE/raw_boundary_fp",
+        "raw_boundary_fn": "COARSE/raw_boundary_fn",
+        "refined_boundary_tp": "COARSE/refined_boundary_tp",
+        "refined_boundary_fp": "COARSE/refined_boundary_fp",
+        "refined_boundary_fn": "COARSE/refined_boundary_fn",
+        "boundary_loss_local_sum": "COARSE/boundary_loss_local_sum",
+        "boundary_loss_valid_roi_count": "COARSE/loss_valid_roi_count",
+        "boundary_loss_support_pixels": "COARSE/loss_support_pixel_sum",
+        "boundary_loss_foreground_pixels": "COARSE/loss_support_foreground_sum",
+    }
+    for out_key, stat_key in direct.items():
+        value = _stat_scalar(stats, stat_key)
+        if value is not None:
+            sums[out_key] += value
+    for out_key, stat_key in (
+        ("raw_dice_sum", "COARSE/raw_dice_score"),
+        ("raw_iou_sum", "COARSE/raw_iou"),
+        ("refined_dice_sum", "COARSE/refined_dice_score"),
+        ("refined_iou_sum", "COARSE/refined_iou"),
+    ):
+        value = _stat_scalar(stats, stat_key)
+        if value is not None:
+            sums[out_key] += value * roi_count
+
+
+def _reduce_p2br_epoch_monitor(
+    sums: Dict[str, float], device: torch.device, distributed: bool
+) -> Dict[str, float]:
+    packed = torch.tensor(
+        [sums[key] for key in _P2BR_EPOCH_FIELDS],
+        dtype=torch.float64,
+        device=device,
+    )
+    if distributed and dist.is_initialized():
+        dist.all_reduce(packed, op=dist.ReduceOp.SUM)
+    values = {
+        key: float(packed[index].item())
+        for index, key in enumerate(_P2BR_EPOCH_FIELDS)
+    }
+    roi_count = values["roi_count"]
+    if roi_count <= 0:
+        return {}
+    valid_count = max(values["valid_support_count"], 1.0)
+    loss_count = max(values["boundary_loss_valid_roi_count"], 1.0)
+
+    def _boundary_f1(prefix: str) -> float:
+        tp = values[f"{prefix}_boundary_tp"]
+        fp = values[f"{prefix}_boundary_fp"]
+        fn = values[f"{prefix}_boundary_fn"]
+        return (2.0 * tp) / max(2.0 * tp + fp + fn, 1e-12)
+
+    return {
+        "roi_count": roi_count,
+        "valid_support_ratio": values["valid_support_count"] / roi_count,
+        "rejected_support_ratio": values["rejected_support_count"] / roi_count,
+        "search_coverage": values["search_coverage_sum"] / roi_count,
+        "delta_abs": values["delta_abs_sum"] / roi_count,
+        "delta_nonzero_ratio": values["delta_nonzero_sum"] / roi_count,
+        "delta_saturated_ratio": values["delta_saturated_sum"] / roi_count,
+        "projected_feature_norm": values["projected_feature_norm_sum"] / roi_count,
+        "highpass_feature_norm": values["highpass_feature_norm_sum"] / roi_count,
+        "raw_dice": values["raw_dice_sum"] / roi_count,
+        "raw_iou": values["raw_iou_sum"] / roi_count,
+        "refined_dice": values["refined_dice_sum"] / roi_count,
+        "refined_iou": values["refined_iou_sum"] / roi_count,
+        "raw_boundary_f1": _boundary_f1("raw"),
+        "refined_boundary_f1": _boundary_f1("refined"),
+        "boundary_loss_raw": values["boundary_loss_local_sum"] / loss_count,
+        "boundary_support_fg_ratio": values["boundary_loss_foreground_pixels"]
+        / max(values["boundary_loss_support_pixels"], 1.0),
+        "valid_count_for_norm": valid_count,
+    }
+
+
 def _save_checkpoint(
     path: Path,
     model: torch.nn.Module,
@@ -942,6 +1099,9 @@ def _save_checkpoint(
         "best_metrics": best_metrics,
         "history": history,
         "config_snapshot": config_snapshot or {},
+        "architecture_contract": (config_snapshot or {}).get(
+            "architecture_contract", {}
+        ),
     }
     if scaler is not None:
         ckpt["scaler"] = scaler.state_dict()
@@ -959,8 +1119,15 @@ def _load_checkpoint(
     optimizer: Optional[optim.Optimizer] = None,
     scheduler: Optional[optim.lr_scheduler._LRScheduler] = None,
     scaler: Optional[Any] = None,
+    expected_architecture: Optional[Dict] = None,
 ) -> Dict:
     ckpt = torch.load(str(path), map_location="cpu", weights_only=False)
+    if expected_architecture is not None:
+        from rsprompter.architecture_contract import assert_checkpoint_architecture
+
+        assert_checkpoint_architecture(
+            ckpt, expected_architecture, operation="RESUME", allow_cross_arch=False
+        )
     model_to_load = model.module if hasattr(model, "module") else model
     # 审查 3.5：RESUME 续训时模型结构应与当前运行完全一致，默认用 strict=True。
     # 若 ckpt 是旧结构（新增/删除了模块），strict=True 会失败——此时设置
@@ -1000,9 +1167,20 @@ def _load_init_checkpoint(
     path: Path,
     model: torch.nn.Module,
     exclude_prefixes: Tuple[str, ...] = (),
+    expected_architecture: Optional[Dict] = None,
+    allow_cross_arch: bool = False,
 ) -> Dict[str, object]:
     """Load matching tensors for initialization, with explicit legacy migration."""
     ckpt = torch.load(str(path), map_location="cpu", weights_only=False)
+    if expected_architecture is not None:
+        from rsprompter.architecture_contract import assert_checkpoint_architecture
+
+        assert_checkpoint_architecture(
+            ckpt,
+            expected_architecture,
+            operation="INIT_FROM",
+            allow_cross_arch=allow_cross_arch,
+        )
     source_state = ckpt.get("model", ckpt)
     model_to_load = model.module if hasattr(model, "module") else model
     target_state = model_to_load.state_dict()
@@ -1093,6 +1271,47 @@ def _apply_detection_loss_weight(loss_dict: dict, scale: float, device) -> dict:
     return loss_dict
 
 
+def _materialize_p2_boundary_refiner_loss(
+    loss_dict: dict,
+    model: torch.nn.Module,
+    distributed: bool,
+) -> dict:
+    """Convert local ROI sums into a four-rank global per-ROI mean.
+
+    DDP averages gradients across ranks. Multiplying the local sum by
+    ``world_size / global_count`` therefore yields the exact mean over all
+    valid ROIs in the current micro-batch. Gradient accumulation keeps the
+    historical equal-micro-batch contract.
+    """
+    local_sum = loss_dict.pop("_p2br_local_sum", None)
+    local_count = loss_dict.pop("_p2br_valid_count", None)
+    if local_sum is None and local_count is None:
+        return loss_dict
+    if not torch.is_tensor(local_sum) or not torch.is_tensor(local_count):
+        raise TypeError("P2 boundary refiner loss metadata must be tensors")
+    global_count = local_count.detach().float().clone()
+    world_size = 1
+    if distributed and dist.is_initialized():
+        dist.all_reduce(global_count, op=dist.ReduceOp.SUM)
+        world_size = dist.get_world_size()
+
+    model_core = model.module if hasattr(model, "module") else model
+    mask_head = getattr(getattr(model_core, "roi_head", None), "mask_head", None)
+    refiner = getattr(mask_head, "p2_boundary_refiner", None)
+    if refiner is None:
+        raise RuntimeError("received P2 refiner loss metadata without the module")
+    if float(global_count.item()) > 0:
+        normalized = local_sum * (
+            float(world_size) / float(global_count.item())
+        )
+    else:
+        normalized = local_sum * 0.0
+    loss_dict["loss_p2_boundary_refiner"] = (
+        float(refiner.boundary_loss_weight) * normalized
+    )
+    return loss_dict
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="portable_sam_fusion: RSPrompter(SAM) + Drone semantic guidance"
@@ -1109,6 +1328,11 @@ def main():
     )
     parser.add_argument("--resume-from", type=str, default=None)
     parser.add_argument("--init-from", type=str, default=None)
+    parser.add_argument(
+        "--allow-cross-arch-init",
+        action="store_true",
+        help="Explicitly allow INIT_FROM from a different or legacy architecture.",
+    )
     parser.add_argument(
         "--init-exclude-prefixes",
         type=str,
@@ -1175,11 +1399,6 @@ def main():
 
     parser.add_argument("--freeze-bn", action="store_true")
     parser.add_argument(
-        "--train-densebr-only",
-        action="store_true",
-        help="Freeze the loaded baseline and optimize only roi_head.mask_head.densebr.",
-    )
-    parser.add_argument(
         "--train-quality-head-only",
         action="store_true",
         help="Freeze C2 and optimize only the native SAM2 IoU quality head.",
@@ -1193,6 +1412,16 @@ def main():
         help="Validation batch size (legacy WHU1024 baseline default: 1)",
     )
     parser.add_argument("--val-every-n-epochs", type=int, default=1)
+    parser.add_argument(
+        "--compute-val-loss",
+        type=int,
+        choices=[0, 1],
+        default=1,
+        help=(
+            "Whether validation also runs a second loss forward on positive-GT "
+            "batches. COCO prediction/evaluation is unaffected."
+        ),
+    )
     parser.add_argument("--early-stopping-patience", type=int, default=10)
     parser.add_argument("--early-stopping-start-epoch", type=int, default=20)
     parser.add_argument("--early-stopping-min-delta", type=float, default=5e-4)
@@ -1227,13 +1456,7 @@ def main():
     parser.add_argument("--no-mask-lr-mult", type=float, default=1.0)
     parser.add_argument("--prompt-encoder-lr-mult", type=float, default=0.1)
     parser.add_argument("--shape-prior-lr-mult", type=float, default=1.0)
-    parser.add_argument("--densebr-lr-mult", type=float, default=1.0)
-    parser.add_argument(
-        "--densebr-enable-epoch",
-        type=int,
-        default=1,
-        help="1-based epoch that enables DenseBR; earlier epochs use the exact baseline path.",
-    )
+    parser.add_argument("--p2-boundary-refiner-lr-mult", type=float, default=1.0)
     parser.add_argument("--quality-head-lr-mult", type=float, default=1.0)
     parser.add_argument("--scene-align-lr-mult", type=float, default=2.0, help="Learning rate multiplier for scene alignment parameters")
     parser.add_argument("--grad-accum-steps", type=int, default=2)
@@ -1266,10 +1489,6 @@ def main():
                         help="Print depth module diagnostic stats during training")
     parser.add_argument("--depth-debug-stats-interval", type=int, default=50,
                         help="Training iteration interval for depth diagnostic stats")
-    parser.add_argument("--densebr-debug-stats", type=int, choices=[0, 1], default=0,
-                        help="Print DenseBR diagnostic stats during training")
-    parser.add_argument("--densebr-debug-stats-interval", type=int, default=50,
-                        help="Training iteration interval for DenseBR diagnostic stats")
     # UAV 双流 A/B/C/D 消融参数。默认 None 表示尊重 config/env 中的值；
     # shell 脚本传入后会在这里覆盖 cfg, 方便同一份 config 切实验。
     parser.add_argument("--uav-fpn-enabled", type=int, choices=[0, 1], default=None,
@@ -1418,6 +1637,26 @@ def main():
             )
 
     cfg = Config.fromfile(args.config)
+    from rsprompter.architecture_contract import architecture_contract
+
+    resolved_architecture = architecture_contract(cfg.model.to_dict())
+    sam2_checkpoint_path = os.environ.get("SAM2_CKPT", "")
+    sam2_identity = [sam2_checkpoint_path, ""]
+    if is_main and sam2_checkpoint_path:
+        from rsprompter.architecture_contract import file_sha256
+
+        sam2_identity[1] = file_sha256(sam2_checkpoint_path)
+    if distributed and dist.is_initialized():
+        dist.broadcast_object_list(
+            sam2_identity, src=0, group=control_group
+        )
+    if is_main:
+        logger.info(
+            "Architecture contract: id=%s schema=%d fingerprint=%s",
+            resolved_architecture["architecture_id"],
+            resolved_architecture["schema_version"],
+            resolved_architecture["model_fingerprint"],
+        )
 
     # B/C/D 都依赖 ROI retrieval；C 还依赖 SAM2 PromptEncoder 的 masks= 通道。
     # 这里再做一次联动兜底, 避免只改顶层镜像或只改 shell 参数导致半开配置。
@@ -1429,7 +1668,6 @@ def main():
     exclusive_scopes = sum(
         int(flag)
         for flag in (
-            args.train_densebr_only,
             args.train_quality_head_only,
         )
     )
@@ -1437,17 +1675,7 @@ def main():
         raise RuntimeError(
             "Experimental module-only training scopes are mutually exclusive"
         )
-    if args.train_densebr_only:
-        model.requires_grad_(False)
-        mask_head = getattr(getattr(model, "roi_head", None), "mask_head", None)
-        densebr = getattr(mask_head, "densebr", None)
-        if densebr is None:
-            raise RuntimeError("--train-densebr-only requires DENSEBR_ENABLED=1")
-        densebr.requires_grad_(True)
-        _set_densebr_only_train_mode(model)
-        if is_main:
-            logger.info("Training scope: DenseBR only; loaded C2 baseline is frozen in eval mode")
-    elif args.train_quality_head_only:
+    if args.train_quality_head_only:
         model.requires_grad_(False)
         quality_head = _get_quality_head(model)
         quality_head.requires_grad_(True)
@@ -1599,10 +1827,11 @@ def main():
         val_loader = None
     if is_main:
         logger.info(
-            "Validation policy: rank0_only=%d batch_size=%d every_n_epochs=%d",
+            "Validation policy: rank0_only=%d batch_size=%d every_n_epochs=%d compute_loss=%d",
             int(distributed),
             int(args.val_batch_size),
             int(args.val_every_n_epochs),
+            int(args.compute_val_loss),
         )
 
     num_batches_per_epoch = len(train_loader)
@@ -1636,7 +1865,7 @@ def main():
         no_mask_lr_mult=args.no_mask_lr_mult,
         prompt_encoder_lr_mult=args.prompt_encoder_lr_mult,
         shape_prior_lr_mult=args.shape_prior_lr_mult,
-        densebr_lr_mult=args.densebr_lr_mult,
+        p2_boundary_refiner_lr_mult=args.p2_boundary_refiner_lr_mult,
         quality_head_lr_mult=args.quality_head_lr_mult,
         scene_align_lr_mult=args.scene_align_lr_mult,
         weight_decay=args.weight_decay,
@@ -1707,7 +1936,8 @@ def main():
         resolved_mask_head_cfg.get("shape_prior_cfg", {})
     )
     config_snapshot = {
-        "checkpoint_schema_version": 1,
+        "checkpoint_schema_version": 2,
+        "architecture_contract": dict(resolved_architecture),
         "config_path": str(args.config),
         "training_args": dict(vars(args)),
         "data_config": {
@@ -1727,6 +1957,7 @@ def main():
         "runtime_config": {
             "sam2_repo": os.environ.get("SAM2_REPO", ""),
             "sam2_checkpoint": os.environ.get("SAM2_CKPT", ""),
+            "sam2_checkpoint_sha256": sam2_identity[1],
             "sam2_model_size": os.environ.get("SAM2_MODEL_SIZE", ""),
             "ddp_timeout_seconds": _resolve_ddp_timeout_seconds(),
             "ddp_control_backend": "gloo" if control_group is not None else "none",
@@ -1798,27 +2029,10 @@ def main():
         "shape_prior_loss_weight": float(
             resolved_mask_head_cfg.get("shape_prior_loss_weight", 0.0)
         ),
-        "densebr_enabled": os.environ.get("DENSEBR_ENABLED", "0"),
-        "densebr_enable_epoch": int(args.densebr_enable_epoch),
-        "densebr_type": "canonical_prompt_refiner",
-        "densebr_beta_init": os.environ.get("DENSEBR_BETA_INIT", "0.05"),
-        "densebr_beta_max": os.environ.get("DENSEBR_BETA_MAX", "0.20"),
-        "densebr_delta_logit_max": os.environ.get(
-            "DENSEBR_DELTA_LOGIT_MAX", "2.0"
+        "p2_boundary_refiner": dict(
+            resolved_mask_head_cfg.get("p2_boundary_refiner_cfg", {})
         ),
-        "densebr_quality_gate_init": os.environ.get(
-            "DENSEBR_QUALITY_GATE_INIT", "0.50"
-        ),
-        "densebr_roi_channels": os.environ.get("DENSEBR_ROI_CHANNELS", "64"),
-        "densebr_cue_channels": os.environ.get("DENSEBR_CUE_CHANNELS", "32"),
-        "densebr_mid_channels": os.environ.get("DENSEBR_MID_CHANNELS", "64"),
-        "densebr_detach_prompt_cues": os.environ.get(
-            "DENSEBR_DETACH_PROMPT_CUES", "1"
-        ),
-        "train_densebr_only": int(args.train_densebr_only),
         "train_quality_head_only": int(args.train_quality_head_only),
-        "densebr_debug_stats": args.densebr_debug_stats,
-        "densebr_debug_stats_interval": args.densebr_debug_stats_interval,
         "quality_head_enabled": os.environ.get("QUALITY_HEAD_ENABLED", "0"),
         "quality_head_type": os.environ.get("QUALITY_HEAD_TYPE", "native_iou"),
         "quality_head_loss_weight": os.environ.get("QUALITY_HEAD_LOSS_WEIGHT", "1.0"),
@@ -1887,7 +2101,7 @@ def main():
             "no_mask": args.no_mask_lr_mult,
             "prompt_encoder": args.prompt_encoder_lr_mult,
             "shape_prior": args.shape_prior_lr_mult,
-            "densebr": args.densebr_lr_mult,
+            "p2_boundary_refiner": args.p2_boundary_refiner_lr_mult,
             "drone": args.drone_lr_mult,
             "scene_align": args.scene_align_lr_mult,
         },
@@ -1907,7 +2121,6 @@ def main():
     best_bbox_score = 0.0
     best_composite_score = 0.0
     best_early_stopping_score = float("-inf")
-    best_densebr_active_segm_map = 0.0
     early_counter = 0
     early_stopping_metric_history = []
     history = {"epochs": [], "train_losses": [], "val_losses": [], "val_metrics": [], "learning_rates": []}
@@ -1935,7 +2148,11 @@ def main():
             if prefix.strip()
         )
         init_stats = _load_init_checkpoint(
-            Path(args.init_from), model, exclude_prefixes=exclude_prefixes
+            Path(args.init_from),
+            model,
+            exclude_prefixes=exclude_prefixes,
+            expected_architecture=resolved_architecture,
+            allow_cross_arch=args.allow_cross_arch_init,
         )
         if is_main:
             logger.info(
@@ -1956,7 +2173,14 @@ def main():
                 )
 
     if args.resume_from:
-        ckpt = _load_checkpoint(Path(args.resume_from), model, optimizer, scheduler, scaler)
+        ckpt = _load_checkpoint(
+            Path(args.resume_from),
+            model,
+            optimizer,
+            scheduler,
+            scaler,
+            expected_architecture=resolved_architecture,
+        )
         start_epoch = int(ckpt.get("epoch", 0)) + 1
         best = ckpt.get("best_metrics", {}) or {}
         best_val_loss = float(best.get("best_val_loss", best_val_loss))
@@ -1966,9 +2190,6 @@ def main():
         best_composite_score = float(best.get("best_composite_score", best_composite_score))
         best_early_stopping_score = float(
             best.get("best_early_stopping_score", best_early_stopping_score)
-        )
-        best_densebr_active_segm_map = float(
-            best.get("best_densebr_active_segm_map", best_densebr_active_segm_map)
         )
         early_counter = int(best.get("early_counter", early_counter))
         early_stopping_metric_history = list(
@@ -1989,7 +2210,10 @@ def main():
                 # Preserve the resumed run's recorded values while retaining
                 # new schema fields for checkpoints produced by newer code.
                 config_snapshot = {**config_snapshot, **saved_snapshot}
-                config_snapshot["checkpoint_schema_version"] = 1
+                config_snapshot["checkpoint_schema_version"] = 2
+                config_snapshot["architecture_contract"] = dict(
+                    resolved_architecture
+                )
         if is_main:
             logger.info(
                 "Resumed from %s (start_epoch=%d, best_segm_map=%.4f, best_bbox_score=%.4f, best_composite_score=%.4f)",
@@ -2001,31 +2225,20 @@ def main():
             )
 
     nonfinite_batches = 0
+    # Validation order is deterministic within a run. Cache compact GT RLE
+    # records after the first validation instead of rebuilding them every epoch.
+    cached_val_gt_records: Optional[List[dict]] = None
     for epoch in range(start_epoch, args.epochs):
         epoch_number = epoch + 1
         _set_model_current_epoch(model, epoch_number)
         det_loss_weight = _detection_loss_weight(args, epoch_number)
-        densebr_active = epoch_number >= max(1, int(args.densebr_enable_epoch))
-        has_densebr = _set_densebr_runtime_active(model, densebr_active)
-        densebr_delayed = has_densebr and int(args.densebr_enable_epoch) > 1
-        if densebr_delayed and epoch_number == int(args.densebr_enable_epoch):
-            early_counter = 0
-            best_early_stopping_score = float("-inf")
-            early_stopping_metric_history = []
-            if is_main:
-                logger.info(
-                    "DenseBR activated at epoch %d; reset early-stopping state for refinement phase",
-                    epoch_number,
-                )
         if distributed:
             sampler = getattr(train_loader, "sampler", None)
             if isinstance(sampler, DistributedSampler):
                 sampler.set_epoch(epoch)
 
         model.train()
-        if args.train_densebr_only:
-            _set_densebr_only_train_mode(model)
-        elif args.train_quality_head_only:
+        if args.train_quality_head_only:
             _set_quality_head_only_train_mode(model)
         elif args.freeze_bn:
             _set_norm_eval(model)
@@ -2034,6 +2247,7 @@ def main():
         loss_meter = {}
         dense_monitor_sums = {key: 0.0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
         dense_monitor_counts = {key: 0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
+        p2br_monitor_sums = {key: 0.0 for key in _P2BR_EPOCH_FIELDS}
         num_batches = 0
         grad_accum = args.grad_accum_steps
         train_batches_limit = len(train_loader)
@@ -2113,6 +2327,9 @@ def main():
 
             with torch.amp.autocast("cuda", enabled=amp_enabled):
                 loss_dict = model_for_loss.loss(model_inputs, data_samples)
+                loss_dict = _materialize_p2_boundary_refiner_loss(
+                    loss_dict, model, distributed
+                )
                 loss_dict = _apply_detection_loss_weight(
                     loss_dict, det_loss_weight, device
                 )
@@ -2121,14 +2338,14 @@ def main():
                     if "loss" not in k:
                         continue
                     if isinstance(v, torch.Tensor):
-                        if not (args.train_densebr_only or args.train_quality_head_only) or v.requires_grad:
+                        if not args.train_quality_head_only or v.requires_grad:
                             loss_parts.append(v)
                     elif isinstance(v, (list, tuple)):
                         loss_parts.extend(
                             x
                             for x in v
                             if isinstance(x, torch.Tensor)
-                            and (not (args.train_densebr_only or args.train_quality_head_only) or x.requires_grad)
+                            and (not args.train_quality_head_only or x.requires_grad)
                         )
                 loss = sum(loss_parts) if loss_parts else torch.tensor(0.0, device=device)
                 # 审查 3.6 / 问题 10：loss 归一化按当前 batch 所属 accumulation group 的
@@ -2154,6 +2371,7 @@ def main():
             _accumulate_dense_residual_monitor(
                 model, dense_monitor_sums, dense_monitor_counts
             )
+            _accumulate_p2br_epoch_monitor(model, p2br_monitor_sums)
 
             finite_flag = torch.isfinite(loss).to(dtype=torch.int32)
             if distributed and dist.is_initialized():
@@ -2165,7 +2383,7 @@ def main():
                         name
                         for name, value in loss_dict.items()
                         if isinstance(value, torch.Tensor)
-                        and (not (args.train_densebr_only or args.train_quality_head_only) or value.requires_grad)
+                        and (not args.train_quality_head_only or value.requires_grad)
                         and not torch.isfinite(value).all()
                     ]
                     logger.error(
@@ -2204,11 +2422,6 @@ def main():
                         and args.depth_debug_stats_interval > 0
                         and global_step % args.depth_debug_stats_interval == 0
                     )
-                    or (
-                        args.densebr_debug_stats
-                        and args.densebr_debug_stats_interval > 0
-                        and global_step % args.densebr_debug_stats_interval == 0
-                    )
                 )
             ):
                 enabled_prefixes = set()
@@ -2230,14 +2443,6 @@ def main():
                     and global_step % args.depth_debug_stats_interval == 0
                 ):
                     enabled_prefixes.add("DEPTH")
-                if (
-                    args.densebr_debug_stats
-                    and args.densebr_debug_stats_interval > 0
-                    and global_step % args.densebr_debug_stats_interval == 0
-                ):
-                    enabled_prefixes.update(
-                        {"DENSEBR", "DENSEBR_PROMPT", "DENSEBR_FEEDBACK"}
-                    )
                 _log_uav_debug_stats(model, epoch, global_step, enabled_prefixes)
             scaler.scale(loss_for_backward).backward()
 
@@ -2277,6 +2482,9 @@ def main():
             device=device,
             distributed=distributed,
         )
+        p2br_monitor_epoch = _reduce_p2br_epoch_monitor(
+            p2br_monitor_sums, device=device, distributed=distributed
+        )
 
         if is_main:
             loss_str = []
@@ -2296,6 +2504,34 @@ def main():
                     dense_monitor_epoch.get("DENSE/source_delta_ratio", float("nan")),
                     dense_monitor_epoch.get("DENSE/applied_delta_ratio", float("nan")),
                 )
+            if p2br_monitor_epoch:
+                logger.info(
+                    "Epoch %d P2 boundary refiner: raw_dice=%.4f refined_dice=%.4f "
+                    "raw_iou=%.4f refined_iou=%.4f raw_boundary_f1=%.4f "
+                    "refined_boundary_f1=%.4f",
+                    epoch_number,
+                    p2br_monitor_epoch["raw_dice"],
+                    p2br_monitor_epoch["refined_dice"],
+                    p2br_monitor_epoch["raw_iou"],
+                    p2br_monitor_epoch["refined_iou"],
+                    p2br_monitor_epoch["raw_boundary_f1"],
+                    p2br_monitor_epoch["refined_boundary_f1"],
+                )
+                logger.info(
+                    "Epoch %d P2 boundary support: valid=%.2f%% rejected=%.2f%% "
+                    "coverage=%.4f delta_abs=%.6f nonzero=%.2f%% saturated=%.2f%% "
+                    "p2_norm=%.4f highpass_norm=%.4f support_fg=%.2f%%",
+                    epoch_number,
+                    100.0 * p2br_monitor_epoch["valid_support_ratio"],
+                    100.0 * p2br_monitor_epoch["rejected_support_ratio"],
+                    p2br_monitor_epoch["search_coverage"],
+                    p2br_monitor_epoch["delta_abs"],
+                    100.0 * p2br_monitor_epoch["delta_nonzero_ratio"],
+                    100.0 * p2br_monitor_epoch["delta_saturated_ratio"],
+                    p2br_monitor_epoch["projected_feature_norm"],
+                    p2br_monitor_epoch["highpass_feature_norm"],
+                    100.0 * p2br_monitor_epoch["boundary_support_fg_ratio"],
+                )
             averaged_components = {
                 key: value / max(1, num_batches) for key, value in loss_meter.items()
             }
@@ -2305,14 +2541,22 @@ def main():
             )
             final_mask_component = float(averaged_components.get("loss_mask", 0.0))
             shape_component = float(averaged_components.get("loss_shape_prior", 0.0))
-            component_total = det_component + final_mask_component + shape_component
+            refiner_component = float(
+                averaged_components.get("loss_p2_boundary_refiner", 0.0)
+            )
+            component_total = (
+                det_component + final_mask_component + shape_component
+                + refiner_component
+            )
             if component_total > 0:
                 logger.info(
-                    "Epoch %d primary loss shares: det=%.2f%% final_mask=%.2f%% shape=%.2f%%",
+                    "Epoch %d primary loss shares: det=%.2f%% final_mask=%.2f%% "
+                    "shape=%.2f%% p2_boundary=%.2f%%",
                     epoch_number,
                     100.0 * det_component / component_total,
                     100.0 * final_mask_component / component_total,
                     100.0 * shape_component / component_total,
+                    100.0 * refiner_component / component_total,
                 )
             logger.info(
                 "Epoch %d schedule: det_loss_weight=%.3f early_stop_start=%d min_delta=%.4g",
@@ -2343,7 +2587,10 @@ def main():
             if args.freeze_bn:
                 _set_norm_eval(model)
 
-            all_gt: List[dict] = []
+            collect_gt_records = cached_val_gt_records is None
+            all_gt: List[dict] = (
+                [] if collect_gt_records else cached_val_gt_records
+            )
             all_dt: List[dict] = []
             all_img_metas: List[dict] = []
             total_val_loss = 0.0
@@ -2412,17 +2659,20 @@ def main():
                         ds.gt_instances = gt_instances
                         data_samples.append(ds.to(device))
 
-                    # Match the historical baseline: loss requires positive
-                    # GT, but GT-empty images still participate in COCO
-                    # evaluation so their false positives are counted.
+                    # Optional validation loss is a second model forward. Public
+                    # ablation runners disable it for fast point screening; all
+                    # images still participate in prediction and COCO evaluation.
                     val_batch_has_valid_gt = False
-                    for ds in data_samples:
-                        labels = getattr(ds.gt_instances, "labels", torch.tensor([]))
-                        if labels.numel() > 0 and (labels >= 0).any():
-                            val_batch_has_valid_gt = True
-                            break
-                    if not val_batch_has_valid_gt:
-                        skipped_no_gt_val_loss_batches += 1
+                    if args.compute_val_loss:
+                        for ds in data_samples:
+                            labels = getattr(
+                                ds.gt_instances, "labels", torch.tensor([])
+                            )
+                            if labels.numel() > 0 and (labels >= 0).any():
+                                val_batch_has_valid_gt = True
+                                break
+                        if not val_batch_has_valid_gt:
+                            skipped_no_gt_val_loss_batches += 1
 
                     # Synchronize data preprocessing for both images and ground truth
                     processed = data_preprocessor(
@@ -2436,7 +2686,7 @@ def main():
                     model_for_eval = model.module if hasattr(model, "module") else model
 
                     # ---- Compute loss ----
-                    if val_batch_has_valid_gt:
+                    if args.compute_val_loss and val_batch_has_valid_gt:
                         loss_dict = model_for_eval.loss(model_inputs, data_samples)
                         loss_dict = _apply_detection_loss_weight(
                             loss_dict, det_loss_weight, device
@@ -2468,18 +2718,23 @@ def main():
                         img_shape = meta["img_shape"]
 
                         # GT - from data_samples
-                        gt_inst = data_samples[j].gt_instances
-                        gt_np = _extract_instances_numpy(gt_inst, img_shape)
-                        all_gt.append(gt_np)
+                        if collect_gt_records:
+                            gt_inst = data_samples[j].gt_instances
+                            gt_np = _extract_instances_numpy(
+                                gt_inst, img_shape, encode_masks=True
+                            )
+                            all_gt.append(gt_np)
 
                         # Predictions - from output.pred_instances (InstanceData)
                         pred_inst = output.pred_instances if hasattr(output, "pred_instances") else output
-                        pred_np = _extract_instances_numpy(pred_inst, img_shape)
+                        pred_np = _extract_instances_numpy(
+                            pred_inst, img_shape, encode_masks=True
+                        )
                         all_dt.append(pred_np)
 
                         all_img_metas.append(meta)
 
-            if skipped_no_gt_val_loss_batches > 0:
+            if args.compute_val_loss and skipped_no_gt_val_loss_batches > 0:
                 logger.warning(
                     (
                         "Epoch %d skipped val loss on batches with no valid GT: "
@@ -2494,7 +2749,23 @@ def main():
                     / max(1, seen_val_batches),
                 )
 
-            val_loss = total_val_loss / max(1, val_batches)
+            val_loss = (
+                total_val_loss / max(1, val_batches)
+                if args.compute_val_loss
+                else None
+            )
+
+            if collect_gt_records:
+                cached_val_gt_records = all_gt
+                logger.info(
+                    "Cached validation GT as RLE records: images=%d",
+                    len(cached_val_gt_records),
+                )
+            elif len(all_gt) != len(all_dt):
+                raise RuntimeError(
+                    "Cached validation GT count no longer matches predictions: "
+                    f"GT={len(all_gt)} DT={len(all_dt)}"
+                )
 
             # ---- COCO-style evaluation ----
             val_metrics = {}
@@ -2575,7 +2846,6 @@ def main():
             is_best = False
             is_bbox_best = False
             is_composite_best = False
-            is_densebr_active_best = False
             current_segm_map = 0.0
             current_bbox_score = None
             current_composite_score = None
@@ -2586,13 +2856,6 @@ def main():
                     is_best = True
                     if is_main:
                         logger.info(f"New best segm/mAP: {best_segm_map:.4f}")
-                if densebr_delayed and densebr_active and current_segm_map > best_densebr_active_segm_map:
-                    best_densebr_active_segm_map = current_segm_map
-                    is_densebr_active_best = True
-                    logger.info(
-                        "New best DenseBR-active segm/mAP: %.4f",
-                        best_densebr_active_segm_map,
-                    )
 
             if val_metrics is not None and save_bbox_best_metric:
                 current_bbox_score = _metric_value(val_metrics, save_bbox_best_metric)
@@ -2616,7 +2879,7 @@ def main():
                     )
 
             current_early_stopping_score = None
-            if val_metrics is not None and (not densebr_delayed or densebr_active):
+            if val_metrics is not None:
                 current_early_stopping_score = _metric_expression_value(
                     val_metrics, early_stopping_metric_spec
                 )
@@ -2688,7 +2951,6 @@ def main():
                 "best_composite_score": best_composite_score,
                 "best_composite_metric": composite_metric_spec,
                 "best_early_stopping_score": best_early_stopping_score,
-                "best_densebr_active_segm_map": best_densebr_active_segm_map,
                 "early_stopping_metric": early_stopping_metric_spec,
                 "early_counter": int(early_counter),
                 "early_stopping_start_epoch": int(args.early_stopping_start_epoch),
@@ -2722,22 +2984,6 @@ def main():
                     ema_state=ema_state_to_save,
                 )
 
-            if is_densebr_active_best:
-                _save_verified_best_checkpoint(
-                    checkpoint_dir,
-                    "best_densebr_active_model",
-                    "segm/mAP",
-                    best_densebr_active_segm_map,
-                    epoch,
-                    model,
-                    optimizer,
-                    scheduler,
-                    best_metrics,
-                    history,
-                    config_snapshot,
-                    scaler,
-                    ema_state=ema_state_to_save,
-                )
 
             if is_bbox_best and current_bbox_score is not None:
                 _save_verified_best_checkpoint(
@@ -2812,9 +3058,10 @@ def main():
                 ema.restore(model)
                 ema_applied_for_eval = False
 
-            # Logging
-            if val_loss is not None:
-                lr_str = " ".join([f"{k}={v:.2e}" for k, v in lr_groups.items()])
+            # Logging: metric evaluation and early stopping do not depend on
+            # whether the optional validation-loss forward is enabled.
+            lr_str = " ".join([f"{k}={v:.2e}" for k, v in lr_groups.items()])
+            if val_metrics is not None:
                 segm_info = f" segm/mAP={current_segm_map:.4f}" if current_segm_map > 0 else ""
                 bbox_info = (
                     f" {save_bbox_best_metric}={current_bbox_score:.4f}"
@@ -2826,12 +3073,15 @@ def main():
                     if current_composite_score is not None
                     else ""
                 )
+                val_info = (
+                    f"{val_loss:.6f}" if val_loss is not None else "disabled"
+                )
                 logger.info(
-                    "Epoch %d/%d | train=%.6f val=%.6f%s%s%s | best_segm=%.4f best_bbox=%.4f best_comp=%.4f | %s",
+                    "Epoch %d/%d | train=%.6f val=%s%s%s%s | best_segm=%.4f best_bbox=%.4f best_comp=%.4f | %s",
                     epoch + 1,
                     args.epochs,
                     avg_loss,
-                    val_loss,
+                    val_info,
                     segm_info,
                     bbox_info,
                     composite_info,
@@ -2840,21 +3090,7 @@ def main():
                     best_composite_score,
                     lr_str,
                 )
-                if (
-                    (not densebr_delayed or densebr_active)
-                    and epoch_number >= int(args.early_stopping_start_epoch)
-                    and args.early_stopping_patience > 0
-                    and early_counter >= int(
-                    args.early_stopping_patience
-                    )
-                ):
-                    logger.info(
-                        "Early stopping triggered (patience=%d)",
-                        int(args.early_stopping_patience),
-                    )
-                    stop_training = True
             else:
-                lr_str = " ".join([f"{k}={v:.2e}" for k, v in lr_groups.items()])
                 logger.info(
                     "Epoch %d/%d | train=%.6f | %s",
                     epoch + 1,
@@ -2862,6 +3098,18 @@ def main():
                     avg_loss,
                     lr_str,
                 )
+
+            if (
+                current_early_stopping_score is not None
+                and epoch_number >= int(args.early_stopping_start_epoch)
+                and args.early_stopping_patience > 0
+                and early_counter >= int(args.early_stopping_patience)
+            ):
+                logger.info(
+                    "Early stopping triggered (patience=%d)",
+                    int(args.early_stopping_patience),
+                )
+                stop_training = True
 
         # Rank 0 decides whether to stop after its rank-0-only validation. The
         # CPU/Gloo broadcast doubles as the epoch boundary: non-main ranks wait

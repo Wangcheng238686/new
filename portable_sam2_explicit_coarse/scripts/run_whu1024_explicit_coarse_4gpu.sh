@@ -3,34 +3,36 @@ set -Eeuo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "${PROJECT_ROOT}"
+# shellcheck source=load_environment.sh
+source "${PROJECT_ROOT}/scripts/load_environment.sh"
 
 export SAM2_MODEL_SIZE=base_plus
-export SAM2_REPO="${SAM2_REPO:-$(cd "${PROJECT_ROOT}/../sam2" && pwd)}"
-export SAM2_CKPT="${SAM2_CKPT:-/data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt}"
-export WHU1024_DATA_ROOT="${WHU1024_DATA_ROOT:-/data/wangcheng/dataset/WHU}"
 export MAX_EPOCHS="${MAX_EPOCHS:-80}"
 export EXPLICIT_PROMPT_MODE="${EXPLICIT_PROMPT_MODE:-points_box_dense}"
-export DENSEBR_ENABLED="${DENSEBR_ENABLED:-0}"
-export TRAIN_SUBSET_RATIO="${TRAIN_SUBSET_RATIO:-1.0}"
+export P2_BOUNDARY_REFINER_ENABLED="${P2_BOUNDARY_REFINER_ENABLED:-0}"
+export TRAIN_SUBSET_RATIO="${TRAIN_SUBSET_RATIO:-0.2}"
 export VAL_SUBSET_RATIO="${VAL_SUBSET_RATIO:-1.0}"
-export CHECKPOINT_DIR="${CHECKPOINT_DIR:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/${EXPLICIT_PROMPT_MODE}_densebr${DENSEBR_ENABLED}_semanticfix_${SHAPE_CONTEXT_FUSION:-roi_only}}"
-export RUN_TAG="${RUN_TAG:-explicit_${EXPLICIT_PROMPT_MODE}_densebr${DENSEBR_ENABLED}_semanticfix_${SHAPE_CONTEXT_FUSION:-roi_only}}"
+export CHECKPOINT_DIR="${CHECKPOINT_DIR:-${PORTABLE_SAM2_CHECKPOINT_ROOT}/${EXPLICIT_PROMPT_MODE}_p2br${P2_BOUNDARY_REFINER_ENABLED}}"
+export RUN_TAG="${RUN_TAG:-explicit_${EXPLICIT_PROMPT_MODE}_p2br${P2_BOUNDARY_REFINER_ENABLED}}"
 
-case "${EXPLICIT_PROMPT_MODE}:${DENSEBR_ENABLED}" in
-  points:0)
+case "${EXPLICIT_PROMPT_MODE}:${P2_BOUNDARY_REFINER_ENABLED}:${SAM_IMAGE_EMBED_STRIDE:-32}" in
+  points:0:32)
     WRAPPER="scripts/ablations/c2_pafpn_coarse_points.sh"
     ;;
-  points_box:0)
+  points_box:0:32)
     WRAPPER="scripts/ablations/c3_pafpn_coarse_points_box.sh"
     ;;
-  points_box_dense:0)
+  points_box_dense:0:32)
     WRAPPER="scripts/ablations/c4_pafpn_coarse_points_box_dense.sh"
     ;;
-  points_box_dense:1)
-    WRAPPER="scripts/ablations/c5_pafpn_coarse_densebr.sh"
+  points_box_dense:0:16)
+    WRAPPER="scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh"
+    ;;
+  points_box_dense:1:16)
+    WRAPPER="scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh"
     ;;
   *)
-    echo "Unsupported EXPLICIT_PROMPT_MODE/DENSEBR_ENABLED combination: ${EXPLICIT_PROMPT_MODE}/${DENSEBR_ENABLED}" >&2
+    echo "Unsupported prompt/refiner/stride combination: ${EXPLICIT_PROMPT_MODE}/${P2_BOUNDARY_REFINER_ENABLED}/${SAM_IMAGE_EMBED_STRIDE:-32}" >&2
     exit 2
     ;;
 esac

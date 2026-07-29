@@ -19,7 +19,8 @@
 - `legacy_baseline/`：旧项目冻结复现包，只用于历史基线复现，不被新主线 import。
 
 新主线只保留已经选定的 PAFPN、显式 coarse mask、原生 PromptEncoder 加载和
-DenseBR。IIMR、多轮 mask memory、topology token、SABL refined-box 依赖等不属于
+实验性的 P2BoundaryRefiner。旧 DenseBR 已从当前代码删除；IIMR、多轮 mask
+memory、topology token、SABL refined-box 依赖等不属于
 新主线。
 
 历史基线与新主线必须使用不同的输出目录，不能覆盖历史 checkpoint。
@@ -42,9 +43,9 @@ flowchart LR
     F --> G
     G --> H{"Prompt 路线"}
     H -->|B0/B1/M0/M1| I["旧 point_emb MLP<br/>5-token route"]
-    H -->|C1-C5| J["ShapePriorInjector<br/>ROI-local coarse logits"]
+    H -->|C1-C5-v2| J["ShapePriorInjector<br/>ROI-local raw coarse logits"]
     J --> K["ShapePointMiner<br/>2P2N stop-gradient"]
-    J --> L["可选 DenseBR<br/>修正 coarse logits"]
+    J --> L["可选 P2BoundaryRefiner<br/>P2 高频边界残差"]
     K --> M["冻结的 SAM2 PromptEncoder"]
     L --> N["可选 box / dense canvas"]
     N --> M
@@ -72,7 +73,7 @@ features 自动对应256×256和128×128，MaskDecoder 原生输出为256×256�
   MaskDecoder image embedding插值（B0/B1/M0/M1为32×32，R0为64×64）；
 - 不构造 `PromptEncoder`；
 - 不构造 `ShapePriorInjector`；
-- 不构造 DenseBR。
+- 不构造 P2BoundaryRefiner。
 
 B0/B1 保持历史 ROI-local final-mask target 与 bbox paste；M0/M1 复用完全相同的
 MLP、legacy positional embedding、zero-init trainable no-mask embedding 和训练超参，
@@ -84,13 +85,13 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 - 不构造旧 `point_emb` MLP；
 - 由 `ShapePriorInjector` 产生 ROI-local coarse logits；
 - 从 coarse logits 挖掘 2 个正点和 2 个负点；
-- 按实验配置增加 box token、dense mask prompt 和 DenseBR；
+- 按实验配置增加 box token、dense mask prompt 和 P2BoundaryRefiner；
 - 使用相同型号 SAM2 checkpoint 加载并冻结原生 PromptEncoder。
 - 默认 `fusion_type="roi_only"`，RoI feature 直接进入 small coarse decoder，
   不构造全图 context、box encoding、cross-attention 或 FiLM gamma/beta 参数；
   `gated_spatial_film` 仅保留为后续显式消融。
 
-### 2.2 coarse 与 DenseBR 接线
+### 2.2 coarse 与 P2BoundaryRefiner 接线
 
 - coarse logits 默认大小为 `64×64`，坐标系是 ROI-local；
 - 2P2N 挖掘对 coarse logits 使用 stop-gradient；默认按置信度、前景拓扑和点间距
@@ -114,10 +115,21 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
   cross-attention 和 gamma/beta heads。显式设置
   `SHAPE_CONTEXT_FUSION=gated_spatial_film` 时才构造这些模块；此时 global context
   固定二维8×8池化为64 tokens，并关闭未使用的 attention weights；
-- DenseBR 位于 PromptEncoder 之前，输入和输出都在 ROI-local logit 空间；
-- 开启 DenseBR 时，其输出是 coarse loss、2P2N 和 dense canvas 的统一来源；
+- `P2BoundaryRefiner` 仅在官方 stride-16 的 C5-v2 启用。它对完整 P2
+  `detach()` 后做 `1×1+GN+GELU` 投影，再用与 prompt 完全相同的 `[N,5]` RoI
+  进行 aligned avg RoIAlign 到 `32×32`；原 coarse 概率、不确定度和 raw-only
+  搜索带作为额外 cue；
+- forward 搜索带仅由 `sigmoid(raw.detach())` 产生：3×3 replicate 平滑、阈值
+  `0.5`、边界膨胀半径 `4`。覆盖超过 ROI 的 50% 时整 ROI 残差关闭；GT 只参与
+  auxiliary boundary loss support，绝不控制 forward；
+- 残差为 `0.20 * 2.0 * tanh(.)`，因此逐像素绝对上界为 `0.4`；末端 `1×1`
+  零初始化，使 C5-v2 初始输出与 R1-C4 严格恒等；
+- raw coarse 继续承担 `0.10*(BCE+Dice)`；refined coarse 是 2P2N 和 dense canvas
+  的唯一来源。新增 boundary BCE 权重 `0.05`，在每个 microbatch 上按全部 DDP rank 的有效
+  ROI 全局均值归一化；该 auxiliary 使用 `raw.detach()+delta`，而最终 mask 路径
+  使用 `raw+delta`，因此主 loss 同时训练 coarse head 和 refiner，P2 不接收该分支梯度；
 - 冻结 PromptEncoder 参数时不使用 `torch.no_grad()`，最终 mask loss 仍能回传到
-  coarse head 和 DenseBR。
+  coarse head 和 P2BoundaryRefiner。
 - B0/B1 为复现历史结果，继续通过 `mask_target()` 使用 ROI-local target，并在
   validation/inference 中按 bbox paste。M0/M1 与 C1–C5 的 SAM2 decoder 输出保留原生
   full-image 网格：训练直接对齐整图 GT，validation/inference 只 resize 到目标
@@ -134,6 +146,7 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 |---|---|
 | `README.md` | 项目概览、基线复现和新主线快速入口。 |
 | `PROJECT_ARCHITECTURE.md` | 本文档；架构、逐文件说明和维护契约的事实来源。 |
+| `C5_V2_METHOD.md` | C5-v2 论文方法设计文档；整理完整架构、张量数据流、ECPG/P2-BRR、损失与制图说明。 |
 | `MIGRATION_MANIFEST.md` | 记录两个参考项目、选取内容、排除内容和复现规则。 |
 | `.gitignore` | 顶层 Git 忽略规则。 |
 | `scripts/verify_legacy_baseline.sh` | 校验冻结基线文件和 SHA256 完整性。 |
@@ -150,9 +163,10 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 | 文件 | 用途 |
 |---|---|
 | `_sam2_registry.py` | 将 SAM2 型号映射到 checkpoint、Hydra YAML 和 neck 通道；解析 `SAM2_MODEL_SIZE`、`SAM2_CKPT`、`SAM2_REPO`。 |
+| `environment.sh` | 全部 shell 入口共用的机器环境配置；集中定义 Python、SAM2/权重、WHU 数据、输出根目录、临时目录及默认 GPU/batch。迁移机器时只修改此文件。 |
 | `rsprompter_anchor_satS_v11_sam2_large_full.py` | 继承自旧项目的完整 MMEngine 基础配置，定义 detector、RPN、RoI head、优化相关默认值。 |
 | `whu1024_baseplus_clean.py` | WHU-1024 / SAM2 Base+ 的干净桥接基线；通过 `NECK_TYPE` 切换 aggregator/PAFPN，默认使用旧 MLP prompt 路线。 |
-| `whu1024_baseplus_explicit_coarse.py` | 显式 coarse 主配置；通过环境变量选择 points、points+box、points+box+dense 和 DenseBR。 |
+| `whu1024_baseplus_explicit_coarse.py` | 显式 coarse 主配置；选择 points、points+box、points+box+dense，并解析可选 P2BoundaryRefiner。 |
 
 配置继承关系：
 
@@ -172,7 +186,8 @@ rsprompter_anchor_satS_v11_sam2_large_full.py
 | `shape_prior.py` | `ShapePriorInjector`、小型 coarse mask decoder、RoI box encoding 和 `ShapePointMiner`。 |
 | `coarse_mask_loss.py` | coarse mask 的 BCE、Dice、boundary、distance 组合损失及权重调度。 |
 | `dense_prompt_utils.py` | coarse logit 变换，以及 ROI-local mask 向 full-image PromptEncoder canvas 的粘贴。 |
-| `densebr.py` | ROI-local Dense Boundary Refiner；使用图像/ROI/prompt cue 产生受限残差。 |
+| `p2_boundary_refiner.py` | C5-v2 的 P2 高频边界残差模块；实现 raw-only forward support、受限残差和 boundary auxiliary loss。 |
+| `architecture_contract.py` | 从完整解析后的 `cfg.model` 派生架构 ID、schema-v2 SHA256 指纹，并校验 INIT/RESUME。 |
 | `ckpt_utils.py` | SAM2 子模块 checkpoint 的严格加载、key 过滤和主进程日志。 |
 
 关键类的定位：
@@ -183,7 +198,7 @@ rsprompter_anchor_satS_v11_sam2_large_full.py
 - `RSPrompterAnchorMaskHeadSAM2`：决定走 MLP 还是显式 coarse；
 - `ShapePriorInjector`：产生 coarse logits；
 - `ShapePointMiner`：从 coarse logits 产生 2P2N；
-- `DenseBR`：在 PromptEncoder 前细化 coarse logits。
+- `P2BoundaryRefiner`：在 PromptEncoder 前只修正 raw coarse 的局部边界。
 
 ### 4.3 数据：`portable_sam2_explicit_coarse/data/`
 
@@ -210,7 +225,7 @@ WHU 默认路径：
 `SUBSET_SEED`，验证使用 `SUBSET_SEED + 10000`。
 
 训练数据口径与 WHU1024 历史基线一致：无有效 GT 的训练 batch 仍进入 detector
-loss，不做 rank-local 跳过。四卡的 `DistributedSampler` shard 可能包含不同数量的
+loss，不做 rank-local 跳过。不同 DDP rank 的 `DistributedSampler` shard 可能包含不同数量的
 空标注图像，因此任何只在单个 rank 生效的提前 `continue` 都会破坏 DDP collective
 顺序；训练主循环必须保证所有 rank 每个 iteration 经过相同的 finite-check 和梯度
 同步路径。
@@ -218,11 +233,20 @@ loss，不做 rank-local 跳过。四卡的 `DistributedSampler` shard 可能包
 验证执行契约与 WHU1024 历史基线一致：
 
 - validation batch size 默认固定为 `1`；
-- 四卡 DDP 时只有全局 rank 0 顺序遍历完整 validation，其他 rank 在独立的
+- DDP 时只有全局 rank 0 顺序遍历完整 validation，其他 rank 在独立的
   CPU/Gloo epoch-control broadcast 等待，不重复累计全分辨率预测 mask，也不让
   长时间 COCO 评估占住 NCCL collective；
-- `VAL_EVERY_N_EPOCHS` 决定验证周期；
-- 无有效 GT 的图像不计算 validation loss，但仍进入 COCO 评估以计入假阳性；
+- `VAL_EVERY_N_EPOCHS` 决定验证周期，公共消融入口保持默认 `1`，即每个 epoch
+  都在 100% validation 上执行预测和 COCO bbox/segm 评估；
+- 点筛公共入口默认 `COMPUTE_VAL_LOSS=0`，省去同一 validation batch 上额外的
+  `model.loss(...)` 前向；这只令日志中的 `val=disabled`，不关闭预测、COCO 指标、
+  best checkpoint 或 early stopping。训练器直接调用仍默认计算 validation loss，
+  可用 `COMPUTE_VAL_LOSS=1` 恢复；
+- validation 预测的 dense mask 在每张图完成后立即批量编码为 COCO RLE 并释放；
+  mask 填充率在编码时累计，不再在 epoch 末将全部 mask 转成 float32 扫描。首轮
+  validation 的 GT 同样编码为 RLE，并在后续 epoch 按确定性顺序复用；
+- 启用 validation loss 时，无有效 GT 的图像只跳过 loss，但仍进入 COCO 评估以
+  计入假阳性；
 - `segm_score_mode` 是训练 validation 与 checkpoint 推理共用、随 `cfg.model`
   保存的排序契约；当前全部消融默认 `detector`，因此 bbox/segm 都使用 detector
   score 并共享同一 COCO detection 对象；显式 `mask_quality` 时只为 segm 构造
@@ -251,10 +275,16 @@ loss，不做 rank-local 跳过。四卡的 `DistributedSampler` shard 可能包
 - `--resume-from`：恢复模型、优化器、epoch 等完整训练状态；
 - `--max-train-batches`、`--max-val-batches`：快速 smoke；
 - `--val-batch-size`：验证 batch size，默认 `1`，保持 WHU1024 历史基线口径；
-- `--shape-prior-lr-mult`、`--densebr-lr-mult`：新模块学习率倍率。
+- `--val-every-n-epochs`：验证周期，默认 `1`；
+- `--compute-val-loss {0,1}`：是否在预测之外额外执行 validation loss 前向；训练器
+  默认 `1`，公共点筛 runner 默认传入 `0`；
+- `--shape-prior-lr-mult`、`--p2-boundary-refiner-lr-mult`：新模块学习率倍率；
+- `--allow-cross-arch-init`：仅用于明确的跨架构/旧权重初始化，默认关闭；resume
+  始终要求架构 ID 和完整模型指纹一致。
 
 训练器和全部 B0/B1、M0/M1、C1–C5 消融 wrapper 的公共优化默认值对齐 WHU1024 历史最强基线：
-每卡 batch `1`、梯度累积 `2`、四卡有效 batch `8`、基础 LR `5e-4`、backbone
+默认使用物理 GPU `1,2` 的两卡 DDP；每卡 batch `1`、梯度累积 `4`、有效全局
+batch `8`、基础 LR `5e-4`、backbone
 与其余主干倍率 `1.0`、mask decoder/no-mask 倍率 `1.0`、weight decay `0.05`、
 warmup `100` optimizer steps。点筛公共入口默认 `EMA_ENABLED=0`、`EMA_EVAL=0`、
 `EMA_SAVE_BEST=0`，避免短子集阶段在 epoch 5 切换到尚未成熟的 EMA 权重；完整数据
@@ -275,13 +305,15 @@ timeout `86400` 秒。最外围分别用 `TORCH_DDP_TIMEOUT_SECONDS` 与
 训练 NCCL timeout 的次级回退。每个 worker 在初始化 NCCL 前先绑定自己的 CUDA
 device，避免所有进程初始化阶段暂时落到 GPU0。
 
-新 checkpoint schema version 为 `1`，其中 `config_snapshot` 保存：
+新 checkpoint schema version 为 `2`，其中 `config_snapshot` 保存：
 
 - 完整解析后的 `model_config`；
 - 完整 `training_args`；
 - validation/test 数据路径、图像尺寸和类别协议；
 - SAM2 repo、checkpoint 和型号；
-- Prompt 路线、neck、DenseBR、训练计划及学习率倍率。
+- Prompt 路线、neck、P2BoundaryRefiner、训练计划及学习率倍率；
+- 由解析后 `cfg.model` 派生的 `architecture_id` 与完整 SHA256 指纹；本机 SAM2
+  checkpoint 路径不参与架构指纹，避免仅路径变化造成假不一致。
 
 恢复旧 checkpoint 续训时会保留旧实验记录，并补入新 schema 中缺失的字段。
 
@@ -312,9 +344,11 @@ checkpoint 缺少该字段时由构造函数按历史口径解析为 `detector`�
 #### 推理支持范围与参数持久化契约
 
 当前 B0/B1、M0/M1、C1–C5 全部消融路线都支持 checkpoint 驱动推理，包括
-aggregator/PAFPN、MLP/coarse、points、box、dense prompt 和 DenseBR。推理器不按
+aggregator/PAFPN、MLP/coarse、points、box、dense prompt 和 P2BoundaryRefiner。推理器不按
 实验名称猜测结构，而是读取 checkpoint 中已经解析完成的 `model_config` 构建
-模型，并以 `strict=True` 加载权重。
+模型，并以 `strict=True` 加载权重。旧 checkpoint 仅在 DenseBR 明确关闭且不含
+DenseBR 参数时迁移为 `P2BoundaryRefiner(enabled=False)`；旧 DenseBR 开启权重会
+被明确拒绝，避免将两种不同设计静默混用。
 
 后续新增参数必须遵守以下归档规则：
 
@@ -345,10 +379,11 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 
 | 文件 | 用途 |
 |---|---|
-| `run_whu1024_explicit_coarse_4gpu.sh` | 默认四卡全量 PAFPN coarse 主线入口；按 explicit mode/DenseBR 映射到公共消融运行器，继承统一超参、日志和后台生命周期。 |
+| `run_whu1024_explicit_coarse_4gpu.sh` | 保留的历史文件名；当前实际复用公共 runner 的两卡 GPU 1/2 默认值，并按 prompt/refiner/stride 映射路线；可显式覆盖回四卡。 |
+| `load_environment.sh` | shell 环境统一加载器；默认读取 `configs/environment.sh`，校验必需字段，并支持 `PORTABLE_SAM2_ENV_FILE` 指向另一份机器配置。 |
 | `infer_whu_checkpoint.sh` | 指定 checkpoint 的单卡推理 shell 入口；其余参数透传给 Python 推理器。 |
 | `smoke_test_components.sh` | 启动轻量组件测试。 |
-| `smoke_test_components.py` | 检查 PAFPN、shape prior、2P2N、dense canvas、DenseBR 和梯度契约。 |
+| `smoke_test_components.py` | 检查 PAFPN、shape prior、2P2N、dense canvas、P2BoundaryRefiner 恒等/边界/梯度契约。 |
 
 `scripts/ablations/`：
 
@@ -367,9 +402,9 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `c2_pafpn_coarse_points.sh` | PAFPN + coarse 2P2N。 |
 | `c3_pafpn_coarse_points_box.sh` | C2 + box prompt。 |
 | `c4_pafpn_coarse_points_box_dense.sh` | C3 + dense mask prompt。 |
-| `c5_pafpn_coarse_densebr.sh` | C4 + DenseBR。 |
+| `r1_c4_pafpn_coarse_points_box_dense_emb64.sh` | 官方 stride-16/64×64 的 PAFPN + coarse + points+box+dense 严格对照。 |
 | `r0_b0_aggregator_mlp_emb64.sh` | B0控制的官方stride-16/64×64 image embedding变体。 |
-| `r1_c5_pafpn_coarse_densebr_emb64.sh` | C5控制的官方stride-16/64×64 image embedding变体。 |
+| `c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh` | R1-C4 仅增加 P2BoundaryRefiner 的严格实验。 |
 | `coarse_strategy/README.md` | C2 coarse 策略筛选说明。 |
 | `coarse_strategy/s0_c2_fixed_w010.sh` | adaptive 2P2N + 固定 coarse loss 0.10。 |
 | `coarse_strategy/s1_c2_fixed_w020.sh` | adaptive 2P2N + 固定 coarse loss 0.20。 |
@@ -387,8 +422,10 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 
 ### 4.8 运行产物
 
-`portable_sam2_explicit_coarse/logs/ablations/` 是当前 B0/B1、M0/M1、C1–C5 消融运行器的默认
-日志目录。每次运行只生成独立 `.log`，不生成 `.pid`。默认后台模式下，
+`${PORTABLE_SAM2_LOG_ROOT}/ablations/` 是当前 B0/B1、M0/M1、C1–C5 消融运行器的默认
+日志目录。每次真实训练只生成独立 `.log`，不生成 `.pid`；`DRY_RUN=1` 的参数穿透、
+数据检查和模型构建 smoke 只输出到调用终端，忽略 `LOG_DIR`/`LOG_FILE`，不创建日志文件。
+默认后台模式下，
 终端只显示启动摘要、后台 PID 和日志路径，后续 stdout/stderr 仅落盘；
 `RUN_IN_BACKGROUND=0` 时才持续同步显示在终端。日志
 开头的 `resolved_hyperparameters_begin/end` 块记录解析后的架构路线、数据比例、
@@ -406,8 +443,8 @@ source_delta_ratio=... applied_delta_ratio=...`。这些值跨 DDP rank 聚合�
 的路线不会伪造该日志行。
 `logs/` 下其余目录保留历史运行日志和 `.params` 快照，均不是模型源码。
 
-新的 checkpoint 默认写到
-`/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/`，不应提交
+新的 checkpoint 默认写到 `${PORTABLE_SAM2_CHECKPOINT_ROOT}/`，当前机器配置解析为
+`/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/`；不应提交
 checkpoint、临时日志、`__pycache__` 或数据集；项目内 `logs/` 已由 Git 忽略。
 本次语义修复后的 C1–C5、R1 和 coarse-strategy wrapper 默认 run tag 包含
 `_semanticfix_roi_only`，主线全量入口的默认 checkpoint 目录也包含该后缀，避免与
@@ -427,6 +464,21 @@ checkpoint、临时日志、`__pycache__` 或数据集；项目内 `logs/` 已�
 ```bash
 cd /home/wangcheng2021/project/portable_sam2_explicit_coarse_new/portable_sam2_explicit_coarse
 ```
+
+迁移到另一台机器时，只修改：
+
+```bash
+vim configs/environment.sh
+```
+
+需要保留仓库内默认文件不变时，也可使用外置配置：
+
+```bash
+PORTABLE_SAM2_ENV_FILE=/absolute/path/to/environment.sh \
+bash scripts/ablations/b0_aggregator_mlp.sh
+```
+
+外层已经导出的同名变量优先于配置文件中的默认值，仍支持单次实验覆盖。
 
 组件 smoke：
 
@@ -477,24 +529,26 @@ nohup setsid bash scripts/ablations/monitor_b0_then_serial.sh \
   >/dev/null 2>&1 &
 ```
 
-监视器自身不保存 PID 文件，使用非阻塞锁防止重复队列；事件默认写到
+监视器自身不保存 PID 文件，使用非阻塞锁防止重复队列；启动训练子进程前关闭
+其继承的锁 FD，避免监视器异常退出后由 torchrun 长时间占住旧锁。事件默认写到
 `logs/ablations/serial_after_b0_<timestamp>.log`。每个子实验仍写各自的完整训练日志。
 子实验退出码非零、被杀或脚本缺失时会被记为 failed/skipped，并继续下一项。
 `POLL_SECONDS` 可覆盖轮询间隔，`ABLATION_QUEUE` 可替换默认脚本序列；
+前台启动的任务可用 `WATCH_PID` 显式传入 torchrun PID，仍不创建 PID 文件；
 `--print-plan` 只打印解析后的队列，不等待或启动实验。
 
 显式启动完整数据实验：
 
 ```bash
 TRAIN_SUBSET_RATIO=1.0 VAL_SUBSET_RATIO=1.0 \
-bash scripts/ablations/c5_pafpn_coarse_densebr.sh
+bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
 ```
 
 只解析和核验，不训练：
 
 ```bash
 DRY_RUN=1 CHECK_DATA=1 PREFLIGHT_MODEL=1 \
-bash scripts/ablations/c5_pafpn_coarse_densebr.sh
+bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
 ```
 
 从 checkpoint 在完整 validation 上推理：
@@ -536,22 +590,31 @@ bash scripts/reproduce_legacy_segm.sh
 
 ## 6. 主要环境变量
 
+下表中的机器相关默认值集中定义于 `configs/environment.sh`。消融、主线训练、推理、
+组件 smoke、串行监视器以及顶层 legacy reproduction 代理均通过
+`scripts/load_environment.sh` 加载；冻结包内部脚本和 vendored SAM2 不被修改。
+
 | 变量 | 默认值/含义 |
 |---|---|
+| `PORTABLE_SAM2_ENV_FILE` | 可选的外置机器配置路径；未设置时读取项目内 `configs/environment.sh`。 |
+| `PYTHON` | Python 解释器路径；当前配置为 `/data/wangcheng/envs/cvt2/bin/python`。 |
 | `SAM2_REPO` | 项目内 `../sam2`。 |
 | `SAM2_CKPT` | `/data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt`。 |
 | `WHU1024_DATA_ROOT` | `/data/wangcheng/dataset/WHU`。 |
+| `PORTABLE_SAM2_CHECKPOINT_ROOT` | 所有新主线与 legacy reproduction checkpoint 的公共根目录。 |
+| `PORTABLE_SAM2_LOG_ROOT` | 训练和监视器日志根目录；默认 `<新主线>/logs`。 |
+| `PORTABLE_SAM2_TMP_ROOT` | smoke sentinel、监视器锁等临时文件根目录。 |
+| `MPLCONFIGDIR` | matplotlib 可写配置目录；默认位于 `PORTABLE_SAM2_TMP_ROOT`。 |
 | `NECK_TYPE` | `aggregator` 或 `pafpn`；消融 wrapper 会固定。 |
 | `EXPLICIT_PROMPT_MODE` | `points`、`points_box` 或 `points_box_dense`。 |
 | `FINAL_MASK_COORDINATE_MODE` | MLP clean config 的最终 mask 坐标契约，默认 `roi_local`；公共 wrapper 将 B0/B1/R0 固定为 `roi_local`、M0/M1 固定为 `full_image`，coarse 路线固定为 `full_image`。解析进 `cfg.model` 和 checkpoint。 |
-| `DENSEBR_ENABLED` | `0/1`。 |
+| `P2_BOUNDARY_REFINER_ENABLED` | `0/1`；仅 C5-v2 wrapper 固定为 `1`。 |
 | `SHAPE_CONTEXT_FUSION` | coarse feature fusion；默认 `roi_only`，完全不构造 FiLM/context 参数；后续显式消融可设为 `gated_spatial_film`，`legacy_multiplicative` 仅作兼容对照。解析进 `cfg.model` 和 checkpoint。 |
-| `DENSEBR_BETA_INIT` / `DENSEBR_BETA_MAX` | DenseBR 初始/最大残差幅度，默认 `0.05/0.20`；解析进 `cfg.model`。 |
-| `DENSEBR_DELTA_LOGIT_MAX` | 单像素残差 logit 上界，默认 `2.0`。 |
-| `DENSEBR_QUALITY_GATE_INIT` | ROI quality gate 初值，默认 `0.50`。 |
-| `DENSEBR_ROI_CHANNELS` / `DENSEBR_CUE_CHANNELS` / `DENSEBR_MID_CHANNELS` | DenseBR 通道数，默认 `64/32/64`。 |
-| `DENSEBR_DETACH_PROMPT_CUES` | `0/1`，默认 `1`；非法值直接失败。 |
-| `SAM_IMAGE_EMBED_STRIDE` | SAM2 MaskDecoder image embedding步长；现有B0/B1、M0/M1、C1–C5默认`32`，R0/R1 wrapper固定`16`（1024输入为64×64）。 |
+| `P2_BOUNDARY_REFINER_PROJECTED_CHANNELS` / `P2_BOUNDARY_REFINER_MID_CHANNELS` | P2投影/融合通道，默认 `64/64`。 |
+| `P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX` | `tanh` 前残差幅度，默认 `2.0`；固定 beta `0.20` 后实际上界 `0.4`。 |
+| `P2_BOUNDARY_REFINER_LOSS_WEIGHT` | 边界 BCE 权重，默认 `0.05`。 |
+| `P2_BOUNDARY_REFINER_LR_MULT` | refiner 独立参数组学习率倍率，默认 `1.0`，weight decay 继承 `0.05`。 |
+| `SAM_IMAGE_EMBED_STRIDE` | SAM2 MaskDecoder image embedding步长；B0/B1、M0/M1、C1–C4默认`32`，R0、R1-C4、C5-v2固定`16`。 |
 | `SHAPE_POINT_ADAPTIVE_VALIDITY` | `1` 默认自适应点槽有效性；`0` 固定输出有效 2P2N 极值点。 |
 | `POINT_WARMUP_ENABLED` | 默认 `0`；若开启，阶段长度由三个 `POINT_WARMUP_*` 变量定义。 |
 | `SHAPE_LOSS_SCHEDULE_MODE` | `fixed`（默认）或 `two_stage`。 |
@@ -565,10 +628,11 @@ bash scripts/reproduce_legacy_segm.sh
 | `VAL_SUBSET_RATIO` | 验证集比例；消融运行器和训练器 API 均默认 `1.0`。 |
 | `VAL_BATCH_SIZE` | 验证 batch size，默认 `1`；全部启动入口保持历史基线口径。 |
 | `VAL_EVERY_N_EPOCHS` | 每多少个 epoch 验证一次，默认 `1`。 |
+| `COMPUTE_VAL_LOSS` | 是否额外计算 validation loss；公共消融 runner 默认 `0` 以跳过重复前向，设为 `1` 可恢复。无论取值为何，默认仍每个 epoch 完整预测并计算 COCO 指标。 |
 | `SAVE_BBOX_BEST_METRIC` | bbox 主摘要与 best-bbox checkpoint 指标，默认旧基线口径 `bbox/mAP`。 |
 | `SEGM_SCORE_MODE` | segm COCO 排序契约，写入 `cfg.model.roi_head.mask_head` 和 checkpoint；当前消融默认 `detector`，训练/推理均用 detector `scores`。`mask_quality` 仅允许与已启用 quality head 配套，缺少 `mask_scores` 时直接失败。候选阈值、NMS、`max_per_img` 始终仍按 detector score。 |
 | `BATCH_SIZE` | 每卡训练 batch，默认 `1`。 |
-| `GRAD_ACCUM_STEPS` | 梯度累积步数，默认 `2`；默认四卡有效 batch 为 `8`。 |
+| `GRAD_ACCUM_STEPS` | 梯度累积步数，默认 `4`；默认两卡有效全局 batch 为 `8`。 |
 | `LEARNING_RATE` | 基础学习率，默认 `5e-4`。 |
 | `SAT_BACKBONE_LR_MULT` | SAM2 backbone 学习率倍率，默认 `1.0`。 |
 | `SAT_OTHER_LR_MULT` | detector 其余参数学习率倍率，默认 `1.0`。 |
@@ -582,16 +646,16 @@ bash scripts/reproduce_legacy_segm.sh
 | `EARLY_STOPPING_MIN_DELTA` | early-stop 最小提升，默认 `5e-4`。 |
 | `SUBSET_SEED` | 子集与训练随机种子，默认 `44`。 |
 | `MAX_EPOCHS` | 最大 epoch，默认 `80`。 |
-| `CHECKPOINT_DIR` | 实验输出目录；消融运行器会按实验和子集自动隔离。 |
-| `LOG_DIR` | 消融终端日志目录，默认 `<项目主代码>/logs/ablations`。 |
-| `LOG_FILE` | 消融日志的精确文件路径；设置后优先于 `LOG_DIR` 自动命名。 |
+| `CHECKPOINT_DIR` | 单项实验输出目录；默认从 `PORTABLE_SAM2_CHECKPOINT_ROOT` 按实验和子集自动派生，仍可单次覆盖。 |
+| `LOG_DIR` | 真实消融训练的终端日志目录，默认 `${PORTABLE_SAM2_LOG_ROOT}/ablations`；dry-run/smoke 忽略。 |
+| `LOG_FILE` | 真实消融训练日志的精确文件路径；设置后优先于 `LOG_DIR` 自动命名；dry-run/smoke 忽略。 |
 | `RUN_IN_BACKGROUND` | 训练启动方式；默认 `1`，以 `nohup setsid` 脱离终端；设为 `0` 前台运行。dry-run 不启动进程。 |
 | `INIT_FROM` | 初始化 checkpoint。 |
 | `RESUME_FROM` | 完整断点恢复 checkpoint。 |
-| `CUDA_VISIBLE_DEVICES` | 可见 GPU，默认 `0,1,2,3`。 |
-| `NPROC_PER_NODE` | DDP 进程数，默认 `4`。 |
+| `CUDA_VISIBLE_DEVICES` | 可见 GPU，默认物理卡 `1,2`。 |
+| `NPROC_PER_NODE` | DDP 进程数，默认 `2`。 |
 | `MASTER_PORT` / `--master-port` | torchrun rendezvous 端口；最外层脚本的 CLI 参数优先，其次为环境变量，均未设置时按 launcher PID 自动派生。 |
-| `TORCH_DDP_TIMEOUT_SECONDS` | DDP collective timeout，公共运行器默认 `1800` 秒，全部 B0/B1、M0/M1、C1–C5、coarse-strategy 和主线四卡入口共享；最外围可覆盖。 |
+| `TORCH_DDP_TIMEOUT_SECONDS` | DDP collective timeout，公共运行器默认 `1800` 秒，全部 B0/B1、M0/M1、C1–C5、coarse-strategy 和主线入口共享；最外围可覆盖。 |
 | `TORCH_DDP_CONTROL_TIMEOUT_SECONDS` | rank-0-only validation 结束后的 CPU/Gloo 控制组 timeout，默认 `86400` 秒；与训练 NCCL collective 分离。 |
 | `NCCL_TIMEOUT` | 旧基线兼容别名；仅在未设置 `TORCH_DDP_TIMEOUT_SECONDS` 时作为回退。 |
 | `EMA_ENABLED` / `EMA_EVAL` / `EMA_SAVE_BEST` | 点筛入口默认全部为 `0`；显式设置 `EMA_ENABLED=1` 时后两者默认随之为 `1`。 |
@@ -620,6 +684,37 @@ bash scripts/reproduce_legacy_segm.sh
 处理本项目的新增或改动时，它负责默认执行上述同步流程。
 
 ## 8. 文档同步记录
+
+- 2026-07-29：新增唯一机器配置 `configs/environment.sh` 与统一加载器
+  `scripts/load_environment.sh`。Python、SAM2 repo/checkpoint、WHU 数据集、checkpoint/
+  log/tmp 根目录及两卡执行默认值不再散落在 shell 中；公共消融、主线代理、推理、
+  组件 smoke、串行监视器和顶层 legacy reproduction 代理均从该配置加载。支持
+  `PORTABLE_SAM2_ENV_FILE` 外置配置和外层环境变量优先覆盖；日志超参快照记录实际
+  配置文件及三个输出根目录。迁移机器只需修改或替换这一份配置。
+- 2026-07-29：公共训练入口默认硬件口径切换为本机物理 GPU `1,2` 的两卡 DDP：
+  `NPROC_PER_NODE=2`、每卡 `BATCH_SIZE=1`、`GRAD_ACCUM_STEPS=4`，有效全局 batch
+  继续保持 `8`，因此 LR `5e-4`、100-step warmup、epoch 数和逐 epoch 完整验证
+  均不变。全部消融 wrapper、coarse-strategy 和主线代理入口共享该默认值；四卡
+  `0,1,2,3 + accum2` 仍可从最外围显式覆盖，smoke 同时校验默认与覆盖口径。
+- 2026-07-29：实施验证加速 A/B，且不改变逐 epoch 完整 COCO 验证口径。公共消融
+  runner 默认 `COMPUTE_VAL_LOSS=0`，只跳过额外的 validation-loss 前向；预测、
+  bbox/segm、best checkpoint 与 early stopping 保持启用。预测 mask 改为逐图批量
+  RLE 流式落内存并立即释放 dense mask，填充率同步累计；首轮 GT RLE 在后续 epoch
+  缓存复用。参数快照、命令透传和 smoke 同步覆盖默认值及显式开启覆盖。
+- 2026-07-29：新增 `C5_V2_METHOD.md`，以当前 `single` 分支真实实现为准整理
+  C5-v2 的总体架构、关键张量、显式 coarse-to-prompt 生成器、P2 边界约束残差
+  修正器、训练/推理数据流、损失和梯度边界，并提供论文主图布局、中英文方法草稿、
+  图注与结果声明边界；明确 P2 fusion 实际输入为 131 channels，避免讨论稿通道误记。
+
+- 2026-07-29：消融公共运行器将日志创建延后到 dry-run 判定之后；所有
+  `DRY_RUN=1` 参数穿透、数据检查和模型构建 smoke 仅输出终端，不再在
+  `logs/ablations/` 生成只有超参快照的伪实验日志；`smoke_all.sh` 使用不可创建的
+  sentinel 路径回归检查该契约。真实训练的完整日志和超参快照行为保持不变。
+
+- 2026-07-29：删除未验证的旧 DenseBR 主线，新增 `P2BoundaryRefiner` 与严格的
+  R1-C4/C5-v2 对照；完成 P2 detach、共享 prompt RoIAlign、raw-only 搜索带、
+  覆盖拒绝、±0.4 零初始化残差、四卡 ROI 均值 boundary loss 和 epoch 诊断。
+  checkpoint 升级 schema v2 并加入架构 ID/指纹；推理仅兼容旧 DenseBR-off 权重。
 
 - 2026-07-29：记录 EMA-off、20% train / 100% validation B0 与冻结 WHU1024 全量
   基准的趋势诊断。按 optimizer step 对齐后，新 B0 epoch 5/10/15/20 分别对应旧基准
@@ -738,4 +833,5 @@ bash scripts/reproduce_legacy_segm.sh
   validation；当前公共运行器已调整为 20% train / 100% validation，全量实验仍需
   显式设置 `TRAIN_SUBSET_RATIO=1.0`。
 - 2026-07-28：建立项目架构、逐文件用途、运行入口和文档同步规则；覆盖当前
-  PAFPN、MLP/coarse 双路线、PromptEncoder、DenseBR、消融矩阵和数据子集协议。
+  PAFPN、MLP/coarse 双路线、PromptEncoder；当时的 DenseBR 已在 2026-07-29
+  被 P2BoundaryRefiner 严格对照替代。

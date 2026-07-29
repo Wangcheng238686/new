@@ -143,7 +143,7 @@ def _restore_architecture_environment(snapshot: Mapping[str, Any]) -> None:
         "prompt_mode": "PROMPT_MODE",
         "neck_type": "NECK_TYPE",
         "prompt_dense_mode": "PROMPT_DENSE_MODE",
-        "densebr_enabled": "DENSEBR_ENABLED",
+        "p2_boundary_refiner_enabled": "P2_BOUNDARY_REFINER_ENABLED",
     }
     for snapshot_key, env_key in mapping.items():
         value = snapshot.get(snapshot_key)
@@ -218,6 +218,33 @@ def _resolve_model_config(
         model_config = cfg.model.to_dict()
         source = str(config_path)
 
+    roi_head = model_config.get("roi_head", {})
+    mask_head = roi_head.get("mask_head", {}) if isinstance(roi_head, Mapping) else {}
+    if isinstance(mask_head, MutableMapping) and "densebr_cfg" in mask_head:
+        legacy_densebr = mask_head.pop("densebr_cfg") or {}
+        if bool(legacy_densebr.get("enabled", False)):
+            raise RuntimeError(
+                "Legacy checkpoint enabled DenseBR and cannot be migrated to "
+                "P2BoundaryRefiner. Use the historical code revision explicitly."
+            )
+        mask_head.setdefault("p2_boundary_refiner_cfg", {"enabled": False})
+
+    saved_contract = snapshot.get("architecture_contract", {})
+    if saved_contract:
+        from rsprompter.architecture_contract import architecture_contract
+
+        resolved_contract = architecture_contract(model_config)
+        if (
+            saved_contract.get("architecture_id")
+            != resolved_contract.get("architecture_id")
+            or saved_contract.get("model_fingerprint")
+            != resolved_contract.get("model_fingerprint")
+        ):
+            raise RuntimeError(
+                "Embedded model_config does not match its saved architecture "
+                f"contract: saved={dict(saved_contract)} resolved={resolved_contract}"
+            )
+
     runtime = snapshot.get("runtime_config", {})
     saved_sam2_ckpt = (
         runtime.get("sam2_checkpoint") if isinstance(runtime, Mapping) else None
@@ -230,6 +257,20 @@ def _resolve_model_config(
         if not Path(sam2_checkpoint).is_file():
             raise FileNotFoundError(f"SAM2 base checkpoint not found: {sam2_checkpoint}")
         os.environ["SAM2_CKPT"] = sam2_checkpoint
+        saved_sha256 = (
+            runtime.get("sam2_checkpoint_sha256")
+            if isinstance(runtime, Mapping)
+            else None
+        )
+        if saved_sha256:
+            from rsprompter.architecture_contract import file_sha256
+
+            actual_sha256 = file_sha256(sam2_checkpoint)
+            if actual_sha256 != saved_sha256:
+                raise RuntimeError(
+                    "SAM2 base checkpoint SHA256 mismatch: "
+                    f"saved={saved_sha256} actual={actual_sha256}"
+                )
         _targeted_sam2_checkpoint_override(model_config, sam2_checkpoint)
     return model_config, source
 
@@ -513,7 +554,8 @@ def _checkpoint_report(
         "config_path": snapshot.get("config_path"),
         "neck_type": snapshot.get("neck_type"),
         "explicit_prompt_mode": snapshot.get("explicit_prompt_mode"),
-        "densebr_enabled": snapshot.get("densebr_enabled"),
+        "p2_boundary_refiner": snapshot.get("p2_boundary_refiner", {}),
+        "architecture_contract": snapshot.get("architecture_contract", {}),
         "image_size": snapshot.get("image_size"),
     }
 
@@ -526,6 +568,11 @@ def main() -> None:
     )
     checkpoint_path = Path(args.checkpoint).expanduser().resolve()
     checkpoint = _load_checkpoint(checkpoint_path)
+    if any(".densebr." in str(name) for name in checkpoint["model"]):
+        raise RuntimeError(
+            "Checkpoint contains enabled legacy DenseBR parameters; this architecture "
+            "is intentionally unsupported by the v2 inference path."
+        )
     snapshot = _snapshot(checkpoint)
     report = _checkpoint_report(checkpoint_path, checkpoint, snapshot)
     print(json.dumps(report, ensure_ascii=False, indent=2, default=_json_default))

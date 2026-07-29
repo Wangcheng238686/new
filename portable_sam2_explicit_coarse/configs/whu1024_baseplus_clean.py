@@ -82,7 +82,7 @@ model = dict(
             final_mask_coordinate_mode=final_mask_coordinate_mode,
             segm_score_mode=segm_score_mode,
             shape_prior_cfg=dict(enabled=False),
-            densebr_cfg=dict(enabled=False),
+            p2_boundary_refiner_cfg=dict(enabled=False),
         ),
     ),
 )

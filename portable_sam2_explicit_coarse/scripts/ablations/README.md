@@ -1,6 +1,6 @@
 # WHU-1024 ablation matrix
 
-| ID | Image emb. | Neck | Prompt route | Final mask | FiLM | Box token | Dense prompt | DenseBR |
+| ID | Image emb. | Neck | Prompt route | Final mask | FiLM | Box token | Dense prompt | P2 refiner |
 |---|---:|---|---|---|---:|---:|---:|---:|
 | B0 | 32×32 legacy | aggregator | legacy 5-token MLP | ROI-local | - | - | - | - |
 | B1 | 32×32 legacy | PAFPN | legacy 5-token MLP | ROI-local | - | - | - | - |
@@ -10,9 +10,9 @@
 | C2 | 32×32 legacy | PAFPN | coarse 2P2N | full-image | no | no | no | no |
 | C3 | 32×32 legacy | PAFPN | coarse 2P2N | full-image | no | yes | no | no |
 | C4 | 32×32 legacy | PAFPN | coarse 2P2N | full-image | no | yes | yes | no |
-| C5 | 32×32 legacy | PAFPN | coarse 2P2N | full-image | no | yes | yes | yes |
 | R0 | 64×64 official | aggregator | legacy 5-token MLP | ROI-local | - | - | - | - |
-| R1 | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | yes | yes |
+| R1-C4 | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | yes | no |
+| C5-v2 | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | yes | yes |
 
 B0/B1 use the historical ROI-local final-mask target and bbox paste. M0/M1
 reuse the same MLP, positional embedding, trainable zero no-mask embedding and
@@ -50,24 +50,49 @@ not replaced by a sinusoidal or PromptEncoder random-Fourier PE.
 The B0 wrapper defaults to `RUN_TAG=b0_aggregator_mlp_aligned`, keeping its
 logs/checkpoints separate from invalid runs produced before the ROI-target
 repair. `ABLATION_ID` remains `b0_aggregator_mlp`.
-C1–C5, R1 and the coarse-strategy wrappers append
+C1–C4 and the coarse-strategy wrappers append
 `_semanticfix_<shape_context_fusion>` to their default run tags so corrected
 contracts and no-FiLM/FiLM checkpoints cannot overwrite each other.
 
 Every wrapper first validates the resolved MMEngine config. Architecture values
 are fixed by the wrapper and cannot be inherited from stale environment values.
 
-R0 and R1 isolate the SAM2 spatial-resolution change on top of B0 and C5. They
+R0 and R1-C4 isolate the SAM2 spatial-resolution change on top of B0 and C4.
+C5-v2 then changes only the P2 boundary refiner switch. They
 set `SAM_IMAGE_EMBED_STRIDE=16`, select the 64×64 stride-16 FPN feature for the
 MaskDecoder, use 256×256/128×128 high-resolution features, and configure a
-64×64 PromptEncoder grid (R1 dense-mask input: 256×256). The detector still
-receives the same four-level FPN. Existing B0/B1, M0/M1 and C1–C5 remain stride-32/32×32 for
+64×64 PromptEncoder grid (dense-mask input: 256×256). The detector still
+receives the same four-level FPN. Existing B0/B1, M0/M1 and C1–C4 remain stride-32/32×32 for
 historical reproducibility.
 
 ```bash
 bash scripts/ablations/r0_b0_aggregator_mlp_emb64.sh
-bash scripts/ablations/r1_c5_pafpn_coarse_densebr_emb64.sh
+bash scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh
+bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
 ```
+
+## Machine environment configuration
+
+Every active shell entry loads `configs/environment.sh` through
+`scripts/load_environment.sh`. This is the single machine-specific file to edit
+after copying the project to another host. It contains:
+
+- the Python interpreter;
+- the vendored SAM2 source and Base+ pretrained checkpoint;
+- the WHU dataset root;
+- checkpoint, log and temporary roots;
+- default visible GPUs, DDP process count, per-rank batch, accumulation and AMP.
+
+Values exported by the outer shell still take precedence for one-off runs. To
+keep the repository copy unchanged, select another complete config file:
+
+```bash
+PORTABLE_SAM2_ENV_FILE=/absolute/path/to/environment.sh \
+  bash scripts/ablations/b0_aggregator_mlp.sh
+```
+
+The resolved config path and checkpoint/log/tmp roots are included in every
+real run and dry-run hyperparameter snapshot.
 
 ## Dataset subsets
 
@@ -78,6 +103,8 @@ complete official validation split:
 TRAIN_SUBSET_RATIO=0.2
 VAL_SUBSET_RATIO=1.0
 VAL_BATCH_SIZE=1
+VAL_EVERY_N_EPOCHS=1
+COMPUTE_VAL_LOSS=0
 ```
 
 Override both explicitly when a different screening ratio is needed:
@@ -97,13 +124,20 @@ Validation also follows the historical WHU1024 baseline execution contract:
 only global rank 0 iterates the full validation loader, the other DDP ranks
 wait on a CPU/Gloo epoch-control broadcast, and bbox/segm COCO evaluation uses
 detector scores. The long rank-0 validation wait therefore does not occupy an
-NCCL collective. Empty-GT images remain in COCO evaluation so false positives
+NCCL collective. Every epoch still predicts the complete validation split and
+runs bbox/segm COCO evaluation. For screening, `COMPUTE_VAL_LOSS=0` skips only
+the additional `model.loss(...)` forward; metric logging, best checkpoints and
+early stopping are unchanged. Set `COMPUTE_VAL_LOSS=1` when validation loss is
+explicitly required. Empty-GT images remain in COCO evaluation so false positives
 are counted. B0/B1 retain the historical ROI-local target and detected-box paste.
 M0/M1 and C1–C5 retain the SAM2 decoder's native full-image grid, train against resized
 full-image GT and resize once at prediction. Standalone checkpoint inference
 reads the same `final_mask_coordinate_mode`; component/preflight smoke checks
 both post-processing contracts.
 `VAL_BATCH_SIZE` can be overridden, but `1` is the comparison default.
+Predicted dense masks are batch-encoded to COCO RLE immediately per image and
+released instead of being retained for an epoch-end float32 scan. Ground-truth
+RLE records are cached after the first deterministic validation pass.
 The headline/best-bbox metric defaults to the historical `bbox/mAP`; detailed
 validation still reports `bbox/mAP_75`. Set `SAVE_BBOX_BEST_METRIC` explicitly
 only when intentionally changing that selection criterion.
@@ -124,7 +158,9 @@ that the matrix changes architecture rather than training conditions:
 
 ```bash
 BATCH_SIZE=1
-GRAD_ACCUM_STEPS=2
+GRAD_ACCUM_STEPS=4
+NPROC_PER_NODE=2
+CUDA_VISIBLE_DEVICES=1,2
 LEARNING_RATE=5e-4
 SAT_BACKBONE_LR_MULT=1.0
 SAT_OTHER_LR_MULT=1.0
@@ -148,7 +184,9 @@ SHAPE_CONTEXT_FUSION=roi_only
 SEGM_SCORE_MODE=detector
 ```
 
-With the default four ranks, the effective global batch size is 8. B0/B1 also
+With the default two ranks on physical GPUs 1 and 2, the effective global batch
+size remains `2 x 1 x 4 = 8`. Learning rate, warmup and epoch count therefore
+remain aligned with the previous `4 x 1 x 2 = 8` public setting. B0/B1 also
 reproduce the legacy MLP route's zero-initialized, trainable `no_mask_embed`;
 detector loss remains at weight 1.0 for every epoch, rather than silently
 dropping to 0.75/0.50 after epochs 5/10. Final-mask logs expose the ROI target
@@ -234,8 +272,13 @@ FULL_MODEL_SMOKE=0 bash scripts/ablations/smoke_all.sh
 # Inspect one resolved experiment without starting training.
 DRY_RUN=1 CHECK_DATA=1 PREFLIGHT_MODEL=1 \
   TRAIN_SUBSET_RATIO=0.01 VAL_SUBSET_RATIO=0.02 \
-  bash scripts/ablations/c5_pafpn_coarse_densebr.sh
+  bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
 ```
+
+All `DRY_RUN=1` smoke/preflight invocations write only to the invoking terminal
+and never create files under `logs/ablations/`, even when `LOG_DIR` or
+`LOG_FILE` is set. Real training runs continue to save their complete terminal
+log and resolved hyperparameter snapshot.
 
 ## Background execution
 
@@ -356,7 +399,7 @@ bash scripts/ablations/coarse_strategy/s2_c2_two_stage_w020_w010.sh
 
 ## Terminal logs and hyperparameter snapshots
 
-Every ablation wrapper saves stdout and stderr to a project-local log:
+Every non-dry-run ablation wrapper saves stdout and stderr to a project-local log:
 
 ```text
 logs/ablations/<run_tag>_tr<train_ratio>_va<val_ratio>_<timestamp>_pid<pid>.log
@@ -370,7 +413,8 @@ The log begins with a `resolved_hyperparameters_begin` /
 `resolved_hyperparameters_end` block. It records the resolved architecture
 route, dataset ratios, optimizer and EMA settings, effective global batch size,
 coarse point/loss strategy, prompt-diagnostic settings, initialization/resume
-paths, data/checkpoint locations, git commit, and the exact torchrun command.
+paths, validation-loss switch, data/checkpoint locations, git commit, and the
+exact torchrun command.
 This is the resolved execution snapshot, so it should be used for experiment
 review rather than relying only on wrapper defaults.
 
@@ -378,9 +422,8 @@ Override the directory or the exact file when needed:
 
 ```bash
 LOG_DIR=/path/to/logs bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
-
-LOG_FILE=/path/to/exact.log \
-  DRY_RUN=1 bash scripts/ablations/b0_aggregator_mlp.sh
+LOG_FILE=/path/to/exact.log bash scripts/ablations/b0_aggregator_mlp.sh
 ```
 
-Project-local runtime logs are ignored by Git.
+`DRY_RUN=1` ignores both logging overrides and creates no log file. Project-local
+runtime logs are ignored by Git.

@@ -9,7 +9,9 @@ if _mode not in {"points", "points_box", "points_box_dense"}:
     raise ValueError(f"Unsupported EXPLICIT_PROMPT_MODE={_mode!r}")
 
 _use_dense = _mode == "points_box_dense"
-_densebr = os.environ.get("DENSEBR_ENABLED", "0") == "1"
+_p2_boundary_refiner = (
+    os.environ.get("P2_BOUNDARY_REFINER_ENABLED", "0") == "1"
+)
 _shape_context_fusion = os.environ.get(
     "SHAPE_CONTEXT_FUSION", "roi_only"
 ).strip().lower()
@@ -21,12 +23,6 @@ if _shape_context_fusion not in {
     raise ValueError(
         "SHAPE_CONTEXT_FUSION must be roi_only, gated_spatial_film or "
         f"legacy_multiplicative, got {_shape_context_fusion!r}"
-    )
-_densebr_detach_raw = os.environ.get("DENSEBR_DETACH_PROMPT_CUES", "1")
-if _densebr_detach_raw not in {"0", "1"}:
-    raise ValueError(
-        "DENSEBR_DETACH_PROMPT_CUES must be 0 or 1, "
-        f"got {_densebr_detach_raw!r}"
     )
 _epochs = int(os.environ.get("MAX_EPOCHS", "80"))
 _adaptive_validity_raw = os.environ.get("SHAPE_POINT_ADAPTIVE_VALIDITY", "1")
@@ -166,6 +162,7 @@ model = dict(
                 dice_weight=1.0,
                 boundary_weight=0.0,
                 distance_weight=0.0,
+                compute_metrics=True,
             ),
             # Shared2FC has no SABL decoded-box tuple.  Proposal boxes are the
             # canonical train prompt source; final detected boxes are used at test.
@@ -177,18 +174,31 @@ model = dict(
                 clamp_to_image=True,
             ),
             box_prompt_cfg=dict(jitter_prob=0.0),
-            densebr_cfg=dict(
-                enabled=_densebr,
-                roi_channels=int(os.environ.get("DENSEBR_ROI_CHANNELS", "64")),
-                cue_channels=int(os.environ.get("DENSEBR_CUE_CHANNELS", "32")),
-                mid_channels=int(os.environ.get("DENSEBR_MID_CHANNELS", "64")),
-                beta_init=float(os.environ.get("DENSEBR_BETA_INIT", "0.05")),
-                beta_max=float(os.environ.get("DENSEBR_BETA_MAX", "0.20")),
-                delta_logit_max=float(os.environ.get("DENSEBR_DELTA_LOGIT_MAX", "2.0")),
-                quality_gate_init=float(os.environ.get("DENSEBR_QUALITY_GATE_INIT", "0.50")),
-                image_size=1024,
+            p2_boundary_refiner_cfg=dict(
+                enabled=_p2_boundary_refiner,
+                p2_in_channels=512,
+                projected_channels=int(os.environ.get(
+                    "P2_BOUNDARY_REFINER_PROJECTED_CHANNELS", "64"
+                )),
+                mid_channels=int(os.environ.get(
+                    "P2_BOUNDARY_REFINER_MID_CHANNELS", "64"
+                )),
+                roi_output_size=32,
+                coarse_size=64,
+                spatial_scale=0.25,
+                sampling_ratio=0,
+                aligned=True,
+                beta=0.20,
+                delta_logit_max=float(os.environ.get(
+                    "P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX", "2.0"
+                )),
                 foreground_thr=0.50,
-                detach_prompt_cues=_densebr_detach_raw == "1",
+                boundary_band_radius=2,
+                search_band_radius=4,
+                max_search_coverage=0.50,
+                boundary_loss_weight=float(os.environ.get(
+                    "P2_BOUNDARY_REFINER_LOSS_WEIGHT", "0.05"
+                )),
                 zero_init_residual=True,
             ),
             prune_unused_prompt_components=False,

@@ -1109,7 +1109,7 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         # ===== 阶段2: shape prior =====
         shape_prior_cfg: Optional[Dict] = None,    # dict(enabled=True, context_source="visual", ...) 或 None
         shape_prior_loss_weight: float = 0.5,       # 辅助 dice_bce loss 权重
-        densebr_cfg: Optional[Dict] = None,
+        p2_boundary_refiner_cfg: Optional[Dict] = None,
         quality_head_cfg: Optional[Dict] = None,
         segm_score_mode: str = "detector",
         loss_mask: ConfigType = dict(type="CrossEntropyLoss", use_mask=True, loss_weight=1.0),
@@ -1645,25 +1645,30 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
             self.shape_scale_mode = "legacy_unbounded"
             self.use_shape_dense = False
 
-        # Canonical DenseBR: an independent ROI-local coarse-logit refiner.
-        # All legacy embedding/feedback/directional/HF branches and their
-        # duplicate losses/gates have been removed.  When enabled, the refined
-        # logits become the sole source for coarse supervision and 2P2N; when
-        # dense prompt is selected they also feed dense-prompt construction.
-        self.densebr_cfg = dict(densebr_cfg or {})
-        self.densebr_runtime_active = True
-        if self.densebr_cfg.get("enabled", False):
+        # C5-v2 is a P2-driven local boundary modifier.  Construct it after all
+        # shared random modules and restore the CPU RNG afterwards so enabling
+        # the ablation cannot perturb R1-C4 shared initialization.
+        self.p2_boundary_refiner_cfg = dict(p2_boundary_refiner_cfg or {})
+        if self.p2_boundary_refiner_cfg.get("enabled", False):
             if self.shape_injector is None or self.prompt_encoder is None:
-                raise ValueError("DenseBR requires shape prior and PromptEncoder")
-            from .densebr import DenseBR
+                raise ValueError(
+                    "P2BoundaryRefiner requires ShapePrior and PromptEncoder"
+                )
+            if not self.use_shape_dense or not self.explicit_use_dense_prompt:
+                raise ValueError(
+                    "P2BoundaryRefiner requires points_box_dense prompt mode"
+                )
+            from .p2_boundary_refiner import P2BoundaryRefiner
 
-            _densebr_cfg = dict(self.densebr_cfg)
-            _densebr_cfg.pop("enabled", None)
-            _densebr_cfg.setdefault("roi_in_channels", in_channels)
-            _densebr_cfg.setdefault("image_size", self.prompt_encoder_image_size)
-            self.densebr = DenseBR(**_densebr_cfg)
+            _refiner_cfg = dict(self.p2_boundary_refiner_cfg)
+            _refiner_cfg.pop("enabled", None)
+            _refiner_cfg.setdefault("coarse_size", int(
+                (shape_prior_cfg or {}).get("coarse_mask_output_size", 64)
+            ))
+            with torch.random.fork_rng(devices=[]):
+                self.p2_boundary_refiner = P2BoundaryRefiner(**_refiner_cfg)
         else:
-            self.densebr = None
+            self.p2_boundary_refiner = None
 
         # DecoderBR is an independent post-decoder residual branch. It is
         # initialized after the baseline modules so old checkpoint loading and
@@ -1895,6 +1900,8 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         roi_img_ids=None,
         high_res_features=None,
         boxes=None,
+        p2_feature=None,
+        prompt_rois=None,
     ):
         img_bs = image_embeddings.shape[0]
         roi_bs = x.shape[0]
@@ -1915,22 +1922,52 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
 
         # === shape prior mask (阶段2, 必须在 PE 调用之前计算) ===
         shape_prior_mask_logits = None
+        coarse_outputs = None
         shape_prior_prompt_logits = None
         if self.shape_injector is not None and boxes is not None:
             ctx_tokens = self.shape_injector.forward_context_visual(image_embeddings)
-            shape_prior_mask_logits, _, _, _ = self.shape_injector.forward_roi(
+            raw_shape_prior_logits, _, _, _ = self.shape_injector.forward_roi(
                 ctx_tokens, x, boxes, roi_img_ids,
             )
             debug_stats.update(self.shape_injector.get_debug_stats())
-            if self.densebr is not None and self.densebr_runtime_active:
-                shape_prior_mask_logits = self.densebr(
-                    roi_features=x,
-                    prompt_logits=shape_prior_mask_logits,
-                    boxes=boxes,
-                    debug_stats=debug_stats,
+            refined_shape_prior_logits = raw_shape_prior_logits
+            refiner_outputs = None
+            if self.p2_boundary_refiner is not None:
+                if p2_feature is None or prompt_rois is None:
+                    raise ValueError(
+                        "P2BoundaryRefiner requires full P2 and prompt_rois [N,5]"
+                    )
+                refiner_outputs = self.p2_boundary_refiner(
+                    p2_feature=p2_feature,
+                    prompt_rois=prompt_rois,
+                    raw_logits=raw_shape_prior_logits,
                 )
-            # The final coarse logits are now the single source for coarse
-            # supervision, adaptive 2P2N mining and dense-prompt construction.
+                refined_shape_prior_logits = refiner_outputs["refined_logits"]
+                with torch.no_grad():
+                    delta = refiner_outputs["delta_logits"].detach().float()
+                    support_valid = refiner_outputs["support_valid"].detach()
+                    debug_stats.update({
+                        "P2BR/roi_count": delta.new_tensor(float(delta.shape[0])),
+                        "P2BR/valid_support_count": support_valid.float().sum(),
+                        "P2BR/rejected_support_count": (~support_valid).float().sum(),
+                        "P2BR/search_coverage_sum": refiner_outputs["search_coverage_sum"],
+                        "P2BR/delta_abs_sum": delta.abs().flatten(1).mean(1).sum(),
+                        "P2BR/delta_nonzero_sum": delta.ne(0).float().flatten(1).mean(1).sum(),
+                        "P2BR/delta_saturated_sum": delta.abs().ge(0.396).float().flatten(1).mean(1).sum(),
+                        "P2BR/projected_feature_norm_sum": refiner_outputs["projected_feature_norm_sum"],
+                        "P2BR/highpass_feature_norm_sum": refiner_outputs["highpass_feature_norm_sum"],
+                    })
+            shape_prior_mask_logits = refined_shape_prior_logits
+            coarse_outputs = {
+                "raw_logits": raw_shape_prior_logits,
+                "refined_logits": refined_shape_prior_logits,
+                "delta_logits": None if refiner_outputs is None else refiner_outputs["delta_logits"],
+                "raw_boundary_band": None if refiner_outputs is None else refiner_outputs["raw_boundary_band"],
+                "search_support": None if refiner_outputs is None else refiner_outputs["search_support"],
+                "support_valid": None if refiner_outputs is None else refiner_outputs["support_valid"],
+            }
+            # Refined coarse logits are the only downstream semantic source;
+            # raw logits remain independently supervised by the C4 objective.
             if self.use_shape_dense:
                 shape_prior_prompt_logits = self._shape_prior_to_prompt_mask(
                     shape_prior_mask_logits, boxes
@@ -2193,7 +2230,7 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         else:
             dense_embeddings = base_dense
 
-        # DenseBR has already calibrated ROI-local coarse logits before the
+        # P2BoundaryRefiner has already calibrated ROI-local coarse logits before the
         # frozen PromptEncoder.  No embedding-space residual is applied here.
         image_embeddings = image_embeddings.repeat_interleave(num_roi_per_image, dim=0)
 
@@ -2263,7 +2300,7 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         return (
             low_res_masks,
             iou_predictions,
-            shape_prior_mask_logits,
+            coarse_outputs,
             {},  # uav_aux_losses slot kept for the 6-tuple contract; UAV removed
             quality_predictions,
             mask_tokens_out,

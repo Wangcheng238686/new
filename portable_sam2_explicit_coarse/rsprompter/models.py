@@ -856,6 +856,16 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             assert bbox_feats is not None
             mask_feats = bbox_feats[pos_inds]
 
+        if rois is not None:
+            prompt_rois = rois
+        elif roi_img_ids_override is not None and boxes_override is not None:
+            prompt_rois = torch.cat(
+                [roi_img_ids_override[:, None].to(boxes_override.dtype), boxes_override],
+                dim=1,
+            )
+        else:
+            prompt_rois = None
+
         mask_head_out = self.mask_head(
             mask_feats,
             image_embeddings=image_embeddings,
@@ -867,6 +877,8 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             ),
             high_res_features=high_res_features,
             boxes=rois[:, 1:] if rois is not None else boxes_override,
+            p2_feature=x[0],
+            prompt_rois=prompt_rois,
         )
         if len(mask_head_out) != 6:
             raise RuntimeError(
@@ -876,7 +888,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         (
             mask_preds,
             iou_predictions,
-            shape_prior_mask_logits,
+            coarse_outputs,
             uav_aux_losses,
             quality_predictions,
             mask_tokens,
@@ -887,7 +899,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             iou_predictions=iou_predictions,
             quality_predictions=quality_predictions,
             mask_tokens=mask_tokens,
-            shape_prior_mask_logits=shape_prior_mask_logits,
+            coarse_outputs=coarse_outputs,
             uav_aux_losses=uav_aux_losses,
         )
 
@@ -1135,22 +1147,60 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         # GT crops are resized with nearest-neighbour interpolation, and the
         # same prompt_pos_priors used by mask RoIAlign/prompts are used for the
         # crop when training-time box jitter is enabled.
-        # Note: shape_prior_mask_logits comes from mask_head.forward via
-        # _mask_forward (the refined coarse logits when DenseBR is active);
-        # it is not a local variable in this scope.
-        shape_prior_mask_logits = mask_results.get("shape_prior_mask_logits")
-        if shape_prior_mask_logits is not None:
+        coarse_outputs = mask_results.get("coarse_outputs")
+        if coarse_outputs is not None:
+            raw_coarse_logits = coarse_outputs["raw_logits"]
+            refined_coarse_logits = coarse_outputs["refined_logits"]
             sp_weight = getattr(self.mask_head, "shape_prior_loss_weight", 0.0)
             if sp_weight > 0 and hasattr(self.mask_head, "coarse_mask_loss"):
                 coarse_loss, coarse_stats = self.mask_head.coarse_mask_loss(
-                    shape_prior_mask_logits, sampling_results, batch_gt_instances,
+                    raw_coarse_logits, sampling_results, batch_gt_instances,
                     prompt_pos_priors=prompt_pos_priors,
                 )
                 mask_results["loss_shape_prior"] = {"loss_shape_prior": coarse_loss}
-                # coarse_stats（dice/iou/boundary_tp/fp/fn）暂存，供上层训练循环聚合
                 if not hasattr(self, "_last_coarse_stats") or self._last_coarse_stats is None:
                     self._last_coarse_stats = {}
-                self._last_coarse_stats.update({k: v.detach() for k, v in coarse_stats.items()})
+                raw_stats = {k: v.detach() for k, v in coarse_stats.items()}
+                self._last_coarse_stats.update(raw_stats)
+                self._last_coarse_stats.update({
+                    "raw_dice_score": 1.0 - raw_stats["dice"],
+                    "raw_iou": raw_stats["iou"],
+                    "raw_boundary_tp": raw_stats["boundary_tp"],
+                    "raw_boundary_fp": raw_stats["boundary_fp"],
+                    "raw_boundary_fn": raw_stats["boundary_fn"],
+                })
+
+                if self.mask_head.p2_boundary_refiner is not None:
+                    coarse_targets = self.mask_head.get_coarse_targets(
+                        sampling_results,
+                        batch_gt_instances,
+                        mask_size=raw_coarse_logits.shape[-2:],
+                        prompt_pos_priors=prompt_pos_priors,
+                    )
+                    local_sum, local_count, boundary_stats = (
+                        self.mask_head.p2_boundary_refiner.boundary_loss(
+                            raw_logits=raw_coarse_logits,
+                            delta_logits=coarse_outputs["delta_logits"],
+                            raw_boundary_band=coarse_outputs["raw_boundary_band"],
+                            search_support=coarse_outputs["search_support"],
+                            target_mask=coarse_targets,
+                        )
+                    )
+                    mask_results["_p2br_local_sum"] = local_sum
+                    mask_results["_p2br_valid_count"] = local_count
+                    with torch.no_grad():
+                        _, refined_stats = self.mask_head.coarse_mask_loss_module(
+                            refined_coarse_logits.detach(), coarse_targets
+                        )
+                    self._last_coarse_stats.update({
+                        "refined_dice_score": 1.0 - refined_stats["dice"],
+                        "refined_iou": refined_stats["iou"],
+                        "refined_boundary_tp": refined_stats["boundary_tp"],
+                        "refined_boundary_fp": refined_stats["boundary_fp"],
+                        "refined_boundary_fn": refined_stats["boundary_fn"],
+                        "boundary_loss_local_sum": local_sum.detach(),
+                        **{k: v.detach() for k, v in boundary_stats.items()},
+                    })
 
         uav_aux_losses = mask_results.get("uav_aux_losses") or {}
         for loss_name, loss_value in uav_aux_losses.items():
@@ -1310,6 +1360,15 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                     and isinstance(loss_value, dict)
                 ):
                     losses.update(loss_value)
+            refiner = getattr(self.mask_head, "p2_boundary_refiner", None)
+            if refiner is not None:
+                zero = x[0].sum() * 0.0
+                losses["_p2br_local_sum"] = mask_results.get(
+                    "_p2br_local_sum", zero
+                )
+                losses["_p2br_valid_count"] = mask_results.get(
+                    "_p2br_valid_count", zero.detach()
+                )
         return losses
 
     def predict_mask(

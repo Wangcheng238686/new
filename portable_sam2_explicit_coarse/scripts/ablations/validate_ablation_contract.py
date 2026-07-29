@@ -17,10 +17,13 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--ablation-id", required=True)
+    parser.add_argument("--expected-architecture-id", default=None)
     parser.add_argument("--expected-neck", choices=("aggregator", "pafpn"), required=True)
     parser.add_argument("--prompt-route", choices=("mlp", "coarse"), required=True)
     parser.add_argument("--explicit-prompt-mode", required=True)
-    parser.add_argument("--densebr-enabled", type=int, choices=(0, 1), required=True)
+    parser.add_argument(
+        "--p2-boundary-refiner-enabled", type=int, choices=(0, 1), required=True
+    )
     parser.add_argument(
         "--expected-final-mask-mode",
         choices=("roi_local", "full_image"),
@@ -66,6 +69,16 @@ def main():
     from mmengine import Config
 
     cfg = Config.fromfile(str(PROJECT_ROOT / args.config))
+    from rsprompter.architecture_contract import architecture_contract
+
+    resolved_architecture = architecture_contract(cfg.model.to_dict())
+    require(
+        resolved_architecture["architecture_id"]
+        == (args.expected_architecture_id or args.ablation_id),
+        "wrapper ABLATION_ID does not match resolved cfg.model: "
+        f"{args.expected_architecture_id or args.ablation_id!r} != "
+        f"{resolved_architecture['architecture_id']!r}",
+    )
     neck = cfg.model.neck
     head = cfg.model.roi_head.mask_head
     expected_neck_type = (
@@ -115,7 +128,10 @@ def main():
         require(head.prompt_sparse_mode == "point", head.prompt_sparse_mode)
         require(not bool(head.prompt_encoder_enabled), "MLP route must disable PromptEncoder")
         require(not bool(head.shape_prior_cfg.enabled), "MLP route must disable coarse head")
-        require(not bool(head.densebr_cfg.enabled), "MLP route must disable DenseBR")
+        require(
+            not bool(head.p2_boundary_refiner_cfg.enabled),
+            "MLP route must disable P2BoundaryRefiner",
+        )
         require(
             not bool(head.load_no_mask_pretrained),
             "MLP baseline must use the legacy zero-initialized no_mask_embed",
@@ -149,27 +165,33 @@ def main():
             "dense prompt embedding delta must be restricted to the proposal box",
         )
         require(
-            bool(head.densebr_cfg.enabled) == bool(args.densebr_enabled),
-            "DenseBR config mismatch",
+            bool(head.p2_boundary_refiner_cfg.enabled)
+            == bool(args.p2_boundary_refiner_enabled),
+            "P2BoundaryRefiner config mismatch",
         )
-        densebr_expected = {
-            "beta_init": float(os.environ.get("DENSEBR_BETA_INIT", "0.05")),
-            "beta_max": float(os.environ.get("DENSEBR_BETA_MAX", "0.20")),
+        refiner_expected = {
+            "beta": 0.20,
             "delta_logit_max": float(
-                os.environ.get("DENSEBR_DELTA_LOGIT_MAX", "2.0")
+                os.environ.get("P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX", "2.0")
             ),
-            "quality_gate_init": float(
-                os.environ.get("DENSEBR_QUALITY_GATE_INIT", "0.50")
+            "projected_channels": int(
+                os.environ.get("P2_BOUNDARY_REFINER_PROJECTED_CHANNELS", "64")
             ),
-            "roi_channels": int(os.environ.get("DENSEBR_ROI_CHANNELS", "64")),
-            "cue_channels": int(os.environ.get("DENSEBR_CUE_CHANNELS", "32")),
-            "mid_channels": int(os.environ.get("DENSEBR_MID_CHANNELS", "64")),
-            "detach_prompt_cues": os.environ.get(
-                "DENSEBR_DETACH_PROMPT_CUES", "1"
-            ) == "1",
+            "mid_channels": int(
+                os.environ.get("P2_BOUNDARY_REFINER_MID_CHANNELS", "64")
+            ),
+            "boundary_loss_weight": float(
+                os.environ.get("P2_BOUNDARY_REFINER_LOSS_WEIGHT", "0.05")
+            ),
+            "spatial_scale": 0.25,
+            "roi_output_size": 32,
+            "coarse_size": 64,
+            "boundary_band_radius": 2,
+            "search_band_radius": 4,
+            "max_search_coverage": 0.50,
         }
-        for key, expected in densebr_expected.items():
-            actual = head.densebr_cfg[key]
+        for key, expected in refiner_expected.items():
+            actual = head.p2_boundary_refiner_cfg[key]
             if isinstance(expected, float):
                 require(math.isclose(float(actual), expected), (key, actual, expected))
             else:
@@ -249,14 +271,17 @@ def main():
             else head.shape_prior_cfg.fusion_type
         ),
         "dense_prompt_enabled": bool(head.shape_prior_cfg.get("use_shape_dense", False)),
-        "densebr_enabled": bool(head.densebr_cfg.enabled),
+        "p2_boundary_refiner_enabled": bool(
+            head.p2_boundary_refiner_cfg.enabled
+        ),
         "final_mask_coordinate_mode": head.final_mask_coordinate_mode,
         "segm_score_mode": head.segm_score_mode,
         "segm_score_key": (
             "mask_scores" if head.segm_score_mode == "mask_quality" else "scores"
         ),
         "quality_head_enabled": quality_head_enabled,
-        "densebr_config": dict(head.densebr_cfg),
+        "p2_boundary_refiner_config": dict(head.p2_boundary_refiner_cfg),
+        "architecture_contract": resolved_architecture,
         "sam_image_embedding_stride": int(cfg.model.sam_image_embedding_stride),
         "sam_image_embedding_size": expected_embed_size,
         "shape_point_adaptive_validity": (
@@ -412,8 +437,9 @@ def main():
                 "built PromptEncoder dense-mask input size mismatch",
             )
             require(
-                (mask_head.densebr is not None) == bool(args.densebr_enabled),
-                "DenseBR model/config mismatch",
+                (mask_head.p2_boundary_refiner is not None)
+                == bool(args.p2_boundary_refiner_enabled),
+                "P2BoundaryRefiner model/config mismatch",
             )
 
         # Regression guard shared by validation and checkpoint inference.

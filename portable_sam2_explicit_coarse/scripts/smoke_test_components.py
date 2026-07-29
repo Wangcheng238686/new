@@ -16,7 +16,7 @@ from mmdet.structures.mask import BitmapMasks
 
 from rsprompter.coarse_mask_loss import CoarseMaskLoss
 from rsprompter.dense_prompt_utils import paste_roi_to_full_canvas
-from rsprompter.densebr import DenseBR
+from rsprompter.p2_boundary_refiner import P2BoundaryRefiner
 from rsprompter.models_sam2 import (
     RSSAM2PAFPN,
     RSSAM2PositionalEmbedding,
@@ -31,6 +31,25 @@ from utils.coco_eval_utils import build_coco_gt_and_dt
 
 def main():
     torch.manual_seed(44)
+
+    # C5-v2 construction is RNG-isolated: all shared modules created before or
+    # after the optional refiner must be byte-exact with the R1-C4 control.
+    torch.manual_seed(44)
+    shared_control = torch.nn.Linear(7, 7)
+    after_control = torch.nn.Linear(7, 7)
+    torch.manual_seed(44)
+    shared_treatment = torch.nn.Linear(7, 7)
+    with torch.random.fork_rng(devices=[]):
+        _ = P2BoundaryRefiner(
+            p2_in_channels=8, projected_channels=8, mid_channels=8
+        )
+    after_treatment = torch.nn.Linear(7, 7)
+    for control, treatment in (
+        (shared_control, shared_treatment),
+        (after_control, after_treatment),
+    ):
+        for left, right in zip(control.state_dict().values(), treatment.state_dict().values()):
+            assert torch.equal(left, right), "optional refiner perturbed shared RNG state"
 
     # Evaluation must never silently replace a configured quality score with
     # detector confidence. This is the final fail-fast guard shared by
@@ -227,10 +246,62 @@ def main():
     )
     assert torch.equal(film_raw, film_shape.mask_decoder(roi))
 
-    densebr = DenseBR(roi_in_channels=512, image_size=1024)
-    refined = densebr(roi, raw, boxes)
+    p2 = torch.randn(2, 512, 64, 64, requires_grad=True)
+    prompt_rois = torch.cat(
+        [
+            roi_img_ids[:, None].float(),
+            torch.tensor(
+                [[5.0, 8.0, 55.0, 58.0], [10.0, 4.0, 60.0, 50.0],
+                 [3.0, 16.0, 45.0, 62.0]]
+            ),
+        ],
+        dim=1,
+    )
+    refiner = P2BoundaryRefiner(
+        projected_channels=8,
+        mid_channels=8,
+        spatial_scale=1.0,
+    )
+    refiner_outputs = refiner(p2, prompt_rois, raw)
+    refined = refiner_outputs["refined_logits"]
     assert refined.shape == raw.shape
-    assert torch.equal(refined, raw), "zero-init DenseBR must start as identity"
+    assert torch.equal(refined, raw), (
+        "zero-init P2BoundaryRefiner must exactly reproduce R1-C4"
+    )
+    assert refiner_outputs["delta_logits"].abs().max() <= 0.400001
+    boundary_target = torch.sigmoid(raw.detach()).ge(0.5).float()
+    boundary_sum, boundary_count, _ = refiner.boundary_loss(
+        raw,
+        refiner_outputs["delta_logits"],
+        refiner_outputs["raw_boundary_band"],
+        refiner_outputs["search_support"],
+        boundary_target,
+    )
+    (boundary_sum / boundary_count.clamp_min(1.0)).backward(retain_graph=True)
+    assert p2.grad is None, "P2 must be detached from refiner gradients"
+    assert refiner.residual_head.weight.grad is not None
+    assert roi.grad is None, "boundary auxiliary loss must detach raw coarse logits"
+    canvas = paste_roi_to_full_canvas(refined, boxes, 128, 128, 1024)
+    assert canvas.shape == (n, 1, 128, 128)
+    canvas.mean().backward()
+    assert roi.grad is not None
+    assert image.grad is None, "roi_only coarse route must not consume image context"
+    with torch.no_grad():
+        refiner.residual_head.weight.fill_(100.0)
+        refiner.residual_head.bias.fill_(100.0)
+    bounded_outputs = refiner(p2, prompt_rois, raw)
+    assert float(bounded_outputs["delta_logits"].detach().abs().max()) <= 0.400001
+    assert torch.count_nonzero(
+        bounded_outputs["delta_logits"]
+        * (1.0 - bounded_outputs["search_support"])
+    ) == 0
+    checkerboard = (
+        (torch.arange(64)[:, None] + torch.arange(64)[None, :]) % 2
+    ).float()
+    checker_logits = (checkerboard * 2.0 - 1.0)[None, None].repeat(n, 1, 1, 1) * 20.0
+    rejected_outputs = refiner(p2, prompt_rois, checker_logits)
+    assert not bool(rejected_outputs["support_valid"].any())
+    assert torch.count_nonzero(rejected_outputs["delta_logits"]) == 0
 
     miner = ShapePointMiner(
         point_warmup_cfg=dict(
@@ -352,11 +423,6 @@ def main():
     )
     assert legacy_scheduled_loss.schedule_mode == "two_stage"
 
-    canvas = paste_roi_to_full_canvas(refined, boxes, 128, 128, 1024)
-    assert canvas.shape == (n, 1, 128, 128)
-    canvas.mean().backward()
-    assert roi.grad is not None
-    assert image.grad is None, "roi_only coarse route must not consume image context"
     support = RSPrompterAnchorMaskHeadSAM2._dense_embedding_box_support(
         SimpleNamespace(prompt_encoder_image_size=1024),
         boxes[:1],

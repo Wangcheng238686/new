@@ -4,11 +4,13 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${PROJECT_ROOT}"
+# shellcheck source=../load_environment.sh
+source "${PROJECT_ROOT}/scripts/load_environment.sh"
 
 : "${ABLATION_ID:?wrapper must set ABLATION_ID}"
 : "${NECK_TYPE:?wrapper must set NECK_TYPE}"
 : "${PROMPT_ROUTE:?wrapper must set PROMPT_ROUTE}"
-: "${DENSEBR_ENABLED:?wrapper must set DENSEBR_ENABLED}"
+: "${P2_BOUNDARY_REFINER_ENABLED:?wrapper must set P2_BOUNDARY_REFINER_ENABLED}"
 
 # Launcher-only options are accepted by every outer wrapper because each one
 # forwards its arguments here. Keep all other options for the trainer.
@@ -54,7 +56,7 @@ case "${PROMPT_ROUTE}" in
     export PROMPT_ENCODER_ENABLED=0
     export SHAPE_PRIOR_ENABLED=0
     export EXPLICIT_PROMPT_MODE="none"
-    export DENSEBR_ENABLED=0
+    export P2_BOUNDARY_REFINER_ENABLED=0
     FINAL_MASK_COORDINATE_MODE="${FINAL_MASK_COORDINATE_MODE:-roi_local}"
     case "${FINAL_MASK_COORDINATE_MODE}" in
       roi_local|full_image) ;;
@@ -92,14 +94,7 @@ case "${SAM_IMAGE_EMBED_STRIDE}" in
 esac
 export SAM_IMAGE_EMBED_STRIDE
 export SAM2_MODEL_SIZE=base_plus
-export SAM2_REPO="${SAM2_REPO:-$(cd "${PROJECT_ROOT}/../sam2" && pwd)}"
-export SAM2_CKPT="${SAM2_CKPT:-/data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt}"
-export WHU1024_DATA_ROOT="${WHU1024_DATA_ROOT:-/data/wangcheng/dataset/WHU}"
 export MAX_EPOCHS="${MAX_EPOCHS:-80}"
-export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/portable_sam2_explicit_coarse_mpl}"
-
-PYTHON="${PYTHON:-/data/wangcheng/envs/cvt2/bin/python}"
-NPROC_PER_NODE="${NPROC_PER_NODE:-4}"
 if [ -n "${CLI_MASTER_PORT}" ]; then
   MASTER_PORT="${CLI_MASTER_PORT}"
   MASTER_PORT_SOURCE="cli"
@@ -154,14 +149,10 @@ if ((TORCH_DDP_CONTROL_TIMEOUT_SECONDS < 1)); then
   exit 2
 fi
 export TORCH_DDP_CONTROL_TIMEOUT_SECONDS
-BATCH_SIZE="${BATCH_SIZE:-1}"
-GRAD_ACCUM_STEPS="${GRAD_ACCUM_STEPS:-2}"
 LEARNING_RATE="${LEARNING_RATE:-5e-4}"
 TRAIN_SUBSET_RATIO="${TRAIN_SUBSET_RATIO:-0.2}"
 VAL_SUBSET_RATIO="${VAL_SUBSET_RATIO:-1.0}"
 SUBSET_SEED="${SUBSET_SEED:-44}"
-CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
-AMP="${AMP:-0}"
 EMA_ENABLED="${EMA_ENABLED:-0}"
 EMA_DECAY="${EMA_DECAY:-0.999}"
 EMA_EVAL="${EMA_EVAL:-${EMA_ENABLED}}"
@@ -179,6 +170,11 @@ if [[ "${EMA_ENABLED}" == "0" && ("${EMA_EVAL}" != "0" || "${EMA_SAVE_BEST}" != 
 fi
 VAL_EVERY_N_EPOCHS="${VAL_EVERY_N_EPOCHS:-1}"
 VAL_BATCH_SIZE="${VAL_BATCH_SIZE:-1}"
+COMPUTE_VAL_LOSS="${COMPUTE_VAL_LOSS:-0}"
+if [[ "${COMPUTE_VAL_LOSS}" != "0" && "${COMPUTE_VAL_LOSS}" != "1" ]]; then
+  echo "COMPUTE_VAL_LOSS must be 0 or 1, got ${COMPUTE_VAL_LOSS}" >&2
+  exit 2
+fi
 SAVE_BBOX_BEST_METRIC="${SAVE_BBOX_BEST_METRIC:-bbox/mAP}"
 SEGM_SCORE_MODE="${SEGM_SCORE_MODE:-detector}"
 case "${SEGM_SCORE_MODE}" in
@@ -205,15 +201,12 @@ case "${SHAPE_CONTEXT_FUSION}" in
     exit 2
     ;;
 esac
-DENSEBR_LR_MULT="${DENSEBR_LR_MULT:-1.0}"
-DENSEBR_BETA_INIT="${DENSEBR_BETA_INIT:-0.05}"
-DENSEBR_BETA_MAX="${DENSEBR_BETA_MAX:-0.20}"
-DENSEBR_DELTA_LOGIT_MAX="${DENSEBR_DELTA_LOGIT_MAX:-2.0}"
-DENSEBR_QUALITY_GATE_INIT="${DENSEBR_QUALITY_GATE_INIT:-0.50}"
-DENSEBR_ROI_CHANNELS="${DENSEBR_ROI_CHANNELS:-64}"
-DENSEBR_CUE_CHANNELS="${DENSEBR_CUE_CHANNELS:-32}"
-DENSEBR_MID_CHANNELS="${DENSEBR_MID_CHANNELS:-64}"
-DENSEBR_DETACH_PROMPT_CUES="${DENSEBR_DETACH_PROMPT_CUES:-1}"
+P2_BOUNDARY_REFINER_LR_MULT="${P2_BOUNDARY_REFINER_LR_MULT:-1.0}"
+P2_BOUNDARY_REFINER_PROJECTED_CHANNELS="${P2_BOUNDARY_REFINER_PROJECTED_CHANNELS:-64}"
+P2_BOUNDARY_REFINER_MID_CHANNELS="${P2_BOUNDARY_REFINER_MID_CHANNELS:-64}"
+P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX="${P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX:-2.0}"
+P2_BOUNDARY_REFINER_LOSS_WEIGHT="${P2_BOUNDARY_REFINER_LOSS_WEIGHT:-0.05}"
+ALLOW_CROSS_ARCH_INIT="${ALLOW_CROSS_ARCH_INIT:-0}"
 WARMUP_ITERS="${WARMUP_ITERS:-100}"
 WEIGHT_DECAY="${WEIGHT_DECAY:-0.05}"
 DET_LOSS_STAGE1_END="${DET_LOSS_STAGE1_END:-5}"
@@ -254,35 +247,43 @@ export POINT_WARMUP_ENABLED
 export POINT_WARMUP_NO_POINT_EPOCHS
 export POINT_WARMUP_ONE_PAIR_EPOCHS
 export POINT_WARMUP_FULL_START_EPOCH
-export DENSEBR_BETA_INIT DENSEBR_BETA_MAX DENSEBR_DELTA_LOGIT_MAX
-export DENSEBR_QUALITY_GATE_INIT DENSEBR_ROI_CHANNELS DENSEBR_CUE_CHANNELS
-export DENSEBR_MID_CHANNELS DENSEBR_DETACH_PROMPT_CUES
+export P2_BOUNDARY_REFINER_ENABLED P2_BOUNDARY_REFINER_PROJECTED_CHANNELS
+export P2_BOUNDARY_REFINER_MID_CHANNELS P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX
+export P2_BOUNDARY_REFINER_LOSS_WEIGHT
 export SAVE_BBOX_BEST_METRIC
 export SEGM_SCORE_MODE
 
 RUN_TAG="${RUN_TAG:-${ABLATION_ID}}"
+EXPECTED_ARCHITECTURE_ID="${EXPECTED_ARCHITECTURE_ID:-${ABLATION_ID}}"
 RUN_SUFFIX="${RUN_SUFFIX:-}"
 if [[ -n "${RUN_SUFFIX}" ]]; then
   RUN_TAG="${RUN_TAG}_${RUN_SUFFIX}"
 fi
 SUBSET_TAG="tr${TRAIN_SUBSET_RATIO}_va${VAL_SUBSET_RATIO}"
-CHECKPOINT_DIR="${CHECKPOINT_DIR:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/${RUN_TAG}_${SUBSET_TAG}}"
+CHECKPOINT_DIR="${CHECKPOINT_DIR:-${PORTABLE_SAM2_CHECKPOINT_ROOT}/ablations/${RUN_TAG}_${SUBSET_TAG}}"
 RUN_TIMESTAMP="${RUN_TIMESTAMP:-$(date +%Y%m%d_%H%M%S)}"
 LOG_SAFE_TAG="${RUN_TAG//\//_}"
-LOG_DIR="${LOG_DIR:-${PROJECT_ROOT}/logs/ablations}"
-LOG_FILE="${LOG_FILE:-${LOG_DIR}/${LOG_SAFE_TAG}_${SUBSET_TAG}_${RUN_TIMESTAMP}_pid$$.log}"
-mkdir -p "$(dirname "${LOG_FILE}")"
-exec > >(tee -a "${LOG_FILE}") 2>&1
-
-echo "terminal_log=${LOG_FILE}"
+LOG_DIR="${LOG_DIR:-${PORTABLE_SAM2_LOG_ROOT}/ablations}"
+if [ "${DRY_RUN:-0}" = "1" ]; then
+  # Smoke/preflight output stays on the invoking terminal.  Do not create one
+  # parameter-only file per wrapper under the real experiment log directory.
+  LOG_FILE=""
+  echo "terminal_log=disabled(dry_run)"
+else
+  LOG_FILE="${LOG_FILE:-${LOG_DIR}/${LOG_SAFE_TAG}_${SUBSET_TAG}_${RUN_TIMESTAMP}_pid$$.log}"
+  mkdir -p "$(dirname "${LOG_FILE}")"
+  exec > >(tee -a "${LOG_FILE}") 2>&1
+  echo "terminal_log=${LOG_FILE}"
+fi
 
 VALIDATE_ARGS=(
   --config "${CONFIG_PATH}"
   --ablation-id "${ABLATION_ID}"
+  --expected-architecture-id "${EXPECTED_ARCHITECTURE_ID}"
   --expected-neck "${NECK_TYPE}"
   --prompt-route "${PROMPT_ROUTE}"
   --explicit-prompt-mode "${EXPECTED_EXPLICIT_MODE}"
-  --densebr-enabled "${DENSEBR_ENABLED}"
+  --p2-boundary-refiner-enabled "${P2_BOUNDARY_REFINER_ENABLED}"
   --expected-final-mask-mode "${FINAL_MASK_COORDINATE_MODE}"
   --expected-image-embed-stride "${SAM_IMAGE_EMBED_STRIDE}"
   --expected-segm-score-mode "${SEGM_SCORE_MODE}"
@@ -323,6 +324,7 @@ CMD=(
   --ema-eval "${EMA_EVAL}"
   --ema-save-best "${EMA_SAVE_BEST}"
   --val-every-n-epochs "${VAL_EVERY_N_EPOCHS}"
+  --compute-val-loss "${COMPUTE_VAL_LOSS}"
   --early-stopping-patience "${EARLY_STOPPING_PATIENCE}"
   --early-stopping-start-epoch "${EARLY_STOPPING_START_EPOCH}"
   --early-stopping-min-delta "${EARLY_STOPPING_MIN_DELTA}"
@@ -333,7 +335,7 @@ CMD=(
   --no-mask-lr-mult "${NO_MASK_LR_MULT}"
   --prompt-encoder-lr-mult 0.0
   --shape-prior-lr-mult "${SHAPE_PRIOR_LR_MULT}"
-  --densebr-lr-mult "${DENSEBR_LR_MULT}"
+  --p2-boundary-refiner-lr-mult "${P2_BOUNDARY_REFINER_LR_MULT}"
   --warmup-iters "${WARMUP_ITERS}"
   --weight-decay "${WEIGHT_DECAY}"
   --det-loss-stage1-end "${DET_LOSS_STAGE1_END}"
@@ -355,6 +357,9 @@ if [ "${MAX_VAL_BATCHES}" -gt 0 ]; then
 fi
 if [ -n "${INIT_FROM}" ]; then
   CMD+=(--init-from "${INIT_FROM}")
+  if [ "${ALLOW_CROSS_ARCH_INIT}" = "1" ]; then
+    CMD+=(--allow-cross-arch-init)
+  fi
 fi
 if [ -n "${INIT_EXCLUDE_PREFIXES}" ]; then
   CMD+=(--init-exclude-prefixes "${INIT_EXCLUDE_PREFIXES}")
@@ -370,8 +375,10 @@ EFFECTIVE_GLOBAL_BATCH_SIZE=$((BATCH_SIZE * GRAD_ACCUM_STEPS * NPROC_PER_NODE))
 echo "============================================================"
 echo "resolved_hyperparameters_begin"
 echo "timestamp=${RUN_TIMESTAMP}"
+echo "environment_config=${PORTABLE_SAM2_ENV_FILE}"
 echo "git_commit=${GIT_COMMIT}"
 echo "ablation_id=${ABLATION_ID}"
+echo "expected_architecture_id=${EXPECTED_ARCHITECTURE_ID}"
 echo "run_tag=${RUN_TAG}"
 echo "run_suffix=${RUN_SUFFIX}"
 echo "neck_type=${NECK_TYPE}"
@@ -381,7 +388,7 @@ echo "prompt_sparse_mode=${PROMPT_SPARSE_MODE}"
 echo "prompt_encoder_enabled=${PROMPT_ENCODER_ENABLED}"
 echo "shape_prior_enabled=${SHAPE_PRIOR_ENABLED}"
 echo "explicit_prompt_mode=${EXPECTED_EXPLICIT_MODE}"
-echo "densebr_enabled=${DENSEBR_ENABLED}"
+echo "p2_boundary_refiner_enabled=${P2_BOUNDARY_REFINER_ENABLED}"
 echo "final_mask_coordinate_mode=${FINAL_MASK_COORDINATE_MODE}"
 echo "sam_image_embedding_stride=${SAM_IMAGE_EMBED_STRIDE}"
 echo "sam_image_embedding_size=$((1024 / SAM_IMAGE_EMBED_STRIDE))"
@@ -409,6 +416,7 @@ echo "ema_decay=${EMA_DECAY}"
 echo "ema_eval=${EMA_EVAL}"
 echo "ema_save_best=${EMA_SAVE_BEST}"
 echo "val_every_n_epochs=${VAL_EVERY_N_EPOCHS}"
+echo "compute_val_loss=${COMPUTE_VAL_LOSS}"
 echo "save_bbox_best_metric=${SAVE_BBOX_BEST_METRIC}"
 echo "segm_score_mode=${SEGM_SCORE_MODE}"
 echo "early_stopping_patience=${EARLY_STOPPING_PATIENCE}"
@@ -422,15 +430,12 @@ echo "no_mask_lr_mult=${NO_MASK_LR_MULT}"
 echo "prompt_encoder_lr_mult=0.0"
 echo "shape_prior_lr_mult=${SHAPE_PRIOR_LR_MULT}"
 echo "shape_context_fusion=${SHAPE_CONTEXT_FUSION}"
-echo "densebr_lr_mult=${DENSEBR_LR_MULT}"
-echo "densebr_beta_init=${DENSEBR_BETA_INIT}"
-echo "densebr_beta_max=${DENSEBR_BETA_MAX}"
-echo "densebr_delta_logit_max=${DENSEBR_DELTA_LOGIT_MAX}"
-echo "densebr_quality_gate_init=${DENSEBR_QUALITY_GATE_INIT}"
-echo "densebr_roi_channels=${DENSEBR_ROI_CHANNELS}"
-echo "densebr_cue_channels=${DENSEBR_CUE_CHANNELS}"
-echo "densebr_mid_channels=${DENSEBR_MID_CHANNELS}"
-echo "densebr_detach_prompt_cues=${DENSEBR_DETACH_PROMPT_CUES}"
+echo "p2_boundary_refiner_lr_mult=${P2_BOUNDARY_REFINER_LR_MULT}"
+echo "p2_boundary_refiner_projected_channels=${P2_BOUNDARY_REFINER_PROJECTED_CHANNELS}"
+echo "p2_boundary_refiner_mid_channels=${P2_BOUNDARY_REFINER_MID_CHANNELS}"
+echo "p2_boundary_refiner_delta_logit_max=${P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX}"
+echo "p2_boundary_refiner_loss_weight=${P2_BOUNDARY_REFINER_LOSS_WEIGHT}"
+echo "allow_cross_arch_init=${ALLOW_CROSS_ARCH_INIT}"
 echo "warmup_iters=${WARMUP_ITERS}"
 echo "weight_decay=${WEIGHT_DECAY}"
 echo "det_loss_stage1_end=${DET_LOSS_STAGE1_END}"
@@ -464,9 +469,12 @@ echo "run_in_background=${RUN_IN_BACKGROUND}"
 echo "sam2_repo=${SAM2_REPO}"
 echo "sam2_checkpoint=${SAM2_CKPT}"
 echo "data_root=${WHU1024_DATA_ROOT}"
+echo "checkpoint_root=${PORTABLE_SAM2_CHECKPOINT_ROOT}"
+echo "log_root=${PORTABLE_SAM2_LOG_ROOT}"
+echo "tmp_root=${PORTABLE_SAM2_TMP_ROOT}"
 echo "config=${CONFIG_PATH}"
 echo "checkpoint_dir=${CHECKPOINT_DIR}"
-echo "log_file=${LOG_FILE}"
+echo "log_file=${LOG_FILE:-disabled(dry_run)}"
 printf 'command='
 printf ' %q' "${CMD[@]}"
 printf '\n'

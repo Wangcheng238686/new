@@ -4,13 +4,16 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${PROJECT_ROOT}"
+# shellcheck source=../load_environment.sh
+source "${PROJECT_ROOT}/scripts/load_environment.sh"
 
-DEFAULT_B0_GLOB="${PROJECT_ROOT}/logs/ablations/b0_aggregator_mlp_aligned_tr0.2_va1.0_*.log"
+DEFAULT_B0_GLOB="${PORTABLE_SAM2_LOG_ROOT}/ablations/b0_aggregator_mlp_aligned_tr0.2_va1.0_*.log"
 B0_LOG="${B0_LOG:-}"
+WATCH_PID="${WATCH_PID:-}"
 POLL_SECONDS="${POLL_SECONDS:-60}"
 MONITOR_TIMESTAMP="${MONITOR_TIMESTAMP:-$(date +%Y%m%d_%H%M%S)}"
-MONITOR_LOG="${MONITOR_LOG:-${PROJECT_ROOT}/logs/ablations/serial_after_b0_${MONITOR_TIMESTAMP}.log}"
-MONITOR_LOCK="${MONITOR_LOCK:-/tmp/portable_sam2_explicit_coarse_serial_after_b0.lock}"
+MONITOR_LOG="${MONITOR_LOG:-${PORTABLE_SAM2_LOG_ROOT}/ablations/serial_after_b0_${MONITOR_TIMESTAMP}.log}"
+MONITOR_LOCK="${MONITOR_LOCK:-${PORTABLE_SAM2_TMP_ROOT}/serial_after_b0.lock}"
 
 DEFAULT_QUEUE=(
   b1_pafpn_mlp.sh
@@ -20,9 +23,9 @@ DEFAULT_QUEUE=(
   c2_pafpn_coarse_points.sh
   c3_pafpn_coarse_points_box.sh
   c4_pafpn_coarse_points_box_dense.sh
-  c5_pafpn_coarse_densebr.sh
+  r1_c4_pafpn_coarse_points_box_dense_emb64.sh
   r0_b0_aggregator_mlp_emb64.sh
-  r1_c5_pafpn_coarse_densebr_emb64.sh
+  c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
 )
 
 if [[ -n "${ABLATION_QUEUE:-}" ]]; then
@@ -37,6 +40,7 @@ usage() {
     "" \
     "Environment overrides:" \
     "  ABLATION_QUEUE='b1_pafpn_mlp.sh c1_aggregator_coarse_points.sh'" \
+    "  WATCH_PID=12345 (for a foreground-launched torchrun)" \
     "  POLL_SECONDS=60" \
     "  MONITOR_LOG=/path/to/monitor.log" \
     "  --print-plan prints the resolved queue and exits."
@@ -68,6 +72,7 @@ if ((POLL_SECONDS < 1)); then
 fi
 
 mkdir -p "$(dirname "${MONITOR_LOG}")"
+mkdir -p "$(dirname "${MONITOR_LOCK}")"
 
 monitor_log() {
   printf '%s - serial-ablation-monitor - %s\n' \
@@ -85,7 +90,7 @@ if ! flock -n 9; then
 fi
 
 if [[ -z "${B0_LOG}" ]]; then
-  B0_LOG="$(find "${PROJECT_ROOT}/logs/ablations" -maxdepth 1 -type f \
+  B0_LOG="$(find "${PORTABLE_SAM2_LOG_ROOT}/ablations" -maxdepth 1 -type f \
     -name 'b0_aggregator_mlp_aligned_tr0.2_va1.0_*.log' \
     -printf '%T@ %p\n' 2>/dev/null | sort -nr | awk 'NR == 1 {sub(/^[^ ]+ /, ""); print}')"
 fi
@@ -94,9 +99,15 @@ if [[ -z "${B0_LOG}" || ! -f "${B0_LOG}" ]]; then
   exit 2
 fi
 
-B0_PID="$(awk -F= '/^background_pid=/{pid=$2} END{print pid}' "${B0_LOG}")"
+B0_PID="${WATCH_PID}"
+if [[ -z "${B0_PID}" ]]; then
+  B0_PID="$(awk -F= '/^background_pid=/{pid=$2} END{print pid}' "${B0_LOG}")"
+fi
+if [[ -z "${B0_PID}" && "$(basename "${B0_LOG}")" =~ _pid([0-9]+)\.log$ ]]; then
+  B0_PID="${BASH_REMATCH[1]}"
+fi
 if [[ ! "${B0_PID}" =~ ^[0-9]+$ ]]; then
-  monitor_log "ERROR B0 log has no valid background_pid: ${B0_LOG}"
+  monitor_log "ERROR no valid WATCH_PID/background PID/log-name PID: ${B0_LOG}"
   exit 2
 fi
 B0_EPOCHS="$(awk -F= '/^epochs=/{epochs=$2} END{print epochs}' "${B0_LOG}")"
@@ -163,7 +174,9 @@ for task in "${QUEUE[@]}"; do
 
   monitor_log "TASK_START task=${task}"
   task_start="$(date +%s)"
-  RUN_IN_BACKGROUND=0 bash "${task_path}" >/dev/null 2>&1
+  # The monitor owns fd 9 for flock; do not let torchrun/data-loader children
+  # inherit it, otherwise a killed monitor leaves a stale lock until training ends.
+  RUN_IN_BACKGROUND=0 bash "${task_path}" 9>&- >/dev/null 2>&1
   task_rc=$?
   task_end="$(date +%s)"
   task_seconds=$((task_end - task_start))
