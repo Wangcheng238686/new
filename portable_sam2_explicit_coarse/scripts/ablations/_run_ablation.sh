@@ -142,6 +142,18 @@ if ((TORCH_DDP_TIMEOUT_SECONDS < 1)); then
   exit 2
 fi
 export TORCH_DDP_TIMEOUT_SECONDS
+TORCH_DDP_CONTROL_TIMEOUT_SECONDS="${TORCH_DDP_CONTROL_TIMEOUT_SECONDS:-86400}"
+case "${TORCH_DDP_CONTROL_TIMEOUT_SECONDS}" in
+  ''|*[!0-9]*)
+    echo "TORCH_DDP_CONTROL_TIMEOUT_SECONDS must be a positive integer, got ${TORCH_DDP_CONTROL_TIMEOUT_SECONDS}" >&2
+    exit 2
+    ;;
+esac
+if ((TORCH_DDP_CONTROL_TIMEOUT_SECONDS < 1)); then
+  echo "TORCH_DDP_CONTROL_TIMEOUT_SECONDS must be >= 1, got ${TORCH_DDP_CONTROL_TIMEOUT_SECONDS}" >&2
+  exit 2
+fi
+export TORCH_DDP_CONTROL_TIMEOUT_SECONDS
 BATCH_SIZE="${BATCH_SIZE:-1}"
 GRAD_ACCUM_STEPS="${GRAD_ACCUM_STEPS:-2}"
 LEARNING_RATE="${LEARNING_RATE:-5e-4}"
@@ -150,10 +162,21 @@ VAL_SUBSET_RATIO="${VAL_SUBSET_RATIO:-1.0}"
 SUBSET_SEED="${SUBSET_SEED:-44}"
 CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
 AMP="${AMP:-0}"
-EMA_ENABLED="${EMA_ENABLED:-1}"
+EMA_ENABLED="${EMA_ENABLED:-0}"
 EMA_DECAY="${EMA_DECAY:-0.999}"
-EMA_EVAL="${EMA_EVAL:-1}"
-EMA_SAVE_BEST="${EMA_SAVE_BEST:-1}"
+EMA_EVAL="${EMA_EVAL:-${EMA_ENABLED}}"
+EMA_SAVE_BEST="${EMA_SAVE_BEST:-${EMA_ENABLED}}"
+for ema_flag_name in EMA_ENABLED EMA_EVAL EMA_SAVE_BEST; do
+  ema_flag_value="${!ema_flag_name}"
+  if [[ "${ema_flag_value}" != "0" && "${ema_flag_value}" != "1" ]]; then
+    echo "${ema_flag_name} must be 0 or 1, got ${ema_flag_value}" >&2
+    exit 2
+  fi
+done
+if [[ "${EMA_ENABLED}" == "0" && ("${EMA_EVAL}" != "0" || "${EMA_SAVE_BEST}" != "0") ]]; then
+  echo "EMA_EVAL and EMA_SAVE_BEST must be 0 when EMA_ENABLED=0" >&2
+  exit 2
+fi
 VAL_EVERY_N_EPOCHS="${VAL_EVERY_N_EPOCHS:-1}"
 VAL_BATCH_SIZE="${VAL_BATCH_SIZE:-1}"
 SAVE_BBOX_BEST_METRIC="${SAVE_BBOX_BEST_METRIC:-bbox/mAP}"
@@ -238,6 +261,10 @@ export SAVE_BBOX_BEST_METRIC
 export SEGM_SCORE_MODE
 
 RUN_TAG="${RUN_TAG:-${ABLATION_ID}}"
+RUN_SUFFIX="${RUN_SUFFIX:-}"
+if [[ -n "${RUN_SUFFIX}" ]]; then
+  RUN_TAG="${RUN_TAG}_${RUN_SUFFIX}"
+fi
 SUBSET_TAG="tr${TRAIN_SUBSET_RATIO}_va${VAL_SUBSET_RATIO}"
 CHECKPOINT_DIR="${CHECKPOINT_DIR:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/${RUN_TAG}_${SUBSET_TAG}}"
 RUN_TIMESTAMP="${RUN_TIMESTAMP:-$(date +%Y%m%d_%H%M%S)}"
@@ -346,6 +373,7 @@ echo "timestamp=${RUN_TIMESTAMP}"
 echo "git_commit=${GIT_COMMIT}"
 echo "ablation_id=${ABLATION_ID}"
 echo "run_tag=${RUN_TAG}"
+echo "run_suffix=${RUN_SUFFIX}"
 echo "neck_type=${NECK_TYPE}"
 echo "prompt_route=${PROMPT_ROUTE}"
 echo "prompt_generator_mode=${PROMPT_GENERATOR_MODE}"
@@ -367,6 +395,8 @@ echo "master_port=${MASTER_PORT}"
 echo "master_port_source=${MASTER_PORT_SOURCE}"
 echo "ddp_timeout_seconds=${TORCH_DDP_TIMEOUT_SECONDS}"
 echo "ddp_timeout_source=${DDP_TIMEOUT_SOURCE}"
+echo "ddp_control_backend=gloo"
+echo "ddp_control_timeout_seconds=${TORCH_DDP_CONTROL_TIMEOUT_SECONDS}"
 echo "cuda_visible_devices=${CUDA_VISIBLE_DEVICES}"
 echo "batch_size_per_rank=${BATCH_SIZE}"
 echo "grad_accum_steps=${GRAD_ACCUM_STEPS}"

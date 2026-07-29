@@ -340,27 +340,75 @@ def _resolve_ddp_timeout_seconds() -> int:
     return timeout_seconds
 
 
-def _init_distributed() -> Dict[str, int]:
+def _resolve_ddp_control_timeout_seconds() -> int:
+    raw_value = os.environ.get("TORCH_DDP_CONTROL_TIMEOUT_SECONDS", "86400")
+    try:
+        timeout_seconds = int(raw_value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "TORCH_DDP_CONTROL_TIMEOUT_SECONDS must be a positive integer, "
+            f"got {raw_value!r}"
+        ) from exc
+    if timeout_seconds < 1:
+        raise ValueError(
+            "TORCH_DDP_CONTROL_TIMEOUT_SECONDS must be >= 1, "
+            f"got {timeout_seconds}"
+        )
+    return timeout_seconds
+
+
+def _init_distributed() -> Dict[str, Any]:
     world_size = int(os.environ.get("WORLD_SIZE", "1"))
     rank = int(os.environ.get("RANK", "0"))
     local_rank = int(os.environ.get("LOCAL_RANK", os.environ.get("SLURM_LOCALID", "0")))
     launched_by_torchrun = os.environ.get("LOCAL_RANK", None) is not None
     should_init = (world_size > 1) or launched_by_torchrun
     if should_init and not dist.is_initialized():
+        # Bind each worker before NCCL creates communicators. Initializing NCCL
+        # while every process still points at cuda:0 can leave rank 0 with an
+        # avoidable memory imbalance.
+        if torch.cuda.is_available():
+            torch.cuda.set_device(local_rank)
         dist.init_process_group(
             backend="nccl",
             init_method="env://",
             timeout=timedelta(seconds=_resolve_ddp_timeout_seconds()),
         )
-        if torch.cuda.is_available():
-            torch.cuda.set_device(local_rank)
     distributed = dist.is_initialized()
+    control_group = None
+    if distributed and world_size > 1:
+        # Validation is intentionally rank-0-only and can take longer than the
+        # training NCCL timeout. Keep epoch control on CPU/Gloo so idle ranks do
+        # not hold an NCCL collective open throughout validation/COCO eval.
+        control_group = dist.new_group(
+            ranks=list(range(world_size)),
+            backend="gloo",
+            timeout=timedelta(seconds=_resolve_ddp_control_timeout_seconds()),
+        )
     return {
         "world_size": world_size,
         "rank": rank,
         "local_rank": local_rank,
         "distributed": int(distributed),
+        "control_group": control_group,
     }
+
+
+def _broadcast_stop_training(
+    stop_training: bool, control_group: Optional[Any]
+) -> bool:
+    """Synchronize rank-0's epoch decision without occupying NCCL."""
+    if not dist.is_initialized():
+        return bool(stop_training)
+    if control_group is None:
+        raise RuntimeError(
+            "distributed epoch control requires the CPU/Gloo control group"
+        )
+    stop_tensor = torch.tensor(
+        [1 if stop_training else 0], device="cpu", dtype=torch.int32
+    )
+    dist.broadcast(stop_tensor, src=0, group=control_group)
+    return bool(stop_tensor.item())
 
 
 def _is_main_process(rank: int) -> bool:
@@ -1346,6 +1394,7 @@ def main():
     dist_info = _init_distributed()
     distributed = bool(dist_info.get("distributed", 0))
     rank = int(dist_info["rank"])
+    control_group = dist_info.get("control_group")
 
     if torch.cuda.is_available():
         device = (
@@ -1362,6 +1411,11 @@ def main():
             "DDP process-group timeout: %d seconds",
             _resolve_ddp_timeout_seconds(),
         )
+        if control_group is not None:
+            logger.info(
+                "DDP validation control: backend=gloo timeout=%d seconds",
+                _resolve_ddp_control_timeout_seconds(),
+            )
 
     cfg = Config.fromfile(args.config)
 
@@ -1675,6 +1729,8 @@ def main():
             "sam2_checkpoint": os.environ.get("SAM2_CKPT", ""),
             "sam2_model_size": os.environ.get("SAM2_MODEL_SIZE", ""),
             "ddp_timeout_seconds": _resolve_ddp_timeout_seconds(),
+            "ddp_control_backend": "gloo" if control_group is not None else "none",
+            "ddp_control_timeout_seconds": _resolve_ddp_control_timeout_seconds(),
         },
         "train_subset_ratio": float(train_subset_ratio),
         "val_subset_ratio": float(val_subset_ratio),
@@ -2807,20 +2863,19 @@ def main():
                     lr_str,
                 )
 
-        # Keep all DDP ranks aligned after rank-0-only checkpoint/logging work.
-        # The stop flag is decided on rank 0 and broadcast so non-main ranks do
-        # not continue into the next epoch after rank 0 exits.
-        if distributed and dist.is_initialized():
-            stop_tensor = torch.tensor(
-                [1 if stop_training else 0], device=device, dtype=torch.int32
+        # Rank 0 decides whether to stop after its rank-0-only validation. The
+        # CPU/Gloo broadcast doubles as the epoch boundary: non-main ranks wait
+        # here without keeping an NCCL collective alive during long COCO eval.
+        if distributed and dist.is_initialized() and control_group is not None:
+            stop_training = _broadcast_stop_training(
+                stop_training, control_group
             )
-            dist.broadcast(stop_tensor, src=0)
-            dist.barrier()
-            stop_training = bool(stop_tensor.item())
         if stop_training:
             break
 
     if distributed and dist.is_initialized():
+        if control_group is not None:
+            dist.destroy_process_group(control_group)
         dist.destroy_process_group()
 
 

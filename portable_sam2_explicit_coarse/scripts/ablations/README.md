@@ -95,9 +95,10 @@ the same sample IDs when the ratio and seed are unchanged.
 
 Validation also follows the historical WHU1024 baseline execution contract:
 only global rank 0 iterates the full validation loader, the other DDP ranks
-wait at epoch-end synchronization, and bbox/segm COCO evaluation uses detector
-scores. Empty-GT images remain in COCO evaluation so false positives are
-counted. B0/B1 retain the historical ROI-local target and detected-box paste.
+wait on a CPU/Gloo epoch-control broadcast, and bbox/segm COCO evaluation uses
+detector scores. The long rank-0 validation wait therefore does not occupy an
+NCCL collective. Empty-GT images remain in COCO evaluation so false positives
+are counted. B0/B1 retain the historical ROI-local target and detected-box paste.
 M0/M1 and C1–C5 retain the SAM2 decoder's native full-image grid, train against resized
 full-image GT and resize once at prediction. Standalone checkpoint inference
 reads the same `final_mask_coordinate_mode`; component/preflight smoke checks
@@ -138,9 +139,11 @@ EARLY_STOPPING_PATIENCE=10
 EARLY_STOPPING_START_EPOCH=20
 EARLY_STOPPING_SMOOTH_WINDOW=5
 EARLY_STOPPING_MIN_DELTA=5e-4
-EMA_UPDATE_EVERY=1
-EMA_EVAL_START_EPOCH=5
+EMA_ENABLED=0
+EMA_EVAL=0
+EMA_SAVE_BEST=0
 TORCH_DDP_TIMEOUT_SECONDS=1800
+TORCH_DDP_CONTROL_TIMEOUT_SECONDS=86400
 SHAPE_CONTEXT_FUSION=roi_only
 SEGM_SCORE_MODE=detector
 ```
@@ -155,18 +158,23 @@ coarse routes explicitly load and freeze the SAM2 no-mask embedding as part of
 their PromptEncoder-based architecture. Coarse model construction fails if the
 checkpoint path/key/value is invalid; full-model preflight also checks that the
 MaskHead value was really loaded and remains frozen, so it cannot silently fall
-back to zeros. The shared 1800-second DDP timeout
-matches the historical launcher and covers rank-0-only full validation plus
-COCO bbox/segm evaluation. Override it from any outer wrapper when needed:
+back to zeros. Screening runs default to no EMA construction, no EMA validation,
+and no EMA best-checkpoint selection. A deliberate full-data EMA run must opt in
+with `EMA_ENABLED=1`; `EMA_EVAL` and `EMA_SAVE_BEST` then inherit that value.
+
+The shared 1800-second NCCL timeout covers training collectives. Rank-0-only
+validation and COCO evaluation use a separate CPU/Gloo control group with a
+default 86400-second timeout, preventing idle workers from timing out inside an
+NCCL broadcast/barrier. Override either layer from an outer wrapper when needed:
 
 ```bash
-TORCH_DDP_TIMEOUT_SECONDS=3600 \
+TORCH_DDP_TIMEOUT_SECONDS=3600 TORCH_DDP_CONTROL_TIMEOUT_SECONDS=172800 \
   bash scripts/ablations/b0_aggregator_mlp.sh --master-port 29601
 ```
 
 The legacy `NCCL_TIMEOUT` environment name remains a fallback when
 `TORCH_DDP_TIMEOUT_SECONDS` is unset. The resolved value and source are written
-to the log snapshot.
+to the log snapshot together with the Gloo control backend and timeout.
 
 ## Smoke and dry-run
 
@@ -228,7 +236,9 @@ Monitor events are written to
 write its full resolved snapshot and training output to its own normal ablation
 log. `POLL_SECONDS` controls the B0 polling interval. `ABLATION_QUEUE` can
 replace the default whitespace-separated wrapper list. `--print-plan` validates
-and prints the resolved queue without waiting or launching training.
+and prints the resolved queue without waiting or launching training. Set one
+`RUN_SUFFIX` on B0 and the monitor to isolate a complete restarted matrix in new
+log/checkpoint directories without changing the per-experiment IDs.
 
 When `MASTER_PORT` is unset, each launcher derives a port from its PID to avoid
 collisions between concurrently started background experiments. A fixed port

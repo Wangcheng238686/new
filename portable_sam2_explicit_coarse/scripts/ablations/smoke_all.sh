@@ -16,21 +16,32 @@ MATRIX=(
   r1_c5_pafpn_coarse_densebr_emb64.sh
 )
 
-echo "[1/3] config and command penetration checks"
+echo "[1/4] CPU/Gloo delayed rank-0 control-plane check"
+"${PYTHON:-/data/wangcheng/envs/cvt2/bin/python}" -m torch.distributed.run \
+  --standalone --nproc_per_node=2 \
+  "${SCRIPT_DIR}/smoke_ddp_control_plane.py"
+
+echo "[2/4] config and command penetration checks"
 for script in "${MATRIX[@]}"; do
   echo "---- ${script}"
-  DRY_RUN=1 CHECK_DATA=0 PREFLIGHT_MODEL=0 \
-    bash "${SCRIPT_DIR}/${script}"
+  smoke_output="$(DRY_RUN=1 CHECK_DATA=0 PREFLIGHT_MODEL=0 \
+    bash "${SCRIPT_DIR}/${script}")"
+  printf '%s\n' "${smoke_output}"
+  grep -q '^ema_enabled=0$' <<<"${smoke_output}"
+  grep -q '^ema_eval=0$' <<<"${smoke_output}"
+  grep -q '^ema_save_best=0$' <<<"${smoke_output}"
+  grep -q '^ddp_control_backend=gloo$' <<<"${smoke_output}"
+  grep -q '^ddp_control_timeout_seconds=86400$' <<<"${smoke_output}"
 done
 
-echo "[2/3] independent train/val subset data check"
+echo "[3/4] independent train/val subset data check"
 DRY_RUN=1 CHECK_DATA=1 PREFLIGHT_MODEL=0 \
 TRAIN_SUBSET_RATIO="${SMOKE_TRAIN_SUBSET_RATIO:-0.01}" \
 VAL_SUBSET_RATIO="${SMOKE_VAL_SUBSET_RATIO:-0.02}" \
   bash "${SCRIPT_DIR}/c5_pafpn_coarse_densebr.sh"
 
 if [ "${FULL_MODEL_SMOKE:-1}" = "1" ]; then
-  echo "[3/3] representative full model construction checks"
+  echo "[4/4] representative full model construction checks"
   for script in \
     b0_aggregator_mlp.sh \
     b1_pafpn_mlp.sh \
@@ -46,7 +57,7 @@ if [ "${FULL_MODEL_SMOKE:-1}" = "1" ]; then
       bash "${SCRIPT_DIR}/${script}"
   done
 else
-  echo "[3/3] full model construction skipped (FULL_MODEL_SMOKE=0)"
+  echo "[4/4] full model construction skipped (FULL_MODEL_SMOKE=0)"
 fi
 
 echo "all ablation smoke checks: OK"

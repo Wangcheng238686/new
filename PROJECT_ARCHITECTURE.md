@@ -218,8 +218,9 @@ loss，不做 rank-local 跳过。四卡的 `DistributedSampler` shard 可能包
 验证执行契约与 WHU1024 历史基线一致：
 
 - validation batch size 默认固定为 `1`；
-- 四卡 DDP 时只有全局 rank 0 顺序遍历完整 validation，其他 rank 在既有
-  epoch-end 同步点等待，不重复累计全分辨率预测 mask；
+- 四卡 DDP 时只有全局 rank 0 顺序遍历完整 validation，其他 rank 在独立的
+  CPU/Gloo epoch-control broadcast 等待，不重复累计全分辨率预测 mask，也不让
+  长时间 COCO 评估占住 NCCL collective；
 - `VAL_EVERY_N_EPOCHS` 决定验证周期；
 - 无有效 GT 的图像不计算 validation loss，但仍进入 COCO 评估以计入假阳性；
 - `segm_score_mode` 是训练 validation 与 checkpoint 推理共用、随 `cfg.model`
@@ -255,16 +256,20 @@ loss，不做 rank-local 跳过。四卡的 `DistributedSampler` shard 可能包
 训练器和全部 B0/B1、M0/M1、C1–C5 消融 wrapper 的公共优化默认值对齐 WHU1024 历史最强基线：
 每卡 batch `1`、梯度累积 `2`、四卡有效 batch `8`、基础 LR `5e-4`、backbone
 与其余主干倍率 `1.0`、mask decoder/no-mask 倍率 `1.0`、weight decay `0.05`、
-warmup `100` optimizer steps、EMA decay `0.999`/每步更新/epoch 5 起评估。
+warmup `100` optimizer steps。点筛公共入口默认 `EMA_ENABLED=0`、`EMA_EVAL=0`、
+`EMA_SAVE_BEST=0`，避免短子集阶段在 epoch 5 切换到尚未成熟的 EMA 权重；完整数据
+EMA 实验须显式设置 `EMA_ENABLED=1`，其余两个开关默认随之开启。
 detector loss在全部epoch保持权重`1.0`；阶段边界仍归档，但默认不再在epoch 6/11
 静默降为`0.75/0.50`。最终mask训练同时记录ROI target fill、logit均值/方差、概率
 均值和阈值前景率，便于第一轮识别整图target或全空mask回归。
 early stopping 使用 segm mAP、平滑窗 `5`、patience `10`、epoch `20` 前不计数、
 min delta `5e-4`。这些值由公共运行器统一传入，所有架构消融默认一致。
-DDP process-group timeout 同样由公共运行器统一设置为 `1800` 秒，对齐冻结历史
-基线启动器，使 rank 1–3 等待 rank 0 完整 validation 与 COCO bbox/segm 评估时
-不会触发 PyTorch 默认 600 秒超时。最外围可用 `TORCH_DDP_TIMEOUT_SECONDS`
-覆盖；兼容旧变量 `NCCL_TIMEOUT` 作为次级回退。
+训练 NCCL process-group timeout 由公共运行器统一设置为 `1800` 秒；rank 0 完整
+validation 与 COCO bbox/segm 评估后的 epoch 控制改走独立 CPU/Gloo group，默认
+timeout `86400` 秒。最外围分别用 `TORCH_DDP_TIMEOUT_SECONDS` 与
+`TORCH_DDP_CONTROL_TIMEOUT_SECONDS` 覆盖；兼容旧变量 `NCCL_TIMEOUT` 只作为
+训练 NCCL timeout 的次级回退。每个 worker 在初始化 NCCL 前先绑定自己的 CUDA
+device，避免所有进程初始化阶段暂时落到 GPU0。
 
 新 checkpoint schema version 为 `1`，其中 `config_snapshot` 保存：
 
@@ -386,8 +391,9 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 优化器、EMA、初始化/续训、有效全局 batch size、git commit 和精确 torchrun
 命令。最外层脚本接受 `--master-port <port>` 或 `--master-port=<port>`；端口优先级为
 命令行、`MASTER_PORT` 环境变量、按启动 PID 自动派生，避免并发后台实验都抢占旧默认
-`29500`。全部入口还共享 1800 秒 DDP timeout。端口、DDP timeout 及其来源均写入
-快照；DDP timeout 也归档在 checkpoint 的 `runtime_config` 中。
+`29500`。全部入口共享 1800 秒训练 NCCL timeout 与 86400 秒 CPU/Gloo 控制
+timeout。端口、两层 timeout 及 backend 均写入快照；timeout 也归档在 checkpoint
+的 `runtime_config` 中。`RUN_SUFFIX` 可给整轮重跑统一追加隔离后缀，不改变各实验 ID。
 使用 dense prompt 的实验每个 epoch 还会固定输出
 `dense residual monitor: alpha=... source_delta_norm=... applied_delta_norm=...
 source_delta_ratio=... applied_delta_ratio=...`。这些值跨 DDP rank 聚合，不依赖
@@ -582,7 +588,10 @@ bash scripts/reproduce_legacy_segm.sh
 | `NPROC_PER_NODE` | DDP 进程数，默认 `4`。 |
 | `MASTER_PORT` / `--master-port` | torchrun rendezvous 端口；最外层脚本的 CLI 参数优先，其次为环境变量，均未设置时按 launcher PID 自动派生。 |
 | `TORCH_DDP_TIMEOUT_SECONDS` | DDP collective timeout，公共运行器默认 `1800` 秒，全部 B0/B1、M0/M1、C1–C5、coarse-strategy 和主线四卡入口共享；最外围可覆盖。 |
+| `TORCH_DDP_CONTROL_TIMEOUT_SECONDS` | rank-0-only validation 结束后的 CPU/Gloo 控制组 timeout，默认 `86400` 秒；与训练 NCCL collective 分离。 |
 | `NCCL_TIMEOUT` | 旧基线兼容别名；仅在未设置 `TORCH_DDP_TIMEOUT_SECONDS` 时作为回退。 |
+| `EMA_ENABLED` / `EMA_EVAL` / `EMA_SAVE_BEST` | 点筛入口默认全部为 `0`；显式设置 `EMA_ENABLED=1` 时后两者默认随之为 `1`。 |
+| `RUN_SUFFIX` | 可选运行后缀，统一追加到 wrapper 的 `RUN_TAG`，用于隔离整轮重跑的日志和 checkpoint。 |
 
 ## 7. 修改项目时的文档同步规则
 
@@ -607,6 +616,13 @@ bash scripts/reproduce_legacy_segm.sh
 处理本项目的新增或改动时，它负责默认执行上述同步流程。
 
 ## 8. 文档同步记录
+
+- 2026-07-29：点筛矩阵默认完全关闭 EMA（不构造、不用于验证、不参与 best 保存），
+  完整数据 EMA 实验保留显式 opt-in。修复 rank-0-only 长验证导致的 NCCL timeout：
+  训练 collective 继续使用 1800 秒 NCCL group，epoch stop/continue 控制改用独立
+  86400 秒 CPU/Gloo group并移除验证后的 NCCL barrier；各 worker 在 NCCL 初始化前
+  先绑定 local CUDA device。新增双进程延迟 rank0 控制 smoke、EMA/控制参数穿透断言、
+  checkpoint runtime 快照字段和 `RUN_SUFFIX` 整轮重跑隔离能力。
 
 - 2026-07-29：修复训练 validation 与 checkpoint 推理潜在的 segm 排序分数分叉。
   新增随 `cfg.model`/checkpoint 保存的 `segm_score_mode` 单一契约；当前 B0/B1、
