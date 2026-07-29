@@ -259,6 +259,10 @@ loss，不做 rank-local 跳过。四卡的 `DistributedSampler` shard 可能包
 warmup `100` optimizer steps。点筛公共入口默认 `EMA_ENABLED=0`、`EMA_EVAL=0`、
 `EMA_SAVE_BEST=0`，避免短子集阶段在 epoch 5 切换到尚未成熟的 EMA 权重；完整数据
 EMA 实验须显式设置 `EMA_ENABLED=1`，其余两个开关默认随之开启。
+当前训练器的 cosine `T_max` 按真实 optimizer steps 计算。冻结旧基准则按
+mini-batches 计算 `T_max`、但只在梯度累积后的 optimizer update 调度一次；当
+`GRAD_ACCUM_STEPS=2` 时旧 cosine 实际衰减约慢一倍。因此 20% 点筛 B0 用于矩阵内部
+公平比较和接线趋势核验，不应被描述为旧基准完整 LR 曲线或最终指标的严格复现。
 detector loss在全部epoch保持权重`1.0`；阶段边界仍归档，但默认不再在epoch 6/11
 静默降为`0.75/0.50`。最终mask训练同时记录ROI target fill、logit均值/方差、概率
 均值和阈值前景率，便于第一轮识别整图target或全空mask回归。
@@ -616,6 +620,13 @@ bash scripts/reproduce_legacy_segm.sh
 处理本项目的新增或改动时，它负责默认执行上述同步流程。
 
 ## 8. 文档同步记录
+
+- 2026-07-29：记录 EMA-off、20% train / 100% validation B0 与冻结 WHU1024 全量
+  基准的趋势诊断。按 optimizer step 对齐后，新 B0 epoch 5/10/15/20 分别对应旧基准
+  epoch 1/2/3/4，bbox、segm 与 loss 趋势同尺度且无全空 mask 回归，确认其可作为点筛
+  控制。同步明确该结果不等于完整历史复现：训练数据量和总更新数不同、旧基准
+  epoch 5 起切 EMA，且旧 cosine `T_max` 以 mini-batch 计数却按 optimizer step 更新，
+  在 accum=2 时衰减约慢一倍；详细数值和源日志写入消融 README。
 
 - 2026-07-29：点筛矩阵默认完全关闭 EMA（不构造、不用于验证、不参与 best 保存），
   完整数据 EMA 实验保留显式 opt-in。修复 rank-0-only 长验证导致的 NCCL timeout：

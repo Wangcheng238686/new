@@ -176,6 +176,52 @@ The legacy `NCCL_TIMEOUT` environment name remains a fallback when
 `TORCH_DDP_TIMEOUT_SECONDS` is unset. The resolved value and source are written
 to the log snapshot together with the Gloo control backend and timeout.
 
+## B0 screening reproduction diagnosis (2026-07-29)
+
+The EMA-off 20%-train/100%-validation B0 run was compared against the frozen
+full-train historical WHU1024 baseline. Epoch numbers are not directly
+comparable: B0 has 74 optimizer steps per epoch, while the full-data baseline
+has approximately 368. The meaningful alignment is therefore five B0 epochs
+per one historical epoch.
+
+| Optimizer-step alignment | B0 bbox/segm mAP | Historical bbox/segm mAP |
+|---|---:|---:|
+| B0 epoch 5 / historical epoch 1 (~370 steps) | 0.5291 / 0.2675 | 0.4801 / 0.2858 |
+| B0 epoch 10 / historical epoch 2 (~740 steps) | 0.6121 / 0.4584 | 0.5632 / 0.4509 |
+| B0 epoch 15 / historical epoch 3 (~1110 steps) | 0.6387 / 0.4979 | 0.6549 / 0.4623 |
+| B0 epoch 20 / historical epoch 4 (~1480 steps) | 0.6792 / 0.5444 | 0.6508 / 0.5054 |
+
+The aligned loss and metric trends confirm that the migrated B0 model/loss/
+validation wiring is behaving as a usable screening control: bbox and segm
+increase on the same scale, and train/validation loss decrease without an
+all-empty-mask regression. This is evidence for successful *screening-baseline*
+reproduction, not a claim of byte-exact or final-metric reproduction.
+
+Three intentional or inherited protocol differences prevent interpreting this
+20% run as the complete historical reproduction:
+
+1. It repeatedly trains on a deterministic 20% subset; 80 B0 epochs contain
+   5920 optimizer updates, versus roughly 29440 in 80 historical full-data
+   epochs.
+2. Screening EMA is disabled. The historical run switches validation to EMA at
+   epoch 5, so only its live-weight epochs 1-4 are cleanly comparable here.
+3. The historical scheduler computes cosine `T_max` in mini-batches but calls
+   `scheduler.step()` only after each accumulated optimizer update. With
+   `GRAD_ACCUM_STEPS=2`, its cosine decay is approximately two times slower than
+   intended. The migrated trainer deliberately fixes `T_max` to optimizer-step
+   units. At the ~1480-step comparison point, B0 is at about `4.34e-4`, while
+   the historical run remains near `4.99e-4`.
+
+Source logs used for this diagnosis:
+
+```text
+portable_sam2_explicit_coarse/logs/ablations/
+  b0_aggregator_mlp_aligned_emaoff_gloo_v1_tr0.2_va1.0_20260729_095000_pid1719009.log
+/home/wangcheng2021/project/portable_sam2_fusion_new/whu1024_reproduce_bundle/
+  portable_sam2_fusion_new/logs/ablation_hyperparam_whu1024_baseplus/
+  whu1024_bs1a2_fixddp_baseplus_ddp4_20260725_200053.log
+```
+
 ## Smoke and dry-run
 
 ```bash
