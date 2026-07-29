@@ -30,6 +30,14 @@ def parse_args():
         required=True,
     )
     parser.add_argument(
+        "--expected-final-mask-loss-mode",
+        choices=("standard", "roi_balanced_dice"),
+        required=True,
+    )
+    parser.add_argument(
+        "--expected-roi-sam-enabled", type=int, choices=(0, 1), required=True
+    )
+    parser.add_argument(
         "--expected-image-embed-stride",
         type=int,
         choices=(16, 32),
@@ -106,6 +114,55 @@ def main():
         head.final_mask_coordinate_mode == args.expected_final_mask_mode,
         "final-mask coordinate mode mismatch",
     )
+    final_mask_loss_cfg = head.get("final_mask_loss_cfg", {})
+    actual_final_mask_loss_mode = str(
+        final_mask_loss_cfg.get("mode", "standard")
+    )
+    require(
+        actual_final_mask_loss_mode == args.expected_final_mask_loss_mode,
+        "final-mask loss mode mismatch",
+    )
+    if actual_final_mask_loss_mode == "roi_balanced_dice":
+        expected_final_loss_cfg = {
+            "roi_expand_ratio": float(
+                os.environ.get("FINAL_MASK_ROI_EXPAND_RATIO", "1.20")
+            ),
+            "roi_bce_weight": float(
+                os.environ.get("FINAL_MASK_ROI_BCE_WEIGHT", "1.0")
+            ),
+            "roi_dice_weight": float(
+                os.environ.get("FINAL_MASK_ROI_DICE_WEIGHT", "1.0")
+            ),
+            "outside_bce_weight": float(
+                os.environ.get("FINAL_MASK_OUTSIDE_BCE_WEIGHT", "0.05")
+            ),
+        }
+        for key, expected in expected_final_loss_cfg.items():
+            require(
+                math.isclose(float(final_mask_loss_cfg[key]), expected),
+                f"final-mask loss {key} mismatch",
+            )
+    roi_sam_cfg = head.get("roi_sam_cfg", {})
+    actual_roi_sam_enabled = bool(roi_sam_cfg.get("enabled", False))
+    require(
+        actual_roi_sam_enabled == bool(args.expected_roi_sam_enabled),
+        "ROI-SAM enable/config mismatch",
+    )
+    if actual_roi_sam_enabled:
+        require(
+            args.prompt_route == "coarse" and args.explicit_prompt_mode == "points",
+            "ROI-SAM must remain a strict C2 points-only variant",
+        )
+        require(
+            head.final_mask_coordinate_mode == "roi_local",
+            "ROI-SAM requires ROI-local final masks",
+        )
+        require(
+            int(roi_sam_cfg.sampling_ratio)
+            == int(os.environ.get("ROI_SAM_SAMPLING_RATIO", "2")),
+            "ROI-SAM sampling ratio mismatch",
+        )
+        require(bool(roi_sam_cfg.aligned), "ROI-SAM must use aligned RoIAlign")
     require(
         head.segm_score_mode == args.expected_segm_score_mode,
         "segmentation score mode mismatch",
@@ -275,6 +332,10 @@ def main():
             head.p2_boundary_refiner_cfg.enabled
         ),
         "final_mask_coordinate_mode": head.final_mask_coordinate_mode,
+        "final_mask_loss_mode": actual_final_mask_loss_mode,
+        "final_mask_loss_config": dict(final_mask_loss_cfg),
+        "roi_sam_enabled": actual_roi_sam_enabled,
+        "roi_sam_config": dict(roi_sam_cfg),
         "segm_score_mode": head.segm_score_mode,
         "segm_score_key": (
             "mask_scores" if head.segm_score_mode == "mask_quality" else "scores"
@@ -441,6 +502,115 @@ def main():
                 == bool(args.p2_boundary_refiner_enabled),
                 "P2BoundaryRefiner model/config mismatch",
             )
+            require(
+                bool(mask_head.roi_sam_enabled)
+                == bool(args.expected_roi_sam_enabled),
+                "built model ROI-SAM state mismatch",
+            )
+            if args.expected_roi_sam_enabled:
+                probe_feature = torch.cat(
+                    [torch.ones(1, 1, 8, 8), torch.full((1, 1, 8, 8), 3.0)],
+                    dim=0,
+                )
+                probe_boxes = torch.tensor(
+                    [[128.0, 128.0, 896.0, 896.0], [0.0, 0.0, 512.0, 512.0]]
+                )
+                probe_ids = torch.tensor([0, 1], dtype=torch.long)
+                cropped = mask_head._roi_sam_crop_feature(
+                    probe_feature, probe_boxes, probe_ids
+                )
+                require(
+                    tuple(cropped.shape) == (2, 1, 8, 8),
+                    "ROI-SAM feature crop shape regression",
+                )
+                require(
+                    torch.allclose(cropped[0], torch.ones_like(cropped[0]))
+                    and torch.allclose(cropped[1], torch.full_like(cropped[1], 3.0)),
+                    "ROI-SAM feature crops mixed image ownership",
+                )
+                local_boxes = mask_head._roi_sam_local_boxes(probe_boxes)
+                expected_local = torch.tensor(
+                    [[0.0, 0.0, 1024.0, 1024.0]]
+                ).expand_as(local_boxes)
+                require(
+                    torch.equal(local_boxes, expected_local),
+                    "ROI-SAM PromptEncoder local-coordinate regression",
+                )
+                mask_head.eval()
+                with torch.no_grad():
+                    roi_forward = mask_head(
+                        x=torch.randn(1, 512, 14, 14),
+                        image_embeddings=torch.randn(1, 256, 32, 32),
+                        image_positional_embeddings=torch.zeros(1, 256, 32, 32),
+                        roi_img_ids=torch.tensor([0], dtype=torch.long),
+                        high_res_features=[
+                            torch.randn(1, 256, 128, 128),
+                            torch.randn(1, 256, 64, 64),
+                        ],
+                        boxes=torch.tensor([[128.0, 192.0, 896.0, 832.0]]),
+                        prompt_rois=torch.tensor(
+                            [[0.0, 128.0, 192.0, 896.0, 832.0]]
+                        ),
+                    )
+                require(
+                    tuple(roi_forward[0].shape[-2:]) == (128, 128),
+                    "ROI-SAM MaskDecoder did not preserve the native 128x128 ROI grid",
+                )
+                require(
+                    roi_forward[2] is not None
+                    and tuple(roi_forward[2]["raw_logits"].shape[-2:]) == (64, 64),
+                    "ROI-SAM coarse branch output regression",
+                )
+
+            if args.expected_final_mask_loss_mode == "roi_balanced_dice":
+                require(
+                    mask_head.final_mask_loss_cfg.mode == "roi_balanced_dice",
+                    "built model lost ROI-focused final-mask loss",
+                )
+                probe_target = torch.zeros((1, 8, 8))
+                probe_target[:, 3:5, 3:5] = 1
+                probe_support = mask_head.get_final_mask_roi_support(
+                    [
+                        argparse.Namespace(
+                            pos_priors=torch.tensor(
+                                [[16.0, 16.0, 48.0, 48.0]]
+                            )
+                        )
+                    ],
+                    [
+                        argparse.Namespace(
+                            masks=argparse.Namespace(height=64, width=64)
+                        )
+                    ],
+                    target_size=(8, 8),
+                    device=torch.device("cpu"),
+                )
+                good_logits = torch.full((1, 8, 8), -4.0)
+                good_logits[:, 3:5, 3:5] = 4.0
+                bad_logits = -good_logits
+                good_loss, good_stats = mask_head.roi_balanced_final_mask_loss(
+                    good_logits,
+                    probe_target,
+                    probe_support,
+                    mask_head.final_mask_loss_cfg,
+                )
+                bad_loss, _ = mask_head.roi_balanced_final_mask_loss(
+                    bad_logits,
+                    probe_target,
+                    probe_support,
+                    mask_head.final_mask_loss_cfg,
+                )
+                require(
+                    float(good_loss) < float(bad_loss),
+                    "ROI-focused final-mask loss does not prefer the correct mask",
+                )
+                require(
+                    math.isclose(
+                        float(good_stats["debug_final_mask_roi_coverage"]),
+                        0.5625,
+                    ),
+                    "ROI-focused support coverage regression",
+                )
 
         # Regression guard shared by validation and checkpoint inference.
         image_size = 64

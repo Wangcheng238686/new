@@ -1080,6 +1080,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             sampling_results=sampling_results,
             batch_gt_instances=batch_gt_instances,
             rcnn_train_cfg=self.train_cfg,
+            final_mask_pos_priors=prompt_pos_priors,
         )
         mask_results.update(loss_mask=mask_loss_and_target["loss_mask"])
         mask_results["loss_mask"].update(

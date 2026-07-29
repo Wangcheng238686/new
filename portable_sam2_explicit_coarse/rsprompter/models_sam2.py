@@ -3,6 +3,7 @@ SAM2 Adapter for Portable SAM Fusion - Simplified Version
 直接使用SAM2的build_sam2函数加载模型
 """
 
+import math
 import os
 import sys
 from typing import Dict, List, Optional, Tuple
@@ -16,6 +17,7 @@ from mmengine.dist import is_main_process
 from mmengine.model import BaseModule
 from torch import Tensor
 
+from mmcv.ops import RoIAlign
 from mmdet.models import MaskRCNN, StandardRoIHead
 from mmdet.models.roi_heads.mask_heads import FCNMaskHead
 from mmdet.models.task_modules import SamplingResult
@@ -1088,6 +1090,8 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         # 旧的统一 mask_coordinate_mode 参数保留为兼容入口（见下方解析）。
         coarse_mask_coordinate_mode: str = "roi_local",
         final_mask_coordinate_mode: str = "roi_local",
+        final_mask_loss_cfg: Optional[Dict] = None,
+        roi_sam_cfg: Optional[Dict] = None,
         mask_coordinate_mode: Optional[str] = None,  # 兼容旧参数，None 时用上面两个默认
         roi_mask_size: int = 28,
         # 问题 13：mask_head 级别的 checkpoint 严格加载配置（透传给 PE；decoder/backbone 各自接收）
@@ -1202,6 +1206,81 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
             "coarse_mask_coordinate_mode must be 'roi_local' in current architecture "
             "(coarse mask is generated and supervised per-ROI)"
         )
+        _final_loss_cfg = dict(final_mask_loss_cfg or {})
+        _allowed_final_loss_keys = {
+            "mode",
+            "roi_expand_ratio",
+            "roi_bce_weight",
+            "roi_dice_weight",
+            "outside_bce_weight",
+            "eps",
+        }
+        _unknown_final_loss_keys = set(_final_loss_cfg) - _allowed_final_loss_keys
+        if _unknown_final_loss_keys:
+            raise ValueError(
+                "Unknown final_mask_loss_cfg keys: "
+                f"{sorted(_unknown_final_loss_keys)}"
+            )
+        _final_loss_cfg.setdefault("mode", "standard")
+        _final_loss_cfg.setdefault("roi_expand_ratio", 1.20)
+        _final_loss_cfg.setdefault("roi_bce_weight", 1.0)
+        _final_loss_cfg.setdefault("roi_dice_weight", 1.0)
+        _final_loss_cfg.setdefault("outside_bce_weight", 0.05)
+        _final_loss_cfg.setdefault("eps", 1e-6)
+        _final_loss_cfg["mode"] = str(_final_loss_cfg["mode"]).strip().lower()
+        if _final_loss_cfg["mode"] not in {"standard", "roi_balanced_dice"}:
+            raise ValueError(
+                "final_mask_loss_cfg.mode must be standard or roi_balanced_dice, "
+                f"got {_final_loss_cfg['mode']!r}"
+            )
+        if (
+            self.final_mask_coordinate_mode != "full_image"
+            and _final_loss_cfg["mode"] != "standard"
+        ):
+            raise ValueError(
+                "ROI-focused final-mask loss requires final_mask_coordinate_mode='full_image'"
+            )
+        if float(_final_loss_cfg["roi_expand_ratio"]) < 1.0:
+            raise ValueError("final-mask ROI expand ratio must be >= 1.0")
+        for _weight_key in (
+            "roi_bce_weight",
+            "roi_dice_weight",
+            "outside_bce_weight",
+        ):
+            if float(_final_loss_cfg[_weight_key]) < 0:
+                raise ValueError(f"final-mask {_weight_key} must be non-negative")
+        if float(_final_loss_cfg["eps"]) <= 0:
+            raise ValueError("final-mask loss eps must be positive")
+        self.final_mask_loss_cfg = ConfigDict(_final_loss_cfg)
+        _roi_sam_cfg = dict(roi_sam_cfg or {})
+        _allowed_roi_sam_keys = {"enabled", "sampling_ratio", "aligned"}
+        _unknown_roi_sam_keys = set(_roi_sam_cfg) - _allowed_roi_sam_keys
+        if _unknown_roi_sam_keys:
+            raise ValueError(
+                f"Unknown roi_sam_cfg keys: {sorted(_unknown_roi_sam_keys)}"
+            )
+        _roi_sam_cfg.setdefault("enabled", False)
+        _roi_sam_cfg.setdefault("sampling_ratio", 2)
+        _roi_sam_cfg.setdefault("aligned", True)
+        self.roi_sam_enabled = bool(_roi_sam_cfg["enabled"])
+        if int(_roi_sam_cfg["sampling_ratio"]) < 0:
+            raise ValueError("roi_sam_cfg.sampling_ratio must be >= 0")
+        if self.roi_sam_enabled:
+            if self.prompt_sparse_mode != "shape_point":
+                raise ValueError("ROI-SAM requires prompt_sparse_mode='shape_point'")
+            if self.explicit_prompt_mode != "points":
+                raise ValueError(
+                    "Current ROI-SAM experiment is a strict C2 points-only variant"
+                )
+            if not self.prompt_encoder_enabled:
+                raise ValueError("ROI-SAM requires the official PromptEncoder")
+            if self.final_mask_coordinate_mode != "roi_local":
+                raise ValueError(
+                    "ROI-SAM decoder outputs require final_mask_coordinate_mode='roi_local'"
+                )
+            if self.final_mask_loss_cfg.mode != "standard":
+                raise ValueError("ROI-SAM uses the standard ROI-local mask loss")
+        self.roi_sam_cfg = ConfigDict(_roi_sam_cfg)
         self.roi_mask_size = int(roi_mask_size)
         # 问题 3：PromptEncoder 严格加载/冻结统一配置。
         # 向后兼容：旧的 load_pe_pretrained / sam2_ckpt_for_pe 裸参数仍可用，
@@ -1892,6 +1971,47 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         # surfaces the GT-point diagnostics previously written here.
         return dict(getattr(self, "_last_uav_debug_stats", {}) or {})
 
+    def _roi_sam_local_boxes(self, boxes: Tensor) -> Tensor:
+        """Return canonical full-canvas boxes for ROI-local PromptEncoder input."""
+        local_boxes = torch.zeros_like(boxes)
+        local_boxes[:, 2:] = float(self.prompt_encoder_image_size)
+        return local_boxes
+
+    def _roi_sam_crop_feature(
+        self,
+        feature: Tensor,
+        boxes: Tensor,
+        roi_img_ids: Tensor,
+    ) -> Tensor:
+        """Normalize each proposal crop back to one native SAM2 feature canvas."""
+        if feature.dim() != 4:
+            raise ValueError(f"ROI-SAM feature must be BCHW, got {tuple(feature.shape)}")
+        if boxes.shape[0] != roi_img_ids.shape[0]:
+            raise ValueError("ROI-SAM boxes and roi_img_ids must have equal length")
+        if boxes.numel() == 0:
+            return feature.new_empty((0, feature.shape[1], *feature.shape[-2:]))
+        if int(roi_img_ids.min()) < 0 or int(roi_img_ids.max()) >= feature.shape[0]:
+            raise ValueError("ROI-SAM roi_img_ids contain an invalid image index")
+        height, width = feature.shape[-2:]
+        scale_x = float(width) / float(self.prompt_encoder_image_size)
+        scale_y = float(height) / float(self.prompt_encoder_image_size)
+        if not math.isclose(scale_x, scale_y, rel_tol=0.0, abs_tol=1e-8):
+            raise ValueError(
+                "ROI-SAM currently requires square images/features with one spatial scale"
+            )
+        rois = torch.cat(
+            [roi_img_ids.to(device=boxes.device, dtype=boxes.dtype)[:, None], boxes],
+            dim=1,
+        )
+        align = RoIAlign(
+            output_size=(height, width),
+            spatial_scale=scale_x,
+            sampling_ratio=int(self.roi_sam_cfg.sampling_ratio),
+            pool_mode="avg",
+            aligned=bool(self.roi_sam_cfg.aligned),
+        )
+        return align(feature, rois)
+
     def forward(
         self,
         x,
@@ -1907,6 +2027,13 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         roi_bs = x.shape[0]
         image_embedding_size = image_embeddings.shape[-2:]
         debug_stats: Dict[str, float] = {}
+        if self.roi_sam_enabled:
+            if boxes is None or roi_img_ids is None:
+                raise ValueError("ROI-SAM requires proposal boxes and roi_img_ids")
+            prompt_geometry_boxes = self._roi_sam_local_boxes(boxes)
+            debug_stats["ROI_SAM/enabled"] = 1.0
+        else:
+            prompt_geometry_boxes = boxes
 
         # === sparse_embeddings 三模式 ===
         # point: RSPrompter 自造 point_emb [N,5,256]
@@ -2094,7 +2221,9 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                         "with non-None mask_logits. Got shape_prior_mask_logits=None."
                     )
                 coords, labels, point_stats = self.shape_point_miner(
-                    shape_prior_mask_logits, boxes, self.prompt_encoder_image_size,
+                    shape_prior_mask_logits,
+                    prompt_geometry_boxes,
+                    self.prompt_encoder_image_size,
                 )
                 (self._last_shape_point_local_yx,
                  self._last_shape_point_labels) = self.shape_point_miner.get_last_local_points()
@@ -2105,7 +2234,7 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                     )
                 points_for_pe, boxes_for_pe, masks_for_pe = (
                     self._select_explicit_prompt_inputs(
-                        coords, labels, boxes, masks_for_pe
+                        coords, labels, prompt_geometry_boxes, masks_for_pe
                     )
                 )
                 if (
@@ -2232,7 +2361,14 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
 
         # P2BoundaryRefiner has already calibrated ROI-local coarse logits before the
         # frozen PromptEncoder.  No embedding-space residual is applied here.
-        image_embeddings = image_embeddings.repeat_interleave(num_roi_per_image, dim=0)
+        if self.roi_sam_enabled:
+            image_embeddings = self._roi_sam_crop_feature(
+                image_embeddings, boxes, roi_img_ids
+            )
+        else:
+            image_embeddings = image_embeddings.repeat_interleave(
+                num_roi_per_image, dim=0
+            )
 
         if self.prompt_encoder is not None and hasattr(self.prompt_encoder, "get_dense_pe"):
             image_positional_embeddings = self.prompt_encoder.get_dense_pe().to(
@@ -2253,10 +2389,16 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
             image_positional_embeddings = torch.zeros_like(image_positional_embeddings)
         
         if high_res_features is not None:
-            high_res_features_expanded = [
-                feat.repeat_interleave(num_roi_per_image, dim=0)
-                for feat in high_res_features[:2]
-            ]
+            if self.roi_sam_enabled:
+                high_res_features_expanded = [
+                    self._roi_sam_crop_feature(feat, boxes, roi_img_ids)
+                    for feat in high_res_features[:2]
+                ]
+            else:
+                high_res_features_expanded = [
+                    feat.repeat_interleave(num_roi_per_image, dim=0)
+                    for feat in high_res_features[:2]
+                ]
             if self._diagnostic_forward_ablation == "zero_high_res":
                 high_res_features_expanded = [
                     torch.zeros_like(feat) for feat in high_res_features_expanded
@@ -2311,6 +2453,7 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         sampling_results: List[SamplingResult],
         batch_gt_instances: InstanceList,
         rcnn_train_cfg: ConfigDict,
+        pos_priors_override: Optional[List[Tensor]] = None,
     ) -> Tensor:
         """Build ROI-local final-mask targets for historical B0/B1 reproduction.
 
@@ -2318,7 +2461,11 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         ROI-local map, crops the assigned GT by the proposal and uses standard
         MMDetection bbox paste at prediction time.
         """
-        pos_proposals = [res.pos_priors for res in sampling_results]
+        pos_proposals = (
+            pos_priors_override
+            if pos_priors_override is not None
+            else [res.pos_priors for res in sampling_results]
+        )
         pos_assigned_gt_inds = [res.pos_assigned_gt_inds for res in sampling_results]
         gt_masks = [res.masks for res in batch_gt_instances]
         return mask_target(
@@ -2362,6 +2509,118 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
             )
         return torch.cat(targets, dim=0)
 
+    def get_final_mask_roi_support(
+        self,
+        sampling_results: List[SamplingResult],
+        batch_gt_instances: InstanceList,
+        target_size: Tuple[int, int],
+        device: torch.device,
+    ) -> Tensor:
+        """Rasterize expanded positive proposal boxes on the final-mask grid.
+
+        C2-L retains SAM2's full-image coordinate contract.  These proposal
+        supports affect only loss weighting; they never crop or paste decoder
+        predictions and are not needed by validation/inference.
+        """
+        target_h, target_w = int(target_size[0]), int(target_size[1])
+        expand_ratio = float(self.final_mask_loss_cfg.roi_expand_ratio)
+        supports = []
+        for result, gt_instances in zip(sampling_results, batch_gt_instances):
+            priors = getattr(result.pos_priors, "tensor", result.pos_priors)
+            if priors.numel() == 0:
+                continue
+            full_h = int(gt_instances.masks.height)
+            full_w = int(gt_instances.masks.width)
+            scale_x = float(target_w) / float(full_w)
+            scale_y = float(target_h) / float(full_h)
+            for prior in priors.detach():
+                x1, y1, x2, y2 = [float(value) for value in prior[:4].cpu()]
+                cx = 0.5 * (x1 + x2)
+                cy = 0.5 * (y1 + y2)
+                half_w = max(0.5, 0.5 * (x2 - x1) * expand_ratio)
+                half_h = max(0.5, 0.5 * (y2 - y1) * expand_ratio)
+                gx1 = max(0, min(target_w - 1, math.floor((cx - half_w) * scale_x)))
+                gy1 = max(0, min(target_h - 1, math.floor((cy - half_h) * scale_y)))
+                gx2 = max(gx1 + 1, min(target_w, math.ceil((cx + half_w) * scale_x)))
+                gy2 = max(gy1 + 1, min(target_h, math.ceil((cy + half_h) * scale_y)))
+                support = torch.zeros(
+                    (target_h, target_w), device=device, dtype=torch.bool
+                )
+                support[gy1:gy2, gx1:gx2] = True
+                supports.append(support)
+        if not supports:
+            return torch.zeros(
+                (0, target_h, target_w), device=device, dtype=torch.bool
+            )
+        return torch.stack(supports, dim=0)
+
+    @staticmethod
+    def roi_balanced_final_mask_loss(
+        logits: Tensor,
+        targets: Tensor,
+        roi_support: Tensor,
+        cfg: ConfigDict,
+    ) -> Tuple[Tensor, Dict[str, Tensor]]:
+        """Balanced ROI BCE + ROI Dice + weak outside-background BCE."""
+        if logits.shape != targets.shape or targets.shape != roi_support.shape:
+            raise ValueError(
+                "ROI-focused final-mask tensors must have identical [N,H,W] shapes: "
+                f"logits={tuple(logits.shape)} targets={tuple(targets.shape)} "
+                f"support={tuple(roi_support.shape)}"
+            )
+        eps = float(cfg.eps)
+        target = targets.float().clamp(0, 1)
+        inside = roi_support.to(dtype=logits.dtype)
+        outside = 1.0 - inside
+        bce = F.binary_cross_entropy_with_logits(logits, target, reduction="none")
+        reduce_dims = (1, 2)
+
+        positive = inside * target
+        negative = inside * (1.0 - target)
+        positive_count = positive.sum(dim=reduce_dims)
+        negative_count = negative.sum(dim=reduce_dims)
+        positive_bce = (bce * positive).sum(dim=reduce_dims) / positive_count.clamp_min(1.0)
+        negative_bce = (bce * negative).sum(dim=reduce_dims) / negative_count.clamp_min(1.0)
+        has_positive = positive_count > 0
+        has_negative = negative_count > 0
+        both = has_positive & has_negative
+        roi_bce_per_roi = torch.where(
+            both,
+            0.5 * (positive_bce + negative_bce),
+            torch.where(has_positive, positive_bce, negative_bce),
+        )
+        roi_bce = roi_bce_per_roi.mean()
+
+        probability = logits.sigmoid() * inside
+        target_inside = target * inside
+        intersection = (probability * target_inside).sum(dim=reduce_dims)
+        denominator = probability.sum(dim=reduce_dims) + target_inside.sum(dim=reduce_dims)
+        roi_dice = (1.0 - (2.0 * intersection + eps) / (denominator + eps)).mean()
+
+        outside_count = outside.sum(dim=reduce_dims)
+        outside_bce_per_roi = (bce * outside).sum(dim=reduce_dims) / outside_count.clamp_min(1.0)
+        outside_bce_per_roi = torch.where(
+            outside_count > 0,
+            outside_bce_per_roi,
+            torch.zeros_like(outside_bce_per_roi),
+        )
+        outside_bce = outside_bce_per_roi.mean()
+        total = (
+            float(cfg.roi_bce_weight) * roi_bce
+            + float(cfg.roi_dice_weight) * roi_dice
+            + float(cfg.outside_bce_weight) * outside_bce
+        )
+        stats = {
+            "debug_final_mask_roi_bce": roi_bce.detach(),
+            "debug_final_mask_roi_dice": roi_dice.detach(),
+            "debug_final_mask_outside_bce": outside_bce.detach(),
+            "debug_final_mask_roi_coverage": inside.detach().mean(),
+            "debug_final_mask_roi_target_fill": (
+                target_inside.sum() / inside.sum().clamp_min(1.0)
+            ).detach(),
+        }
+        return total, stats
+
     def get_coarse_targets(
         self,
         sampling_results: List[SamplingResult],
@@ -2373,9 +2632,9 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
 
         coarse mask 在 ROI 局部坐标系生成与监督。本方法按 positive proposal box
         crop GT mask 并 resize 到 [M,H,W]（pred 原生分辨率），供
-        CoarseMaskLoss 使用。最终 SAM2 mask 也遵循 ROI-local 坐标契约，但使用
-        MMDetection 的 ``mask_target`` 独立生成旧 B0/B1 监督；显式 coarse
-        路线的最终 SAM2 mask 使用 full-image target，两者不共享 loss。
+        CoarseMaskLoss 使用。旧 B0/B1 的最终 SAM2 mask 仍由 MMDetection
+        ``mask_target`` 独立生成；普通显式 coarse 路线使用 full-image target；
+        C2-R 则复用本方法，在 MaskDecoder 原生 ROI 网格上生成 final-mask target。
 
         性能优化：先对去重后的 GT mask 调一次 to_tensor（避免重复渲染整图 mask），
         再逐 ROI crop+resize（crop/resize 本身轻量，瓶颈在 to_tensor 的整图渲染）。
@@ -2473,6 +2732,7 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         sampling_results: List[SamplingResult],
         batch_gt_instances: InstanceList,
         rcnn_train_cfg: ConfigDict,
+        final_mask_pos_priors: Optional[List[Tensor]] = None,
     ) -> dict:
         if self.final_mask_coordinate_mode == "full_image":
             mask_targets = self.get_full_image_targets(
@@ -2481,11 +2741,22 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                 target_size=mask_preds.shape[-2:],
                 device=mask_preds.device,
             )
+        elif self.roi_sam_enabled:
+            # ROI-SAM keeps the target on the decoder's native ROI grid instead
+            # of collapsing the 128x128 prediction to the historical 28x28
+            # Mask R-CNN target used by B0/B1.
+            mask_targets = self.get_coarse_targets(
+                sampling_results,
+                batch_gt_instances,
+                mask_size=mask_preds.shape[-2:],
+                prompt_pos_priors=final_mask_pos_priors,
+            )
         else:
             mask_targets = self.get_targets(
                 sampling_results=sampling_results,
                 batch_gt_instances=batch_gt_instances,
                 rcnn_train_cfg=rcnn_train_cfg,
+                pos_priors_override=final_mask_pos_priors,
             )
         pos_labels = torch.cat([res.pos_gt_labels for res in sampling_results])
         if mask_preds.shape[-2:] != mask_targets.shape[-2:]:
@@ -2501,12 +2772,31 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         if mask_preds.size(0) == 0:
             loss_mask = mask_preds.sum()
         else:
-            if self.class_agnostic:
+            if self.final_mask_loss_cfg.mode == "roi_balanced_dice":
+                if self.class_agnostic:
+                    selected_logits = mask_preds[:, 0]
+                else:
+                    row = torch.arange(mask_preds.shape[0], device=mask_preds.device)
+                    selected_logits = mask_preds[row, pos_labels]
+                roi_support = self.get_final_mask_roi_support(
+                    sampling_results,
+                    batch_gt_instances,
+                    target_size=mask_targets.shape[-2:],
+                    device=mask_preds.device,
+                )
+                loss_mask, focused_stats = self.roi_balanced_final_mask_loss(
+                    selected_logits,
+                    mask_targets,
+                    roi_support,
+                    self.final_mask_loss_cfg,
+                )
+                debug_stats.update(focused_stats)
+            elif self.class_agnostic:
                 loss_mask = self.loss_mask(mask_preds, mask_targets, torch.zeros_like(pos_labels))
             else:
                 loss_mask = self.loss_mask(mask_preds, mask_targets, pos_labels)
             mask_probs = mask_preds.sigmoid().detach()
-            debug_stats = dict(
+            debug_stats.update(
                 debug_mask_pos_rois=mask_preds.new_tensor(float(mask_preds.size(0))),
                 debug_mask_logit_mean=mask_preds.detach().mean(),
                 debug_mask_logit_std=mask_preds.detach().std(unbiased=False),

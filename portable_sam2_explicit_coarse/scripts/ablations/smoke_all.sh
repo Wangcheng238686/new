@@ -18,6 +18,8 @@ MATRIX=(
   m1_pafpn_mlp_full_image.sh
   c1_aggregator_coarse_points.sh
   c2_pafpn_coarse_points.sh
+  c2l_pafpn_coarse_points_roi_loss.sh
+  c2r_pafpn_coarse_points_roi_sam.sh
   c3_pafpn_coarse_points_box.sh
   c4_pafpn_coarse_points_box_dense.sh
   r1_c4_pafpn_coarse_points_box_dense_emb64.sh
@@ -74,6 +76,8 @@ if [ "${FULL_MODEL_SMOKE:-1}" = "1" ]; then
     m0_aggregator_mlp_full_image.sh \
     m1_pafpn_mlp_full_image.sh \
     c1_aggregator_coarse_points.sh \
+    c2l_pafpn_coarse_points_roi_loss.sh \
+    c2r_pafpn_coarse_points_roi_sam.sh \
     r1_c4_pafpn_coarse_points_box_dense_emb64.sh \
     r0_b0_aggregator_mlp_emb64.sh \
     c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh

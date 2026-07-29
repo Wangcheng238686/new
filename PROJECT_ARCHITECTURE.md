@@ -43,7 +43,7 @@ flowchart LR
     F --> G
     G --> H{"Prompt 路线"}
     H -->|B0/B1/M0/M1| I["旧 point_emb MLP<br/>5-token route"]
-    H -->|C1-C5-v2| J["ShapePriorInjector<br/>ROI-local raw coarse logits"]
+    H -->|C1-C5-v2 / C2-L / C2-R| J["ShapePriorInjector<br/>ROI-local raw coarse logits"]
     J --> K["ShapePointMiner<br/>2P2N stop-gradient"]
     J --> L["可选 P2BoundaryRefiner<br/>P2 高频边界残差"]
     K --> M["冻结的 SAM2 PromptEncoder"]
@@ -59,7 +59,7 @@ flowchart LR
 
 ### 2.1 两条 Prompt 路线
 
-SAM2 MaskDecoder 的 image embedding 与 detector FPN 解耦选择：现有 B0/B1、M0/M1、C1–C5
+SAM2 MaskDecoder 的 image embedding 与 detector FPN 解耦选择：现有 B0/B1、M0/M1、C1–C5、C2-L 及 C2-R
 保留旧基线 stride-32/32×32；R0/R1 从同一四层 FPN 选择 stride-16/64×64，符合
 官方1024输入空间契约。Detector neck 在两种路线中都继续接收完整
 256/128/64/32特征，不把分辨率消融混入 RPN/RoI 特征。R0/R1 的 high-res
@@ -131,14 +131,29 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 - 冻结 PromptEncoder 参数时不使用 `torch.no_grad()`，最终 mask loss 仍能回传到
   coarse head 和 P2BoundaryRefiner。
 - B0/B1 为复现历史结果，继续通过 `mask_target()` 使用 ROI-local target，并在
-  validation/inference 中按 bbox paste。M0/M1 与 C1–C5 的 SAM2 decoder 输出保留原生
+  validation/inference 中按 bbox paste。M0/M1、C1–C5 与 C2-L 的 SAM2 decoder 输出保留原生
   full-image 网格：训练直接对齐整图 GT，validation/inference 只 resize 到目标
   图像尺寸一次，不再按 bbox 二次粘贴。该模式保存在 `cfg.model` 和 checkpoint。
-- B0/B1/M0/M1 的 `no_mask_embed` 对齐旧 MLP 基线：零初始化、可训练；C1-C5 将
+- B0/B1/M0/M1 的 `no_mask_embed` 对齐旧 MLP 基线：零初始化、可训练；C1-C5 和 C2-L 将
   SAM2 预训练 no-mask embedding 作为 PromptEncoder 路线的一部分加载并冻结。
   C1-C5 不允许缺失路径/key 时回退到全零：MaskHead 与 PromptEncoder 必须从同一
   checkpoint 得到完全一致的值，否则模型构建立即失败；INIT_FROM、RESUME、EMA
   和 checkpoint 推理加载后都会再次校验，拒绝旧的零值/漂移 checkpoint 静默覆盖。
+- C2-L 保留 C2 的 full-image PromptEncoder/MaskDecoder 坐标和推理后处理，
+  只改最终 mask 训练监督。每个 positive proposal 在 decoder 网格上扩张
+  `1.20x`；ROI 内前景/背景 BCE 分别归一后等权平衡，再加入权重 `1.0`
+  的 ROI Dice，ROI 外 BCE 仅以 `0.05` 抑制整图泄漏。proposal support 只参与
+  loss weighting，不裁剪 image embedding，不改点坐标，validation/inference 不按框粘贴。
+  该配置随 `cfg.model` 和 checkpoint 持久化，与原 C2 的 standard full-image CE
+  保持独立架构 ID 与指纹。
+- C2-R 是独立 ROI-SAM2 路线。每个 proposal 使用同一原始框对 32×32 image
+  embedding 和 128×128/64×64 high-res features 做 aligned avg RoIAlign，并把
+  各 crop 重采样回对应特征的原生空间大小；coarse 2P2N 经 canonical
+  `[0,0,1024,1024]` 框映射为 ROI-local PromptEncoder 坐标。MaskDecoder 输出
+  128×128 ROI-local mask，训练 target 使用同一 proposal crop 并直接保持
+  128×128，不回落到历史 B0 的 28×28 target；validation/inference 再按检测框贴回
+  整图。C2-R 不使用 box token、dense prompt、FiLM 或 P2BoundaryRefiner，且
+  `roi_sam_cfg` 进入 `cfg.model`、架构指纹和 checkpoint。
 
 ## 3. 顶层目录与文件
 
@@ -255,7 +270,7 @@ loss，不做 rank-local 跳过。不同 DDP rank 的 `DistributedSampler` shard
   不完整或字段缺失时立即报错，不允许静默回退导致训练/推理指标口径分叉；
 - bbox 主摘要和 best-bbox checkpoint 默认按旧基线的 `bbox/mAP`；
   `bbox/mAP_75` 仍作为详细指标输出，可用 `SAVE_BBOX_BEST_METRIC` 显式覆盖；
-- segm 后处理按模型配置选择：B0/B1 使用 ROI-local bbox paste，M0/M1 与 C1–C5 使用
+- segm 后处理按模型配置选择：B0/B1/C2-R 使用 ROI-local bbox paste，M0/M1、C1–C5 与 C2-L 使用
   full-image resize；独立推理复用完全相同的 `model.predict` 路径；
 - validation 后执行 CUDA cache 和 Python GC 清理。
 
@@ -282,7 +297,7 @@ loss，不做 rank-local 跳过。不同 DDP rank 的 `DistributedSampler` shard
 - `--allow-cross-arch-init`：仅用于明确的跨架构/旧权重初始化，默认关闭；resume
   始终要求架构 ID 和完整模型指纹一致。
 
-训练器和全部 B0/B1、M0/M1、C1–C5 消融 wrapper 的公共优化默认值对齐 WHU1024 历史最强基线：
+训练器和全部 B0/B1、M0/M1、C1–C5、C2-L、C2-R 消融 wrapper 的公共优化默认值对齐 WHU1024 历史最强基线：
 默认使用物理 GPU `1,2` 的两卡 DDP；每卡 batch `1`、梯度累积 `4`、有效全局
 batch `8`、基础 LR `5e-4`、backbone
 与其余主干倍率 `1.0`、mask decoder/no-mask 倍率 `1.0`、weight decay `0.05`、
@@ -343,7 +358,7 @@ checkpoint 缺少该字段时由构造函数按历史口径解析为 `detector`�
 
 #### 推理支持范围与参数持久化契约
 
-当前 B0/B1、M0/M1、C1–C5 全部消融路线都支持 checkpoint 驱动推理，包括
+当前 B0/B1、M0/M1、C1–C5、C2-L、C2-R 全部消融路线都支持 checkpoint 驱动推理，包括
 aggregator/PAFPN、MLP/coarse、points、box、dense prompt 和 P2BoundaryRefiner。推理器不按
 实验名称猜测结构，而是读取 checkpoint 中已经解析完成的 `model_config` 构建
 模型，并以 `strict=True` 加载权重。旧 checkpoint 仅在 DenseBR 明确关闭且不含
@@ -392,7 +407,7 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `README.md` | 消融矩阵、子集和 dry-run 用法。 |
 | `_run_ablation.sh` | 所有消融共享的受控运行器；固定架构变量、校验契约、记录超参、组装 torchrun；训练默认以 `nohup setsid` 脱离终端并生成日志，不创建 PID 文件。 |
 | `validate_ablation_contract.py` | 校验解析后配置、真实数据子集和可选完整模型实例是否与脚本声明一致。 |
-| `smoke_all.sh` | 检查全部消融，并对 B0、B1、M0、M1、C1、C5、R0、R1 做代表性完整模型构建。 |
+| `smoke_all.sh` | 检查全部消融，并对 B0、B1、M0、M1、C1、C2-L、C2-R、C5、R0、R1 做代表性完整模型构建。 |
 | `monitor_b0_then_serial.sh` | 持续监控当前 B0，结束后串行运行主消融矩阵；单项失败、被杀或脚本缺失时记录并跳过，不阻断后续任务，不创建 PID 文件。 |
 | `b0_aggregator_mlp.sh` | Aggregator + 旧 MLP 基线桥接；默认run tag为`b0_aggregator_mlp_aligned`，与修复前无效权重隔离。 |
 | `b1_pafpn_mlp.sh` | 只将 neck 切到 PAFPN。 |
@@ -400,6 +415,8 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `m1_pafpn_mlp_full_image.sh` | B1 的 full-image final-mask 对照；只切 target/后处理坐标契约。 |
 | `c1_aggregator_coarse_points.sh` | Aggregator + coarse 2P2N。 |
 | `c2_pafpn_coarse_points.sh` | PAFPN + coarse 2P2N。 |
+| `c2l_pafpn_coarse_points_roi_loss.sh` | C2-L；保持 full-image points-only 推理，只将 final-mask 监督换为 ROI-balanced BCE + Dice + 弱 ROI 外 BCE。 |
+| `c2r_pafpn_coarse_points_roi_sam.sh` | C2-R；裁剪并归一化三层 SAM2 proposal 特征，使用 ROI-local 2P2N、原生128×128 ROI target和 bbox paste。 |
 | `c3_pafpn_coarse_points_box.sh` | C2 + box prompt。 |
 | `c4_pafpn_coarse_points_box_dense.sh` | C3 + dense mask prompt。 |
 | `r1_c4_pafpn_coarse_points_box_dense_emb64.sh` | 官方 stride-16/64×64 的 PAFPN + coarse + points+box+dense 严格对照。 |
@@ -422,7 +439,7 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 
 ### 4.8 运行产物
 
-`${PORTABLE_SAM2_LOG_ROOT}/ablations/` 是当前 B0/B1、M0/M1、C1–C5 消融运行器的默认
+`${PORTABLE_SAM2_LOG_ROOT}/ablations/` 是当前 B0/B1、M0/M1、C1–C5、C2-L、C2-R 消融运行器的默认
 日志目录。每次真实训练只生成独立 `.log`，不生成 `.pid`；`DRY_RUN=1` 的参数穿透、
 数据检查和模型构建 smoke 只输出到调用终端，忽略 `LOG_DIR`/`LOG_FILE`，不创建日志文件。
 默认后台模式下，
@@ -502,6 +519,18 @@ FULL_MODEL_SMOKE=0 bash scripts/ablations/smoke_all.sh
 bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
 ```
 
+C2-L 的 points-only final-mask 信号消融：
+
+```bash
+bash scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh
+```
+
+C2-R 的 ROI-SAM2 特征/坐标/监督协议消融：
+
+```bash
+bash scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh
+```
+
 该命令会在终端打印实际日志文件路径，并默认写入
 `logs/ablations/<run_tag>_tr0.2_va1.0_<timestamp>_pid<pid>.log`。训练默认在后台
 运行，命令返回不代表训练结束；使用启动时打印的日志路径和 `background_pid` 跟踪，
@@ -513,6 +542,8 @@ bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
 ```bash
 bash scripts/ablations/b0_aggregator_mlp.sh --master-port 29601
 bash scripts/ablations/c2_pafpn_coarse_points.sh --master-port=29602
+bash scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh --master-port=29603
+bash scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh --master-port=29604
 ```
 
 前台调试：
@@ -521,7 +552,7 @@ bash scripts/ablations/c2_pafpn_coarse_points.sh --master-port=29602
 RUN_IN_BACKGROUND=0 bash scripts/ablations/b0_aggregator_mlp.sh
 ```
 
-后台持续等待当前 B0，随后串行执行 B1、M0、M1、C1-C5、R0、R1：
+后台持续等待当前 B0，随后串行执行 B1、M0、M1、C1、C2、C2-L、C2-R、C3-C5、R0、R1：
 
 ```bash
 B0_LOG=/absolute/path/to/current_b0.log \
@@ -607,7 +638,13 @@ bash scripts/reproduce_legacy_segm.sh
 | `MPLCONFIGDIR` | matplotlib 可写配置目录；默认位于 `PORTABLE_SAM2_TMP_ROOT`。 |
 | `NECK_TYPE` | `aggregator` 或 `pafpn`；消融 wrapper 会固定。 |
 | `EXPLICIT_PROMPT_MODE` | `points`、`points_box` 或 `points_box_dense`。 |
-| `FINAL_MASK_COORDINATE_MODE` | MLP clean config 的最终 mask 坐标契约，默认 `roi_local`；公共 wrapper 将 B0/B1/R0 固定为 `roi_local`、M0/M1 固定为 `full_image`，coarse 路线固定为 `full_image`。解析进 `cfg.model` 和 checkpoint。 |
+| `FINAL_MASK_COORDINATE_MODE` | MLP clean config 的最终 mask 坐标契约，默认 `roi_local`；公共 wrapper 将 B0/B1/R0 固定为 `roi_local`、M0/M1 固定为 `full_image`，普通 coarse 路线固定为 `full_image`，C2-R 固定为 `roi_local`。解析进 `cfg.model` 和 checkpoint。 |
+| `FINAL_MASK_LOSS_MODE` | 最终 mask 监督；原矩阵默认 `standard`，C2-L 固定为 `roi_balanced_dice`。仅改训练 loss，不改 full-image 验证/推理后处理。 |
+| `FINAL_MASK_ROI_EXPAND_RATIO` | C2-L proposal loss support 扩张倍率，默认 `1.20`。 |
+| `FINAL_MASK_ROI_BCE_WEIGHT` / `FINAL_MASK_ROI_DICE_WEIGHT` | C2-L ROI 内平衡 BCE 与 Dice 权重，默认 `1.0/1.0`。 |
+| `FINAL_MASK_OUTSIDE_BCE_WEIGHT` | C2-L ROI 外背景约束权重，默认 `0.05`。 |
+| `ROI_SAM_ENABLED` | 默认 `0`；仅 C2-R wrapper 固定为 `1`。启用后裁剪三层 SAM2 特征、使用 ROI-local PromptEncoder 坐标和 ROI-local final-mask 契约。 |
+| `ROI_SAM_SAMPLING_RATIO` | C2-R 三层 aligned RoIAlign 的每 bin 采样数，默认 `2`；解析进 `cfg.model.roi_sam_cfg`。 |
 | `P2_BOUNDARY_REFINER_ENABLED` | `0/1`；仅 C5-v2 wrapper 固定为 `1`。 |
 | `SHAPE_CONTEXT_FUSION` | coarse feature fusion；默认 `roi_only`，完全不构造 FiLM/context 参数；后续显式消融可设为 `gated_spatial_film`，`legacy_multiplicative` 仅作兼容对照。解析进 `cfg.model` 和 checkpoint。 |
 | `P2_BOUNDARY_REFINER_PROJECTED_CHANNELS` / `P2_BOUNDARY_REFINER_MID_CHANNELS` | P2投影/融合通道，默认 `64/64`。 |
@@ -655,7 +692,7 @@ bash scripts/reproduce_legacy_segm.sh
 | `CUDA_VISIBLE_DEVICES` | 可见 GPU，默认物理卡 `1,2`。 |
 | `NPROC_PER_NODE` | DDP 进程数，默认 `2`。 |
 | `MASTER_PORT` / `--master-port` | torchrun rendezvous 端口；最外层脚本的 CLI 参数优先，其次为环境变量，均未设置时按 launcher PID 自动派生。 |
-| `TORCH_DDP_TIMEOUT_SECONDS` | DDP collective timeout，公共运行器默认 `1800` 秒，全部 B0/B1、M0/M1、C1–C5、coarse-strategy 和主线入口共享；最外围可覆盖。 |
+| `TORCH_DDP_TIMEOUT_SECONDS` | DDP collective timeout，公共运行器默认 `1800` 秒，全部 B0/B1、M0/M1、C1–C5、C2-L、C2-R、coarse-strategy 和主线入口共享；最外围可覆盖。 |
 | `TORCH_DDP_CONTROL_TIMEOUT_SECONDS` | rank-0-only validation 结束后的 CPU/Gloo 控制组 timeout，默认 `86400` 秒；与训练 NCCL collective 分离。 |
 | `NCCL_TIMEOUT` | 旧基线兼容别名；仅在未设置 `TORCH_DDP_TIMEOUT_SECONDS` 时作为回退。 |
 | `EMA_ENABLED` / `EMA_EVAL` / `EMA_SAVE_BEST` | 点筛入口默认全部为 `0`；显式设置 `EMA_ENABLED=1` 时后两者默认随之为 `1`。 |
@@ -684,6 +721,21 @@ bash scripts/reproduce_legacy_segm.sh
 处理本项目的新增或改动时，它负责默认执行上述同步流程。
 
 ## 8. 文档同步记录
+
+- 2026-07-29：新增独立 C2-R ROI-SAM2 消融。在 C2 的 PAFPN、coarse 2P2N、
+  legacy 32×32 embedding 和官方 PromptEncoder 基础上，按同一 proposal aligned
+  RoIAlign 裁剪 32×32/128×128/64×64 三层 SAM2 特征并归一化回原生网格；点坐标
+  改为 canonical ROI-local 0–1024，MaskDecoder 使用原生128×128 ROI target，
+  validation/checkpoint 推理按检测框贴回。新增 `roi_sam_cfg`、独立架构 ID/指纹、
+  wrapper、参数快照、串行队列和完整模型数值 preflight；原 C2 指纹保持不变。
+
+- 2026-07-29：新增 C2-L final-mask 信号消融。保留 C2 的 PAFPN、coarse
+  2P2N、32×32 image embedding、官方 PromptEncoder 和 full-image 验证/推理
+  契约；训练时只在 `1.20x` 扩张 proposal support 内计算前背景平衡
+  BCE + Dice，并用 `0.05` ROI 外 BCE 抑制整图泄漏。新 loss 配置进入
+  `cfg.model`/架构指纹/checkpoint；新增独立 wrapper、启动快照、配置穿透、
+  正误 mask 数值 smoke、完整模型 preflight 和串行队列条目。原 C2 默认
+  `standard` full-image CE 行为不变。
 
 - 2026-07-29：新增唯一机器配置 `configs/environment.sh` 与统一加载器
   `scripts/load_environment.sh`。Python、SAM2 repo/checkpoint、WHU 数据集、checkpoint/

@@ -47,8 +47,22 @@ case "${NECK_TYPE}" in
   *) echo "NECK_TYPE must be aggregator or pafpn, got ${NECK_TYPE}" >&2; exit 2 ;;
 esac
 
+ROI_SAM_ENABLED="${ROI_SAM_ENABLED:-0}"
+case "${ROI_SAM_ENABLED}" in
+  0|1) ;;
+  *) echo "ROI_SAM_ENABLED must be 0 or 1, got ${ROI_SAM_ENABLED}" >&2; exit 2 ;;
+esac
+ROI_SAM_SAMPLING_RATIO="${ROI_SAM_SAMPLING_RATIO:-2}"
+case "${ROI_SAM_SAMPLING_RATIO}" in
+  ''|*[!0-9]*) echo "ROI_SAM_SAMPLING_RATIO must be >= 0" >&2; exit 2 ;;
+esac
+
 case "${PROMPT_ROUTE}" in
   mlp)
+    if [[ "${ROI_SAM_ENABLED}" != "0" ]]; then
+      echo "ROI-SAM is only supported by the explicit coarse route" >&2
+      exit 2
+    fi
     CONFIG_PATH="configs/whu1024_baseplus_clean.py"
     EXPECTED_EXPLICIT_MODE="none"
     export PROMPT_GENERATOR_MODE="rsprompter_mlp"
@@ -76,7 +90,15 @@ case "${PROMPT_ROUTE}" in
     export PROMPT_SPARSE_MODE="shape_point"
     export PROMPT_ENCODER_ENABLED=1
     export SHAPE_PRIOR_ENABLED=1
-    FINAL_MASK_COORDINATE_MODE="full_image"
+    if [[ "${ROI_SAM_ENABLED}" == "1" ]]; then
+      if [[ "${EXPLICIT_PROMPT_MODE}" != "points" ]]; then
+        echo "ROI-SAM is a strict points-only C2 variant" >&2
+        exit 2
+      fi
+      FINAL_MASK_COORDINATE_MODE="roi_local"
+    else
+      FINAL_MASK_COORDINATE_MODE="full_image"
+    fi
     DEFAULT_PROMPT_DEBUG_STATS=1
     ;;
   *) echo "PROMPT_ROUTE must be mlp or coarse, got ${PROMPT_ROUTE}" >&2; exit 2 ;;
@@ -84,6 +106,7 @@ esac
 
 export NECK_TYPE
 export FINAL_MASK_COORDINATE_MODE
+export ROI_SAM_ENABLED ROI_SAM_SAMPLING_RATIO
 SAM_IMAGE_EMBED_STRIDE="${SAM_IMAGE_EMBED_STRIDE:-32}"
 case "${SAM_IMAGE_EMBED_STRIDE}" in
   16|32) ;;
@@ -219,6 +242,15 @@ EMA_EVAL_START_EPOCH="${EMA_EVAL_START_EPOCH:-5}"
 SHAPE_POINT_ADAPTIVE_VALIDITY="${SHAPE_POINT_ADAPTIVE_VALIDITY:-1}"
 SHAPE_LOSS_SCHEDULE_MODE="${SHAPE_LOSS_SCHEDULE_MODE:-fixed}"
 SHAPE_PRIOR_LOSS_WEIGHT="${SHAPE_PRIOR_LOSS_WEIGHT:-0.10}"
+FINAL_MASK_LOSS_MODE="${FINAL_MASK_LOSS_MODE:-standard}"
+case "${FINAL_MASK_LOSS_MODE}" in
+  standard|roi_balanced_dice) ;;
+  *) echo "FINAL_MASK_LOSS_MODE must be standard or roi_balanced_dice, got ${FINAL_MASK_LOSS_MODE}" >&2; exit 2 ;;
+esac
+FINAL_MASK_ROI_EXPAND_RATIO="${FINAL_MASK_ROI_EXPAND_RATIO:-1.20}"
+FINAL_MASK_ROI_BCE_WEIGHT="${FINAL_MASK_ROI_BCE_WEIGHT:-1.0}"
+FINAL_MASK_ROI_DICE_WEIGHT="${FINAL_MASK_ROI_DICE_WEIGHT:-1.0}"
+FINAL_MASK_OUTSIDE_BCE_WEIGHT="${FINAL_MASK_OUTSIDE_BCE_WEIGHT:-0.05}"
 SHAPE_LOSS_STAGE1_END="${SHAPE_LOSS_STAGE1_END:-5}"
 SHAPE_LOSS_WEIGHT_STAGE1="${SHAPE_LOSS_WEIGHT_STAGE1:-0.20}"
 SHAPE_LOSS_WEIGHT_STAGE2="${SHAPE_LOSS_WEIGHT_STAGE2:-0.10}"
@@ -240,6 +272,9 @@ export SHAPE_POINT_ADAPTIVE_VALIDITY
 export SHAPE_CONTEXT_FUSION
 export SHAPE_LOSS_SCHEDULE_MODE
 export SHAPE_PRIOR_LOSS_WEIGHT
+export FINAL_MASK_LOSS_MODE FINAL_MASK_ROI_EXPAND_RATIO
+export FINAL_MASK_ROI_BCE_WEIGHT FINAL_MASK_ROI_DICE_WEIGHT
+export FINAL_MASK_OUTSIDE_BCE_WEIGHT
 export SHAPE_LOSS_STAGE1_END
 export SHAPE_LOSS_WEIGHT_STAGE1
 export SHAPE_LOSS_WEIGHT_STAGE2
@@ -285,6 +320,8 @@ VALIDATE_ARGS=(
   --explicit-prompt-mode "${EXPECTED_EXPLICIT_MODE}"
   --p2-boundary-refiner-enabled "${P2_BOUNDARY_REFINER_ENABLED}"
   --expected-final-mask-mode "${FINAL_MASK_COORDINATE_MODE}"
+  --expected-final-mask-loss-mode "${FINAL_MASK_LOSS_MODE}"
+  --expected-roi-sam-enabled "${ROI_SAM_ENABLED}"
   --expected-image-embed-stride "${SAM_IMAGE_EMBED_STRIDE}"
   --expected-segm-score-mode "${SEGM_SCORE_MODE}"
   --train-subset-ratio "${TRAIN_SUBSET_RATIO}"
@@ -390,6 +427,13 @@ echo "shape_prior_enabled=${SHAPE_PRIOR_ENABLED}"
 echo "explicit_prompt_mode=${EXPECTED_EXPLICIT_MODE}"
 echo "p2_boundary_refiner_enabled=${P2_BOUNDARY_REFINER_ENABLED}"
 echo "final_mask_coordinate_mode=${FINAL_MASK_COORDINATE_MODE}"
+echo "final_mask_loss_mode=${FINAL_MASK_LOSS_MODE}"
+echo "final_mask_roi_expand_ratio=${FINAL_MASK_ROI_EXPAND_RATIO}"
+echo "final_mask_roi_bce_weight=${FINAL_MASK_ROI_BCE_WEIGHT}"
+echo "final_mask_roi_dice_weight=${FINAL_MASK_ROI_DICE_WEIGHT}"
+echo "final_mask_outside_bce_weight=${FINAL_MASK_OUTSIDE_BCE_WEIGHT}"
+echo "roi_sam_enabled=${ROI_SAM_ENABLED}"
+echo "roi_sam_sampling_ratio=${ROI_SAM_SAMPLING_RATIO}"
 echo "sam_image_embedding_stride=${SAM_IMAGE_EMBED_STRIDE}"
 echo "sam_image_embedding_size=$((1024 / SAM_IMAGE_EMBED_STRIDE))"
 echo "train_subset_ratio=${TRAIN_SUBSET_RATIO}"

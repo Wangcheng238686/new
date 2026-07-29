@@ -8,6 +8,8 @@
 | M1 | 32×32 legacy | PAFPN | legacy 5-token MLP | full-image | - | - | - | - |
 | C1 | 32×32 legacy | aggregator | coarse 2P2N | full-image | no | no | no | no |
 | C2 | 32×32 legacy | PAFPN | coarse 2P2N | full-image | no | no | no | no |
+| C2-L | 32×32 legacy | PAFPN | coarse 2P2N | full-image + ROI-focused loss | no | no | no | no |
+| C2-R | 32×32 legacy | PAFPN | coarse 2P2N + ROI-SAM2 | ROI-local | no | no | no | no |
 | C3 | 32×32 legacy | PAFPN | coarse 2P2N | full-image | no | yes | no | no |
 | C4 | 32×32 legacy | PAFPN | coarse 2P2N | full-image | no | yes | yes | no |
 | R0 | 64×64 official | aggregator | legacy 5-token MLP | ROI-local | - | - | - | - |
@@ -20,6 +22,22 @@ all optimization hyperparameters, but switch only the final-mask contract to
 full-image target plus one resize at prediction. Therefore B0→M0 and B1→M1
 isolate the coordinate contract, while M0→C1 and M1→C2 compare MLP against
 coarse under the same full-image contract.
+
+C2-L keeps C2's model inputs, 2P2N points, full-image decoder coordinates and
+single-resize inference unchanged. It changes only final-mask supervision:
+the positive proposal box is expanded by 1.20x on the decoder grid, foreground
+and background BCE are balanced inside that support, ROI Dice has weight 1.0,
+and an outside-ROI BCE term with weight 0.05 suppresses full-canvas leakage.
+The proposal support is training-only; validation and checkpoint inference do
+not crop or paste the predicted mask.
+
+C2-R is a separate ROI-SAM2 alternative. For each positive proposal it uses
+aligned RoIAlign to crop the 32×32 image embedding and the 128×128/64×64
+high-resolution SAM2 features, then normalizes each crop back to the feature's
+native spatial size. The coarse 2P2N coordinates are mapped to a canonical
+0–1024 ROI-local PromptEncoder canvas. MaskDecoder therefore predicts an
+ROI-local mask, training uses the same proposal crop as the ROI target, and
+validation/checkpoint inference paste the mask through the detected box.
 
 ```bash
 bash scripts/ablations/m0_aggregator_mlp_full_image.sh
@@ -69,6 +87,14 @@ historical reproducibility.
 bash scripts/ablations/r0_b0_aggregator_mlp_emb64.sh
 bash scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh
 bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
+```
+
+Run the C2 final-mask signal ablation with the common 20% train / 100% validation
+screening protocol:
+
+```bash
+bash scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh
+bash scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh
 ```
 
 ## Machine environment configuration
@@ -340,6 +366,8 @@ in the log snapshot.
 # Parallel runs: assign a different rendezvous port to each outer launcher.
 bash scripts/ablations/b0_aggregator_mlp.sh --master-port 29601
 bash scripts/ablations/c2_pafpn_coarse_points.sh --master-port=29602
+bash scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh --master-port=29603
+bash scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh --master-port=29604
 ```
 
 Useful common overrides include `MAX_EPOCHS`, `BATCH_SIZE`,
@@ -355,8 +383,20 @@ override it inside a named run, because the contract checker treats it as part
 of the experiment identity.
 
 `FINAL_MASK_COORDINATE_MODE` is likewise fixed by the named wrappers: B0/B1/R0
-use `roi_local`, M0/M1 and every coarse route use `full_image`. Launch the
-corresponding wrapper instead of overriding this variable on another experiment ID.
+and C2-R use `roi_local`; M0/M1 and the other coarse routes use `full_image`.
+Launch the corresponding wrapper instead of overriding this variable on another
+experiment ID.
+
+`FINAL_MASK_LOSS_MODE` is `standard` for the original matrix and fixed to
+`roi_balanced_dice` by C2-L. C2-L defaults to
+`FINAL_MASK_ROI_EXPAND_RATIO=1.20`, `FINAL_MASK_ROI_BCE_WEIGHT=1.0`,
+`FINAL_MASK_ROI_DICE_WEIGHT=1.0`, and `FINAL_MASK_OUTSIDE_BCE_WEIGHT=0.05`.
+These values are parsed into `cfg.model`, checked before launch, printed in the
+hyperparameter snapshot and recovered from checkpoints during inference.
+`ROI_SAM_ENABLED=1` is fixed only by C2-R, and
+`ROI_SAM_SAMPLING_RATIO=2` controls the aligned RoIAlign samples per bin. Both
+are validated before launch; the resolved `roi_sam_cfg` is part of the model
+fingerprint and checkpoint reconstruction contract.
 
 Additional CLI arguments are appended to the exact trainer command:
 

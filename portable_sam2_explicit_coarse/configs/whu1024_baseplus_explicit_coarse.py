@@ -55,6 +55,43 @@ if _shape_loss_mode == "two_stage" and not (1 <= _shape_stage1_end < _epochs):
         "two_stage coarse loss requires 1 <= SHAPE_LOSS_STAGE1_END < MAX_EPOCHS"
     )
 
+_final_mask_loss_mode = os.environ.get(
+    "FINAL_MASK_LOSS_MODE", "standard"
+).strip().lower()
+if _final_mask_loss_mode not in {"standard", "roi_balanced_dice"}:
+    raise ValueError(
+        "FINAL_MASK_LOSS_MODE must be standard or roi_balanced_dice, "
+        f"got {_final_mask_loss_mode!r}"
+    )
+_final_mask_loss_override = {}
+if _final_mask_loss_mode == "roi_balanced_dice":
+    _final_mask_loss_override["final_mask_loss_cfg"] = dict(
+        mode=_final_mask_loss_mode,
+        roi_expand_ratio=float(os.environ.get("FINAL_MASK_ROI_EXPAND_RATIO", "1.20")),
+        roi_bce_weight=float(os.environ.get("FINAL_MASK_ROI_BCE_WEIGHT", "1.0")),
+        roi_dice_weight=float(os.environ.get("FINAL_MASK_ROI_DICE_WEIGHT", "1.0")),
+        outside_bce_weight=float(
+            os.environ.get("FINAL_MASK_OUTSIDE_BCE_WEIGHT", "0.05")
+        ),
+        eps=1e-6,
+    )
+
+_roi_sam_raw = os.environ.get("ROI_SAM_ENABLED", "0")
+if _roi_sam_raw not in {"0", "1"}:
+    raise ValueError(f"ROI_SAM_ENABLED must be 0 or 1, got {_roi_sam_raw!r}")
+_roi_sam_enabled = _roi_sam_raw == "1"
+if _roi_sam_enabled and _mode != "points":
+    raise ValueError("ROI-SAM is a strict C2 points-only experiment")
+if _roi_sam_enabled and _final_mask_loss_mode != "standard":
+    raise ValueError("ROI-SAM uses standard ROI-local final-mask supervision")
+_roi_sam_override = {}
+if _roi_sam_enabled:
+    _roi_sam_override["roi_sam_cfg"] = dict(
+        enabled=True,
+        sampling_ratio=int(os.environ.get("ROI_SAM_SAMPLING_RATIO", "2")),
+        aligned=True,
+    )
+
 _point_no_point_epochs = int(
     os.environ.get(
         "POINT_WARMUP_NO_POINT_EPOCHS",
@@ -91,7 +128,11 @@ model = dict(
             freeze_mask_decoder=False,
             freeze_no_mask_embed=True,
             load_no_mask_pretrained=True,
-            final_mask_coordinate_mode="full_image",
+            final_mask_coordinate_mode=(
+                "roi_local" if _roi_sam_enabled else "full_image"
+            ),
+            **_final_mask_loss_override,
+            **_roi_sam_override,
             shape_base_dense_mode="no_mask",
             shape_prior_loss_weight=_shape_loss_weight,
             shape_prior_cfg=dict(

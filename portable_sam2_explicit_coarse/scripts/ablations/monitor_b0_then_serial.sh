@@ -21,6 +21,8 @@ DEFAULT_QUEUE=(
   m1_pafpn_mlp_full_image.sh
   c1_aggregator_coarse_points.sh
   c2_pafpn_coarse_points.sh
+  c2l_pafpn_coarse_points_roi_loss.sh
+  c2r_pafpn_coarse_points_roi_sam.sh
   c3_pafpn_coarse_points_box.sh
   c4_pafpn_coarse_points_box_dense.sh
   r1_c4_pafpn_coarse_points_box_dense_emb64.sh

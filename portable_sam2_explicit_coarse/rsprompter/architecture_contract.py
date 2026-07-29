@@ -74,6 +74,26 @@ def architecture_id(model_config: Mapping[str, Any]) -> str:
             f"{neck_name}_mlp_{final_mode}_emb{1024 // stride}",
         )
     mode = str(head.get("explicit_prompt_mode", "points"))
+    final_loss_mode = str(
+        head.get("final_mask_loss_cfg", {}).get("mode", "standard")
+    )
+    roi_sam = bool(head.get("roi_sam_cfg", {}).get("enabled", False))
+    if (
+        neck_name == "pafpn"
+        and mode == "points"
+        and stride == 32
+        and not refiner
+        and roi_sam
+    ):
+        return "c2r_pafpn_coarse_points_roi_sam"
+    if (
+        neck_name == "pafpn"
+        and mode == "points"
+        and stride == 32
+        and not refiner
+        and final_loss_mode == "roi_balanced_dice"
+    ):
+        return "c2l_pafpn_coarse_points_roi_loss"
     known = {
         ("aggregator", "points", 32, False): "c1_aggregator_coarse_points",
         ("pafpn", "points", 32, False): "c2_pafpn_coarse_points",
