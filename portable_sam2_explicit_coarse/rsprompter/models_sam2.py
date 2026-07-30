@@ -1478,8 +1478,13 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                 _emb.weight.requires_grad_(_idx in _pe_trainable_indices)
             self.prompt_encoder.not_a_point_embed.weight.requires_grad_(False)
             self.prompt_encoder.no_mask_embed.weight.requires_grad_(False)
+            # Allow selective unfreeze of mask_downscaling (4684 params) so the
+            # frozen PromptEncoder conv stack can adapt to weak coarse-mask
+            # canvas signals.  Controlled via env-var so existing experiments
+            # keep the committed freeze-all contract.
+            _unfreeze_msk_ds = os.environ.get("UNFREEZE_MASK_DOWNSCALING", "0") == "1"
             for _p in self.prompt_encoder.mask_downscaling.parameters():
-                _p.requires_grad_(False)
+                _p.requires_grad_(_unfreeze_msk_ds)
 
             # 加载预训练权重 (对比项目遗漏, 本计划增量)
             # 问题 3：require_pretrained 默认 True——ckpt 不存在或 missing key 时直接 raise，

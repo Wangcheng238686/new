@@ -80,6 +80,12 @@ case "${PROMPT_ROUTE}" in
     ;;
   coarse)
     CONFIG_PATH="configs/whu1024_baseplus_explicit_coarse.py"
+    # A wrapper may swap in a config variant (e.g. densefix) that differs only
+    # in frozen model-architecture knobs. Unset by default, so every existing
+    # coarse experiment keeps its committed config path unchanged.
+    if [[ -n "${CONFIG_OVERRIDE:-}" ]]; then
+      CONFIG_PATH="${CONFIG_OVERRIDE}"
+    fi
     : "${EXPLICIT_PROMPT_MODE:?coarse wrapper must set EXPLICIT_PROMPT_MODE}"
     case "${EXPLICIT_PROMPT_MODE}" in
       points|points_box|points_box_dense) ;;
@@ -215,6 +221,7 @@ SAT_BACKBONE_LR_MULT="${SAT_BACKBONE_LR_MULT:-1.0}"
 SAT_OTHER_LR_MULT="${SAT_OTHER_LR_MULT:-1.0}"
 MASK_DECODER_LR_MULT="${MASK_DECODER_LR_MULT:-1.0}"
 NO_MASK_LR_MULT="${NO_MASK_LR_MULT:-1.0}"
+PROMPT_ENCODER_LR_MULT="${PROMPT_ENCODER_LR_MULT:-0.0}"
 SHAPE_PRIOR_LR_MULT="${SHAPE_PRIOR_LR_MULT:-1.0}"
 SHAPE_CONTEXT_FUSION="${SHAPE_CONTEXT_FUSION:-roi_only}"
 case "${SHAPE_CONTEXT_FUSION}" in
@@ -287,6 +294,8 @@ export P2_BOUNDARY_REFINER_MID_CHANNELS P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX
 export P2_BOUNDARY_REFINER_LOSS_WEIGHT
 export SAVE_BBOX_BEST_METRIC
 export SEGM_SCORE_MODE
+export PROMPT_ENCODER_LR_MULT
+export UNFREEZE_MASK_DOWNSCALING="${UNFREEZE_MASK_DOWNSCALING:-0}"
 
 RUN_TAG="${RUN_TAG:-${ABLATION_ID}}"
 EXPECTED_ARCHITECTURE_ID="${EXPECTED_ARCHITECTURE_ID:-${ABLATION_ID}}"
@@ -370,7 +379,7 @@ CMD=(
   --sat-other-lr-mult "${SAT_OTHER_LR_MULT}"
   --mask-decoder-lr-mult "${MASK_DECODER_LR_MULT}"
   --no-mask-lr-mult "${NO_MASK_LR_MULT}"
-  --prompt-encoder-lr-mult 0.0
+  --prompt-encoder-lr-mult "${PROMPT_ENCODER_LR_MULT}"
   --shape-prior-lr-mult "${SHAPE_PRIOR_LR_MULT}"
   --p2-boundary-refiner-lr-mult "${P2_BOUNDARY_REFINER_LR_MULT}"
   --warmup-iters "${WARMUP_ITERS}"
@@ -471,7 +480,7 @@ echo "sat_backbone_lr_mult=${SAT_BACKBONE_LR_MULT}"
 echo "sat_other_lr_mult=${SAT_OTHER_LR_MULT}"
 echo "mask_decoder_lr_mult=${MASK_DECODER_LR_MULT}"
 echo "no_mask_lr_mult=${NO_MASK_LR_MULT}"
-echo "prompt_encoder_lr_mult=0.0"
+echo "prompt_encoder_lr_mult=${PROMPT_ENCODER_LR_MULT}"
 echo "shape_prior_lr_mult=${SHAPE_PRIOR_LR_MULT}"
 echo "shape_context_fusion=${SHAPE_CONTEXT_FUSION}"
 echo "p2_boundary_refiner_lr_mult=${P2_BOUNDARY_REFINER_LR_MULT}"

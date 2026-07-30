@@ -12,6 +12,8 @@
 | C2-R | 32×32 legacy | PAFPN | coarse 2P2N + ROI-SAM2 | ROI-local | no | no | no | no |
 | C3 | 32×32 legacy | PAFPN | coarse 2P2N | full-image | no | yes | no | no |
 | C4 | 32×32 legacy | PAFPN | coarse 2P2N | full-image | no | yes | yes | no |
+| C4-densefix | 32×32 legacy | PAFPN | coarse 2P2N | full-image | no | yes | yes (fixed 0.5) | no |
+| C4-densefix-unfreeze | 32×32 legacy | PAFPN | coarse 2P2N | full-image | no | yes | yes (fixed 0.5, ds unfrozen) | no |
 | R0 | 64×64 official | aggregator | legacy 5-token MLP | ROI-local | - | - | - | - |
 | R1-C4 | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | yes | no |
 | C5-v2 | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | yes | yes |
@@ -88,6 +90,175 @@ bash scripts/ablations/r0_b0_aggregator_mlp_emb64.sh
 bash scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh
 bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
 ```
+
+## C4 dense-gate repair (densefix)
+
+The C4 screening run showed that the dense prompt contributed no measurable
+segm/mAP gain over C3 (both tracking within epoch noise). Log diagnosis traced
+this to the learnable `global_sigmoid` dense gate: `shape_dense_alpha_raw`
+stayed pinned near its 0.25 init across 8 epochs (α: 0.250→0.255), so the dense
+embedding's `applied_delta_ratio` never exceeded ~0.13 — the shape-dense signal
+was injected at roughly 0.13% of the base embedding norm, i.e. below epoch
+noise. The gate effectively never opened.
+
+C4-densefix isolates that single failure mode as the only changed variable. It
+reuses C4's exact architecture (same `points_box_dense`, `roi_only` FiLM, no P2
+refiner) but replaces the trainable `global_sigmoid` gate with a fixed,
+untrained interpolation coefficient of **0.5** (2× the stuck value). If the
+dense prompt's segm/mAP then separates from C3, it confirms the dense
+information was useful and the gate was the bottleneck; if it still tracks C3,
+the problem lies elsewhere (e.g. `restrict_dense_prompt_to_box` zeroing 98% of
+the canvas, or information redundancy with the sparse shape points).
+
+The variant lives in a dedicated config so the committed C4 config is unchanged:
+
+- `configs/whu1024_baseplus_explicit_coarse_densefix.py` — same as the coarse
+  config except `shape_prior_cfg.shape_scale_mode="fixed"` and
+  `prompt_scale_init=0.5`.
+- The wrapper selects it via `CONFIG_OVERRIDE` (a new optional `_run_ablation.sh`
+  hook that, when unset, leaves every existing experiment on its committed
+  config path). `ABLATION_ID` stays the C4 architecture identity; `RUN_TAG`
+  carries a `_densefix` suffix so logs/checkpoints never collide with C4.
+
+```bash
+# Defaults to GPU 1,2 (C2-r's former slot, shared with C3).
+bash scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh
+
+# Retune the fixed gate strength:
+SHAPE_DENSE_ALPHA_INIT=0.75 \
+  bash scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh
+```
+
+### C4 densefix + unfreeze mask_downscaling
+
+Canvas-quality investigation revealed a second bottleneck: the PromptEncoder
+`mask_downscaling` convolution stack (3 layers, 4,684 params) is frozen with
+the rest of the PE when `freeze_all=True`.  These pretrained conv weights were
+optimised for SAM's original strong, full-image mask prompts and cannot adapt to
+the 98%-sparse coarse-mask canvas that the shape injector produces, even when
+the fixed gate lifts the injection strength.
+
+`c4_pafpn_coarse_points_box_dense_densefix_unfreeze` builds on the densefix
+gate repair (fixed α=0.5) and additionally leaves `mask_downscaling` trainable
+via `UNFREEZE_MASK_DOWNSCALING=1`.  The remaining PE components (point
+embeddings, no-mask embedding, positional encoding) stay frozen.  A new
+environment hook `PROMPT_ENCODER_LR_MULT` (default 0.0, here overridden to 1.0)
+replaces the previously hard-coded zero multiplier so the 4,684 trainable
+parameters receive a non-zero learning rate.
+
+```bash
+# Reuses the same densefix config.  GPU 1,2 (shared with C3).
+bash scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh
+
+# Standalone unfreeze without the fixed-gate change (need the original config):
+CONFIG_OVERRIDE=configs/whu1024_baseplus_explicit_coarse.py \
+UNFREEZE_MASK_DOWNSCALING=1 \
+  bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
+```
+
+## C3/C4/densefix-unfreeze/C5-v2 stride-32 vs stride-16 diagnosis (2026-07-30)
+
+Four coarse-route experiments were trained with the standard 20% train / 100%
+validation screening protocol, `SEGM_SCORE_MODE=detector`, `EMA off`, and all hit
+`EARLY_STOPPING_PATIENCE=10` (early-stop start at epoch 20) around epoch 32.
+The table reports the smoothed segm/mAP the early-stopper tracked, the best raw
+segm/mAP, and the best bbox/mAP.
+
+| Experiment | Stride / grid | Dense gate | mask_ds | Refiner | best smooth segm/mAP | best raw segm/mAP | best bbox/mAP |
+|---|---|---|---|---|---:|---:|---:|
+| C3 | 32 / 32×32 | — | frozen | no | 0.4544 | 0.4773 | 0.7120 |
+| C4 | 32 / 32×32 | global_sigmoid (α≈0.25) | frozen | no | 0.4549 | 0.4852 | 0.7150 |
+| C4-densefix-unfreeze | 32 / 32×32 | fixed (α=0.5) | **unfrozen** | no | 0.4526 | 0.4663 | 0.7080 |
+| C5-v2 | 16 / 64×64 | global_sigmoid (α≈0.25) | frozen | yes | **0.6321** | **0.6480** | 0.7116 |
+
+Source logs (each is the canonical full run; `pid` identifies the launcher):
+
+```text
+logs/ablations/c3_pafpn_coarse_points_box_semanticfix_roi_only_tr0.2_va1.0_20260729_235545_pid374570.log
+logs/ablations/c4_pafpn_coarse_points_box_dense_semanticfix_roi_only_tr0.2_va1.0_20260729_235711_pid375196.log
+logs/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze_tr0.2_va1.0_20260730_031855_pid429545.log
+logs/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64_tr0.2_va1.0_20260729_235752_pid375615.log
+```
+
+A killed-early C4-densefix run (fixed gate, frozen mask_downscaling) is also on
+record for the gate-only check; it was superseded by densefix-unfreeze:
+
+```text
+logs/ablations/c4_pafpn_coarse_points_box_dense_densefix_tr0.2_va1.0_20260730_020955_pid409970.log
+```
+
+### Dense monitor across the three stride-32 runs
+
+The `applied_delta_ratio` (dense embedding perturbation relative to the frozen
+`no_mask_embed` baseline) confirms each repair actually lifted the injected
+signal, yet mAP did not move:
+
+| Run | α (final) | applied_delta_ratio (final) | best smooth segm/mAP |
+|---|---:|---:|---:|
+| C4 (global_sigmoid, mask_ds frozen) | 0.277 | 0.146 | 0.4549 |
+| C4-densefix-unfreeze (fixed 0.5, mask_ds unfrozen) | 0.500 | 0.307 | 0.4526 |
+
+### What is and is not proven
+
+These four runs establish that, **on stride-32/32×32 with
+`restrict_dense_prompt_to_box=True`**, neither raising the dense gate strength
+nor unfreezing `mask_downscaling` yields a measurable segm/mAP gain over the
+sparse-only baseline. The injected ratio rose from 0.146 to 0.307 (a ~2×
+increase) and the result still tracks C3 within epoch noise.
+
+Two variables remain **untested**, so "dense is useless" must not be concluded
+globally:
+
+1. **`restrict_dense_prompt_to_box`**: this was never switched off. With the
+   hard 0/1 box support, the dense delta touches only the ~3×3 embedding pixels
+   that a typical ~100×100 px WHU building box maps to on a 32×32 grid (~0.9%
+   coverage, matching the logged `canvas_nonzero_ratio≈0.5–2%`). The dense
+   information therefore lands on a handful of pixels that the 2P2N points and
+   the box token already localise.
+2. **Image-embedding resolution**: C5-v2 runs at stride-16/64×64, where the same
+   box covers ~6×6 pixels and dense shape structure has room to diverge from
+   point localisation. But C5-v2 also enables the P2 boundary refiner and no
+   stride-16-without-refiner control (R1-C4) has run yet, so the stride
+   contribution cannot be isolated from the refiner here.
+
+### Hypothesis on the stride-32 mechanism
+
+Inference (not proven): at stride-32, a ~100×100 px WHU building box quantises
+to ~3×3 embedding pixels. Inside such a small region, the 2P2N points plus the
+box token already occupy nearly every spatial position, so the continuous shape
+distribution the dense canvas carries has little room to differ from the
+localisation the sparse prompts already provide. At stride-16 the same box maps
+to ~6×6 pixels, leaving spatial structure the dense prompt could exploit. This
+is consistent with the segm/mAP gap being present from epoch 1 (0.517 vs 0.20)
+before the refiner has learned anything, but it is an inference — the
+stride/refiner contributions to C5-v2 are still confounded because R1-C4 has
+not run.
+
+### What the P2 refiner actually changed
+
+The per-epoch refiner statistics show raw ≈ refined throughout (dice differs
+in the 4th decimal, boundary-F1 in the 3rd):
+
+| Epoch | raw_dice | refined_dice | raw_bF1 | refined_bF1 |
+|---|---|---|---|---|
+| 6 | 0.8009 | 0.8011 | 0.8233 | 0.8301 |
+| 32 | 0.8333 | 0.8319 | 0.9158 | 0.9160 |
+
+So on the coarse-mask quality metrics the refiner's direct correction is
+marginal; most of the coarse-quality gain is driven by the shape-injector
+training under a 64×64 grid, not by the refiner delta. The refiner's loss share
+did climb steadily (`p2_boundary` from 2.9% to 6.7%), but this has not been
+shown to convert into segm/mAP that a stride-16-without-refiner run could not
+also reach.
+
+### Next experiments needed to close the attribution
+
+1. **R1-C4** (`SAM_IMAGE_EMBED_STRIDE=16`, dense, no refiner): isolates both
+   the stride-16 dense value and the refiner's incremental contribution when
+   compared to C5-v2. This is the single most informative missing control.
+2. Optionally, a stride-32 run with `restrict_dense_prompt_to_box=False` to test
+   whether the box restriction — not the resolution — is the dense bottleneck.
+   This requires exposing the flag (currently config-only).
 
 Run the C2 final-mask signal ablation with the common 20% train / 100% validation
 screening protocol:
