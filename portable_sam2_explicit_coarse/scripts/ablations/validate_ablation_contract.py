@@ -115,6 +115,18 @@ def main():
         "final-mask coordinate mode mismatch",
     )
     final_mask_loss_cfg = head.get("final_mask_loss_cfg", {})
+    expected_train_mask_downscaling = os.environ.get(
+        "PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING", "0"
+    ) == "1"
+    actual_train_mask_downscaling = bool(
+        head.get("prompt_encoder_cfg", {}).get(
+            "train_mask_downscaling", False
+        )
+    )
+    require(
+        actual_train_mask_downscaling == expected_train_mask_downscaling,
+        "PromptEncoder mask_downscaling trainability was not resolved into cfg.model",
+    )
     actual_final_mask_loss_mode = str(
         final_mask_loss_cfg.get("mode", "standard")
     )
@@ -321,6 +333,7 @@ def main():
             None if args.prompt_route == "mlp" else head.explicit_prompt_mode
         ),
         "prompt_encoder_enabled": bool(head.prompt_encoder_enabled),
+        "prompt_encoder_train_mask_downscaling": actual_train_mask_downscaling,
         "shape_prior_enabled": bool(head.shape_prior_cfg.enabled),
         "shape_context_fusion": (
             None
@@ -460,6 +473,26 @@ def main():
             require(mask_head.point_emb is None, "coarse route constructed legacy MLP")
             require(mask_head.prompt_encoder is not None, "coarse route missing PromptEncoder")
             require(mask_head.shape_injector is not None, "coarse route missing shape head")
+            trainable_mask_downscaling = sum(
+                parameter.numel()
+                for parameter in mask_head.prompt_encoder.mask_downscaling.parameters()
+                if parameter.requires_grad
+            )
+            require(
+                trainable_mask_downscaling
+                == (4684 if expected_train_mask_downscaling else 0),
+                "PromptEncoder mask_downscaling trainable-parameter contract mismatch",
+            )
+            if expected_train_mask_downscaling:
+                trainable_prompt_encoder = sum(
+                    parameter.numel()
+                    for parameter in mask_head.prompt_encoder.parameters()
+                    if parameter.requires_grad
+                )
+                require(
+                    trainable_prompt_encoder == 4684,
+                    "densefix-unfreeze must train only mask_downscaling",
+                )
             expected_context_fusion = os.environ.get(
                 "SHAPE_CONTEXT_FUSION", "roi_only"
             ).strip().lower()
@@ -661,6 +694,43 @@ def main():
             if mask_head.prompt_encoder is None
             else list(mask_head.prompt_encoder.mask_input_size)
         )
+        report["prompt_encoder_trainable_parameters"] = (
+            0
+            if mask_head.prompt_encoder is None
+            else sum(
+                parameter.numel()
+                for parameter in mask_head.prompt_encoder.parameters()
+                if parameter.requires_grad
+            )
+        )
+        if expected_train_mask_downscaling:
+            # Check the same reconstruction path used by schema-v2 checkpoint
+            # inference: build from the fully resolved model_config, without
+            # relying on the launcher environment, then load strictly.
+            from mmengine.config import ConfigDict
+
+            resolved_model_config = cfg.model.to_dict()
+            rebuilt_model = MODELS.build(ConfigDict(resolved_model_config))
+            rebuilt_model.load_state_dict(model.state_dict(), strict=True)
+            rebuilt_mask_head = rebuilt_model.roi_head.mask_head
+            require(
+                bool(
+                    rebuilt_mask_head.prompt_encoder_cfg.get(
+                        "train_mask_downscaling", False
+                    )
+                ),
+                "checkpoint-style model_config reconstruction lost mask_downscaling trainability",
+            )
+            require(
+                sum(
+                    parameter.numel()
+                    for parameter in rebuilt_mask_head.prompt_encoder.parameters()
+                    if parameter.requires_grad
+                )
+                == 4684,
+                "checkpoint-style reconstruction changed PromptEncoder trainable parameters",
+            )
+            report["model_config_strict_roundtrip"] = "ok"
 
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     print("ablation contract: OK")

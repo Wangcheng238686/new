@@ -22,6 +22,8 @@ MATRIX=(
   c2r_pafpn_coarse_points_roi_sam.sh
   c3_pafpn_coarse_points_box.sh
   c4_pafpn_coarse_points_box_dense.sh
+  c4_pafpn_coarse_points_box_dense_densefix.sh
+  c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh
   r1_c4_pafpn_coarse_points_box_dense_emb64.sh
   r0_b0_aggregator_mlp_emb64.sh
   c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
@@ -50,6 +52,13 @@ for script in "${MATRIX[@]}"; do
   grep -q '^grad_accum_steps=4$' <<<"${smoke_output}"
   grep -q '^effective_global_batch_size=8$' <<<"${smoke_output}"
   grep -Fq "environment_config=${PORTABLE_SAM2_ENV_FILE}" <<<"${smoke_output}"
+  if [[ "${script}" == "c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh" ]]; then
+    grep -q '^prompt_encoder_train_mask_downscaling=1$' <<<"${smoke_output}"
+    grep -q '^prompt_encoder_lr_mult=1.0$' <<<"${smoke_output}"
+    grep -q '"prompt_encoder_train_mask_downscaling": true' <<<"${smoke_output}"
+  else
+    grep -q '^prompt_encoder_train_mask_downscaling=0$' <<<"${smoke_output}"
+  fi
 done
 
 val_loss_override_output="$(DRY_RUN=1 CHECK_DATA=0 PREFLIGHT_MODEL=0 \
@@ -78,6 +87,7 @@ if [ "${FULL_MODEL_SMOKE:-1}" = "1" ]; then
     c1_aggregator_coarse_points.sh \
     c2l_pafpn_coarse_points_roi_loss.sh \
     c2r_pafpn_coarse_points_roi_sam.sh \
+    c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh \
     r1_c4_pafpn_coarse_points_box_dense_emb64.sh \
     r0_b0_aggregator_mlp_emb64.sh \
     c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh

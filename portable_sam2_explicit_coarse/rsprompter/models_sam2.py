@@ -1287,9 +1287,23 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         # 但若提供了 prompt_encoder_cfg，则以 cfg 为准（更细粒度）。
         self.checkpoint_load_cfg = dict(checkpoint_load_cfg or {})
         _pe_cfg = dict(prompt_encoder_cfg or {})
+        _allowed_pe_cfg_keys = {
+            "require_pretrained",
+            "ckpt_path",
+            "freeze_all",
+            "train_mask_downscaling",
+        }
+        _unknown_pe_cfg_keys = set(_pe_cfg) - _allowed_pe_cfg_keys
+        if _unknown_pe_cfg_keys:
+            raise ValueError(
+                "Unknown prompt_encoder_cfg keys: "
+                f"{sorted(_unknown_pe_cfg_keys)}"
+            )
         # 旧参数 → cfg 默认值（仅当 cfg 未显式指定时）
         _pe_cfg.setdefault("require_pretrained", bool(load_pe_pretrained))
         _pe_cfg.setdefault("ckpt_path", sam2_ckpt_for_pe)
+        _pe_cfg.setdefault("freeze_all", True)
+        _pe_cfg.setdefault("train_mask_downscaling", False)
         self.prompt_encoder_cfg = _pe_cfg
         # 暴露给后续加载逻辑使用的扁平字段（保持旧代码可读）
         self._pe_require_pretrained = bool(_pe_cfg.get("require_pretrained", True))
@@ -1478,13 +1492,15 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                 _emb.weight.requires_grad_(_idx in _pe_trainable_indices)
             self.prompt_encoder.not_a_point_embed.weight.requires_grad_(False)
             self.prompt_encoder.no_mask_embed.weight.requires_grad_(False)
-            # Allow selective unfreeze of mask_downscaling (4684 params) so the
-            # frozen PromptEncoder conv stack can adapt to weak coarse-mask
-            # canvas signals.  Controlled via env-var so existing experiments
-            # keep the committed freeze-all contract.
-            _unfreeze_msk_ds = os.environ.get("UNFREEZE_MASK_DOWNSCALING", "0") == "1"
+            # The dense-mask convolution stack may be trained independently of
+            # sparse point/box embeddings.  This is a resolved model-config
+            # field so checkpoints can reconstruct the exact trainability
+            # contract without relying on a launcher-only environment value.
+            _train_mask_downscaling = bool(
+                self.prompt_encoder_cfg.get("train_mask_downscaling", False)
+            )
             for _p in self.prompt_encoder.mask_downscaling.parameters():
-                _p.requires_grad_(_unfreeze_msk_ds)
+                _p.requires_grad_(_train_mask_downscaling)
 
             # 加载预训练权重 (对比项目遗漏, 本计划增量)
             # 问题 3：require_pretrained 默认 True——ckpt 不存在或 missing key 时直接 raise，

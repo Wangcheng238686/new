@@ -3,12 +3,10 @@
 # no P2 refiner) except the learnable global-sigmoid dense gate is replaced by a
 # fixed, untrained interpolation coefficient of 0.5.
 #
-# Motivation: in the C4 run `shape_dense_alpha_raw` (global_sigmoid mode) stayed
-# pinned near its 0.25 init across 8 epochs, so the dense prompt's
-# applied_delta_ratio never exceeded ~0.13 and C4 tracked C3 on segm/mAP. This
-# wrapper isolates "the gate never opened" as the single changed variable: the
-# dense embedding is injected at a constant strength instead of a gate that
-# failed to learn.
+# Motivation: C4's learned coefficient stayed close to its 0.25 initialization
+# while C4 tracked C3 on segm/mAP. This wrapper isolates gate strength as one
+# changed variable; it does not assume that the learned low coefficient is
+# itself faulty.
 #
 # ABLATION_ID stays the C4 architecture identity; RUN_TAG carries the densefix
 # suffix so logs/checkpoints do not collide with the original C4 run.

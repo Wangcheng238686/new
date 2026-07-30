@@ -10,3 +10,4 @@
 .vscode/
 .idea/
 
+portable_sam2_explicit_coarse/configs/environment.local.sh

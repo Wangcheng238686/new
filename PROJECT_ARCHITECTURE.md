@@ -86,7 +86,9 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 - 由 `ShapePriorInjector` 产生 ROI-local coarse logits；
 - 从 coarse logits 挖掘 2 个正点和 2 个负点；
 - 按实验配置增加 box token、dense mask prompt 和 P2BoundaryRefiner；
-- 使用相同型号 SAM2 checkpoint 加载并冻结原生 PromptEncoder。
+- 使用相同型号 SAM2 checkpoint 加载原生 PromptEncoder；默认全部冻结，只有显式
+  densefix-unfreeze 消融通过 `cfg.model` 解冻其中 4,684 个
+  `mask_downscaling` 参数。
 - 默认 `fusion_type="roi_only"`，RoI feature 直接进入 small coarse decoder，
   不构造全图 context、box encoding、cross-attention 或 FiLM gamma/beta 参数；
   `gated_spatial_film` 仅保留为后续显式消融。
@@ -111,6 +113,12 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
   所有 DDP rank 的有效 `alpha`、注入前/后的 delta norm 及相对 base norm 的 ratio。
   `alpha` 非零只表示门已打开，`applied_delta_ratio` 非零才表示 coarse dense prompt
   实际改变了送入 MaskDecoder 的 dense embedding；
+- C4 默认使用可学习 `global_sigmoid` 系数；C4-densefix 使用固定 `alpha=0.5`。
+  densefix-unfreeze 在此基础上将
+  `prompt_encoder_cfg.train_mask_downscaling=True` 写入 `cfg.model`，仅解冻
+  PromptEncoder 的 mask convolution stack，并以独立 PromptEncoder LR 参数组训练。
+  已完成的 stride-32 联合消融将 applied delta ratio 从约 0.146 提高到 0.307，
+  但没有提升 segm mAP；该结果不能拆分固定门控和解冻 downscaling 的单独贡献；
 - FiLM 默认关闭：`roi_only` 完全跳过 global visual context、RoI box encoding、
   cross-attention 和 gamma/beta heads。显式设置
   `SHAPE_CONTEXT_FUSION=gated_spatial_film` 时才构造这些模块；此时 global context
@@ -178,10 +186,12 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 | 文件 | 用途 |
 |---|---|
 | `_sam2_registry.py` | 将 SAM2 型号映射到 checkpoint、Hydra YAML 和 neck 通道；解析 `SAM2_MODEL_SIZE`、`SAM2_CKPT`、`SAM2_REPO`。 |
-| `environment.sh` | 全部 shell 入口共用的机器环境配置；集中定义 Python、SAM2/权重、WHU 数据、输出根目录、临时目录及默认 GPU/batch。迁移机器时只修改此文件。 |
+| `environment.sh` | 已提交的机器环境默认配置；集中定义 Python、SAM2/权重、WHU 数据、输出根目录、临时目录及默认 GPU/batch。 |
+| `environment.local.sh` | 可选、被 Git 忽略的单机覆盖文件；存在时由统一 loader 优先读取，避免迁移机器时改动已提交默认配置。 |
 | `rsprompter_anchor_satS_v11_sam2_large_full.py` | 继承自旧项目的完整 MMEngine 基础配置，定义 detector、RPN、RoI head、优化相关默认值。 |
 | `whu1024_baseplus_clean.py` | WHU-1024 / SAM2 Base+ 的干净桥接基线；通过 `NECK_TYPE` 切换 aggregator/PAFPN，默认使用旧 MLP prompt 路线。 |
 | `whu1024_baseplus_explicit_coarse.py` | 显式 coarse 主配置；选择 points、points+box、points+box+dense，并解析可选 P2BoundaryRefiner。 |
+| `whu1024_baseplus_explicit_coarse_densefix.py` | 继承显式 coarse 主配置，只覆盖固定 dense 系数，并按显式开关把 mask-downscaling trainability 解析进 `cfg.model`。 |
 
 配置继承关系：
 
@@ -189,6 +199,7 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 rsprompter_anchor_satS_v11_sam2_large_full.py
 └── whu1024_baseplus_clean.py
     └── whu1024_baseplus_explicit_coarse.py
+        └── whu1024_baseplus_explicit_coarse_densefix.py
 ```
 
 ### 4.2 模型：`portable_sam2_explicit_coarse/rsprompter/`
@@ -327,6 +338,7 @@ device，避免所有进程初始化阶段暂时落到 GPU0。
 - validation/test 数据路径、图像尺寸和类别协议；
 - SAM2 repo、checkpoint 和型号；
 - Prompt 路线、neck、P2BoundaryRefiner、训练计划及学习率倍率；
+- dense gate 模式以及 PromptEncoder `mask_downscaling` 的 trainability；
 - 由解析后 `cfg.model` 派生的 `architecture_id` 与完整 SHA256 指纹；本机 SAM2
   checkpoint 路径不参与架构指纹，避免仅路径变化造成假不一致。
 
@@ -395,7 +407,7 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | 文件 | 用途 |
 |---|---|
 | `run_whu1024_explicit_coarse_4gpu.sh` | 保留的历史文件名；当前实际复用公共 runner 的两卡 GPU 1/2 默认值，并按 prompt/refiner/stride 映射路线；可显式覆盖回四卡。 |
-| `load_environment.sh` | shell 环境统一加载器；默认读取 `configs/environment.sh`，校验必需字段，并支持 `PORTABLE_SAM2_ENV_FILE` 指向另一份机器配置。 |
+| `load_environment.sh` | shell 环境统一加载器；优先读取被忽略的 `configs/environment.local.sh`，否则读取 `configs/environment.sh`，并支持 `PORTABLE_SAM2_ENV_FILE` 显式指定。 |
 | `infer_whu_checkpoint.sh` | 指定 checkpoint 的单卡推理 shell 入口；其余参数透传给 Python 推理器。 |
 | `smoke_test_components.sh` | 启动轻量组件测试。 |
 | `smoke_test_components.py` | 检查 PAFPN、shape prior、2P2N、dense canvas、P2BoundaryRefiner 恒等/边界/梯度契约。 |
@@ -419,6 +431,8 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `c2r_pafpn_coarse_points_roi_sam.sh` | C2-R；裁剪并归一化三层 SAM2 proposal 特征，使用 ROI-local 2P2N、原生128×128 ROI target和 bbox paste。 |
 | `c3_pafpn_coarse_points_box.sh` | C2 + box prompt。 |
 | `c4_pafpn_coarse_points_box_dense.sh` | C3 + dense mask prompt。 |
+| `c4_pafpn_coarse_points_box_dense_densefix.sh` | C4 的固定 dense 系数 `alpha=0.5` 单变量消融；固定-only 既有运行提前终止。 |
+| `c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh` | 固定 `alpha=0.5` 并仅训练 PromptEncoder `mask_downscaling` 的联合消融。 |
 | `r1_c4_pafpn_coarse_points_box_dense_emb64.sh` | 官方 stride-16/64×64 的 PAFPN + coarse + points+box+dense 严格对照。 |
 | `r0_b0_aggregator_mlp_emb64.sh` | B0控制的官方stride-16/64×64 image embedding变体。 |
 | `c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh` | R1-C4 仅增加 P2BoundaryRefiner 的严格实验。 |
@@ -482,10 +496,11 @@ checkpoint、临时日志、`__pycache__` 或数据集；项目内 `logs/` 已�
 cd /home/wangcheng2021/project/portable_sam2_explicit_coarse_new/portable_sam2_explicit_coarse
 ```
 
-迁移到另一台机器时，只修改：
+迁移到另一台机器时，复制默认配置为被 Git 忽略的本机配置后修改：
 
 ```bash
-vim configs/environment.sh
+cp configs/environment.sh configs/environment.local.sh
+vim configs/environment.local.sh
 ```
 
 需要保留仓库内默认文件不变时，也可使用外置配置：
@@ -517,6 +532,8 @@ FULL_MODEL_SMOKE=0 bash scripts/ablations/smoke_all.sh
 
 ```bash
 bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
+bash scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh
+bash scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh
 ```
 
 C2-L 的 points-only final-mask 信号消融：
@@ -627,7 +644,7 @@ bash scripts/reproduce_legacy_segm.sh
 
 | 变量 | 默认值/含义 |
 |---|---|
-| `PORTABLE_SAM2_ENV_FILE` | 可选的外置机器配置路径；未设置时读取项目内 `configs/environment.sh`。 |
+| `PORTABLE_SAM2_ENV_FILE` | 可选的显式机器配置路径；未设置时优先读取 `configs/environment.local.sh`，不存在则读取已提交的 `configs/environment.sh`。 |
 | `PYTHON` | Python 解释器路径；当前配置为 `/data/wangcheng/envs/cvt2/bin/python`。 |
 | `SAM2_REPO` | 项目内 `../sam2`。 |
 | `SAM2_CKPT` | `/data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt`。 |
@@ -638,6 +655,7 @@ bash scripts/reproduce_legacy_segm.sh
 | `MPLCONFIGDIR` | matplotlib 可写配置目录；默认位于 `PORTABLE_SAM2_TMP_ROOT`。 |
 | `NECK_TYPE` | `aggregator` 或 `pafpn`；消融 wrapper 会固定。 |
 | `EXPLICIT_PROMPT_MODE` | `points`、`points_box` 或 `points_box_dense`。 |
+| `CONFIG_OVERRIDE` | coarse wrapper 的可选配置变体路径；默认仍为显式 coarse 主配置，densefix wrappers 固定选择 densefix 子配置。 |
 | `FINAL_MASK_COORDINATE_MODE` | MLP clean config 的最终 mask 坐标契约，默认 `roi_local`；公共 wrapper 将 B0/B1/R0 固定为 `roi_local`、M0/M1 固定为 `full_image`，普通 coarse 路线固定为 `full_image`，C2-R 固定为 `roi_local`。解析进 `cfg.model` 和 checkpoint。 |
 | `FINAL_MASK_LOSS_MODE` | 最终 mask 监督；原矩阵默认 `standard`，C2-L 固定为 `roi_balanced_dice`。仅改训练 loss，不改 full-image 验证/推理后处理。 |
 | `FINAL_MASK_ROI_EXPAND_RATIO` | C2-L proposal loss support 扩张倍率，默认 `1.20`。 |
@@ -675,6 +693,9 @@ bash scripts/reproduce_legacy_segm.sh
 | `SAT_OTHER_LR_MULT` | detector 其余参数学习率倍率，默认 `1.0`。 |
 | `MASK_DECODER_LR_MULT` | mask decoder 学习率倍率，默认 `1.0`。 |
 | `NO_MASK_LR_MULT` | B0/B1/M0/M1 trainable no-mask 参数倍率，默认 `1.0`。 |
+| `PROMPT_ENCODER_LR_MULT` | PromptEncoder 可训练参数组 LR 倍率，默认 `0.0`；densefix-unfreeze 固定为 `1.0`。 |
+| `PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING` | 默认 `0`；densefix-unfreeze 固定为 `1`，由 densefix 配置解析为 `cfg.model.roi_head.mask_head.prompt_encoder_cfg.train_mask_downscaling`，不允许只作为未归档环境状态生效。旧名 `UNFREEZE_MASK_DOWNSCALING` 仅作 runner 输入兼容。 |
+| `SHAPE_DENSE_ALPHA_INIT` | dense 系数初值或 fixed 值；C4 默认 `0.25`，densefix 默认固定为 `0.5`。 |
 | `WARMUP_ITERS` | warmup optimizer steps，默认 `100`。 |
 | `WEIGHT_DECAY` | AdamW weight decay，默认 `0.05`。 |
 | `DET_LOSS_STAGE1_END` / `DET_LOSS_STAGE2_END` | detector loss阶段边界，默认`5/10`；仅供显式权重消融。 |
@@ -721,6 +742,17 @@ bash scripts/reproduce_legacy_segm.sh
 处理本项目的新增或改动时，它负责默认执行上述同步流程。
 
 ## 8. 文档同步记录
+
+- 2026-07-30：合并 machine2 dense-prompt 修复实验并整理为可复现接线。新增 C4
+  densefix 与 densefix-unfreeze wrappers；densefix 配置改为继承主 coarse 配置，
+  避免复制漂移。PromptEncoder mask-downscaling 解冻从模型内部环境读取迁入
+  `prompt_encoder_cfg.train_mask_downscaling`，进入完整 `cfg.model`、架构指纹和
+  checkpoint；公共 runner 记录对应开关和 LR，契约 smoke 校验仅 4,684 个参数
+  可训练。`environment.local.sh` 改为优先读取且由 Git 忽略。同步修正
+  `applied_delta_ratio=0.13` 为约 13% 而非 0.13%，并将 stride-32 结论收敛为：
+  固定 0.5 与解冻 downscaling 的联合干预未带来 segm 收益，不能分别归因。
+  本机 R1-C4 无 refiner 对照已运行到 epoch 6、segm/mAP=0.6149，初步支持
+  stride-16 是 C5-v2 主要增益来源，但最终归因等待 R1-C4 完成。
 
 - 2026-07-29：新增独立 C2-R ROI-SAM2 消融。在 C2 的 PAFPN、coarse 2P2N、
   legacy 32×32 embedding 和官方 PromptEncoder 基础上，按同一 proposal aligned
