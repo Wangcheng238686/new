@@ -25,7 +25,10 @@ DEFAULT_QUEUE=(
   c2r_pafpn_coarse_points_roi_sam.sh
   c3_pafpn_coarse_points_box.sh
   c4_pafpn_coarse_points_box_dense.sh
+  r1_c3_pafpn_coarse_points_box_emb64.sh
   r1_c4_pafpn_coarse_points_box_dense_emb64.sh
+  r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh
+  r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh
   r0_b0_aggregator_mlp_emb64.sh
   c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
 )

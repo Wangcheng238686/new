@@ -18,8 +18,8 @@
 - `sam2/`：随项目固定的官方 SAM2 运行时源码，新主线通过 `SAM2_REPO` 使用；
 - `legacy_baseline/`：旧项目冻结复现包，只用于历史基线复现，不被新主线 import。
 
-新主线只保留已经选定的 PAFPN、显式 coarse mask、原生 PromptEncoder 加载和
-实验性的 P2BoundaryRefiner。旧 DenseBR 已从当前代码删除；IIMR、多轮 mask
+新主线只保留已经选定的 PAFPN、显式 coarse mask、原生 PromptEncoder 加载，
+以及实验性的 Gaussian dense 表示和 P2BoundaryRefiner。旧 DenseBR 已从当前代码删除；IIMR、多轮 mask
 memory、topology token、SABL refined-box 依赖等不属于
 新主线。
 
@@ -43,7 +43,7 @@ flowchart LR
     F --> G
     G --> H{"Prompt 路线"}
     H -->|B0/B1/M0/M1| I["旧 point_emb MLP<br/>5-token route"]
-    H -->|C1-C5-v2 / C2-L / C2-R| J["ShapePriorInjector<br/>ROI-local raw coarse logits"]
+    H -->|C1-C5-v2 / C2-L / C2-R / R1-C4-RD/G| J["ShapePriorInjector<br/>ROI-local raw coarse logits"]
     J --> K["ShapePointMiner<br/>2P2N stop-gradient"]
     J --> L["可选 P2BoundaryRefiner<br/>P2 高频边界残差"]
     K --> M["冻结的 SAM2 PromptEncoder"]
@@ -109,6 +109,13 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 - dense prompt 会被粘贴到 full-image canvas；1024输入的legacy 32×32路线对应
   PromptEncoder `128×128` mask输入，官方64×64路线对应`256×256`；编码后的
   dense embedding delta 被 proposal-box support 限制，box 外保持 no-mask 基底；
+- R1-C4-RD 将 raw-logit dense 输入显式 detach，作为 final-mask 梯度路径控制；
+  R1-C4-G 在同样 detach 下将 dense 表示替换为 SAMRefiner 风格 hard-EDT
+  Gaussian。后者在 ROI-local 64×64 coarse 上以0.5阈值求精确欧氏距离最大中心和
+  全前景面积，再经 proposal 解析映射到 full-image 256×256 canvas，使用固定
+  `omega=15,gamma=4` 的正值各向同性 Gaussian，不做 temperature、符号映射或
+  clamp；精确EDT依赖训练环境中的`scipy.ndimage`；空 coarse ROI 在编码后逐实例
+  恢复为预训练 no-mask 基底；
 - dense 残差按 `base + alpha * (shape_dense - base)` 注入；训练器逐 epoch 汇总
   所有 DDP rank 的有效 `alpha`、注入前/后的 delta norm 及相对 base norm 的 ratio。
   `alpha` 非零只表示门已打开，`applied_delta_ratio` 非零才表示 coarse dense prompt
@@ -211,7 +218,7 @@ rsprompter_anchor_satS_v11_sam2_large_full.py
 | `models_sam2.py` | SAM2 主实现：vision encoder、基线 aggregator、PAFPN、MaskDecoder wrapper、MLP/coarse 双路线 MaskHead。 |
 | `shape_prior.py` | `ShapePriorInjector`、小型 coarse mask decoder、RoI box encoding 和 `ShapePointMiner`。 |
 | `coarse_mask_loss.py` | coarse mask 的 BCE、Dice、boundary、distance 组合损失及权重调度。 |
-| `dense_prompt_utils.py` | coarse logit 变换，以及 ROI-local mask 向 full-image PromptEncoder canvas 的粘贴。 |
+| `dense_prompt_utils.py` | raw/confidence coarse 变换、ROI-local mask 粘贴，以及 R1-C4-G 的 detached exact-EDT Gaussian 挖掘与图像空间映射。 |
 | `p2_boundary_refiner.py` | C5-v2 的 P2 高频边界残差模块；实现 raw-only forward support、受限残差和 boundary auxiliary loss。 |
 | `architecture_contract.py` | 从完整解析后的 `cfg.model` 派生架构 ID、schema-v2 SHA256 指纹，并校验 INIT/RESUME。 |
 | `ckpt_utils.py` | SAM2 子模块 checkpoint 的严格加载、key 过滤和主进程日志。 |
@@ -433,7 +440,11 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `c4_pafpn_coarse_points_box_dense.sh` | C3 + dense mask prompt。 |
 | `c4_pafpn_coarse_points_box_dense_densefix.sh` | C4 的固定 dense 系数 `alpha=0.5` 单变量消融；固定-only 既有运行提前终止。 |
 | `c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh` | 固定 `alpha=0.5` 并仅训练 PromptEncoder `mask_downscaling` 的联合消融。 |
+| `r1_c3_pafpn_coarse_points_box_emb64.sh` | 官方 stride-16/64×64 的 PAFPN + coarse + points+box；关闭 dense 与 P2，作为 dense 贡献的严格控制。 |
 | `r1_c4_pafpn_coarse_points_box_dense_emb64.sh` | 官方 stride-16/64×64 的 PAFPN + coarse + points+box+dense 严格对照。 |
+| `r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh` | R1-C4 的 raw dense detach 梯度控制。 |
+| `r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh` | 在 R1-C4-RD 上只将 raw dense 替换为 hard-EDT Gaussian。 |
+| `test_dense_prompt_utils.py` | 检查 raw detach、Gaussian 中心/面积映射、各向同性、空 coarse 和不可导契约。 |
 | `r0_b0_aggregator_mlp_emb64.sh` | B0控制的官方stride-16/64×64 image embedding变体。 |
 | `c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh` | R1-C4 仅增加 P2BoundaryRefiner 的严格实验。 |
 | `coarse_strategy/README.md` | C2 coarse 策略筛选说明。 |
@@ -535,6 +546,26 @@ bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
 bash scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh
 bash scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh
 ```
+
+官方 64×64 的 dense/P2 归因矩阵应在同一机器上依次运行，避免并发争抢
+显存；wrapper 默认共享 20% train、100% validation、seed 44 和 EMA-off。
+以下显式前台模式会让每条命令等待实验结束，因此整段保持严格串行：
+
+```bash
+RUN_IN_BACKGROUND=0 bash scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
+```
+
+R1-C4→R1-C4-RD 只测 raw dense 的 final-mask 反向梯度；
+R1-C4-RD→R1-C4-G 在相同 detach 条件下只测 dense 表示。G 不改变既有2P2N、
+proposal box、alpha初值0.25、冻结PromptEncoder、coarse/final loss或训练调度，
+也不新增Gaussian loss。正式点筛从相同SAM2权重独立初始化。晋级全量要求：G的
+best smoothed segm/mAP 至少高于RD 0.005，增益持续至少3次验证且末5次均值不低，
+同时优于R1-C3、bbox/mAP下降不超过0.01，并由Gaussian有效率、alpha和
+applied-delta ratio确认模块实际生效。
 
 C2-L 的 points-only final-mask 信号消融：
 
@@ -669,8 +700,12 @@ bash scripts/reproduce_legacy_segm.sh
 | `P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX` | `tanh` 前残差幅度，默认 `2.0`；固定 beta `0.20` 后实际上界 `0.4`。 |
 | `P2_BOUNDARY_REFINER_LOSS_WEIGHT` | 边界 BCE 权重，默认 `0.05`。 |
 | `P2_BOUNDARY_REFINER_LR_MULT` | refiner 独立参数组学习率倍率，默认 `1.0`，weight decay 继承 `0.05`。 |
-| `SAM_IMAGE_EMBED_STRIDE` | SAM2 MaskDecoder image embedding步长；B0/B1、M0/M1、C1–C4默认`32`，R0、R1-C4、C5-v2固定`16`。 |
+| `SAM_IMAGE_EMBED_STRIDE` | SAM2 MaskDecoder image embedding步长；B0/B1、M0/M1、C1–C4默认`32`，R0、R1-C3、R1-C4、C5-v2固定`16`。 |
 | `SHAPE_POINT_ADAPTIVE_VALIDITY` | `1` 默认自适应点槽有效性；`0` 固定输出有效 2P2N 极值点。 |
+| `SHAPE_DENSE_TRANSFORM` | dense表示；默认`raw_logits`，R1-C4-G固定`gaussian_edt`。 |
+| `SHAPE_DENSE_DETACH` | dense输入是否从coarse计算图detach；默认`0`，RD/G固定`1`。 |
+| `SHAPE_GAUSSIAN_FOREGROUND_THRESHOLD` | G的hard coarse阈值，固定`0.5`。 |
+| `SHAPE_GAUSSIAN_OMEGA` / `SHAPE_GAUSSIAN_GAMMA` | G的幅值/面积展宽常数，固定`15.0/4.0`。 |
 | `POINT_WARMUP_ENABLED` | 默认 `0`；若开启，阶段长度由三个 `POINT_WARMUP_*` 变量定义。 |
 | `SHAPE_LOSS_SCHEDULE_MODE` | `fixed`（默认）或 `two_stage`。 |
 | `SHAPE_PRIOR_LOSS_WEIGHT` | fixed 模式的真实 coarse loss 权重，默认 `0.10`。 |
@@ -742,6 +777,18 @@ bash scripts/reproduce_legacy_segm.sh
 处理本项目的新增或改动时，它负责默认执行上述同步流程。
 
 ## 8. 文档同步记录
+
+- 2026-07-30：新增 R1-C4-RD/G 表示消融。RD 对 raw-logit dense 显式 detach；G
+  在同一梯度边界下使用 ROI exact-EDT 中心/面积映射得到 full-image 正值 Gaussian，
+  空 coarse 逐 ROI 回退预训练 no-mask。两者获得独立架构 ID、cfg.model 指纹、
+  checkpoint推理重建、epoch机制日志、无落盘参数smoke和几何/detach单测；预注册
+  20% train/100% validation 的晋级判据，不自动拉起正式训练。
+
+- 2026-07-30：将官方 64×64 路线固化为 R1-C3/R1-C4/C5-v2 三实验归因矩阵。
+  新增 R1-C3（points+box、dense off、P2 off）独立 wrapper 与架构 ID；R1-C3→R1-C4
+  只切 dense prompt，R1-C4→C5-v2 只切 P2BoundaryRefiner。三者统一使用公共
+  20% train / 100% validation、seed 44、EMA-off 口径；R1-C3 已纳入 dry-run、
+  完整模型 preflight 和串行监视器队列。
 
 - 2026-07-30：合并 machine2 dense-prompt 修复实验并整理为可复现接线。新增 C4
   densefix 与 densefix-unfreeze wrappers；densefix 配置改为继承主 coarse 配置，

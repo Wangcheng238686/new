@@ -24,17 +24,23 @@ MATRIX=(
   c4_pafpn_coarse_points_box_dense.sh
   c4_pafpn_coarse_points_box_dense_densefix.sh
   c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh
+  r1_c3_pafpn_coarse_points_box_emb64.sh
   r1_c4_pafpn_coarse_points_box_dense_emb64.sh
+  r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh
+  r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh
   r0_b0_aggregator_mlp_emb64.sh
   c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
 )
 
-echo "[1/4] CPU/Gloo delayed rank-0 control-plane check"
+echo "[1/5] dense prompt geometry and detach unit tests"
+"${PYTHON}" "${SCRIPT_DIR}/test_dense_prompt_utils.py"
+
+echo "[2/5] CPU/Gloo delayed rank-0 control-plane check"
 "${PYTHON}" -m torch.distributed.run \
   --standalone --nproc_per_node=2 \
   "${SCRIPT_DIR}/smoke_ddp_control_plane.py"
 
-echo "[2/4] config and command penetration checks"
+echo "[3/5] config and command penetration checks"
 for script in "${MATRIX[@]}"; do
   echo "---- ${script}"
   smoke_output="$(DRY_RUN=1 CHECK_DATA=0 PREFLIGHT_MODEL=0 \
@@ -59,6 +65,45 @@ for script in "${MATRIX[@]}"; do
   else
     grep -q '^prompt_encoder_train_mask_downscaling=0$' <<<"${smoke_output}"
   fi
+  case "${script}" in
+    r1_c3_pafpn_coarse_points_box_emb64.sh)
+      grep -q '^explicit_prompt_mode=points_box$' <<<"${smoke_output}"
+      grep -q '^p2_boundary_refiner_enabled=0$' <<<"${smoke_output}"
+      grep -q '^sam_image_embedding_stride=16$' <<<"${smoke_output}"
+      grep -q '"dense_prompt_enabled": false' <<<"${smoke_output}"
+      ;;
+    r1_c4_pafpn_coarse_points_box_dense_emb64.sh)
+      grep -q '^explicit_prompt_mode=points_box_dense$' <<<"${smoke_output}"
+      grep -q '^p2_boundary_refiner_enabled=0$' <<<"${smoke_output}"
+      grep -q '^sam_image_embedding_stride=16$' <<<"${smoke_output}"
+      grep -q '"dense_prompt_enabled": true' <<<"${smoke_output}"
+      ;;
+    r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh)
+      grep -q '^explicit_prompt_mode=points_box_dense$' <<<"${smoke_output}"
+      grep -q '^shape_dense_transform=raw_logits$' <<<"${smoke_output}"
+      grep -q '^shape_dense_detach=1$' <<<"${smoke_output}"
+      grep -q '^sam_image_embedding_stride=16$' <<<"${smoke_output}"
+      grep -q '"detach_input": true' <<<"${smoke_output}"
+      grep -q '"transform": "raw_logits"' <<<"${smoke_output}"
+      ;;
+    r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh)
+      grep -q '^explicit_prompt_mode=points_box_dense$' <<<"${smoke_output}"
+      grep -q '^shape_dense_transform=gaussian_edt$' <<<"${smoke_output}"
+      grep -q '^shape_dense_detach=1$' <<<"${smoke_output}"
+      grep -q '^shape_gaussian_foreground_threshold=0.5$' <<<"${smoke_output}"
+      grep -q '^shape_gaussian_omega=15.0$' <<<"${smoke_output}"
+      grep -q '^shape_gaussian_gamma=4.0$' <<<"${smoke_output}"
+      grep -q '^sam_image_embedding_stride=16$' <<<"${smoke_output}"
+      grep -q '"clamp_range": null' <<<"${smoke_output}"
+      grep -q '"transform": "gaussian_edt"' <<<"${smoke_output}"
+      ;;
+    c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh)
+      grep -q '^explicit_prompt_mode=points_box_dense$' <<<"${smoke_output}"
+      grep -q '^p2_boundary_refiner_enabled=1$' <<<"${smoke_output}"
+      grep -q '^sam_image_embedding_stride=16$' <<<"${smoke_output}"
+      grep -q '"dense_prompt_enabled": true' <<<"${smoke_output}"
+      ;;
+  esac
 done
 
 val_loss_override_output="$(DRY_RUN=1 CHECK_DATA=0 PREFLIGHT_MODEL=0 \
@@ -71,14 +116,14 @@ grep -q '^cuda_visible_devices=0,1,2,3$' <<<"${val_loss_override_output}"
 grep -q '^grad_accum_steps=2$' <<<"${val_loss_override_output}"
 grep -q '^effective_global_batch_size=8$' <<<"${val_loss_override_output}"
 
-echo "[3/4] independent train/val subset data check"
+echo "[4/5] independent train/val subset data check"
 DRY_RUN=1 CHECK_DATA=1 PREFLIGHT_MODEL=0 \
 TRAIN_SUBSET_RATIO="${SMOKE_TRAIN_SUBSET_RATIO:-0.01}" \
 VAL_SUBSET_RATIO="${SMOKE_VAL_SUBSET_RATIO:-0.02}" \
   bash "${SCRIPT_DIR}/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh"
 
 if [ "${FULL_MODEL_SMOKE:-1}" = "1" ]; then
-  echo "[4/4] representative full model construction checks"
+  echo "[5/5] representative full model construction checks"
   for script in \
     b0_aggregator_mlp.sh \
     b1_pafpn_mlp.sh \
@@ -88,7 +133,9 @@ if [ "${FULL_MODEL_SMOKE:-1}" = "1" ]; then
     c2l_pafpn_coarse_points_roi_loss.sh \
     c2r_pafpn_coarse_points_roi_sam.sh \
     c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh \
+    r1_c3_pafpn_coarse_points_box_emb64.sh \
     r1_c4_pafpn_coarse_points_box_dense_emb64.sh \
+    r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh \
     r0_b0_aggregator_mlp_emb64.sh \
     c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
   do
@@ -97,7 +144,7 @@ if [ "${FULL_MODEL_SMOKE:-1}" = "1" ]; then
       bash "${SCRIPT_DIR}/${script}"
   done
 else
-  echo "[4/4] full model construction skipped (FULL_MODEL_SMOKE=0)"
+  echo "[5/5] full model construction skipped (FULL_MODEL_SMOKE=0)"
 fi
 
 if [[ -e "${SMOKE_LOG_SENTINEL}" ]]; then

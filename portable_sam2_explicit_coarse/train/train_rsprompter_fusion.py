@@ -883,6 +883,16 @@ _DENSE_RESIDUAL_MONITOR_KEYS = (
     "DENSE/applied_delta_norm",
     "DENSE/source_delta_ratio",
     "DENSE/applied_delta_ratio",
+    "DENSE/canvas_mean",
+    "DENSE/canvas_std",
+    "DENSE/canvas_min",
+    "DENSE/canvas_max",
+    "GAUSSIAN/valid_ratio",
+    "GAUSSIAN/foreground_area_ratio",
+    "GAUSSIAN/edt_max",
+    "GAUSSIAN/center_x_normalized",
+    "GAUSSIAN/center_y_normalized",
+    "GAUSSIAN/canvas_area",
 )
 
 
@@ -2504,6 +2514,30 @@ def main():
                     dense_monitor_epoch.get("DENSE/source_delta_ratio", float("nan")),
                     dense_monitor_epoch.get("DENSE/applied_delta_ratio", float("nan")),
                 )
+                if "GAUSSIAN/valid_ratio" in dense_monitor_epoch:
+                    logger.info(
+                        "Epoch %d Gaussian dense prompt: valid=%.2f%% "
+                        "fg_area=%.4f edt_max=%.4f center=(%.4f,%.4f) "
+                        "canvas_area=%.4f canvas[min/mean/max]=%.4f/%.4f/%.4f",
+                        epoch_number,
+                        100.0 * dense_monitor_epoch["GAUSSIAN/valid_ratio"],
+                        dense_monitor_epoch.get(
+                            "GAUSSIAN/foreground_area_ratio", float("nan")
+                        ),
+                        dense_monitor_epoch.get("GAUSSIAN/edt_max", float("nan")),
+                        dense_monitor_epoch.get(
+                            "GAUSSIAN/center_x_normalized", float("nan")
+                        ),
+                        dense_monitor_epoch.get(
+                            "GAUSSIAN/center_y_normalized", float("nan")
+                        ),
+                        dense_monitor_epoch.get(
+                            "GAUSSIAN/canvas_area", float("nan")
+                        ),
+                        dense_monitor_epoch.get("DENSE/canvas_min", float("nan")),
+                        dense_monitor_epoch.get("DENSE/canvas_mean", float("nan")),
+                        dense_monitor_epoch.get("DENSE/canvas_max", float("nan")),
+                    )
             if p2br_monitor_epoch:
                 logger.info(
                     "Epoch %d P2 boundary refiner: raw_dice=%.4f refined_dice=%.4f "

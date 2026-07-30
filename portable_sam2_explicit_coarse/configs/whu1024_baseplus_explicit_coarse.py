@@ -55,6 +55,27 @@ if _shape_loss_mode == "two_stage" and not (1 <= _shape_stage1_end < _epochs):
         "two_stage coarse loss requires 1 <= SHAPE_LOSS_STAGE1_END < MAX_EPOCHS"
     )
 
+_dense_transform = os.environ.get(
+    "SHAPE_DENSE_TRANSFORM", "raw_logits"
+).strip().lower()
+if _dense_transform not in {"raw_logits", "confidence_signed", "gaussian_edt"}:
+    raise ValueError(f"Unsupported SHAPE_DENSE_TRANSFORM={_dense_transform!r}")
+_dense_detach_raw = os.environ.get("SHAPE_DENSE_DETACH", "0")
+if _dense_detach_raw not in {"0", "1"}:
+    raise ValueError("SHAPE_DENSE_DETACH must be 0 or 1")
+_dense_detach = _dense_detach_raw == "1"
+_gaussian_foreground_threshold = float(
+    os.environ.get("SHAPE_GAUSSIAN_FOREGROUND_THRESHOLD", "0.5")
+)
+_gaussian_omega = float(os.environ.get("SHAPE_GAUSSIAN_OMEGA", "15.0"))
+_gaussian_gamma = float(os.environ.get("SHAPE_GAUSSIAN_GAMMA", "4.0"))
+if not 0.0 < _gaussian_foreground_threshold < 1.0:
+    raise ValueError("SHAPE_GAUSSIAN_FOREGROUND_THRESHOLD must be in (0,1)")
+if _gaussian_omega <= 0.0 or _gaussian_gamma <= 0.0:
+    raise ValueError("SHAPE_GAUSSIAN_OMEGA and SHAPE_GAUSSIAN_GAMMA must be positive")
+if _dense_transform == "gaussian_edt" and not _dense_detach:
+    raise ValueError("gaussian_edt requires SHAPE_DENSE_DETACH=1")
+
 _final_mask_loss_mode = os.environ.get(
     "FINAL_MASK_LOSS_MODE", "standard"
 ).strip().lower()
@@ -174,14 +195,20 @@ model = dict(
                 full_2p2n_start_epoch=_point_full_start_epoch,
             ),
             dense_prompt_cfg=dict(
-                transform=os.environ.get("SHAPE_DENSE_TRANSFORM", "raw_logits"),
+                transform=_dense_transform,
+                detach_input=_dense_detach,
                 temperature=float(
                     os.environ.get("SHAPE_DENSE_TEMPERATURE", "1.0")
                 ),
                 outside_fill_logit=float(
                     os.environ.get("SHAPE_DENSE_OUTSIDE_FILL", "0.0")
                 ),
-                clamp_range=(-8.0, 8.0),
+                clamp_range=(
+                    None if _dense_transform == "gaussian_edt" else (-8.0, 8.0)
+                ),
+                foreground_threshold=_gaussian_foreground_threshold,
+                gaussian_omega=_gaussian_omega,
+                gaussian_gamma=_gaussian_gamma,
             ),
             restrict_dense_prompt_to_box=True,
             coarse_mask_loss_cfg=dict(

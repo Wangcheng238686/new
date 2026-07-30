@@ -1663,6 +1663,20 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         self.dense_prompt_cfg.setdefault("strength", 1.0)
         self.dense_prompt_cfg.setdefault("temperature", 1.0)
         self.dense_prompt_cfg.setdefault("clamp_range", None)  # None=不 clamp（raw_logits 兼容）
+        self.dense_prompt_cfg.setdefault("detach_input", False)
+        self.dense_prompt_cfg.setdefault("foreground_threshold", 0.5)
+        self.dense_prompt_cfg.setdefault("gaussian_omega", 15.0)
+        self.dense_prompt_cfg.setdefault("gaussian_gamma", 4.0)
+        _dense_transform = str(self.dense_prompt_cfg["transform"])
+        if _dense_transform not in {
+            "raw_logits", "confidence_signed", "gaussian_edt"
+        }:
+            raise ValueError(f"Unsupported dense prompt transform={_dense_transform!r}")
+        if _dense_transform == "gaussian_edt":
+            if not bool(self.dense_prompt_cfg["detach_input"]):
+                raise ValueError("gaussian_edt requires detach_input=True")
+            if self.dense_prompt_cfg["clamp_range"] is not None:
+                raise ValueError("gaussian_edt must not be clamped")
         self.shape_point_miner_cfg = dict(shape_point_miner_cfg or {})
         self.box_prompt_cfg = dict(box_prompt_cfg or {})
         self.box_prompt_cfg.setdefault("jitter_prob", 0.0)
@@ -1821,29 +1835,57 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         self,
         roi_mask_logits: Tensor,
         boxes: Tensor,
-    ) -> Tensor:
+    ):
         """批次2 子任务3：ROI-local coarse logits → full-image PE mask grid。
 
         处理顺序：ROI-local transform → resize 到 bbox 对应 prompt-grid → paste 到
         full-image canvas → bbox 外 outside_fill_logit → 最终 clamp（若非 None）。
         """
-        from .dense_prompt_utils import transform_coarse_prompt, paste_roi_to_full_canvas
+        from .dense_prompt_utils import (
+            gaussian_prompt_from_roi_coarse,
+            paste_roi_to_full_canvas,
+            transform_coarse_prompt,
+        )
+        mask_h, mask_w = self._pe_mask_input_size()
+        transform = str(self.dense_prompt_cfg.get("transform", "raw_logits"))
+        if transform == "gaussian_edt":
+            return gaussian_prompt_from_roi_coarse(
+                roi_mask_logits,
+                boxes,
+                mask_h=mask_h,
+                mask_w=mask_w,
+                image_size=(
+                    self.prompt_encoder_image_size,
+                    self.prompt_encoder_image_size,
+                ),
+                foreground_threshold=float(
+                    self.dense_prompt_cfg.get("foreground_threshold", 0.5)
+                ),
+                omega=float(self.dense_prompt_cfg.get("gaussian_omega", 15.0)),
+                gamma=float(self.dense_prompt_cfg.get("gaussian_gamma", 4.0)),
+            )
         # 1. ROI-local transform（在 resize/paste 之前完成）
         transformed = transform_coarse_prompt(
             roi_mask_logits,
-            transform=self.dense_prompt_cfg.get("transform", "raw_logits"),
+            transform=transform,
             gamma=self.dense_prompt_cfg.get("gamma", 1.0),
             strength=self.dense_prompt_cfg.get("strength", 1.0),
             clamp_range=self.dense_prompt_cfg.get("clamp_range", None),
             temperature=self.dense_prompt_cfg.get("temperature", 1.0),
+            detach_input=bool(self.dense_prompt_cfg.get("detach_input", False)),
         )
         # 2. paste 到 full-image canvas（PE mask 尺寸从 PE 属性读，不硬编码）
-        mask_h, mask_w = self._pe_mask_input_size()
-        return paste_roi_to_full_canvas(
+        prompt = paste_roi_to_full_canvas(
             transformed, boxes, mask_h, mask_w,
             image_size=(self.prompt_encoder_image_size, self.prompt_encoder_image_size),
             outside_fill_logit=float(self.dense_prompt_cfg.get("outside_fill_logit", 0.0)),
         )
+        valid = torch.ones(
+            roi_mask_logits.shape[0],
+            device=roi_mask_logits.device,
+            dtype=torch.bool,
+        )
+        return prompt, valid, {}
 
     def _select_explicit_prompt_inputs(
         self,
@@ -2072,6 +2114,7 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         shape_prior_mask_logits = None
         coarse_outputs = None
         shape_prior_prompt_logits = None
+        shape_dense_valid = None
         if self.shape_injector is not None and boxes is not None:
             ctx_tokens = self.shape_injector.forward_context_visual(image_embeddings)
             raw_shape_prior_logits, _, _, _ = self.shape_injector.forward_roi(
@@ -2117,9 +2160,13 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
             # Refined coarse logits are the only downstream semantic source;
             # raw logits remain independently supervised by the C4 objective.
             if self.use_shape_dense:
-                shape_prior_prompt_logits = self._shape_prior_to_prompt_mask(
-                    shape_prior_mask_logits, boxes
-                )
+                (
+                    shape_prior_prompt_logits,
+                    shape_dense_valid,
+                    dense_excavation_stats,
+                ) = self._shape_prior_to_prompt_mask(shape_prior_mask_logits, boxes)
+                for stat_name, stat_value in dense_excavation_stats.items():
+                    debug_stats[f"GAUSSIAN/{stat_name}"] = stat_value
             else:
                 # True sparse-only: keep the coarse mask for point mining and
                 # auxiliary supervision, but skip transform/paste/PE mask work.
@@ -2351,6 +2398,11 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
             base_dense = torch.zeros_like(base_dense)
 
         if dense_pe is not None:
+            if shape_dense_valid is not None:
+                from .dense_prompt_utils import replace_invalid_dense_with_base
+                dense_pe = replace_invalid_dense_with_base(
+                    dense_pe, base_dense, shape_dense_valid
+                )
             if self.restrict_dense_prompt_to_box:
                 support = self._dense_embedding_box_support(
                     boxes, image_embedding_size, dense_pe.dtype

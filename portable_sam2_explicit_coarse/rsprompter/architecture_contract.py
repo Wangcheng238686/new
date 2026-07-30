@@ -74,6 +74,9 @@ def architecture_id(model_config: Mapping[str, Any]) -> str:
             f"{neck_name}_mlp_{final_mode}_emb{1024 // stride}",
         )
     mode = str(head.get("explicit_prompt_mode", "points"))
+    dense_prompt_cfg = head.get("dense_prompt_cfg", {})
+    dense_transform = str(dense_prompt_cfg.get("transform", "raw_logits"))
+    dense_detach = bool(dense_prompt_cfg.get("detach_input", False))
     final_loss_mode = str(
         head.get("final_mask_loss_cfg", {}).get("mode", "standard")
     )
@@ -94,11 +97,30 @@ def architecture_id(model_config: Mapping[str, Any]) -> str:
         and final_loss_mode == "roi_balanced_dice"
     ):
         return "c2l_pafpn_coarse_points_roi_loss"
+    if (
+        neck_name == "pafpn"
+        and mode == "points_box_dense"
+        and stride == 16
+        and not refiner
+        and dense_transform == "raw_logits"
+        and dense_detach
+    ):
+        return "r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64"
+    if (
+        neck_name == "pafpn"
+        and mode == "points_box_dense"
+        and stride == 16
+        and not refiner
+        and dense_transform == "gaussian_edt"
+        and dense_detach
+    ):
+        return "r1_c4_g_pafpn_coarse_points_box_gaussian_emb64"
     known = {
         ("aggregator", "points", 32, False): "c1_aggregator_coarse_points",
         ("pafpn", "points", 32, False): "c2_pafpn_coarse_points",
         ("pafpn", "points_box", 32, False): "c3_pafpn_coarse_points_box",
         ("pafpn", "points_box_dense", 32, False): "c4_pafpn_coarse_points_box_dense",
+        ("pafpn", "points_box", 16, False): "r1_c3_pafpn_coarse_points_box_emb64",
         ("pafpn", "points_box_dense", 16, False): "r1_c4_pafpn_coarse_points_box_dense_emb64",
         ("pafpn", "points_box_dense", 16, True): "c5v2_pafpn_coarse_p2_boundary_refiner_emb64",
     }

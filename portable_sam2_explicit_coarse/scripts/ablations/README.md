@@ -15,7 +15,10 @@
 | C4-densefix | 32×32 legacy | PAFPN | coarse 2P2N | full-image | no | yes | yes (fixed 0.5) | no |
 | C4-densefix-unfreeze | 32×32 legacy | PAFPN | coarse 2P2N | full-image | no | yes | yes (fixed 0.5, ds unfrozen) | no |
 | R0 | 64×64 official | aggregator | legacy 5-token MLP | ROI-local | - | - | - | - |
+| R1-C3 | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | no | no |
 | R1-C4 | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | yes | no |
+| R1-C4-RD | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | raw logits (detached) | no |
+| R1-C4-G | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | hard-EDT Gaussian (detached) | no |
 | C5-v2 | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | yes | yes |
 
 B0/B1 use the historical ROI-local final-mask target and bbox paste. M0/M1
@@ -77,8 +80,10 @@ contracts and no-FiLM/FiLM checkpoints cannot overwrite each other.
 Every wrapper first validates the resolved MMEngine config. Architecture values
 are fixed by the wrapper and cannot be inherited from stale environment values.
 
-R0 and R1-C4 isolate the SAM2 spatial-resolution change on top of B0 and C4.
-C5-v2 then changes only the P2 boundary refiner switch. They
+R0 isolates the SAM2 spatial-resolution change on top of B0. The dedicated
+R1 attribution matrix uses R1-C3, R1-C4 and C5-v2 at the same official 64×64
+resolution. R1-C3→R1-C4 changes only the dense prompt switch, while
+R1-C4→C5-v2 changes only the P2 boundary refiner switch. They
 set `SAM_IMAGE_EMBED_STRIDE=16`, select the 64×64 stride-16 FPN feature for the
 MaskDecoder, use 256×256/128×128 high-resolution features, and configure a
 64×64 PromptEncoder grid (dense-mask input: 256×256). The detector still
@@ -87,9 +92,70 @@ historical reproducibility.
 
 ```bash
 bash scripts/ablations/r0_b0_aggregator_mlp_emb64.sh
+bash scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh
 bash scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh
+bash scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh
+bash scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh
 bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
 ```
+
+Run the three attribution experiments sequentially on one two-GPU machine so
+they do not compete for memory. Their default protocol is the common 20% train,
+100% validation, seed 44, EMA-off screening setup. `RUN_IN_BACKGROUND=0` makes
+each command block until completion, so pasting the block remains truly serial:
+
+```bash
+RUN_IN_BACKGROUND=0 bash scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
+```
+
+## R1-C4-G: Gaussian dense representation
+
+R1-C4-G is a representation ablation, not a P2 or full SAMRefiner experiment.
+It retains R1-C4's detector, PAFPN, 64x64 image embedding, coarse head, original
+2P2N miner, proposal box token, frozen SAM2 PromptEncoder/no-mask embedding,
+learnable global-sigmoid dense gate (`alpha_init=0.25`), losses and optimizer.
+It changes only the detached dense observation relative to R1-C4-RD.
+
+The required causal comparisons are:
+
+- R1-C4 vs R1-C4-RD: effect of removing final-mask gradient through raw dense;
+- R1-C4-RD vs R1-C4-G: raw vs Gaussian representation under the same detach;
+- R1-C3 vs R1-C4-G: net benefit over no dense prompt.
+
+For each ROI, R1-C4-G thresholds `sigmoid(coarse.detach())` at 0.5, applies an
+exact Euclidean distance transform to the 64x64 hard foreground, selects the
+single global maximum as the centre, and uses the full foreground area. Centre
+and area are analytically mapped through the proposal to the native 256x256
+full-image PromptEncoder mask canvas. The positive-only prompt is
+
+```text
+G(x,y) = 15 * exp(-((x-xc)^2 + (y-yc)^2) / (4 * A_canvas))
+```
+
+It is not temperature-scaled, signed or clamped. The full-image Gaussian is
+isotropic before R1-C4's existing post-encoding proposal-box support is applied.
+An empty coarse foreground is marked invalid and its encoded mask is replaced
+per ROI by the exact pretrained no-mask base, rather than treating an encoded
+all-zero canvas as no-mask. Exact EDT requires `scipy.ndimage` in the configured
+Python environment. No Gaussian-specific loss or warm-up is added.
+
+Both controls use the common screening protocol: independent initialization
+from the same SAM2 Base+ checkpoint, seed 44, 20% train, 100% validation, 80
+maximum epochs, validation every epoch and EMA off. Checkpoint inference reads
+`dense_prompt_cfg` from `cfg.model`, so transform, detach, threshold, omega and
+gamma are reconstructed without relying on the wrapper environment.
+
+R1-C4-G is promoted to full-data training only when all pre-registered checks
+hold: best smoothed segm/mAP is at least 0.005 above R1-C4-RD; the benefit is
+present for at least three validations and the last-five-validation mean is not
+lower; it also beats R1-C3; bbox/mAP drops by no more than 0.01; and Gaussian
+valid ratio, alpha and applied-delta ratio show that the route is active without
+NaN or abnormal saturation. These screening criteria are not a multi-seed or
+full-data proof.
 
 ## C4 dense-gate repair (densefix)
 
@@ -261,7 +327,10 @@ also reach.
    same early-stop protocol. Its epoch-6 segm/mAP is 0.6149; the completed best
    and smoothed curves will quantify the stride-16 contribution and bound the
    refiner's incremental contribution against C5-v2.
-2. Optionally, a stride-32 run with `restrict_dense_prompt_to_box=False` to test
+2. **Run R1-C3** (`SAM_IMAGE_EMBED_STRIDE=16`, points+box, no dense, no
+   refiner). R1-C3→R1-C4 is the strict dense-prompt attribution at official
+   resolution; R1-C4→C5-v2 is the strict P2-refiner attribution.
+3. Optionally, a stride-32 run with `restrict_dense_prompt_to_box=False` to test
    whether the box restriction — not the resolution — is the dense bottleneck.
    This requires exposing the flag (currently config-only).
 

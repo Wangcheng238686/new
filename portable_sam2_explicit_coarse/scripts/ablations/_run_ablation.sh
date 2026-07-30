@@ -113,6 +113,25 @@ esac
 export NECK_TYPE
 export FINAL_MASK_COORDINATE_MODE
 export ROI_SAM_ENABLED ROI_SAM_SAMPLING_RATIO
+SHAPE_DENSE_TRANSFORM="${SHAPE_DENSE_TRANSFORM:-raw_logits}"
+case "${SHAPE_DENSE_TRANSFORM}" in
+  raw_logits|confidence_signed|gaussian_edt) ;;
+  *) echo "invalid SHAPE_DENSE_TRANSFORM=${SHAPE_DENSE_TRANSFORM}" >&2; exit 2 ;;
+esac
+SHAPE_DENSE_DETACH="${SHAPE_DENSE_DETACH:-0}"
+case "${SHAPE_DENSE_DETACH}" in
+  0|1) ;;
+  *) echo "SHAPE_DENSE_DETACH must be 0 or 1" >&2; exit 2 ;;
+esac
+SHAPE_GAUSSIAN_FOREGROUND_THRESHOLD="${SHAPE_GAUSSIAN_FOREGROUND_THRESHOLD:-0.5}"
+SHAPE_GAUSSIAN_OMEGA="${SHAPE_GAUSSIAN_OMEGA:-15.0}"
+SHAPE_GAUSSIAN_GAMMA="${SHAPE_GAUSSIAN_GAMMA:-4.0}"
+if [[ "${SHAPE_DENSE_TRANSFORM}" == "gaussian_edt" && "${SHAPE_DENSE_DETACH}" != "1" ]]; then
+  echo "gaussian_edt requires SHAPE_DENSE_DETACH=1" >&2
+  exit 2
+fi
+export SHAPE_DENSE_TRANSFORM SHAPE_DENSE_DETACH
+export SHAPE_GAUSSIAN_FOREGROUND_THRESHOLD SHAPE_GAUSSIAN_OMEGA SHAPE_GAUSSIAN_GAMMA
 SAM_IMAGE_EMBED_STRIDE="${SAM_IMAGE_EMBED_STRIDE:-32}"
 case "${SAM_IMAGE_EMBED_STRIDE}" in
   16|32) ;;
@@ -439,6 +458,11 @@ echo "prompt_sparse_mode=${PROMPT_SPARSE_MODE}"
 echo "prompt_encoder_enabled=${PROMPT_ENCODER_ENABLED}"
 echo "shape_prior_enabled=${SHAPE_PRIOR_ENABLED}"
 echo "explicit_prompt_mode=${EXPECTED_EXPLICIT_MODE}"
+echo "shape_dense_transform=${SHAPE_DENSE_TRANSFORM}"
+echo "shape_dense_detach=${SHAPE_DENSE_DETACH}"
+echo "shape_gaussian_foreground_threshold=${SHAPE_GAUSSIAN_FOREGROUND_THRESHOLD}"
+echo "shape_gaussian_omega=${SHAPE_GAUSSIAN_OMEGA}"
+echo "shape_gaussian_gamma=${SHAPE_GAUSSIAN_GAMMA}"
 echo "p2_boundary_refiner_enabled=${P2_BOUNDARY_REFINER_ENABLED}"
 echo "final_mask_coordinate_mode=${FINAL_MASK_COORDINATE_MODE}"
 echo "final_mask_loss_mode=${FINAL_MASK_LOSS_MODE}"
