@@ -1,13 +1,20 @@
 **/__pycache__/
 **/*.py[cod]
 **/.pytest_cache/
-**/logs/
 **/work_dirs/
 **/inference_results/
 *.pth
 *.pt
-*.log
 .vscode/
 .idea/
+
+# LaTeX build artifacts (the main.tex paper draft is not tracked).
+/main.aux
+/main.fdb_latexmk
+/main.fls
+/main.log
+/main.out
+/main.pdf
+/main.synctex.gz
 
 portable_sam2_explicit_coarse/configs/environment.local.sh
