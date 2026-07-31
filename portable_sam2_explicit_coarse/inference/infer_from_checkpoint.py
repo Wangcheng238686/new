@@ -151,6 +151,31 @@ def _restore_architecture_environment(snapshot: Mapping[str, Any]) -> None:
             os.environ[env_key] = str(value)
 
 
+def _restore_embedded_architecture_environment(
+    model_config: Mapping[str, Any],
+) -> None:
+    """Restore config-factory switches omitted by early schema-v2 snapshots."""
+    stride = model_config.get("sam_image_embedding_stride")
+    if stride not in (None, ""):
+        os.environ["SAM_IMAGE_EMBED_STRIDE"] = str(stride)
+
+    roi_head = model_config.get("roi_head", {})
+    head = roi_head.get("mask_head", {}) if isinstance(roi_head, Mapping) else {}
+    if not isinstance(head, Mapping):
+        return
+    final_mode = head.get("final_mask_coordinate_mode")
+    if final_mode not in (None, ""):
+        os.environ["FINAL_MASK_COORDINATE_MODE"] = str(final_mode)
+    dense_cfg = head.get("dense_prompt_cfg", {})
+    if isinstance(dense_cfg, Mapping):
+        transform = dense_cfg.get("transform")
+        if transform not in (None, ""):
+            os.environ["SHAPE_DENSE_TRANSFORM"] = str(transform)
+        detach = dense_cfg.get("detach_input")
+        if detach is not None:
+            os.environ["SHAPE_DENSE_DETACH"] = "1" if bool(detach) else "0"
+
+
 def _resolve_sam2_repo(args: argparse.Namespace, snapshot: Mapping[str, Any]) -> Path:
     runtime = snapshot.get("runtime_config", {})
     saved = runtime.get("sam2_repo") if isinstance(runtime, Mapping) else None
@@ -201,6 +226,7 @@ def _resolve_model_config(
     if isinstance(saved, Mapping) and saved:
         model_config = copy.deepcopy(dict(saved))
         source = "checkpoint.config_snapshot.model_config"
+        _restore_embedded_architecture_environment(model_config)
     else:
         fallback = args.config or snapshot.get("config_path")
         if not fallback:
@@ -231,6 +257,7 @@ def _resolve_model_config(
 
     saved_contract = snapshot.get("architecture_contract", {})
     if saved_contract:
+        from mmengine.config import Config
         from rsprompter.architecture_contract import architecture_contract
 
         resolved_contract = architecture_contract(model_config)
@@ -240,10 +267,41 @@ def _resolve_model_config(
             or saved_contract.get("model_fingerprint")
             != resolved_contract.get("model_fingerprint")
         ):
-            raise RuntimeError(
-                "Embedded model_config does not match its saved architecture "
-                f"contract: saved={dict(saved_contract)} resolved={resolved_contract}"
+            # Older schema-v2 training runs calculated the contract before
+            # MODELS.build(), but captured cfg.model afterwards. MMEngine
+            # registries may consume nested config fields in place, so that
+            # embedded post-build copy cannot reproduce the pre-build
+            # fingerprint. Recover only from the recorded source config and
+            # only when it exactly reproduces the saved contract.
+            recorded = args.config or snapshot.get("config_path")
+            recorded_path = Path(str(recorded)).expanduser() if recorded else None
+            if recorded_path is not None and not recorded_path.is_absolute():
+                recorded_path = MAINLINE_ROOT / recorded_path
+            if recorded_path is not None and recorded_path.is_file():
+                candidate = Config.fromfile(str(recorded_path)).model.to_dict()
+                candidate_contract = architecture_contract(candidate)
+            else:
+                candidate = None
+                candidate_contract = {}
+            if candidate is None or (
+                saved_contract.get("architecture_id")
+                != candidate_contract.get("architecture_id")
+                or saved_contract.get("model_fingerprint")
+                != candidate_contract.get("model_fingerprint")
+            ):
+                raise RuntimeError(
+                    "Embedded model_config does not match its saved architecture "
+                    f"contract: saved={dict(saved_contract)} "
+                    f"resolved={resolved_contract} "
+                    f"recorded_config={candidate_contract}"
+                )
+            logger.warning(
+                "Embedded post-build model_config changed fingerprint; using "
+                "contract-matching recorded config %s",
+                recorded_path,
             )
+            model_config = candidate
+            source = str(recorded_path)
 
     runtime = snapshot.get("runtime_config", {})
     saved_sam2_ckpt = (

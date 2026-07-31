@@ -1339,6 +1339,15 @@ def main():
     parser.add_argument("--resume-from", type=str, default=None)
     parser.add_argument("--init-from", type=str, default=None)
     parser.add_argument(
+        "--test-only",
+        action="store_true",
+        default=False,
+        help="Load weights via --resume-from and run COCO evaluation once on the "
+        "WHU test split (2.2 test/test + test.json), then exit. No training. "
+        "Requires --resume-from pointing at a checkpoint with a matching "
+        "architecture contract.",
+    )
+    parser.add_argument(
         "--allow-cross-arch-init",
         action="store_true",
         help="Explicitly allow INIT_FROM from a different or legacy architecture.",
@@ -1819,10 +1828,18 @@ def main():
             random_sample=args.random_sample,
             normalize_drone=args.normalize_drone,
             dataset_format="whu_coco" if args.use_whu_coco else "labelme",
-            whu_train_ann_file="2.4 annotation/annotation/train.json",
-            whu_val_ann_file="2.4 annotation/annotation/validation.json",
-            whu_train_img_subdir="2.1 train/train",
-            whu_val_img_subdir="2.3 valid/validation",
+            whu_train_ann_file=os.environ.get(
+                "WHU_TRAIN_ANN_FILE", "2.4 annotation/annotation/train.json"
+            ),
+            whu_val_ann_file=os.environ.get(
+                "WHU_VAL_ANN_FILE", "2.4 annotation/annotation/validation.json"
+            ),
+            whu_train_img_subdir=os.environ.get(
+                "WHU_TRAIN_IMG_SUBDIR", "2.1 train/train"
+            ),
+            whu_val_img_subdir=os.environ.get(
+                "WHU_VAL_IMG_SUBDIR", "2.3 valid/validation"
+            ),
             train_subset_ratio=train_subset_ratio,
             val_subset_ratio=val_subset_ratio,
             seed=int(args.seed),
@@ -2233,6 +2250,174 @@ def main():
                 best_bbox_score,
                 best_composite_score,
             )
+
+    # ===== --test-only: evaluate on the held-out WHU test split, then exit =====
+    if args.test_only:
+        if not args.resume_from:
+            raise SystemExit("--test-only requires --resume-from to load weights.")
+        from data import create_test_loader
+
+        test_loader = create_test_loader(
+            data_root=args.data_root,
+            ann_file="2.4 annotation/annotation/test.json",
+            image_subdir="2.2 test/test",
+            image_size=tuple(args.image_size),
+            batch_size=int(args.val_batch_size),
+            num_workers=4,
+            seed=int(args.seed),
+        )
+        # Non-main ranks skip iteration to match the rank0_only validation
+        # contract (no NCCL collective held open during COCO eval).
+        if distributed and not is_main:
+            test_loader = None
+
+        model.eval()
+        if args.freeze_bn:
+            _set_norm_eval(model)
+
+        all_gt: List[dict] = []
+        all_dt: List[dict] = []
+        all_img_metas: List[dict] = []
+
+        if test_loader is not None:
+            if is_main:
+                logger.info(
+                    "Test-only evaluation: checkpoint=%s, test split=%d images",
+                    args.resume_from,
+                    len(test_loader.dataset),
+                )
+            model_for_eval = model.module if hasattr(model, "module") else model
+            with torch.no_grad():
+                for batch_idx, batch in enumerate(test_loader):
+                    if args.max_val_batches > 0 and batch_idx >= args.max_val_batches:
+                        break
+                    imgs = batch["imgs"].to(device)
+                    img_metas = batch["img_metas"]
+                    gt_bboxes = [b.to(device) for b in batch["gt_bboxes"]]
+                    gt_labels = [l.to(device) for l in batch["gt_labels"]]
+                    gt_masks = batch["gt_masks"]
+
+                    data_samples = []
+                    for i in range(len(imgs)):
+                        ds = DetDataSample()
+                        ds.set_metainfo(img_metas[i])
+                        gt_instances = InstanceData()
+                        num_inst = len(gt_labels[i])
+                        if num_inst > 0:
+                            valid_mask = gt_labels[i] >= 0
+                            num_valid = int(valid_mask.sum().item())
+                            if num_valid > 0:
+                                valid_indices = (
+                                    valid_mask.nonzero().squeeze(-1)[:num_valid].cpu()
+                                )
+                                gt_instances.bboxes = gt_bboxes[i][valid_indices]
+                                gt_instances.labels = gt_labels[i][valid_indices]
+                                masks = gt_masks[i][valid_indices.cpu().numpy()]
+                                gt_instances.masks = BitmapMasks(
+                                    masks, *img_metas[i]["img_shape"]
+                                )
+                            else:
+                                gt_instances.bboxes = torch.zeros(
+                                    (0, 4), dtype=torch.float32, device=device
+                                )
+                                gt_instances.labels = torch.zeros(
+                                    (0,), dtype=torch.int64, device=device
+                                )
+                                gt_instances.masks = BitmapMasks(
+                                    np.zeros(
+                                        (0, *img_metas[i]["img_shape"]), dtype=np.uint8
+                                    ),
+                                    *img_metas[i]["img_shape"],
+                                )
+                        else:
+                            gt_instances.bboxes = torch.zeros(
+                                (0, 4), dtype=torch.float32, device=device
+                            )
+                            gt_instances.labels = torch.zeros(
+                                (0,), dtype=torch.int64, device=device
+                            )
+                            gt_instances.masks = BitmapMasks(
+                                np.zeros(
+                                    (0, *img_metas[i]["img_shape"]), dtype=np.uint8
+                                ),
+                                *img_metas[i]["img_shape"],
+                            )
+                        ds.gt_instances = gt_instances
+                        data_samples.append(ds.to(device))
+
+                    model_inputs = {
+                        "imgs": imgs,
+                        "img_metas": img_metas,
+                    }
+                    outputs = model_for_eval.predict(
+                        model_inputs, data_samples, rescale=False
+                    )
+                    for j, output in enumerate(outputs):
+                        meta = img_metas[j]
+                        img_shape = meta["img_shape"]
+                        gt_inst = data_samples[j].gt_instances
+                        gt_np = _extract_instances_numpy(
+                            gt_inst, img_shape, encode_masks=True
+                        )
+                        all_gt.append(gt_np)
+                        pred_inst = (
+                            output.pred_instances
+                            if hasattr(output, "pred_instances")
+                            else output
+                        )
+                        pred_np = _extract_instances_numpy(
+                            pred_inst, img_shape, encode_masks=True
+                        )
+                        all_dt.append(pred_np)
+                        all_img_metas.append(meta)
+
+        if is_main:
+            total_gt = sum(len(g["labels"]) for g in all_gt)
+            total_dt = sum(len(d["scores"]) for d in all_dt if "scores" in d)
+            avg_mask_fill, avg_masks_per_image = _summarize_mask_density(all_dt)
+            logger.info(
+                "Test samples: GT=%d, DT=%d, avg_masks_per_image=%.2f, avg_mask_fill=%.4f",
+                total_gt,
+                total_dt,
+                avg_masks_per_image,
+                avg_mask_fill,
+            )
+            if total_gt > 0:
+                coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
+                    all_gt, all_dt, all_img_metas, score_key="scores"
+                )
+                if eval_bbox:
+                    bbox_metrics = run_coco_eval(
+                        coco_gt, coco_bbox_dt, iou_type="bbox"
+                    )
+                    logger.info(
+                        "Test bbox/mAP: %.4f bbox/mAP_75: %.4f",
+                        bbox_metrics.get("bbox/mAP", 0.0),
+                        bbox_metrics.get("bbox/mAP_75", 0.0),
+                    )
+                if segm_score_key == "scores":
+                    coco_segm_dt = coco_bbox_dt
+                else:
+                    _, coco_segm_dt = build_coco_gt_and_dt(
+                        all_gt,
+                        all_dt,
+                        all_img_metas,
+                        score_key=segm_score_key,
+                    )
+                segm_metrics = run_coco_eval(
+                    coco_gt, coco_segm_dt, iou_type="segm"
+                )
+                logger.info(
+                    "Test segm/mAP: %.4f",
+                    segm_metrics.get("segm/mAP", 0.0),
+                )
+            else:
+                logger.warning("No valid GT in test split; skipping COCO eval.")
+            logger.info("Test-only evaluation complete. Exiting (no training).")
+        # Ensure all ranks reach the exit together.
+        if dist_info.get("world_size", 1) > 1:
+            dist.barrier()
+        return
 
     nonfinite_batches = 0
     # Validation order is deterministic within a run. Cache compact GT RLE

@@ -403,21 +403,56 @@ roi_local unless noted, all trained to convergence without early-stop kill):
 | C3 (full_image, collapse) | 32 | coarse points_box | 0.4773 | −0.211 |
 | **C3-roi_local** | 32 | coarse points_box | **0.6107** | −0.078 |
 | R1-C4-RD (full_image, collapse) | 16 | coarse + raw_detach dense | 0.6450 | −0.044 |
-| **R1-C4-RD-roi_local** | 16 | coarse + raw_detach dense | **0.6952** | **+0.006** |
+| **R1-C4-RD-roi_local** | 16 | coarse + raw_detach dense | **0.6957** | **+0.007** |
 | B1 (MLP baseline) | 32 | MLP | 0.6888 | — |
 
 Conclusions from the converged runs:
 
 1. **roi_local repair lifts the coarse route to and beyond the MLP baseline.**
-   R1-C4-RD-roi_local (coarse + dense + stride-16) reaches 0.6952, surpassing B1
+   R1-C4-RD-roi_local (coarse + dense + stride-16) reaches 0.6957, surpassing B1
    (0.6888). At stride-32, C3-roi_local still trails B1 by ~0.08, confirming
    stride-16 is genuinely needed for the coarse route on these small WHU targets.
 2. **stride-16 is a real, separable gain under healthy supervision.** Same route,
-   same roi_local, stride-32→16: C3-roi_local 0.6107 → R1-C4-RD-roi_local 0.6952
+   same roi_local, stride-32→16: C3-roi_local 0.6107 → R1-C4-RD-roi_local 0.6957
    (+0.085), no longer confounded with the full_image collapse.
-3. **The dense prompt + coarse route now has measurable value.** Earlier
-   full_image runs could not show it because the mask was never learned; under
-   roi_local, coarse + dense + stride-16 is the best configuration tested.
+3. **The dense prompt + coarse route has measurable validation value.** Earlier
+   full_image runs could not show it because the mask was never learned. The
+   held-out test result below shows that the aggregate gain is modest and comes
+   mainly from large objects, so this is not a uniform replacement for B1.
+
+### B1 vs R1-C4-RD-roi_local validation and test (2026-07-31)
+
+Both runs use 20% train / 100% validation, seed 44, detector scores, no EMA and
+ROI-local bbox paste. Each row evaluates the **segm-best** checkpoint, not the
+separately saved bbox-best checkpoint. Validation contains 627 images / 15,926
+instances; test contains 2,220 images / 70,063 instances. AP50 values in the
+training logs are printed to three decimals; test values come from the saved
+standalone-inference `metrics.json`.
+
+| Experiment / split | checkpoint | bbox/mAP | bbox/AP50 | bbox/AP75 | segm/mAP | segm/AP50 | segm/AP75 |
+|---|---|---:|---:|---:|---:|---:|---:|
+| B1 validation | `best_model_epoch70.pth` | 0.7454 | 0.891 | 0.8395 | 0.6888 | 0.891 | 0.828 |
+| B1 test | same checkpoint | 0.7235 | 0.8863 | 0.8220 | 0.6796 | 0.8872 | 0.8212 |
+| R1-C4-RD-roi_local validation | `best_model_epoch80.pth` | 0.7450 | 0.891 | 0.8400 | 0.6957 | 0.892 | 0.829 |
+| R1-C4-RD-roi_local test | same checkpoint | 0.7236 | 0.8867 | 0.8225 | 0.6839 | 0.8880 | 0.8137 |
+
+The test-set delta (R1 minus B1) is `+0.0001` bbox/mAP and `+0.0043`
+segm/mAP. The segmentation gain is scale-dependent rather than uniform:
+
+| Test segm metric | B1 | R1-C4-RD-roi_local | delta |
+|---|---:|---:|---:|
+| mAP_s | 0.4038 | 0.3810 | −0.0228 |
+| mAP_m | 0.7338 | 0.7362 | +0.0024 |
+| mAP_l | 0.7226 | 0.7553 | +0.0326 |
+
+Thus the validation advantage shrinks from `+0.0069` to `+0.0043` on test.
+R1 improves large-object masks but loses small-object AP and `segm/AP75`; bbox
+performance is effectively unchanged. The comparable standalone artifacts are:
+
+```text
+outputs/b1_best_epoch70_test/{metrics.json,run_manifest.json,predictions.json}
+outputs/r1_c4_rd_roi_local_best_epoch80_test/{metrics.json,run_manifest.json,predictions.json}
+```
 
 Source logs (roi_local, converged):
 

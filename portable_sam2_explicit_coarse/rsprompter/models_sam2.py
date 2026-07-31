@@ -1144,17 +1144,23 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                     else "points_box"
                 )
             self.explicit_prompt_mode = str(explicit_prompt_mode).strip().lower()
-            _valid_explicit_modes = {"points", "points_box", "points_box_dense"}
+            _valid_explicit_modes = {
+                "points", "box", "mask", "points_box", "points_box_dense"
+            }
             if self.explicit_prompt_mode not in _valid_explicit_modes:
                 raise ValueError(
-                    "explicit_prompt_mode must be points, points_box or "
+                    "explicit_prompt_mode must be points, box, mask, "
+                    "points_box or "
                     f"points_box_dense, got {self.explicit_prompt_mode!r}"
                 )
+            self.explicit_use_point_prompt = self.explicit_prompt_mode in {
+                "points", "points_box", "points_box_dense"
+            }
             self.explicit_use_box_prompt = self.explicit_prompt_mode in {
-                "points_box", "points_box_dense"
+                "box", "points_box", "points_box_dense"
             }
             self.explicit_use_dense_prompt = (
-                self.explicit_prompt_mode == "points_box_dense"
+                self.explicit_prompt_mode in {"mask", "points_box_dense"}
             )
             if _explicit_mode_was_provided:
                 _cfg_use_dense = bool(
@@ -1168,6 +1174,7 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                     )
         else:
             self.explicit_prompt_mode = None
+            self.explicit_use_point_prompt = False
             self.explicit_use_box_prompt = False
             self.explicit_use_dense_prompt = False
         self.prompt_encoder_enabled = bool(prompt_encoder_enabled)
@@ -1768,10 +1775,6 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                 raise ValueError(
                     "P2BoundaryRefiner requires ShapePrior and PromptEncoder"
                 )
-            if not self.use_shape_dense or not self.explicit_use_dense_prompt:
-                raise ValueError(
-                    "P2BoundaryRefiner requires points_box_dense prompt mode"
-                )
             from .p2_boundary_refiner import P2BoundaryRefiner
 
             _refiner_cfg = dict(self.p2_boundary_refiner_cfg)
@@ -1906,7 +1909,11 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
             )
         # A warm-up/all-invalid batch must be a true no-point prompt. Passing
         # four label=-1 entries would create four learned not-a-point tokens.
-        points = None if bool((labels < 0).all()) else (coords, labels)
+        points = (
+            None
+            if not self.explicit_use_point_prompt or bool((labels < 0).all())
+            else (coords, labels)
+        )
         boxes_for_pe = boxes if self.explicit_use_box_prompt else None
         masks_for_pe = masks if self.explicit_use_dense_prompt else None
         return points, boxes_for_pe, masks_for_pe
@@ -2328,6 +2335,9 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
                         )
                 debug_stats["PROMPT/use_box_token"] = float(
                     self.explicit_use_box_prompt
+                )
+                debug_stats["PROMPT/use_point_token"] = float(
+                    self.explicit_use_point_prompt
                 )
                 debug_stats["PROMPT/use_dense_mask"] = float(
                     self.explicit_use_dense_prompt

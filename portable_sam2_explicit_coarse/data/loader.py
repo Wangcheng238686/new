@@ -334,3 +334,51 @@ def create_train_loader(
     )
 
     return train_loader, val_loader, train_dataset
+
+
+def create_test_loader(
+    data_root: str,
+    ann_file: str,
+    image_subdir: str,
+    image_size: Tuple[int, int] = (1024, 1024),
+    batch_size: int = 1,
+    num_workers: int = 4,
+    seed: int = 42,
+):
+    """Build a WHU-COCO test loader for standalone test-set evaluation.
+
+    Mirrors the validation loader built by ``create_train_loader`` (whu_coco
+    branch) but points at the held-out test split: no augmentation, no subset
+    sampling, deterministic order.  The collate function matches the val/train
+    loaders so existing predict/COCO-eval code is reused unchanged.
+    """
+    generator = torch.Generator()
+    generator.manual_seed(int(seed))
+
+    test_dataset = WHUCocoInstanceDataset(
+        data_root=data_root,
+        ann_file=ann_file,
+        image_subdir=image_subdir,
+        image_size=image_size,
+        single_class=True,
+        enable_category_mapping=False,
+        category_mapping=None,
+        flip_prob=0.0,
+        vflip_prob=0.0,
+        gaussian_noise_prob=0.0,
+        random_erasing_prob=0.0,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        collate_fn=rtmdet_collate_fn,
+        pin_memory=True,
+        drop_last=False,
+        persistent_workers=num_workers > 0,
+        worker_init_fn=_seed_worker,
+        generator=generator,
+    )
+    logger.info("创建 WHU 测试集加载器: %d 样本", len(test_dataset))
+    return test_loader

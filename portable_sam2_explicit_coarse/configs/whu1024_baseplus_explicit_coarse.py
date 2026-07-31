@@ -5,10 +5,10 @@ import os
 _base_ = ["./whu1024_baseplus_clean.py"]
 
 _mode = os.environ.get("EXPLICIT_PROMPT_MODE", "points_box_dense").strip().lower()
-if _mode not in {"points", "points_box", "points_box_dense"}:
+if _mode not in {"points", "box", "mask", "points_box", "points_box_dense"}:
     raise ValueError(f"Unsupported EXPLICIT_PROMPT_MODE={_mode!r}")
 
-_use_dense = _mode == "points_box_dense"
+_use_dense = _mode in {"mask", "points_box_dense"}
 _p2_boundary_refiner = (
     os.environ.get("P2_BOUNDARY_REFINER_ENABLED", "0") == "1"
 )

@@ -224,7 +224,7 @@ def main():
             head.explicit_prompt_mode == args.explicit_prompt_mode,
             (head.explicit_prompt_mode, args.explicit_prompt_mode),
         )
-        expect_dense = args.explicit_prompt_mode == "points_box_dense"
+        expect_dense = args.explicit_prompt_mode in {"mask", "points_box_dense"}
         require(
             bool(head.shape_prior_cfg.use_shape_dense) == expect_dense,
             "dense prompt config mismatch",

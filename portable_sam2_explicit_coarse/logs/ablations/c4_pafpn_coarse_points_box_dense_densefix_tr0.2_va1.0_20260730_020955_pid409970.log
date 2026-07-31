@@ -1,0 +1,721 @@
+terminal_log=/home/wangcheng/project/new/portable_sam2_explicit_coarse/logs/ablations/c4_pafpn_coarse_points_box_dense_densefix_tr0.2_va1.0_20260730_020955_pid409970.log
+/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/imagecorruptions/corruptions.py:17: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+{"ablation_id": "c4_pafpn_coarse_points_box_dense", "architecture_contract": {"architecture_id": "c4_pafpn_coarse_points_box_dense", "model_fingerprint": "830b49f74f4c43b22382de8cd36c027c3d137edf6ff9892f54d7c1f69ceafd07", "schema_version": 2}, "config": "configs/whu1024_baseplus_explicit_coarse_densefix.py", "dense_prompt_enabled": true, "explicit_prompt_mode": "points_box_dense", "final_mask_coordinate_mode": "full_image", "final_mask_loss_config": {}, "final_mask_loss_mode": "standard", "neck": "RSSAM2PAFPN", "p2_boundary_refiner_config": {"aligned": true, "beta": 0.2, "boundary_band_radius": 2, "boundary_loss_weight": 0.05, "coarse_size": 64, "delta_logit_max": 2.0, "enabled": false, "foreground_thr": 0.5, "max_search_coverage": 0.5, "mid_channels": 64, "p2_in_channels": 512, "projected_channels": 64, "roi_output_size": 32, "sampling_ratio": 0, "search_band_radius": 4, "spatial_scale": 0.25, "zero_init_residual": true}, "p2_boundary_refiner_enabled": false, "prompt_encoder_enabled": true, "prompt_route": "coarse", "prompt_sparse_mode": "shape_point", "quality_head_enabled": false, "roi_sam_config": {}, "roi_sam_enabled": false, "sam_image_embedding_size": 32, "sam_image_embedding_stride": 32, "segm_score_key": "scores", "segm_score_mode": "detector", "shape_context_fusion": "roi_only", "shape_loss_schedule_mode": "fixed", "shape_point_adaptive_validity": true, "shape_prior_enabled": true, "shape_prior_loss_weight": 0.1, "subset_seed": 44, "train_subset_ratio": 0.2, "val_subset_ratio": 1.0}
+ablation contract: OK
+============================================================
+resolved_hyperparameters_begin
+timestamp=20260730_020955
+environment_config=/home/wangcheng/project/new/portable_sam2_explicit_coarse/configs/environment.local.sh
+git_commit=88c4b3ebebc720b5e4c42f3c7adbd8494cad944d
+ablation_id=c4_pafpn_coarse_points_box_dense
+expected_architecture_id=c4_pafpn_coarse_points_box_dense
+run_tag=c4_pafpn_coarse_points_box_dense_densefix
+run_suffix=
+neck_type=pafpn
+prompt_route=coarse
+prompt_generator_mode=explicit_mask
+prompt_sparse_mode=shape_point
+prompt_encoder_enabled=1
+shape_prior_enabled=1
+explicit_prompt_mode=points_box_dense
+p2_boundary_refiner_enabled=0
+final_mask_coordinate_mode=full_image
+final_mask_loss_mode=standard
+final_mask_roi_expand_ratio=1.20
+final_mask_roi_bce_weight=1.0
+final_mask_roi_dice_weight=1.0
+final_mask_outside_bce_weight=0.05
+roi_sam_enabled=0
+roi_sam_sampling_ratio=2
+sam_image_embedding_stride=32
+sam_image_embedding_size=32
+train_subset_ratio=0.2
+val_subset_ratio=1.0
+val_batch_size=1
+subset_seed=44
+python=/home/wangcheng/miniconda3/envs/cvt2/bin/python
+nproc_per_node=2
+master_port=29970
+master_port_source=auto_pid
+ddp_timeout_seconds=1800
+ddp_timeout_source=baseline_default
+ddp_control_backend=gloo
+ddp_control_timeout_seconds=86400
+cuda_visible_devices=1,2
+batch_size_per_rank=1
+grad_accum_steps=4
+effective_global_batch_size=8
+epochs=80
+learning_rate=5e-4
+amp=0
+ema_enabled=0
+ema_decay=0.999
+ema_eval=0
+ema_save_best=0
+val_every_n_epochs=1
+compute_val_loss=0
+save_bbox_best_metric=bbox/mAP
+segm_score_mode=detector
+early_stopping_patience=10
+early_stopping_start_epoch=20
+early_stopping_min_delta=5e-4
+early_stopping_smooth_window=5
+sat_backbone_lr_mult=1.0
+sat_other_lr_mult=1.0
+mask_decoder_lr_mult=1.0
+no_mask_lr_mult=1.0
+prompt_encoder_lr_mult=0.0
+shape_prior_lr_mult=1.0
+shape_context_fusion=roi_only
+p2_boundary_refiner_lr_mult=1.0
+p2_boundary_refiner_projected_channels=64
+p2_boundary_refiner_mid_channels=64
+p2_boundary_refiner_delta_logit_max=2.0
+p2_boundary_refiner_loss_weight=0.05
+allow_cross_arch_init=0
+warmup_iters=100
+weight_decay=0.05
+det_loss_stage1_end=5
+det_loss_stage2_end=10
+det_loss_weight_stage1=1.0
+det_loss_weight_stage2=1.0
+det_loss_weight_stage3=1.0
+ema_update_every=1
+ema_eval_start_epoch=5
+shape_point_adaptive_validity=1
+shape_loss_schedule_mode=fixed
+shape_prior_loss_weight=0.10
+shape_loss_stage1_end=5
+shape_loss_weight_stage1=0.20
+shape_loss_weight_stage2=0.10
+point_warmup_enabled=0
+point_warmup_no_point_epochs=0
+point_warmup_one_pair_epochs=0
+point_warmup_full_start_epoch=1
+prompt_debug_stats=1
+prompt_debug_stats_interval=50
+max_train_batches=0
+max_val_batches=0
+init_from=
+init_exclude_prefixes=
+resume_from=
+check_data=0
+preflight_model=0
+dry_run=0
+run_in_background=1
+sam2_repo=/home/wangcheng/project/new/sam2
+sam2_checkpoint=/data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+data_root=/data1/wangcheng/dataset/WHU
+checkpoint_root=/data1/wangcheng/checkpoint/portable_sam2_explicit_coarse
+log_root=/home/wangcheng/project/new/portable_sam2_explicit_coarse/logs
+tmp_root=/tmp/portable_sam2_explicit_coarse
+config=configs/whu1024_baseplus_explicit_coarse_densefix.py
+checkpoint_dir=/data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/c4_pafpn_coarse_points_box_dense_densefix_tr0.2_va1.0
+log_file=/home/wangcheng/project/new/portable_sam2_explicit_coarse/logs/ablations/c4_pafpn_coarse_points_box_dense_densefix_tr0.2_va1.0_20260730_020955_pid409970.log
+command= /home/wangcheng/miniconda3/envs/cvt2/bin/python -m torch.distributed.run --nproc_per_node=2 --master_port=29970 train/train_rsprompter_fusion.py --config configs/whu1024_baseplus_explicit_coarse_densefix.py --data-root /data1/wangcheng/dataset/WHU --use-whu-coco --image-size 1024 1024 --batch-size 1 --grad-accum-steps 4 --epochs 80 --lr 5e-4 --checkpoint-dir /data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/c4_pafpn_coarse_points_box_dense_densefix_tr0.2_va1.0 --train-subset-ratio 0.2 --val-subset-ratio 1.0 --val-batch-size 1 --seed 44 --amp 0 --ema-enabled 0 --ema-decay 0.999 --ema-eval 0 --ema-save-best 0 --val-every-n-epochs 1 --compute-val-loss 0 --early-stopping-patience 10 --early-stopping-start-epoch 20 --early-stopping-min-delta 5e-4 --early-stopping-smooth-window 5 --sat-backbone-lr-mult 1.0 --sat-other-lr-mult 1.0 --mask-decoder-lr-mult 1.0 --no-mask-lr-mult 1.0 --prompt-encoder-lr-mult 0.0 --shape-prior-lr-mult 1.0 --p2-boundary-refiner-lr-mult 1.0 --warmup-iters 100 --weight-decay 0.05 --det-loss-stage1-end 5 --det-loss-stage2-end 10 --det-loss-weight-stage1 1.0 --det-loss-weight-stage2 1.0 --det-loss-weight-stage3 1.0 --ema-update-every 1 --ema-eval-start-epoch 5 --prompt-debug-stats 1 --prompt-debug-stats-interval 50
+resolved_hyperparameters_end
+============================================================
+launch_mode=background
+background_pid=410157
+follow_log=tail -f /home/wangcheng/project/new/portable_sam2_explicit_coarse/logs/ablations/c4_pafpn_coarse_points_box_dense_densefix_tr0.2_va1.0_20260730_020955_pid409970.log
+status_command=ps -fp 410157
+
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/imagecorruptions/corruptions.py:17: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/imagecorruptions/corruptions.py:17: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+[seed] Random seed fixed to 44 | cudnn.deterministic=True
+[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+2026-07-30 02:10:11,671 - portable_sam_fusion - INFO - DDP process-group timeout: 1800 seconds
+2026-07-30 02:10:11,671 - portable_sam_fusion - INFO - DDP validation control: backend=gloo timeout=86400 seconds
+2026-07-30 02:10:12,735 - portable_sam_fusion - INFO - Architecture contract: id=c4_pafpn_coarse_points_box_dense schema=2 fingerprint=830b49f74f4c43b22382de8cd36c027c3d137edf6ff9892f54d7c1f69ceafd07
+[RSSAM2VisionEncoder] Loading SAM2 base_plus model
+  - embed_dim: 112
+  - stages: (2, 3, 16, 3)
+  - backbone_channels: [896, 448, 224, 112]
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[ImageEncoder(base_plus)] Loaded 306 keys. missing=0, unexpected=0
+[RSSAM2VisionEncoder] Applied LoRA with config:
+  - r=16, alpha=32
+  - target_modules=['qkv', 'proj']
+  - dropout=0.05
+  - modules_to_save=['neck']
+trainable params: 1,492,528 || all params: 70,599,344 || trainable%: 2.114081966540652
+[RSSAM2VisionEncoder] LoRA audit: backbone total=70599344, trainable=1492528, lora_trainable=1061424, unexpected_trainable=0
+[SAM2] using package: /home/wangcheng/project/new/sam2/sam2/__init__.py
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[MaskDecoder] Loaded 131 keys. missing=0, unexpected=0
+  use_high_res_features: True
+  Has conv_s0: True
+  Has conv_s1: True
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[MaskHead] Initialized no_mask_embed from SAM2 ckpt, frozen, abs_mean=0.01521041
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[PromptEncoder] Loaded 17 keys. missing=0, unexpected=0
+2026-07-30 02:10:15,980 - portable_sam_fusion - INFO - Evaluation score contract: bbox=scores segm=scores mode=detector
+2026-07-30 02:10:19,576 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 2943 (train.json)
+2026-07-30 02:10:19,651 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 2943 (train.json)
+2026-07-30 02:10:19,727 - data.loader - INFO - WHU train subset: 588/2943 images (ratio=0.200000, seed=44)
+2026-07-30 02:10:19,798 - data.loader - INFO - WHU train subset: 588/2943 images (ratio=0.200000, seed=44)
+2026-07-30 02:10:19,871 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 627 (validation.json)
+2026-07-30 02:10:19,871 - data.loader - INFO - 创建 WHU 验证集加载器: 627 样本
+2026-07-30 02:10:19,872 - portable_sam_fusion - INFO - Validation policy: rank0_only=1 batch_size=1 every_n_epochs=1 compute_loss=0
+2026-07-30 02:10:19,872 - portable_sam_fusion - INFO - Dataset size: 588 | mini-batch/epoch=294 | grad_accum=4 | optimizer_steps/epoch=74 | total_optimizer_steps=5920
+2026-07-30 02:10:19,876 - portable_sam_fusion - INFO - Optimizer group sat_backbone    params=1492528 tensors=112 lr=5.000e-04 wd=5.000e-02 first=backbone.encoder.base_model.model.trunk.patch_embed.proj.lora_A.default.weight last=backbone.encoder.base_model.model.neck.modules_to_save.default.convs.3.conv.bias
+2026-07-30 02:10:19,877 - portable_sam_fusion - INFO - Optimizer group mask_decoder    params=4082497 tensors=125 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.mask_decoder.decoder.transformer.layers.0.self_attn.q_proj.weight last=roi_head.mask_head.mask_decoder.decoder.pred_obj_score_head.layers.2.bias
+2026-07-30 02:10:19,877 - portable_sam_fusion - INFO - Optimizer group shape_prior     params=960385 tensors=18 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.shape_injector.mask_decoder.net.0.weight last=roi_head.mask_head.shape_injector.mask_decoder.net.14.bias
+2026-07-30 02:10:19,877 - portable_sam_fusion - INFO - Optimizer group quality_head    params=132612 tensors=6 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.mask_decoder.decoder.iou_prediction_head.layers.0.weight last=roi_head.mask_head.mask_decoder.decoder.iou_prediction_head.layers.2.bias
+2026-07-30 02:10:19,877 - portable_sam_fusion - INFO - Optimizer group sat_other       params=37130793 tensors=78 lr=5.000e-04 wd=5.000e-02 first=neck.level_scales last=roi_head.bbox_head.shared_fcs.1.bias
+2026-07-30 02:10:19,879 - portable_sam_fusion - INFO - Trainable state backbone               1492528 / 70599344
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Trainable state shared_image_embedding absent
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Trainable state mask_decoder           4215109 / 4215109
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Trainable state no_mask_embed          0 / 256
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Trainable state prompt_encoder         0 / 6220
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Trainable state shape_injector         960385 / 960385
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Trainable state p2_boundary_refiner    absent
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Trainable state quality_head           absent
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Trainable state uav_roi_retriever      absent
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Trainable state uav_roi_gate           absent
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Trainable state uav_roi_dense_prompt   absent
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Trainable state uav_roi_prompt_adapter absent
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Trainable state uav_prompt_adapter_sparse_scale absent
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Trainable state uav_prompt_adapter_dense_scale absent
+2026-07-30 02:10:19,880 - portable_sam_fusion - INFO - Using user-specified warmup: 100 optimizer steps
+2026-07-30 02:10:19,939 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 627 (validation.json)
+2026-07-30 02:10:19,940 - data.loader - INFO - 创建 WHU 验证集加载器: 627 样本
+[DEBUG] RSSAM2PAFPN inputs: 4 tensors
+  [0] shape=torch.Size([1, 256, 256, 256]), dtype=torch.float32
+  [1] shape=torch.Size([1, 256, 128, 128]), dtype=torch.float32
+  [2] shape=torch.Size([1, 256, 64, 64]), dtype=torch.float32
+  [3] shape=torch.Size([1, 256, 32, 32]), dtype=torch.float32
+2026-07-30 02:11:52,792 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=1 step=50 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:11:52,792 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=1 step=50 bce_raw=0.5713 boundary_fn=1.458e+04 boundary_fp=2.075e+04 boundary_tp=1.743e+04 dice=0.3284 dice_loss_raw=0.3284 iou=0.5088 loss_weight=0.1 raw_boundary_fn=1.458e+04 raw_boundary_fp=2.075e+04 raw_boundary_tp=1.743e+04 raw_dice_score=0.6716 raw_iou=0.5088 weighted_loss=0.08997
+2026-07-30 02:11:52,792 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=1 step=50 enabled=0
+2026-07-30 02:11:52,792 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=1 step=50 applied_delta_norm=3.219 applied_delta_ratio=0.2757 base_norm=11.68 canvas_max=1.813 canvas_mean=0.005185 canvas_min=-0.9285 canvas_nonzero_ratio=0.007383 canvas_std=0.08354 final_norm=12.02 residual_alpha=0.5 shape_norm=13.21 source_delta_norm=6.438 source_delta_ratio=0.5513
+2026-07-30 02:11:52,792 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=1 step=50 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:11:52,792 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=1 step=50 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:11:52,792 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=1 step=50 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=31.85 n1_gt_valid_count=64 n1_in_gt_bg=0.9531 n1_in_gt_bg_count=61 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=0.9375 n2_in_gt_bg_count=60 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=3278 p1_gt_valid_count=64 p1_in_gt_fg=0.9844 p1_in_gt_fg_count=63 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=0.9375 p2_in_gt_fg_count=60 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=4077 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=799.3 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:13:05,894 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=1 step=100 fallback_count=0 fallback_ratio=0 num_rois=41 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:13:05,894 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=1 step=100 bce_raw=0.4637 boundary_fn=7200 boundary_fp=9414 boundary_tp=8542 dice=0.2572 dice_loss_raw=0.2572 iou=0.5939 loss_weight=0.1 raw_boundary_fn=7200 raw_boundary_fp=9414 raw_boundary_tp=8542 raw_dice_score=0.7428 raw_iou=0.5939 weighted_loss=0.0721
+2026-07-30 02:13:05,895 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=1 step=100 enabled=0
+2026-07-30 02:13:05,895 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=1 step=100 applied_delta_norm=2.821 applied_delta_ratio=0.2415 base_norm=11.68 canvas_max=4.255 canvas_mean=0.005311 canvas_min=-1.644 canvas_nonzero_ratio=0.006074 canvas_std=0.1373 final_norm=11.95 residual_alpha=0.5 shape_norm=12.91 source_delta_norm=5.642 source_delta_ratio=0.4831
+2026-07-30 02:13:05,895 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=1 step=100 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:13:05,895 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=1 step=100 area_ratio_count=41 area_ratio_mean=1 area_ratio_sum=41 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=41
+2026-07-30 02:13:05,895 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=1 step=100 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=21.23 n1_gt_valid_count=41 n1_in_gt_bg=0.8537 n1_in_gt_bg_count=35 n1_valid_count=41 n1_valid_ratio=1 n2_gt_valid_count=41 n2_in_gt_bg=0.8537 n2_in_gt_bg_count=35 n2_valid_count=41 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=82 negative_pair_count=41 negative_pair_distance_sum=1270 p1_gt_valid_count=41 p1_in_gt_fg=0.9756 p1_in_gt_fg_count=40 p1_valid_count=41 p1_valid_ratio=1 p2_gt_valid_count=41 p2_in_gt_fg=1 p2_in_gt_fg_count=41 p2_valid_count=41 p2_valid_ratio=1 point_distance_sum=1741 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=82 pos_in_pred_fg=1 pos_in_pred_fg_count=82 positive_pair_count=41 positive_pair_distance_sum=470.8 roi_count=41 valid_neg_count=82 valid_pos_count=82 warmup_stage=2
+2026-07-30 02:14:14,216 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=1 step=150 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:14:14,216 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=1 step=150 bce_raw=0.3194 boundary_fn=7332 boundary_fp=6618 boundary_tp=2.079e+04 dice=0.2005 dice_loss_raw=0.2005 iou=0.6693 loss_weight=0.1 raw_boundary_fn=7332 raw_boundary_fp=6618 raw_boundary_tp=2.079e+04 raw_dice_score=0.7995 raw_iou=0.6693 weighted_loss=0.05199
+2026-07-30 02:14:14,216 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=1 step=150 enabled=0
+2026-07-30 02:14:14,216 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=1 step=150 applied_delta_norm=3.156 applied_delta_ratio=0.2703 base_norm=11.68 canvas_max=5.294 canvas_mean=0.005412 canvas_min=-3.645 canvas_nonzero_ratio=0.007552 canvas_std=0.1999 final_norm=12 residual_alpha=0.5 shape_norm=13.15 source_delta_norm=6.313 source_delta_ratio=0.5405
+2026-07-30 02:14:14,216 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=1 step=150 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:14:14,216 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=1 step=150 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:14:14,216 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=1 step=150 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=23.33 n1_gt_valid_count=64 n1_in_gt_bg=0.9688 n1_in_gt_bg_count=62 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=2092 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=2987 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=894.5 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:15:24,100 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=1 step=200 fallback_count=0 fallback_ratio=0 num_rois=0 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:15:24,101 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=1 step=200 boundary_fn=0 boundary_fp=0 boundary_tp=0 dice=0 iou=0
+2026-07-30 02:15:24,101 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=1 step=200 enabled=0
+2026-07-30 02:15:24,101 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=1 step=200 applied_delta_norm=2.784 applied_delta_ratio=0.2384 base_norm=11.68 canvas_max=5.125 canvas_mean=0.001434 canvas_min=-6.59 canvas_nonzero_ratio=0.006895 canvas_std=0.2383 final_norm=11.95 residual_alpha=0.5 shape_norm=12.89 source_delta_norm=5.569 source_delta_ratio=0.4768
+2026-07-30 02:15:24,101 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=1 step=200 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:15:24,101 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=1 step=200 area_ratio_count=0 area_ratio_mean=0 area_ratio_sum=0 fallback_count=0 mean_iou=0 num_jittered=0 num_rois=0
+2026-07-30 02:15:24,101 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=1 step=200 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=23.95 n1_gt_valid_count=64 n1_in_gt_bg=0.375 n1_in_gt_bg_count=24 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=0.8594 n2_in_gt_bg_count=55 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=2271 p1_gt_valid_count=64 p1_in_gt_fg=0.9844 p1_in_gt_fg_count=63 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=0.9844 p2_in_gt_fg_count=63 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=3065 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=794.3 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:15:24,251 - portable_sam_fusion - INFO - epoch 1 | mini-batch 200/294 | optimizer_step 50/5920 | lr=2.503e-04
+2026-07-30 02:16:22,028 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=1 step=250 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:16:22,028 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=1 step=250 bce_raw=0.3144 boundary_fn=7846 boundary_fp=8526 boundary_tp=1.744e+04 dice=0.1497 dice_loss_raw=0.1497 iou=0.7412 loss_weight=0.1 raw_boundary_fn=7846 raw_boundary_fp=8526 raw_boundary_tp=1.744e+04 raw_dice_score=0.8503 raw_iou=0.7412 weighted_loss=0.04642
+2026-07-30 02:16:22,028 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=1 step=250 enabled=0
+2026-07-30 02:16:22,028 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=1 step=250 applied_delta_norm=2.57 applied_delta_ratio=0.22 base_norm=11.68 canvas_max=6.78 canvas_mean=0.005082 canvas_min=-4.45 canvas_nonzero_ratio=0.005602 canvas_std=0.2206 final_norm=11.91 residual_alpha=0.5 shape_norm=12.72 source_delta_norm=5.139 source_delta_ratio=0.4401
+2026-07-30 02:16:22,028 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=1 step=250 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:16:22,028 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=1 step=250 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:16:22,028 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=1 step=250 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=23.27 n1_gt_valid_count=64 n1_in_gt_bg=0.7969 n1_in_gt_bg_count=51 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=0.875 n2_in_gt_bg_count=56 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=2319 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=2978 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=659.5 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:17:02,646 - portable_sam_fusion - INFO - Epoch 1 detailed losses: loss_rpn_cls=0.2809, loss_rpn_bbox=0.0350, loss_cls=0.4140, acc=79.8828, loss_bbox=0.2796, loss_mask=0.0117, schedule/det_weight=1.0000, debug_mask_pos_rois=50.5816, debug_mask_logit_mean=-11.4142, debug_mask_logit_std=2.5730, debug_mask_prob_mean=0.0096, debug_mask_prob_ge05=0.0049, debug_mask_target_fill=0.0050, loss_shape_prior=0.0611
+2026-07-30 02:17:02,647 - portable_sam_fusion - INFO - Epoch 1 dense residual monitor: alpha=0.500000 source_delta_norm=6.4054 applied_delta_norm=3.2027 source_delta_ratio=0.548481 applied_delta_ratio=0.274241
+2026-07-30 02:17:02,647 - portable_sam_fusion - INFO - Epoch 1 primary loss shares: det=93.27% final_mask=1.08% shape=5.64% p2_boundary=0.00%
+2026-07-30 02:17:02,647 - portable_sam_fusion - INFO - Epoch 1 schedule: det_loss_weight=1.000 early_stop_start=20 min_delta=0.0005
+2026-07-30 02:17:02,647 - portable_sam_fusion - INFO - Epoch 1 learning rates: sat_backbone=3.70e-04, mask_decoder=3.70e-04, shape_prior=3.70e-04, quality_head=3.70e-04, sat_other=3.70e-04
+2026-07-30 02:24:28,312 - portable_sam_fusion - INFO - Cached validation GT as RLE records: images=627
+2026-07-30 02:24:28,314 - portable_sam_fusion - INFO - Validation samples: GT=15926, DT=35974, avg_masks_per_image=57.37, avg_mask_fill=0.0054
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.05s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=15.07s).
+Accumulating evaluation results...
+DONE (t=0.28s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.299
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.703
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.168
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.035
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.348
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.316
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.016
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.107
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.372
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.126
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.418
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.401
+2026-07-30 02:24:43,949 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.2994 bbox/mAP_75: 0.1679
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=15.45s).
+Accumulating evaluation results...
+DONE (t=0.29s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.258
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.655
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.125
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.005
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.280
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.381
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.015
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.101
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.340
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.023
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.358
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.487
+2026-07-30 02:24:59,700 - portable_sam_fusion - INFO - Validation segm/mAP: 0.2584
+2026-07-30 02:25:00,329 - portable_sam_fusion - INFO - New best segm/mAP: 0.2584
+2026-07-30 02:25:00,329 - portable_sam_fusion - INFO - New best bbox/mAP: 0.2994
+2026-07-30 02:25:00,329 - portable_sam_fusion - INFO - New best early-stop metric (segm/mAP): raw=0.2584 smooth(5)=0.2584
+2026-07-30 02:25:06,521 - portable_sam_fusion - INFO - Saved best_model with segm/mAP: 0.2584
+2026-07-30 02:25:12,695 - portable_sam_fusion - INFO - Saved best_bbox_model with bbox/mAP: 0.2994
+2026-07-30 02:25:18,276 - portable_sam_fusion - INFO - Epoch 1/80 | train=1.082219 val=disabled segm/mAP=0.2584 bbox/mAP=0.2994 | best_segm=0.2584 best_bbox=0.2994 best_comp=0.0000 | sat_backbone=3.70e-04 mask_decoder=3.70e-04 shape_prior=3.70e-04 quality_head=3.70e-04 sat_other=3.70e-04
+2026-07-30 02:25:28,913 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=2 step=300 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:25:28,914 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=2 step=300 bce_raw=0.3039 boundary_fn=7663 boundary_fp=6227 boundary_tp=2.082e+04 dice=0.1801 dice_loss_raw=0.1801 iou=0.6995 loss_weight=0.1 raw_boundary_fn=7663 raw_boundary_fp=6227 raw_boundary_tp=2.082e+04 raw_dice_score=0.8199 raw_iou=0.6995 weighted_loss=0.0484
+2026-07-30 02:25:28,914 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=2 step=300 enabled=0
+2026-07-30 02:25:28,914 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=2 step=300 applied_delta_norm=2.837 applied_delta_ratio=0.2429 base_norm=11.68 canvas_max=7.299 canvas_mean=0.002628 canvas_min=-6.059 canvas_nonzero_ratio=0.006641 canvas_std=0.2559 final_norm=11.95 residual_alpha=0.5 shape_norm=12.89 source_delta_norm=5.674 source_delta_ratio=0.4859
+2026-07-30 02:25:28,914 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=2 step=300 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:25:28,914 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=2 step=300 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:25:28,914 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=2 step=300 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=26.44 n1_gt_valid_count=64 n1_in_gt_bg=0.9219 n1_in_gt_bg_count=59 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=2656 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=0.9688 p2_in_gt_fg_count=62 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=3384 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=728.3 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:26:33,138 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=2 step=350 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:26:33,138 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=2 step=350 bce_raw=0.3104 boundary_fn=7890 boundary_fp=7755 boundary_tp=1.786e+04 dice=0.1374 dice_loss_raw=0.1374 iou=0.762 loss_weight=0.1 raw_boundary_fn=7890 raw_boundary_fp=7755 raw_boundary_tp=1.786e+04 raw_dice_score=0.8626 raw_iou=0.762 weighted_loss=0.04478
+2026-07-30 02:26:33,139 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=2 step=350 enabled=0
+2026-07-30 02:26:33,139 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=2 step=350 applied_delta_norm=2.491 applied_delta_ratio=0.2133 base_norm=11.68 canvas_max=6.219 canvas_mean=0.003828 canvas_min=-5.991 canvas_nonzero_ratio=0.005774 canvas_std=0.2459 final_norm=11.91 residual_alpha=0.5 shape_norm=12.72 source_delta_norm=4.981 source_delta_ratio=0.4265
+2026-07-30 02:26:33,139 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=2 step=350 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:26:33,139 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=2 step=350 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:26:33,139 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=2 step=350 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=27.74 n1_gt_valid_count=64 n1_in_gt_bg=0.5 n1_in_gt_bg_count=32 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=0.9688 n2_in_gt_bg_count=62 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=2587 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=3551 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=963.2 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:27:25,310 - portable_sam_fusion - INFO - epoch 2 | mini-batch 104/294 | optimizer_step 100/5920 | lr=5.000e-04
+2026-07-30 02:27:26,954 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=2 step=400 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:27:26,954 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=2 step=400 bce_raw=0.3896 boundary_fn=1.087e+04 boundary_fp=1.376e+04 boundary_tp=1.31e+04 dice=0.1627 dice_loss_raw=0.1627 iou=0.7233 loss_weight=0.1 raw_boundary_fn=1.087e+04 raw_boundary_fp=1.376e+04 raw_boundary_tp=1.31e+04 raw_dice_score=0.8373 raw_iou=0.7233 weighted_loss=0.05523
+2026-07-30 02:27:26,954 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=2 step=400 enabled=0
+2026-07-30 02:27:26,954 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=2 step=400 applied_delta_norm=3.603 applied_delta_ratio=0.3086 base_norm=11.68 canvas_max=6.667 canvas_mean=0.01549 canvas_min=-4.945 canvas_nonzero_ratio=0.008769 canvas_std=0.2646 final_norm=12.1 residual_alpha=0.5 shape_norm=13.54 source_delta_norm=7.207 source_delta_ratio=0.6171
+2026-07-30 02:27:26,954 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=2 step=400 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:27:26,954 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=2 step=400 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:27:26,954 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=2 step=400 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=31.71 n1_gt_valid_count=64 n1_in_gt_bg=0.9531 n1_in_gt_bg_count=61 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=3153 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=4059 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=906.1 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:28:16,980 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=2 step=450 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:28:16,981 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=2 step=450 bce_raw=0.2773 boundary_fn=6186 boundary_fp=7762 boundary_tp=1.743e+04 dice=0.1225 dice_loss_raw=0.1225 iou=0.7837 loss_weight=0.1 raw_boundary_fn=6186 raw_boundary_fp=7762 raw_boundary_tp=1.743e+04 raw_dice_score=0.8775 raw_iou=0.7837 weighted_loss=0.03998
+2026-07-30 02:28:16,981 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=2 step=450 enabled=0
+2026-07-30 02:28:16,981 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=2 step=450 applied_delta_norm=2.484 applied_delta_ratio=0.2127 base_norm=11.68 canvas_max=7.069 canvas_mean=0.006192 canvas_min=-6.166 canvas_nonzero_ratio=0.005262 canvas_std=0.2351 final_norm=11.9 residual_alpha=0.5 shape_norm=12.68 source_delta_norm=4.969 source_delta_ratio=0.4255
+2026-07-30 02:28:16,981 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=2 step=450 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:28:16,981 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=2 step=450 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:28:16,981 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=2 step=450 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=18.9 n1_gt_valid_count=64 n1_in_gt_bg=0.5938 n1_in_gt_bg_count=38 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=0.9062 n2_in_gt_bg_count=58 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=1779 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=2419 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=640.5 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:29:13,474 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=2 step=500 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:29:13,474 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=2 step=500 bce_raw=0.3775 boundary_fn=9097 boundary_fp=1.018e+04 boundary_tp=1.505e+04 dice=0.1541 dice_loss_raw=0.1541 iou=0.7355 loss_weight=0.1 raw_boundary_fn=9097 raw_boundary_fp=1.018e+04 raw_boundary_tp=1.505e+04 raw_dice_score=0.8459 raw_iou=0.7355 weighted_loss=0.05317
+2026-07-30 02:29:13,474 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=2 step=500 enabled=0
+2026-07-30 02:29:13,474 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=2 step=500 applied_delta_norm=2.511 applied_delta_ratio=0.215 base_norm=11.68 canvas_max=8 canvas_mean=-0.0002604 canvas_min=-6.856 canvas_nonzero_ratio=0.008976 canvas_std=0.3254 final_norm=12.04 residual_alpha=0.5 shape_norm=13.07 source_delta_norm=5.022 source_delta_ratio=0.43
+2026-07-30 02:29:13,474 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=2 step=500 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:29:13,474 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=2 step=500 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:29:13,474 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=2 step=500 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=24.15 n1_gt_valid_count=64 n1_in_gt_bg=0.5781 n1_in_gt_bg_count=37 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=0.8594 n2_in_gt_bg_count=55 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=2377 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=3091 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=713.7 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:30:10,705 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=2 step=550 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:30:10,705 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=2 step=550 bce_raw=0.2698 boundary_fn=5644 boundary_fp=6676 boundary_tp=1.878e+04 dice=0.1295 dice_loss_raw=0.1295 iou=0.7732 loss_weight=0.1 raw_boundary_fn=5644 raw_boundary_fp=6676 raw_boundary_tp=1.878e+04 raw_dice_score=0.8705 raw_iou=0.7732 weighted_loss=0.03993
+2026-07-30 02:30:10,705 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=2 step=550 enabled=0
+2026-07-30 02:30:10,705 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=2 step=550 applied_delta_norm=2.38 applied_delta_ratio=0.2038 base_norm=11.68 canvas_max=7.392 canvas_mean=0.004865 canvas_min=-6.009 canvas_nonzero_ratio=0.005134 canvas_std=0.2389 final_norm=11.88 residual_alpha=0.5 shape_norm=12.58 source_delta_norm=4.759 source_delta_ratio=0.4075
+2026-07-30 02:30:10,706 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=2 step=550 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:30:10,706 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=2 step=550 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:30:10,706 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=2 step=550 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=28.86 n1_gt_valid_count=64 n1_in_gt_bg=0.6719 n1_in_gt_bg_count=43 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=0.9531 n2_in_gt_bg_count=61 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=3051 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=3694 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=642.2 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:31:01,495 - portable_sam_fusion - INFO - Epoch 2 detailed losses: loss_rpn_cls=0.0864, loss_rpn_bbox=0.0324, loss_cls=0.3456, acc=84.9623, loss_bbox=0.2441, loss_mask=0.0035, debug_mask_pos_rois=55.8061, debug_mask_logit_mean=-16.3409, debug_mask_logit_std=3.7839, debug_mask_prob_mean=0.0049, debug_mask_prob_ge05=0.0046, debug_mask_target_fill=0.0048, loss_shape_prior=0.0459, schedule/det_weight=1.0000
+2026-07-30 02:31:01,496 - portable_sam_fusion - INFO - Epoch 2 dense residual monitor: alpha=0.500000 source_delta_norm=6.0312 applied_delta_norm=3.0156 source_delta_ratio=0.516445 applied_delta_ratio=0.258222
+2026-07-30 02:31:01,496 - portable_sam_fusion - INFO - Epoch 2 primary loss shares: det=93.49% final_mask=0.46% shape=6.05% p2_boundary=0.00%
+2026-07-30 02:31:01,496 - portable_sam_fusion - INFO - Epoch 2 schedule: det_loss_weight=1.000 early_stop_start=20 min_delta=0.0005
+2026-07-30 02:31:01,496 - portable_sam_fusion - INFO - Epoch 2 learning rates: sat_backbone=5.00e-04, mask_decoder=5.00e-04, shape_prior=5.00e-04, quality_head=5.00e-04, sat_other=5.00e-04
+2026-07-30 02:38:15,470 - portable_sam_fusion - INFO - Validation samples: GT=15926, DT=45940, avg_masks_per_image=73.27, avg_mask_fill=0.0060
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.06s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=15.30s).
+Accumulating evaluation results...
+DONE (t=0.38s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.402
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.787
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.355
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.073
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.432
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.495
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.020
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.135
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.490
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.221
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.518
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.579
+2026-07-30 02:38:31,505 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.4016 bbox/mAP_75: 0.3546
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=15.83s).
+Accumulating evaluation results...
+DONE (t=0.37s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.351
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.749
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.269
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.020
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.369
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.520
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.018
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.126
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.430
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.088
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.444
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.602
+2026-07-30 02:38:47,765 - portable_sam_fusion - INFO - Validation segm/mAP: 0.3507
+2026-07-30 02:38:48,429 - portable_sam_fusion - INFO - New best segm/mAP: 0.3507
+2026-07-30 02:38:48,430 - portable_sam_fusion - INFO - New best bbox/mAP: 0.4016
+2026-07-30 02:38:48,430 - portable_sam_fusion - INFO - New best early-stop metric (segm/mAP): raw=0.3507 smooth(5)=0.3046
+2026-07-30 02:38:54,410 - portable_sam_fusion - INFO - Saved best_model with segm/mAP: 0.3507
+2026-07-30 02:39:00,235 - portable_sam_fusion - INFO - Saved best_bbox_model with bbox/mAP: 0.4016
+2026-07-30 02:39:05,567 - portable_sam_fusion - INFO - Epoch 2/80 | train=0.757913 val=disabled segm/mAP=0.3507 bbox/mAP=0.4016 | best_segm=0.3507 best_bbox=0.4016 best_comp=0.0000 | sat_backbone=5.00e-04 mask_decoder=5.00e-04 shape_prior=5.00e-04 quality_head=5.00e-04 sat_other=5.00e-04
+2026-07-30 02:39:20,546 - portable_sam_fusion - INFO - epoch 3 | mini-batch 8/294 | optimizer_step 150/5920 | lr=4.999e-04
+2026-07-30 02:39:25,230 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=3 step=600 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:39:25,230 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=3 step=600 bce_raw=0.3384 boundary_fn=6361 boundary_fp=6742 boundary_tp=1.772e+04 dice=0.1432 dice_loss_raw=0.1432 iou=0.758 loss_weight=0.1 raw_boundary_fn=6361 raw_boundary_fp=6742 raw_boundary_tp=1.772e+04 raw_dice_score=0.8568 raw_iou=0.758 weighted_loss=0.04817
+2026-07-30 02:39:25,230 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=3 step=600 enabled=0
+2026-07-30 02:39:25,231 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=3 step=600 applied_delta_norm=2.746 applied_delta_ratio=0.2351 base_norm=11.68 canvas_max=8 canvas_mean=0.00486 canvas_min=-5.974 canvas_nonzero_ratio=0.006508 canvas_std=0.2862 final_norm=11.96 residual_alpha=0.5 shape_norm=12.91 source_delta_norm=5.491 source_delta_ratio=0.4702
+2026-07-30 02:39:25,231 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=3 step=600 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:39:25,231 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=3 step=600 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:39:25,231 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=3 step=600 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=25.03 n1_gt_valid_count=64 n1_in_gt_bg=0.6875 n1_in_gt_bg_count=44 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=0.9062 n2_in_gt_bg_count=58 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=2392 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=3204 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=812 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:40:44,954 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=3 step=650 fallback_count=0 fallback_ratio=0 num_rois=0 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:40:44,954 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=3 step=650 boundary_fn=0 boundary_fp=0 boundary_tp=0 dice=0 iou=0
+2026-07-30 02:40:44,954 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=3 step=650 enabled=0
+2026-07-30 02:40:44,954 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=3 step=650 applied_delta_norm=3.85 applied_delta_ratio=0.3297 base_norm=11.68 canvas_max=8 canvas_mean=0.01182 canvas_min=-6.845 canvas_nonzero_ratio=0.02042 canvas_std=0.4793 final_norm=12.52 residual_alpha=0.5 shape_norm=14.6 source_delta_norm=7.7 source_delta_ratio=0.6594
+2026-07-30 02:40:44,954 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=3 step=650 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:40:44,954 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=3 step=650 area_ratio_count=0 area_ratio_mean=0 area_ratio_sum=0 fallback_count=0 mean_iou=0 num_jittered=0 num_rois=0
+2026-07-30 02:40:44,954 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=3 step=650 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=45.52 n1_gt_valid_count=64 n1_in_gt_bg=0.8125 n1_in_gt_bg_count=52 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=4214 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=0.9844 p2_in_gt_fg_count=63 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=5826 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=1612 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:41:51,210 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=3 step=700 fallback_count=0 fallback_ratio=0 num_rois=0 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:41:51,210 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=3 step=700 boundary_fn=0 boundary_fp=0 boundary_tp=0 dice=0 iou=0
+2026-07-30 02:41:51,211 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=3 step=700 enabled=0
+2026-07-30 02:41:51,211 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=3 step=700 applied_delta_norm=2.447 applied_delta_ratio=0.2095 base_norm=11.68 canvas_max=7.327 canvas_mean=0.002369 canvas_min=-5.82 canvas_nonzero_ratio=0.005122 canvas_std=0.2526 final_norm=11.9 residual_alpha=0.5 shape_norm=12.66 source_delta_norm=4.893 source_delta_ratio=0.419
+2026-07-30 02:41:51,211 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=3 step=700 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:41:51,211 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=3 step=700 area_ratio_count=0 area_ratio_mean=0 area_ratio_sum=0 fallback_count=0 mean_iou=0 num_jittered=0 num_rois=0
+2026-07-30 02:41:51,211 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=3 step=700 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=20.22 n1_gt_valid_count=64 n1_in_gt_bg=0.9375 n1_in_gt_bg_count=60 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=1980 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=2589 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=609.1 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:43:01,436 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=3 step=750 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:43:01,436 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=3 step=750 bce_raw=0.2038 boundary_fn=4356 boundary_fp=4148 boundary_tp=1.968e+04 dice=0.1157 dice_loss_raw=0.1157 iou=0.7944 loss_weight=0.1 raw_boundary_fn=4356 raw_boundary_fp=4148 raw_boundary_tp=1.968e+04 raw_dice_score=0.8843 raw_iou=0.7944 weighted_loss=0.03195
+2026-07-30 02:43:01,436 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=3 step=750 enabled=0
+2026-07-30 02:43:01,436 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=3 step=750 applied_delta_norm=2.386 applied_delta_ratio=0.2043 base_norm=11.68 canvas_max=7.3 canvas_mean=0.004321 canvas_min=-5.654 canvas_nonzero_ratio=0.005289 canvas_std=0.2573 final_norm=11.89 residual_alpha=0.5 shape_norm=12.64 source_delta_norm=4.771 source_delta_ratio=0.4086
+2026-07-30 02:43:01,436 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=3 step=750 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:43:01,436 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=3 step=750 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:43:01,436 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=3 step=750 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=27.6 n1_gt_valid_count=64 n1_in_gt_bg=0.8594 n1_in_gt_bg_count=55 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=0.9844 n2_in_gt_bg_count=63 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=2810 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=3533 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=723.2 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:44:07,752 - portable_sam_fusion - INFO - epoch 3 | mini-batch 208/294 | optimizer_step 200/5920 | lr=4.996e-04
+2026-07-30 02:44:13,705 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=3 step=800 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:44:13,705 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=3 step=800 bce_raw=0.24 boundary_fn=6298 boundary_fp=5039 boundary_tp=1.828e+04 dice=0.102 dice_loss_raw=0.102 iou=0.8163 loss_weight=0.1 raw_boundary_fn=6298 raw_boundary_fp=5039 raw_boundary_tp=1.828e+04 raw_dice_score=0.898 raw_iou=0.8163 weighted_loss=0.03419
+2026-07-30 02:44:13,705 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=3 step=800 enabled=0
+2026-07-30 02:44:13,705 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=3 step=800 applied_delta_norm=3.979 applied_delta_ratio=0.3407 base_norm=11.68 canvas_max=7.245 canvas_mean=0.02477 canvas_min=-5.501 canvas_nonzero_ratio=0.0118 canvas_std=0.3795 final_norm=12.26 residual_alpha=0.5 shape_norm=14.08 source_delta_norm=7.958 source_delta_ratio=0.6814
+2026-07-30 02:44:13,705 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=3 step=800 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:44:13,705 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=3 step=800 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:44:13,705 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=3 step=800 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=28.68 n1_gt_valid_count=64 n1_in_gt_bg=0.9062 n1_in_gt_bg_count=58 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=63 n2_in_gt_bg=0.9365 n2_in_gt_bg_count=59 n2_valid_count=63 n2_valid_ratio=0.9844 neg_in_pred_bg=1 neg_in_pred_bg_count=127 negative_pair_count=63 negative_pair_distance_sum=2649 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=3643 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=127 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=993.1 roi_count=64 valid_neg_count=127 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:45:20,575 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=3 step=850 fallback_count=0 fallback_ratio=0 num_rois=0 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:45:20,575 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=3 step=850 boundary_fn=0 boundary_fp=0 boundary_tp=0 dice=0 iou=0
+2026-07-30 02:45:20,575 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=3 step=850 enabled=0
+2026-07-30 02:45:20,575 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=3 step=850 applied_delta_norm=2.289 applied_delta_ratio=0.196 base_norm=11.68 canvas_max=7.828 canvas_mean=0.005613 canvas_min=-7.004 canvas_nonzero_ratio=0.005676 canvas_std=0.2921 final_norm=11.92 residual_alpha=0.5 shape_norm=12.67 source_delta_norm=4.578 source_delta_ratio=0.392
+2026-07-30 02:45:20,575 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=3 step=850 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:45:20,575 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=3 step=850 area_ratio_count=0 area_ratio_mean=0 area_ratio_sum=0 fallback_count=0 mean_iou=0 num_jittered=0 num_rois=0
+2026-07-30 02:45:20,575 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=3 step=850 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=16.81 n1_gt_valid_count=64 n1_in_gt_bg=0.7812 n1_in_gt_bg_count=50 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=0.9688 n2_in_gt_bg_count=62 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=1487 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=2151 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=664.1 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:45:54,574 - portable_sam_fusion - INFO - Epoch 3 detailed losses: loss_rpn_cls=0.0567, loss_rpn_bbox=0.0255, loss_cls=0.3132, acc=86.6025, loss_bbox=0.1881, loss_mask=0.0029, debug_mask_pos_rois=56.1735, debug_mask_logit_mean=-16.1030, debug_mask_logit_std=3.5320, debug_mask_prob_mean=0.0047, debug_mask_prob_ge05=0.0046, debug_mask_target_fill=0.0048, loss_shape_prior=0.0394, schedule/det_weight=1.0000
+2026-07-30 02:45:54,575 - portable_sam_fusion - INFO - Epoch 3 dense residual monitor: alpha=0.500000 source_delta_norm=5.9979 applied_delta_norm=2.9989 source_delta_ratio=0.513588 applied_delta_ratio=0.256794
+2026-07-30 02:45:54,575 - portable_sam_fusion - INFO - Epoch 3 primary loss shares: det=93.23% final_mask=0.47% shape=6.30% p2_boundary=0.00%
+2026-07-30 02:45:54,575 - portable_sam_fusion - INFO - Epoch 3 schedule: det_loss_weight=1.000 early_stop_start=20 min_delta=0.0005
+2026-07-30 02:45:54,575 - portable_sam_fusion - INFO - Epoch 3 learning rates: sat_backbone=4.99e-04, mask_decoder=4.99e-04, shape_prior=4.99e-04, quality_head=4.99e-04, sat_other=4.99e-04
+2026-07-30 02:50:51,569 - portable_sam_fusion - INFO - Validation samples: GT=15926, DT=24981, avg_masks_per_image=39.84, avg_mask_fill=0.0080
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.03s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=12.60s).
+Accumulating evaluation results...
+DONE (t=0.22s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.484
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.856
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.517
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.180
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.531
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.510
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.020
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.144
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.564
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.334
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.614
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.573
+2026-07-30 02:51:04,635 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.4838 bbox/mAP_75: 0.5170
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=13.06s).
+Accumulating evaluation results...
+DONE (t=0.24s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.394
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.808
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.358
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.036
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.412
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.609
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.019
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.132
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.469
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.099
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.482
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.662
+2026-07-30 02:51:17,999 - portable_sam_fusion - INFO - Validation segm/mAP: 0.3945
+2026-07-30 02:51:18,600 - portable_sam_fusion - INFO - New best segm/mAP: 0.3945
+2026-07-30 02:51:18,601 - portable_sam_fusion - INFO - New best bbox/mAP: 0.4838
+2026-07-30 02:51:18,601 - portable_sam_fusion - INFO - New best early-stop metric (segm/mAP): raw=0.3945 smooth(5)=0.3345
+2026-07-30 02:51:24,413 - portable_sam_fusion - INFO - Saved best_model with segm/mAP: 0.3945
+2026-07-30 02:51:30,263 - portable_sam_fusion - INFO - Saved best_bbox_model with bbox/mAP: 0.4838
+2026-07-30 02:51:35,779 - portable_sam_fusion - INFO - Epoch 3/80 | train=0.625939 val=disabled segm/mAP=0.3945 bbox/mAP=0.4838 | best_segm=0.3945 best_bbox=0.4838 best_comp=0.0000 | sat_backbone=4.99e-04 mask_decoder=4.99e-04 shape_prior=4.99e-04 quality_head=4.99e-04 sat_other=4.99e-04
+2026-07-30 02:52:10,676 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=4 step=900 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:52:10,676 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=4 step=900 bce_raw=0.2754 boundary_fn=6303 boundary_fp=6543 boundary_tp=2.129e+04 dice=0.1455 dice_loss_raw=0.1455 iou=0.7521 loss_weight=0.1 raw_boundary_fn=6303 raw_boundary_fp=6543 raw_boundary_tp=2.129e+04 raw_dice_score=0.8545 raw_iou=0.7521 weighted_loss=0.04209
+2026-07-30 02:52:10,676 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=4 step=900 enabled=0
+2026-07-30 02:52:10,676 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=4 step=900 applied_delta_norm=2.886 applied_delta_ratio=0.2471 base_norm=11.68 canvas_max=8 canvas_mean=0.003256 canvas_min=-7.98 canvas_nonzero_ratio=0.007373 canvas_std=0.3518 final_norm=11.99 residual_alpha=0.5 shape_norm=13.05 source_delta_norm=5.772 source_delta_ratio=0.4942
+2026-07-30 02:52:10,676 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=4 step=900 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:52:10,676 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=4 step=900 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:52:10,676 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=4 step=900 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=31.84 n1_gt_valid_count=64 n1_in_gt_bg=0.7812 n1_in_gt_bg_count=50 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=3136 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=4076 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=939.2 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:53:37,993 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=4 step=950 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:53:37,993 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=4 step=950 bce_raw=0.1943 boundary_fn=4516 boundary_fp=3733 boundary_tp=2.207e+04 dice=0.1045 dice_loss_raw=0.1045 iou=0.8133 loss_weight=0.1 raw_boundary_fn=4516 raw_boundary_fp=3733 raw_boundary_tp=2.207e+04 raw_dice_score=0.8955 raw_iou=0.8133 weighted_loss=0.02988
+2026-07-30 02:53:37,993 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=4 step=950 enabled=0
+2026-07-30 02:53:37,993 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=4 step=950 applied_delta_norm=3.729 applied_delta_ratio=0.3193 base_norm=11.68 canvas_max=8 canvas_mean=0.008551 canvas_min=-7.759 canvas_nonzero_ratio=0.01004 canvas_std=0.4014 final_norm=12.13 residual_alpha=0.5 shape_norm=13.66 source_delta_norm=7.458 source_delta_ratio=0.6386
+2026-07-30 02:53:37,993 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=4 step=950 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:53:37,993 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=4 step=950 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:53:37,993 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=4 step=950 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=38.74 n1_gt_valid_count=64 n1_in_gt_bg=0.8281 n1_in_gt_bg_count=53 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=3898 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=4959 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=1061 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:54:48,710 - portable_sam_fusion - INFO - epoch 4 | mini-batch 112/294 | optimizer_step 250/5920 | lr=4.992e-04
+2026-07-30 02:54:57,533 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=4 step=1000 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:54:57,533 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=4 step=1000 bce_raw=0.2813 boundary_fn=6515 boundary_fp=7528 boundary_tp=2.061e+04 dice=0.1571 dice_loss_raw=0.1571 iou=0.7335 loss_weight=0.1 raw_boundary_fn=6515 raw_boundary_fp=7528 raw_boundary_tp=2.061e+04 raw_dice_score=0.8429 raw_iou=0.7335 weighted_loss=0.04384
+2026-07-30 02:54:57,533 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=4 step=1000 enabled=0
+2026-07-30 02:54:57,533 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=4 step=1000 applied_delta_norm=2.966 applied_delta_ratio=0.2539 base_norm=11.68 canvas_max=7.646 canvas_mean=-0.001539 canvas_min=-7.735 canvas_nonzero_ratio=0.007858 canvas_std=0.3602 final_norm=12 residual_alpha=0.5 shape_norm=13.1 source_delta_norm=5.931 source_delta_ratio=0.5079
+2026-07-30 02:54:57,533 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=4 step=1000 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:54:57,533 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=4 step=1000 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:54:57,533 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=4 step=1000 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=30.77 n1_gt_valid_count=64 n1_in_gt_bg=0.8438 n1_in_gt_bg_count=54 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=0.9844 n2_in_gt_bg_count=63 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=2904 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=3938 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=1034 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:56:04,178 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=4 step=1050 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:56:04,178 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=4 step=1050 bce_raw=0.2062 boundary_fn=5014 boundary_fp=3244 boundary_tp=2.142e+04 dice=0.121 dice_loss_raw=0.121 iou=0.787 loss_weight=0.1 raw_boundary_fn=5014 raw_boundary_fp=3244 raw_boundary_tp=2.142e+04 raw_dice_score=0.879 raw_iou=0.787 weighted_loss=0.03271
+2026-07-30 02:56:04,178 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=4 step=1050 enabled=0
+2026-07-30 02:56:04,178 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=4 step=1050 applied_delta_norm=3.254 applied_delta_ratio=0.2787 base_norm=11.68 canvas_max=8 canvas_mean=-0.003145 canvas_min=-8 canvas_nonzero_ratio=0.008938 canvas_std=0.4139 final_norm=12.04 residual_alpha=0.5 shape_norm=13.27 source_delta_norm=6.509 source_delta_ratio=0.5573
+2026-07-30 02:56:04,178 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=4 step=1050 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:56:04,178 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=4 step=1050 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:56:04,178 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=4 step=1050 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=39.5 n1_gt_valid_count=64 n1_in_gt_bg=0.6719 n1_in_gt_bg_count=43 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=4089 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=5056 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=967.8 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:56:59,887 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=4 step=1100 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:56:59,887 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=4 step=1100 bce_raw=0.345 boundary_fn=5946 boundary_fp=6919 boundary_tp=2.155e+04 dice=0.1448 dice_loss_raw=0.1448 iou=0.7616 loss_weight=0.1 raw_boundary_fn=5946 raw_boundary_fp=6919 raw_boundary_tp=2.155e+04 raw_dice_score=0.8552 raw_iou=0.7616 weighted_loss=0.04898
+2026-07-30 02:56:59,887 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=4 step=1100 enabled=0
+2026-07-30 02:56:59,887 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=4 step=1100 applied_delta_norm=4.396 applied_delta_ratio=0.3765 base_norm=11.68 canvas_max=7.934 canvas_mean=0.009685 canvas_min=-8 canvas_nonzero_ratio=0.01711 canvas_std=0.5248 final_norm=12.45 residual_alpha=0.5 shape_norm=14.69 source_delta_norm=8.793 source_delta_ratio=0.7529
+2026-07-30 02:56:59,887 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=4 step=1100 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:56:59,887 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=4 step=1100 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:56:59,887 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=4 step=1100 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=44.92 n1_gt_valid_count=64 n1_in_gt_bg=0.9531 n1_in_gt_bg_count=61 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=4157 p1_gt_valid_count=64 p1_in_gt_fg=0.9219 p1_in_gt_fg_count=59 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=0.9531 p2_in_gt_fg_count=61 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=5750 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=1593 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:57:53,860 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=4 step=1150 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 02:57:53,860 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=4 step=1150 bce_raw=0.2542 boundary_fn=6103 boundary_fp=3947 boundary_tp=2.081e+04 dice=0.1305 dice_loss_raw=0.1305 iou=0.773 loss_weight=0.1 raw_boundary_fn=6103 raw_boundary_fp=3947 raw_boundary_tp=2.081e+04 raw_dice_score=0.8695 raw_iou=0.773 weighted_loss=0.03848
+2026-07-30 02:57:53,860 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=4 step=1150 enabled=0
+2026-07-30 02:57:53,860 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=4 step=1150 applied_delta_norm=3.054 applied_delta_ratio=0.2615 base_norm=11.68 canvas_max=8 canvas_mean=-0.003126 canvas_min=-8 canvas_nonzero_ratio=0.008046 canvas_std=0.3958 final_norm=12 residual_alpha=0.5 shape_norm=13.12 source_delta_norm=6.108 source_delta_ratio=0.523
+2026-07-30 02:57:53,860 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=4 step=1150 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 02:57:53,860 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=4 step=1150 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 02:57:53,860 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=4 step=1150 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=32.96 n1_gt_valid_count=64 n1_in_gt_bg=0.7656 n1_in_gt_bg_count=49 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=3222 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=4219 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=997.1 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 02:58:19,970 - portable_sam_fusion - INFO - Epoch 4 detailed losses: loss_rpn_cls=0.0490, loss_rpn_bbox=0.0179, loss_cls=0.2955, acc=87.5961, loss_bbox=0.1566, loss_mask=0.0020, debug_mask_pos_rois=55.7279, debug_mask_logit_mean=-15.9634, debug_mask_logit_std=3.2953, debug_mask_prob_mean=0.0045, debug_mask_prob_ge05=0.0045, debug_mask_target_fill=0.0045, loss_shape_prior=0.0336, schedule/det_weight=1.0000
+2026-07-30 02:58:19,970 - portable_sam_fusion - INFO - Epoch 4 dense residual monitor: alpha=0.500000 source_delta_norm=5.9550 applied_delta_norm=2.9775 source_delta_ratio=0.509919 applied_delta_ratio=0.254960
+2026-07-30 02:58:19,970 - portable_sam_fusion - INFO - Epoch 4 primary loss shares: det=93.58% final_mask=0.36% shape=6.06% p2_boundary=0.00%
+2026-07-30 02:58:19,970 - portable_sam_fusion - INFO - Epoch 4 schedule: det_loss_weight=1.000 early_stop_start=20 min_delta=0.0005
+2026-07-30 02:58:19,970 - portable_sam_fusion - INFO - Epoch 4 learning rates: sat_backbone=4.99e-04, mask_decoder=4.99e-04, shape_prior=4.99e-04, quality_head=4.99e-04, sat_other=4.99e-04
+2026-07-30 03:03:48,800 - portable_sam_fusion - INFO - Validation samples: GT=15926, DT=25314, avg_masks_per_image=40.37, avg_mask_fill=0.0062
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.04s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=12.54s).
+Accumulating evaluation results...
+DONE (t=0.23s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.545
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.867
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.654
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.179
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.587
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.605
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.022
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.157
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.617
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.342
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.660
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.674
+2026-07-30 03:04:01,829 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.5446 bbox/mAP_75: 0.6541
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=12.96s).
+Accumulating evaluation results...
+DONE (t=0.24s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.438
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.834
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.463
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.045
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.460
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.625
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.020
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.141
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.493
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.114
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.509
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.683
+2026-07-30 03:04:15,070 - portable_sam_fusion - INFO - Validation segm/mAP: 0.4384
+2026-07-30 03:04:15,658 - portable_sam_fusion - INFO - New best segm/mAP: 0.4384
+2026-07-30 03:04:15,658 - portable_sam_fusion - INFO - New best bbox/mAP: 0.5446
+2026-07-30 03:04:15,659 - portable_sam_fusion - INFO - New best early-stop metric (segm/mAP): raw=0.4384 smooth(5)=0.3605
+2026-07-30 03:04:21,668 - portable_sam_fusion - INFO - Saved best_model with segm/mAP: 0.4384
+2026-07-30 03:04:27,770 - portable_sam_fusion - INFO - Saved best_bbox_model with bbox/mAP: 0.5446
+2026-07-30 03:04:33,175 - portable_sam_fusion - INFO - Epoch 4/80 | train=0.554617 val=disabled segm/mAP=0.4384 bbox/mAP=0.5446 | best_segm=0.4384 best_bbox=0.5446 best_comp=0.0000 | sat_backbone=4.99e-04 mask_decoder=4.99e-04 shape_prior=4.99e-04 quality_head=4.99e-04 sat_other=4.99e-04
+2026-07-30 03:05:05,204 - portable_sam_fusion - INFO - epoch 5 | mini-batch 16/294 | optimizer_step 300/5920 | lr=4.985e-04
+2026-07-30 03:05:19,348 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=5 step=1200 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 03:05:19,348 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=5 step=1200 bce_raw=0.2539 boundary_fn=5018 boundary_fp=5379 boundary_tp=2.058e+04 dice=0.1194 dice_loss_raw=0.1194 iou=0.7941 loss_weight=0.1 raw_boundary_fn=5018 raw_boundary_fp=5379 raw_boundary_tp=2.058e+04 raw_dice_score=0.8806 raw_iou=0.7941 weighted_loss=0.03734
+2026-07-30 03:05:19,349 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=5 step=1200 enabled=0
+2026-07-30 03:05:19,349 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=5 step=1200 applied_delta_norm=2.954 applied_delta_ratio=0.2529 base_norm=11.68 canvas_max=8 canvas_mean=-0.0005712 canvas_min=-8 canvas_nonzero_ratio=0.01145 canvas_std=0.3905 final_norm=12.17 residual_alpha=0.5 shape_norm=13.6 source_delta_norm=5.908 source_delta_ratio=0.5059
+2026-07-30 03:05:19,349 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=5 step=1200 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 03:05:19,349 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=5 step=1200 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 03:05:19,349 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=5 step=1200 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=31.05 n1_gt_valid_count=64 n1_in_gt_bg=0.6406 n1_in_gt_bg_count=41 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=0.9844 n2_in_gt_bg_count=63 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=3105 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=3974 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=868.4 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 03:06:35,158 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=5 step=1250 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 03:06:35,158 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=5 step=1250 bce_raw=0.2479 boundary_fn=5502 boundary_fp=5760 boundary_tp=2.129e+04 dice=0.1256 dice_loss_raw=0.1256 iou=0.7842 loss_weight=0.1 raw_boundary_fn=5502 raw_boundary_fp=5760 raw_boundary_tp=2.129e+04 raw_dice_score=0.8744 raw_iou=0.7842 weighted_loss=0.03735
+2026-07-30 03:06:35,158 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=5 step=1250 enabled=0
+2026-07-30 03:06:35,158 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=5 step=1250 applied_delta_norm=2.725 applied_delta_ratio=0.2333 base_norm=11.68 canvas_max=8 canvas_mean=0.003443 canvas_min=-8 canvas_nonzero_ratio=0.006712 canvas_std=0.3758 final_norm=11.95 residual_alpha=0.5 shape_norm=12.89 source_delta_norm=5.45 source_delta_ratio=0.4667
+2026-07-30 03:06:35,158 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=5 step=1250 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 03:06:35,158 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=5 step=1250 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 03:06:35,158 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=5 step=1250 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=28.57 n1_gt_valid_count=64 n1_in_gt_bg=0.9219 n1_in_gt_bg_count=59 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=2795 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=0.9844 p2_in_gt_fg_count=63 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=3657 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=862.5 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 03:07:43,092 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=5 step=1300 fallback_count=0 fallback_ratio=0 num_rois=19 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 03:07:43,092 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=5 step=1300 bce_raw=0.3793 boundary_fn=1997 boundary_fp=3503 boundary_tp=5318 dice=0.1872 dice_loss_raw=0.1872 iou=0.6862 loss_weight=0.1 raw_boundary_fn=1997 raw_boundary_fp=3503 raw_boundary_tp=5318 raw_dice_score=0.8128 raw_iou=0.6862 weighted_loss=0.05666
+2026-07-30 03:07:43,092 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=5 step=1300 enabled=0
+2026-07-30 03:07:43,092 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=5 step=1300 applied_delta_norm=0.4516 applied_delta_ratio=0.03867 base_norm=11.68 canvas_max=8 canvas_mean=0.0005742 canvas_min=-6.821 canvas_nonzero_ratio=0.001179 canvas_std=0.1279 final_norm=11.7 residual_alpha=0.5 shape_norm=11.76 source_delta_norm=0.9033 source_delta_ratio=0.07735
+2026-07-30 03:07:43,092 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=5 step=1300 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 03:07:43,092 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=5 step=1300 area_ratio_count=19 area_ratio_mean=1 area_ratio_sum=19 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=19
+2026-07-30 03:07:43,093 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=5 step=1300 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=11.69 n1_gt_valid_count=19 n1_in_gt_bg=0.5789 n1_in_gt_bg_count=11 n1_valid_count=19 n1_valid_ratio=1 n2_gt_valid_count=19 n2_in_gt_bg=1 n2_in_gt_bg_count=19 n2_valid_count=19 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=38 negative_pair_count=19 negative_pair_distance_sum=284.9 p1_gt_valid_count=19 p1_in_gt_fg=1 p1_in_gt_fg_count=19 p1_valid_count=19 p1_valid_ratio=1 p2_gt_valid_count=19 p2_in_gt_fg=1 p2_in_gt_fg_count=19 p2_valid_count=19 p2_valid_ratio=1 point_distance_sum=444.2 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=38 pos_in_pred_fg=1 pos_in_pred_fg_count=38 positive_pair_count=19 positive_pair_distance_sum=159.3 roi_count=19 valid_neg_count=38 valid_pos_count=38 warmup_stage=2
+2026-07-30 03:08:35,014 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=5 step=1350 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 03:08:35,014 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=5 step=1350 bce_raw=0.2427 boundary_fn=5936 boundary_fp=4908 boundary_tp=1.964e+04 dice=0.1247 dice_loss_raw=0.1247 iou=0.7829 loss_weight=0.1 raw_boundary_fn=5936 raw_boundary_fp=4908 raw_boundary_tp=1.964e+04 raw_dice_score=0.8753 raw_iou=0.7829 weighted_loss=0.03674
+2026-07-30 03:08:35,014 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=5 step=1350 enabled=0
+2026-07-30 03:08:35,014 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=5 step=1350 applied_delta_norm=4.193 applied_delta_ratio=0.359 base_norm=11.68 canvas_max=7.896 canvas_mean=0.001879 canvas_min=-8 canvas_nonzero_ratio=0.01869 canvas_std=0.5344 final_norm=12.49 residual_alpha=0.5 shape_norm=14.73 source_delta_norm=8.385 source_delta_ratio=0.718
+2026-07-30 03:08:35,014 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=5 step=1350 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 03:08:35,014 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=5 step=1350 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 03:08:35,014 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=5 step=1350 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=41.41 n1_gt_valid_count=64 n1_in_gt_bg=0.75 n1_in_gt_bg_count=48 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=3979 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=5300 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=1321 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 03:09:24,383 - portable_sam_fusion - INFO - epoch 5 | mini-batch 216/294 | optimizer_step 350/5920 | lr=4.977e-04
+2026-07-30 03:09:33,509 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=5 step=1400 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 03:09:33,510 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=5 step=1400 bce_raw=0.198 boundary_fn=2594 boundary_fp=4393 boundary_tp=2.474e+04 dice=0.1119 dice_loss_raw=0.1119 iou=0.8044 loss_weight=0.1 raw_boundary_fn=2594 raw_boundary_fp=4393 raw_boundary_tp=2.474e+04 raw_dice_score=0.8881 raw_iou=0.8044 weighted_loss=0.03099
+2026-07-30 03:09:33,510 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=5 step=1400 enabled=0
+2026-07-30 03:09:33,510 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=5 step=1400 applied_delta_norm=3.931 applied_delta_ratio=0.3366 base_norm=11.68 canvas_max=8 canvas_mean=0.003612 canvas_min=-8 canvas_nonzero_ratio=0.01222 canvas_std=0.5114 final_norm=12.19 residual_alpha=0.5 shape_norm=13.87 source_delta_norm=7.862 source_delta_ratio=0.6732
+2026-07-30 03:09:33,510 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=5 step=1400 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 03:09:33,510 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=5 step=1400 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 03:09:33,510 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=5 step=1400 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=37.36 n1_gt_valid_count=64 n1_in_gt_bg=0.875 n1_in_gt_bg_count=56 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=3487 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=4783 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=1296 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 03:10:31,516 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=5 step=1450 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 03:10:31,517 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=5 step=1450 bce_raw=0.2387 boundary_fn=6858 boundary_fp=4548 boundary_tp=2.233e+04 dice=0.1499 dice_loss_raw=0.1499 iou=0.7431 loss_weight=0.1 raw_boundary_fn=6858 raw_boundary_fp=4548 raw_boundary_tp=2.233e+04 raw_dice_score=0.8501 raw_iou=0.7431 weighted_loss=0.03886
+2026-07-30 03:10:31,517 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=5 step=1450 enabled=0
+2026-07-30 03:10:31,517 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=5 step=1450 applied_delta_norm=3.317 applied_delta_ratio=0.284 base_norm=11.68 canvas_max=8 canvas_mean=-0.009077 canvas_min=-8 canvas_nonzero_ratio=0.01002 canvas_std=0.4454 final_norm=12.09 residual_alpha=0.5 shape_norm=13.45 source_delta_norm=6.633 source_delta_ratio=0.568
+2026-07-30 03:10:31,517 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=5 step=1450 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 03:10:31,517 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=5 step=1450 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 03:10:31,517 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=5 step=1450 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=36.5 n1_gt_valid_count=64 n1_in_gt_bg=0.8125 n1_in_gt_bg_count=52 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=3549 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=4672 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=1124 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 03:11:01,647 - portable_sam_fusion - INFO - Epoch 5 detailed losses: loss_rpn_cls=0.0382, loss_rpn_bbox=0.0136, loss_cls=0.2862, acc=88.1720, loss_bbox=0.1402, loss_mask=0.0023, debug_mask_pos_rois=56.0476, debug_mask_logit_mean=-15.3343, debug_mask_logit_std=3.1817, debug_mask_prob_mean=0.0045, debug_mask_prob_ge05=0.0044, debug_mask_target_fill=0.0045, loss_shape_prior=0.0311, schedule/det_weight=1.0000
+2026-07-30 03:11:01,648 - portable_sam_fusion - INFO - Epoch 5 dense residual monitor: alpha=0.500000 source_delta_norm=5.9960 applied_delta_norm=2.9980 source_delta_ratio=0.513430 applied_delta_ratio=0.256715
+2026-07-30 03:11:01,648 - portable_sam_fusion - INFO - Epoch 5 primary loss shares: det=93.47% final_mask=0.45% shape=6.07% p2_boundary=0.00%
+2026-07-30 03:11:01,648 - portable_sam_fusion - INFO - Epoch 5 schedule: det_loss_weight=1.000 early_stop_start=20 min_delta=0.0005
+2026-07-30 03:11:01,648 - portable_sam_fusion - INFO - Epoch 5 learning rates: sat_backbone=4.97e-04, mask_decoder=4.97e-04, shape_prior=4.97e-04, quality_head=4.97e-04, sat_other=4.97e-04
+2026-07-30 03:15:51,069 - portable_sam_fusion - INFO - Validation samples: GT=15926, DT=19944, avg_masks_per_image=31.81, avg_mask_fill=0.0055
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.03s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=11.05s).
+Accumulating evaluation results...
+DONE (t=0.20s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.605
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.865
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.729
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.191
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.660
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.670
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.024
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.172
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.671
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.340
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.727
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.727
+2026-07-30 03:16:03,073 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.6050 bbox/mAP_75: 0.7289
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=11.53s).
+Accumulating evaluation results...
+DONE (t=0.20s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.412
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.806
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.419
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.031
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.431
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.605
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.019
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.136
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.473
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.086
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.489
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.669
+2026-07-30 03:16:14,843 - portable_sam_fusion - INFO - Validation segm/mAP: 0.4117
+2026-07-30 03:16:15,427 - portable_sam_fusion - INFO - New best bbox/mAP: 0.6050
+2026-07-30 03:16:15,427 - portable_sam_fusion - INFO - New best early-stop metric (segm/mAP): raw=0.4117 smooth(5)=0.3707
+2026-07-30 03:16:18,085 - portable_sam_fusion - INFO - Saved best_bbox_model with bbox/mAP: 0.6050
+2026-07-30 03:16:23,868 - portable_sam_fusion - INFO - Epoch 5/80 | train=0.511590 val=disabled segm/mAP=0.4117 bbox/mAP=0.6050 | best_segm=0.4384 best_bbox=0.6050 best_comp=0.0000 | sat_backbone=4.97e-04 mask_decoder=4.97e-04 shape_prior=4.97e-04 quality_head=4.97e-04 sat_other=4.97e-04
+2026-07-30 03:17:05,566 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=6 step=1500 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 03:17:05,566 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=6 step=1500 bce_raw=0.2471 boundary_fn=6689 boundary_fp=4614 boundary_tp=2.15e+04 dice=0.1312 dice_loss_raw=0.1312 iou=0.7732 loss_weight=0.1 raw_boundary_fn=6689 raw_boundary_fp=4614 raw_boundary_tp=2.15e+04 raw_dice_score=0.8688 raw_iou=0.7732 weighted_loss=0.03784
+2026-07-30 03:17:05,566 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=6 step=1500 enabled=0
+2026-07-30 03:17:05,566 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=6 step=1500 applied_delta_norm=4.061 applied_delta_ratio=0.3478 base_norm=11.68 canvas_max=8 canvas_mean=0.0001729 canvas_min=-8 canvas_nonzero_ratio=0.02129 canvas_std=0.5358 final_norm=12.54 residual_alpha=0.5 shape_norm=14.74 source_delta_norm=8.123 source_delta_ratio=0.6955
+2026-07-30 03:17:05,566 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=6 step=1500 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 03:17:05,566 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=6 step=1500 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 03:17:05,566 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=6 step=1500 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=48.33 n1_gt_valid_count=64 n1_in_gt_bg=0.9375 n1_in_gt_bg_count=60 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=1 n2_in_gt_bg_count=64 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=4404 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=0.9844 p2_in_gt_fg_count=63 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=6186 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=1782 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+2026-07-30 03:18:19,410 - portable_sam_fusion - INFO - [DEBUG-BOX] epoch=6 step=1550 fallback_count=0 fallback_ratio=0 num_rois=64 refined_proposal_iou=0 refined_proposal_iou_sum=0 refined_valid_count=0
+2026-07-30 03:18:19,410 - portable_sam_fusion - INFO - [DEBUG-COARSE] epoch=6 step=1550 bce_raw=0.1383 boundary_fn=2010 boundary_fp=2059 boundary_tp=2.129e+04 dice=0.0639 dice_loss_raw=0.0639 iou=0.8816 loss_weight=0.1 raw_boundary_fn=2010 raw_boundary_fp=2059 raw_boundary_tp=2.129e+04 raw_dice_score=0.9361 raw_iou=0.8816 weighted_loss=0.02022
+2026-07-30 03:18:19,410 - portable_sam_fusion - INFO - [DEBUG-CONTEXT] epoch=6 step=1550 enabled=0
+2026-07-30 03:18:19,410 - portable_sam_fusion - INFO - [DEBUG-DENSE] epoch=6 step=1550 applied_delta_norm=2.427 applied_delta_ratio=0.2079 base_norm=11.68 canvas_max=8 canvas_mean=0.007779 canvas_min=-7.347 canvas_nonzero_ratio=0.004908 canvas_std=0.3434 final_norm=11.89 residual_alpha=0.5 shape_norm=12.63 source_delta_norm=4.855 source_delta_ratio=0.4157
+2026-07-30 03:18:19,410 - portable_sam_fusion - INFO - [DEBUG-GATE] epoch=6 step=1550 shape_dense_alpha_max=0.5 shape_dense_alpha_mean=0.5 shape_dense_alpha_min=0.5
+2026-07-30 03:18:19,410 - portable_sam_fusion - INFO - [DEBUG-JITTER] epoch=6 step=1550 area_ratio_count=64 area_ratio_mean=1 area_ratio_sum=64 fallback_count=0 mean_iou=1 num_jittered=0 num_rois=64
+2026-07-30 03:18:19,410 - portable_sam_fusion - INFO - [DEBUG-SP] epoch=6 step=1550 all_invalid_count=0 all_invalid_ratio=0 empty_count=0 empty_ratio=0 full_count=0 full_ratio=0 mean_point_distance=24.98 n1_gt_valid_count=64 n1_in_gt_bg=0.7344 n1_in_gt_bg_count=47 n1_valid_count=64 n1_valid_ratio=1 n2_gt_valid_count=64 n2_in_gt_bg=0.9688 n2_in_gt_bg_count=62 n2_valid_count=64 n2_valid_ratio=1 neg_in_pred_bg=1 neg_in_pred_bg_count=128 negative_pair_count=64 negative_pair_distance_sum=2413 p1_gt_valid_count=64 p1_in_gt_fg=1 p1_in_gt_fg_count=64 p1_valid_count=64 p1_valid_ratio=1 p2_gt_valid_count=64 p2_in_gt_fg=1 p2_in_gt_fg_count=64 p2_valid_count=64 p2_valid_ratio=1 point_distance_sum=3198 point_overlap_count=0 point_overlap_ratio=0 point_pair_count=128 pos_in_pred_fg=1 pos_in_pred_fg_count=128 positive_pair_count=64 positive_pair_distance_sum=784.7 roi_count=64 valid_neg_count=128 valid_pos_count=128 warmup_stage=2
+W0730 03:18:43.450045 410157 site-packages/torch/distributed/elastic/agent/server/api.py:723] Received Signals.SIGTERM death signal, shutting down workers
+W0730 03:18:43.453135 410157 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 410231 closing signal SIGTERM
+W0730 03:18:43.454207 410157 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 410232 closing signal SIGTERM
+Traceback (most recent call last):
+  File "/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/torch/distributed/run.py", line 905, in <module>
+    main()
+  File "/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 357, in wrapper
+    return f(*args, **kwargs)
+  File "/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/torch/distributed/run.py", line 901, in main
+    run(args)
+  File "/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/torch/distributed/run.py", line 892, in run
+    elastic_launch(
+  File "/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/torch/distributed/launcher/api.py", line 143, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/torch/distributed/launcher/api.py", line 268, in launch_agent
+    result = agent.run()
+  File "/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/torch/distributed/elastic/metrics/api.py", line 138, in wrapper
+    result = f(*args, **kwargs)
+  File "/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/torch/distributed/elastic/agent/server/api.py", line 715, in run
+    result = self._invoke_run(role)
+  File "/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/torch/distributed/elastic/agent/server/api.py", line 879, in _invoke_run
+    time.sleep(monitor_interval)
+  File "/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 84, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 410157 got signal: 15

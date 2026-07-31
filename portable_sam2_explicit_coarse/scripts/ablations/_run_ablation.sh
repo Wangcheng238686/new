@@ -88,7 +88,7 @@ case "${PROMPT_ROUTE}" in
     fi
     : "${EXPLICIT_PROMPT_MODE:?coarse wrapper must set EXPLICIT_PROMPT_MODE}"
     case "${EXPLICIT_PROMPT_MODE}" in
-      points|points_box|points_box_dense) ;;
+      points|box|mask|points_box|points_box_dense) ;;
       *) echo "invalid EXPLICIT_PROMPT_MODE=${EXPLICIT_PROMPT_MODE}" >&2; exit 2 ;;
     esac
     EXPECTED_EXPLICIT_MODE="${EXPLICIT_PROMPT_MODE}"
