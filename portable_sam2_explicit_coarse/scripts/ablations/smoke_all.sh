@@ -65,6 +65,20 @@ for script in "${MATRIX[@]}"; do
   else
     grep -q '^prompt_encoder_train_mask_downscaling=0$' <<<"${smoke_output}"
   fi
+  # Verify the final-mask coordinate contract resolves correctly.  M0/M1 are
+  # the committed full_image controls; everything else defaults to roi_local
+  # (the full_image default was switched after the supervision-collapse
+  # diagnosis).  Catch a silent coordinate-mode regression, not just a print.
+  case "${script}" in
+    m0_aggregator_mlp_full_image.sh|m1_pafpn_mlp_full_image.sh)
+      grep -q '^final_mask_coordinate_mode=full_image$' <<<"${smoke_output}"
+      grep -q '"final_mask_coordinate_mode": "full_image"' <<<"${smoke_output}"
+      ;;
+    *)
+      grep -q '^final_mask_coordinate_mode=roi_local$' <<<"${smoke_output}"
+      grep -q '"final_mask_coordinate_mode": "roi_local"' <<<"${smoke_output}"
+      ;;
+  esac
   case "${script}" in
     r1_c3_pafpn_coarse_points_box_emb64.sh)
       grep -q '^explicit_prompt_mode=points_box$' <<<"${smoke_output}"

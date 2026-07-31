@@ -103,7 +103,7 @@ case "${PROMPT_ROUTE}" in
       fi
       FINAL_MASK_COORDINATE_MODE="roi_local"
     else
-      FINAL_MASK_COORDINATE_MODE="full_image"
+      FINAL_MASK_COORDINATE_MODE="${FINAL_MASK_COORDINATE_MODE:-roi_local}"
     fi
     DEFAULT_PROMPT_DEBUG_STATS=1
     ;;

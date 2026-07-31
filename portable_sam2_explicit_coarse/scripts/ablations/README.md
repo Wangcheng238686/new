@@ -20,6 +20,15 @@
 | R1-C4-RD | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | raw logits (detached) | no |
 | R1-C4-G | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | hard-EDT Gaussian (detached) | no |
 | C5-v2 | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | yes | yes |
+| C3-roi_local | 32×32 legacy | PAFPN | coarse 2P2N | **ROI-local** | no | yes | no | no |
+| R1-C4-RD-roi_local | 64×64 official | PAFPN | coarse 2P2N | **ROI-local** | no | yes | raw logits (detached) | no |
+
+The C1–C5 / R1-C* rows above were trained under the historical `full-image`
+final-mask contract, which collapses under sparse WHU targets (see the
+supervision-collapse diagnosis below). Since that diagnosis, the coarse route
+defaults to **ROI-local**; the two `-roi_local` rows re-evaluate the same
+architecture under healthy supervision. `full-image` is now only M0/M1's
+committed control (explicit), not a coarse-route default.
 
 B0/B1 use the historical ROI-local final-mask target and bbox paste. M0/M1
 reuse the same MLP, positional embedding, trainable zero no-mask embedding and
@@ -333,6 +342,95 @@ also reach.
 3. Optionally, a stride-32 run with `restrict_dense_prompt_to_box=False` to test
    whether the box restriction — not the resolution — is the dense bottleneck.
    This requires exposing the flag (currently config-only).
+
+## full_image mask-supervision collapse hypothesis (2026-07-31)
+
+B1 (MLP, stride-32, roi_local) reaches best segm/mAP 0.6888 over 74 epochs while
+every coarse-route experiment (full_image) plateaus at ~0.45 (stride-32) or
+~0.65 (stride-16) by epoch 25-32. The gap is not explained by route, resolution,
+dense or the refiner alone. The training logs expose a supervision-level cause:
+
+| metric (ep32) | B1 (roi_local) | C3 (full_image) |
+|---|---:|---:|
+| loss_mask | 0.12 | **0.0012** |
+| mask logit_mean | +1.0 | **-18** |
+| mask prob_mean | 0.52 | **0.0048** |
+| mask prob >= 0.5 | 0.52 | **0.0048** |
+| target_fill | 0.52 | 0.0048 |
+
+Under `final_mask_coordinate_mode=full_image`, each decoder mask is supervised
+against a full-image GT in which a WHU building covers ~0.5% of pixels. Standard
+BCE then collapses to an all-background shortcut: the model drives almost every
+logit to ~-18, predicts near-zero probability everywhere, and `loss_mask` falls
+to ~0.001 — not a good fit but a degenerate one. segm/mAP is then carried almost
+entirely by detector box localisation, not mask quality, so the coarse route
+plateaus regardless of dense/refiner additions.
+
+B1 avoids this because `roi_local` crops the GT inside each proposal, giving a
+balanced target (~0.5 fill) that standard BCE can actually learn (loss_mask
+~0.12). The coarse route currently forces `full_image` for every non-ROI-SAM
+experiment (`_run_ablation.sh` coarse branch + the config).
+
+### Why C2-L (roi_balanced_dice) did not fix it
+
+C2-L keeps the `full_image` coordinate space and only reweights the loss: a
+rectangular 1.2x-box support gives balanced BCE+Dice inside and a 0.05-weight
+background BCE outside. This fails because (a) the rectangular support does not
+match the real mask shape so "inside" is still mostly background, and (b) the
+weakened outside supervision lets the full-grid prediction drift, lowering IoU.
+C2-L scored *worse* than the standard full_image run, which is consistent with
+"rebalancing a loss inside the wrong coordinate space is harmful".
+
+### roi_local results: collapse confirmed, coarse route surpasses MLP
+
+Switching the coarse route to roi_local was confirmed in one epoch: mask
+`logit_mean` returned from ~-18 to ~+0.2, `loss_mask` rose from ~0.001 to ~0.63,
+and `target_fill` from ~0.005 to ~0.5. The full_image BCE collapse hypothesis is
+confirmed — the coarse route's low plateau was a supervision artefact.
+
+Following the diagnosis, the default `final_mask_coordinate_mode` for every
+non-ROI-SAM coarse route was switched from `full_image` to `roi_local`
+(`_run_ablation.sh` coarse branch + the committed config). `smoke_all.sh` step
+[3/5] now asserts each wrapper's resolved coordinate contract, so a silent
+regression fails CI rather than training under the wrong supervision. M0/M1 keep
+their committed `full_image` (explicit) as the only remaining full_image controls.
+
+Final best segm/mAP over the 20% train / 100% val screening protocol (all
+roi_local unless noted, all trained to convergence without early-stop kill):
+
+| Experiment | Stride | Route | best segm/mAP | vs B1 |
+|---|---|---|---:|---:|
+| C3 (full_image, collapse) | 32 | coarse points_box | 0.4773 | −0.211 |
+| **C3-roi_local** | 32 | coarse points_box | **0.6107** | −0.078 |
+| R1-C4-RD (full_image, collapse) | 16 | coarse + raw_detach dense | 0.6450 | −0.044 |
+| **R1-C4-RD-roi_local** | 16 | coarse + raw_detach dense | **0.6952** | **+0.006** |
+| B1 (MLP baseline) | 32 | MLP | 0.6888 | — |
+
+Conclusions from the converged runs:
+
+1. **roi_local repair lifts the coarse route to and beyond the MLP baseline.**
+   R1-C4-RD-roi_local (coarse + dense + stride-16) reaches 0.6952, surpassing B1
+   (0.6888). At stride-32, C3-roi_local still trails B1 by ~0.08, confirming
+   stride-16 is genuinely needed for the coarse route on these small WHU targets.
+2. **stride-16 is a real, separable gain under healthy supervision.** Same route,
+   same roi_local, stride-32→16: C3-roi_local 0.6107 → R1-C4-RD-roi_local 0.6952
+   (+0.085), no longer confounded with the full_image collapse.
+3. **The dense prompt + coarse route now has measurable value.** Earlier
+   full_image runs could not show it because the mask was never learned; under
+   roi_local, coarse + dense + stride-16 is the best configuration tested.
+
+Source logs (roi_local, converged):
+
+```text
+logs/ablations/c3_pafpn_coarse_points_box_roi_local_tr0.2_va1.0_20260731_063609_pid847889.log
+logs/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_roi_local_emb64_tr0.2_va1.0_20260731_070728_pid855471.log
+```
+
+```bash
+# coarse route now defaults to roi_local; wrappers without an explicit export
+# also run roi_local. Verify with the smoke harness (asserts the contract):
+FULL_MODEL_SMOKE=0 bash scripts/ablations/smoke_all.sh
+```
 
 Run the C2 final-mask signal ablation with the common 20% train / 100% validation
 screening protocol:

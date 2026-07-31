@@ -150,7 +150,11 @@ model = dict(
             freeze_no_mask_embed=True,
             load_no_mask_pretrained=True,
             final_mask_coordinate_mode=(
-                "roi_local" if _roi_sam_enabled else "full_image"
+                "roi_local"
+                if _roi_sam_enabled
+                else os.environ.get(
+                    "FINAL_MASK_COORDINATE_MODE", "roi_local"
+                ).strip().lower()
             ),
             **_final_mask_loss_override,
             **_roi_sam_override,
