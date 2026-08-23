@@ -446,12 +446,18 @@ def _build_loader(contract: Mapping[str, Any], num_workers: int) -> DataLoader:
     from data.loader import rtmdet_collate_fn
     from data.whu_instance_dataset import WHUCocoInstanceDataset
 
+    single_class = bool(contract["single_class"])
+    # Multi-class runs (iSAID) train with canonical ids 1..15 -> labels 0..14;
+    # the loader must apply the same mapping so GT labels match the head.
+    category_mapping = None if single_class else {i: i - 1 for i in range(1, 16)}
     dataset = WHUCocoInstanceDataset(
         data_root=contract["data_root"],
         ann_file=contract["ann_file"],
         image_subdir=contract["image_subdir"],
         image_size=tuple(contract["image_size"]),
-        single_class=bool(contract["single_class"]),
+        single_class=single_class,
+        enable_category_mapping=not single_class,
+        category_mapping=category_mapping,
         flip_prob=0.0,
         vflip_prob=0.0,
         gaussian_noise_prob=0.0,

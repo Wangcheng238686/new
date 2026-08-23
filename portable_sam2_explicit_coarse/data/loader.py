@@ -142,6 +142,10 @@ def create_train_loader(
     whu_single_class: bool = True,
     whu_enable_category_mapping: bool = False,
     whu_category_mapping: Optional[dict] = None,
+    isaid_train_ann_file: str = "isaid_patches_800/train/instances_isaid_train.json",
+    isaid_val_ann_file: str = "isaid_patches_800/val/instances_isaid_val.json",
+    isaid_train_img_subdir: str = "isaid_patches_800/train/images",
+    isaid_val_img_subdir: str = "isaid_patches_800/val/images",
     train_subset_ratio: float = 1.0,
     val_subset_ratio: float = 1.0,
 ):
@@ -198,15 +202,32 @@ def create_train_loader(
             )
         else:
             val_loader = None
-    elif dataset_format == "whu_coco":
+    elif dataset_format in ("whu_coco", "isaid_coco"):
+        if dataset_format == "isaid_coco":
+            # iSAID 15-class: map official category ids 1..15 -> train labels 0..14.
+            coco_single_class = False
+            coco_enable_mapping = True
+            coco_category_mapping = {i: i - 1 for i in range(1, 16)}
+            coco_train_ann = isaid_train_ann_file
+            coco_val_ann = isaid_val_ann_file
+            coco_train_img = isaid_train_img_subdir
+            coco_val_img = isaid_val_img_subdir
+        else:
+            coco_single_class = whu_single_class
+            coco_enable_mapping = whu_enable_category_mapping
+            coco_category_mapping = whu_category_mapping
+            coco_train_ann = whu_train_ann_file
+            coco_val_ann = whu_val_ann_file
+            coco_train_img = whu_train_img_subdir
+            coco_val_img = whu_val_img_subdir
         train_dataset = WHUCocoInstanceDataset(
             data_root=data_root,
-            ann_file=whu_train_ann_file,
-            image_subdir=whu_train_img_subdir,
+            ann_file=coco_train_ann,
+            image_subdir=coco_train_img,
             image_size=image_size,
-            single_class=whu_single_class,
-            enable_category_mapping=whu_enable_category_mapping,
-            category_mapping=whu_category_mapping,
+            single_class=coco_single_class,
+            enable_category_mapping=coco_enable_mapping,
+            category_mapping=coco_category_mapping,
             flip_prob=flip_prob,
             vflip_prob=vflip_prob,
             gaussian_noise_prob=gaussian_noise_prob,
@@ -227,15 +248,15 @@ def create_train_loader(
         collate_fn = rtmdet_collate_fn
 
         val_loader = None
-        if whu_val_ann_file:
+        if coco_val_ann:
             val_dataset = WHUCocoInstanceDataset(
                 data_root=data_root,
-                ann_file=whu_val_ann_file,
-                image_subdir=whu_val_img_subdir,
+                ann_file=coco_val_ann,
+                image_subdir=coco_val_img,
                 image_size=image_size,
-                single_class=whu_single_class,
-                enable_category_mapping=whu_enable_category_mapping,
-                category_mapping=whu_category_mapping,
+                single_class=coco_single_class,
+                enable_category_mapping=coco_enable_mapping,
+                category_mapping=coco_category_mapping,
                 flip_prob=0.0,
                 vflip_prob=0.0,
                 gaussian_noise_prob=0.0,
