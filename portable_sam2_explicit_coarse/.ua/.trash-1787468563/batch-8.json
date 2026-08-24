@@ -1,0 +1,122 @@
+{
+  "nodes": [
+    {
+      "id": "file:scripts/infer_whu_checkpoint.sh",
+      "type": "file",
+      "name": "infer_whu_checkpoint.sh",
+      "filePath": "scripts/infer_whu_checkpoint.sh",
+      "summary": "推理入口脚本：加载共享运行环境后，以指定的 checkpoint 路径及额外透传参数调用 inference/infer_from_checkpoint.py，在 WHU 数据集上执行推理。",
+      "tags": ["entry-point", "inference", "shell-script", "checkpoint"],
+      "complexity": "simple",
+      "languageNotes": "启用 set -Eeuo pipefail 严格模式，并用 exec 将当前 shell 进程替换为 Python 推理进程，避免多余的中介进程。"
+    },
+    {
+      "id": "file:scripts/load_environment.sh",
+      "type": "file",
+      "name": "load_environment.sh",
+      "filePath": "scripts/load_environment.sh",
+      "summary": "供其他脚本 source 的共享环境加载器：优先加载机器本地的 configs/environment.local.sh，否则回退到 configs/environment.sh，也可通过 PORTABLE_SAM2_ENV_FILE 强制指定；随后校验 PYTHON、SAM2_REPO、WHU1024_DATA_ROOT、GPU 与训练超参等必需环境变量，缺失即报错返回。",
+      "tags": ["utility", "environment", "configuration", "validation", "shell-script"],
+      "complexity": "simple",
+      "languageNotes": "利用 bash 间接变量展开 ${!_ENV_NAME:-} 遍历必需变量名数组完成环境校验，并在结束时 unset 全部临时变量，避免污染调用方 shell。"
+    },
+    {
+      "id": "file:scripts/run_whu1024_explicit_coarse_4gpu.sh",
+      "type": "file",
+      "name": "run_whu1024_explicit_coarse_4gpu.sh",
+      "filePath": "scripts/run_whu1024_explicit_coarse_4gpu.sh",
+      "summary": "WHU1024 显式粗粒度（explicit coarse）实验的 4 GPU 训练启动器：设置模型规模（base_plus）、提示模式、P2 边界精化开关、训练子集比例与 checkpoint 目录等默认超参，再按提示模式/精化开关/嵌入步幅的组合通过 case 分发到 scripts/ablations/ 下对应的消融包装脚本执行。",
+      "tags": ["entry-point", "training", "shell-script", "ablation", "multi-gpu"],
+      "complexity": "simple",
+      "languageNotes": "使用 bash case 按 EXPLICIT_PROMPT_MODE:P2_BOUNDARY_REFINER_ENABLED:SAM_IMAGE_EMBED_STRIDE 三元组选择消融脚本，未匹配的组合直接报错退出（exit 2）。"
+    },
+    {
+      "id": "file:scripts/smoke_test_components.sh",
+      "type": "file",
+      "name": "smoke_test_components.sh",
+      "filePath": "scripts/smoke_test_components.sh",
+      "summary": "组件冒烟测试包装脚本：加载共享环境后执行 scripts/smoke_test_components.py，用于在完整训练前快速验证关键组件的可用性。",
+      "tags": ["test", "smoke-test", "shell-script", "entry-point"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:scripts/infer_whu_checkpoint.sh",
+      "target": "file:scripts/load_environment.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/infer_whu_checkpoint.sh",
+      "target": "file:inference/infer_from_checkpoint.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/load_environment.sh",
+      "target": "file:configs/environment.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/run_whu1024_explicit_coarse_4gpu.sh",
+      "target": "file:scripts/load_environment.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/run_whu1024_explicit_coarse_4gpu.sh",
+      "target": "file:scripts/ablations/c2_pafpn_coarse_points.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/run_whu1024_explicit_coarse_4gpu.sh",
+      "target": "file:scripts/ablations/c3_pafpn_coarse_points_box.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/run_whu1024_explicit_coarse_4gpu.sh",
+      "target": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/run_whu1024_explicit_coarse_4gpu.sh",
+      "target": "file:scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/run_whu1024_explicit_coarse_4gpu.sh",
+      "target": "file:scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/smoke_test_components.sh",
+      "target": "file:scripts/load_environment.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/smoke_test_components.sh",
+      "target": "file:scripts/smoke_test_components.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

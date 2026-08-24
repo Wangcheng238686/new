@@ -76,6 +76,24 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Allow missing/unexpected model keys. Strict loading is the default.",
     )
+    parser.add_argument(
+        "--disable-p2",
+        action="store_true",
+        help=(
+            "Ablate P2BoundaryRefiner at inference by zeroing beta (delta==0, "
+            "refined coarse logits identical to raw)."
+        ),
+    )
+    parser.add_argument(
+        "--p2-beta",
+        type=float,
+        default=None,
+        help=(
+            "Override P2BoundaryRefiner beta at inference (e.g. 1.0 amplifies "
+            "the residual 5x vs the trained 0.2; negative flips its sign). "
+            "Takes precedence over --disable-p2."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -166,6 +184,11 @@ def _restore_embedded_architecture_environment(
     final_mode = head.get("final_mask_coordinate_mode")
     if final_mode not in (None, ""):
         os.environ["FINAL_MASK_COORDINATE_MODE"] = str(final_mode)
+    p2_cfg = head.get("p2_boundary_refiner_cfg", {})
+    if isinstance(p2_cfg, Mapping) and p2_cfg.get("enabled") is not None:
+        os.environ["P2_BOUNDARY_REFINER_ENABLED"] = (
+            "1" if bool(p2_cfg["enabled"]) else "0"
+        )
     dense_cfg = head.get("dense_prompt_cfg", {})
     if isinstance(dense_cfg, Mapping):
         transform = dense_cfg.get("transform")
@@ -679,6 +702,20 @@ def main() -> None:
         no_mask_validator(f"checkpoint inference ({args.weights})")
     model.to(device)
     model.eval()
+    if args.disable_p2 or args.p2_beta is not None:
+        refiner = getattr(mask_head, "p2_boundary_refiner", None)
+        if refiner is None:
+            logger.warning(
+                "--disable-p2/--p2-beta given but this checkpoint has no P2BoundaryRefiner"
+            )
+        else:
+            target_beta = 0.0 if args.p2_beta is None else float(args.p2_beta)
+            logger.info(
+                "P2BoundaryRefiner beta overridden at inference: %.4f -> %.4f",
+                float(refiner.beta),
+                target_beta,
+            )
+            refiner.beta = target_beta
     logger.info(
         "Model rebuilt from %s; weights=%s strict=%s device=%s",
         config_source,
@@ -785,6 +822,8 @@ def main() -> None:
         "sam2_repo": str(sam2_repo),
         "weights": args.weights,
         "strict": not args.allow_nonstrict,
+        "disable_p2": bool(args.disable_p2),
+        "p2_beta_override": args.p2_beta,
         "load_report": load_report,
         "dataset": contract,
         "device": str(device),

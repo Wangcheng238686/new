@@ -1197,7 +1197,26 @@ def _load_checkpoint(
     if scheduler is not None and "scheduler" in ckpt:
         scheduler.load_state_dict(ckpt["scheduler"])
     if scaler is not None and "scaler" in ckpt:
-        scaler.load_state_dict(ckpt["scaler"])
+        # Checkpoints written with --amp 0 store an empty dict; loading it
+        # into an enabled scaler raises RuntimeError in torch>=2.x. A fresh
+        # AMP run must keep the default 65536 scale (a loaded 1.0 would
+        # underflow fp16 gradients for ~32k optimizer steps).
+        saved_scaler_state = ckpt["scaler"]
+        if scaler.is_enabled() and not saved_scaler_state:
+            if int(os.environ.get("RANK", "0")) == 0:
+                logger.info(
+                    "RESUME scaler: checkpoint has no AMP state (--amp 0 run); "
+                    "keeping fresh scale=%s", scaler.get_scale(),
+                )
+        else:
+            scaler.load_state_dict(saved_scaler_state)
+            if scaler.is_enabled() and scaler.get_scale() == 1.0:
+                scaler._scale.fill_(2 ** 16)
+                if int(os.environ.get("RANK", "0")) == 0:
+                    logger.info(
+                        "RESUME scaler scale reset 1.0 -> %s",
+                        scaler.get_scale(),
+                    )
     return ckpt
 
 

@@ -1,0 +1,600 @@
+{
+  "nodes": [
+    {
+      "id": "document:scripts/ablations/README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "scripts/ablations/README.md",
+      "summary": "WHU-1024 消融矩阵的权威实验文档：以表格定义 B0/B1、M0/M1、C1-C5、R0/R1 各实验的架构变量（neck、prompt route、final-mask 坐标契约、dense prompt、P2 refiner、stride）。完整记录 full_image BCE 监督坍缩诊断与 roi_local 修复结论（R1-C4-RD-roi_local 0.6957 超越 B1 的 0.6888）、stride-32 vs stride-16 归因分析、B0 筛查复现诊断，以及机器环境、数据子集、超参数契约与后台/串行运行手册。",
+      "tags": ["documentation", "ablation", "experiment-log", "architecture-matrix", "entry-point"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:scripts/ablations/_run_ablation.sh",
+      "type": "file",
+      "name": "_run_ablation.sh",
+      "filePath": "scripts/ablations/_run_ablation.sh",
+      "summary": "全部消融 wrapper 共享的训练启动器：强制校验 wrapper 注入的架构契约变量（ABLATION_ID/NECK_TYPE/PROMPT_ROUTE/EXPLICIT_PROMPT_MODE 等），按 mlp/coarse 两条路线选择 MMEngine 配置并导出数十个带默认值与合法性检查的超参数；先调用 validate_ablation_contract.py 做契约预检、打印 resolved_hyperparameters 完整快照，再以 nohup setsid 后台（默认）或前台方式通过 torch.distributed.run 启动 train/train_rsprompter_fusion.py。",
+      "tags": ["entry-point", "training-launcher", "ddp", "validation", "hyperparameters"],
+      "complexity": "complex",
+      "languageNotes": "纯线性 bash 脚本（无函数定义），大量使用 ${VAR:-default} 参数扩张做集中式契约校验；用 exec > >(tee -a ...) 进程替换镜像日志，MASTER_PORT 缺省时按 PID 派生（20000+PID%20000）避免并发实验端口冲突，DRY_RUN=1 可只输出解析结果不启动训练。"
+    },
+    {
+      "id": "file:scripts/ablations/b0_aggregator_mlp.sh",
+      "type": "file",
+      "name": "b0_aggregator_mlp.sh",
+      "filePath": "scripts/ablations/b0_aggregator_mlp.sh",
+      "summary": "B0 基线 wrapper：aggregator neck + 历史遗留 5-token MLP prompt route + ROI-local final mask（stride-32），是从 legacy baseline 迁移到新主线后的桥接对照；RUN_TAG 默认 b0_aggregator_mlp_aligned，与 ROI 目标修复前的失效运行隔离。",
+      "tags": ["ablation", "baseline", "mlp-route", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/b1_pafpn_mlp.sh",
+      "type": "file",
+      "name": "b1_pafpn_mlp.sh",
+      "filePath": "scripts/ablations/b1_pafpn_mlp.sh",
+      "summary": "B1 wrapper：把 B0 的 neck 换成 PAFPN，MLP prompt route 与 roi_local final-mask 契约保持不变；B1 是整个消融矩阵的 MLP 参照基线（20% 筛查协议下 best segm/mAP 0.6888）。",
+      "tags": ["ablation", "baseline", "mlp-route", "pafpn", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/c1_aggregator_coarse_points.sh",
+      "type": "file",
+      "name": "c1_aggregator_coarse_points.sh",
+      "filePath": "scripts/ablations/c1_aggregator_coarse_points.sh",
+      "summary": "C1 wrapper：aggregator neck + coarse 显式 2P2N 点提示 route（explicit_mask + shape_point，stride-32），用于与 M0 在同一 full_image 契约下对比 coarse 与 MLP；RUN_TAG 默认附加 _semanticfix_<fusion> 后缀防止不同上下文融合契约的权重互相覆盖。",
+      "tags": ["ablation", "coarse-points", "explicit-prompt", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/c2_pafpn_coarse_points.sh",
+      "type": "file",
+      "name": "c2_pafpn_coarse_points.sh",
+      "filePath": "scripts/ablations/c2_pafpn_coarse_points.sh",
+      "summary": "C2 wrapper：PAFPN neck + coarse 2P2N 点提示 route（stride-32），是 C 系列在 PAFPN 上的起点，也是 C2-L 损失修复与 C2-R ROI-SAM2 变体的直接对照。",
+      "tags": ["ablation", "coarse-points", "pafpn", "explicit-prompt", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh",
+      "type": "file",
+      "name": "c2l_pafpn_coarse_points_roi_loss.sh",
+      "filePath": "scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh",
+      "summary": "C2-L wrapper：保持 C2 的模型输入、2P2N 点与 full_image 坐标不变，仅把 final-mask 监督换成 roi_balanced_dice（1.2x box 扩张支撑内 BCE+Dice 平衡、外区 0.05 权重 BCE 抑制泄漏）。实验结论是在错误坐标空间内重加权损失反而比标准 full_image 更差。",
+      "tags": ["ablation", "loss-function", "roi-balanced-dice", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh",
+      "type": "file",
+      "name": "c2r_pafpn_coarse_points_roi_sam.sh",
+      "filePath": "scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh",
+      "summary": "C2-R wrapper：启用 ROI-SAM2 替代方案（ROI_SAM_ENABLED=1、RoIAlign sampling ratio 2）——对每个正样本 proposal 用 aligned RoIAlign 裁剪 32x32 图像 embedding 与高分辨率 SAM2 特征，把 2P2N 坐标映射到 canonical 0-1024 ROI-local canvas 上预测 mask；points-only 严格变体，final mask 为 roi_local。",
+      "tags": ["ablation", "roi-sam", "roialign", "coarse-points", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/c3_pafpn_coarse_points_box.sh",
+      "type": "file",
+      "name": "c3_pafpn_coarse_points_box.sh",
+      "filePath": "scripts/ablations/c3_pafpn_coarse_points_box.sh",
+      "summary": "C3 wrapper：coarse 2P2N 点提示 + box token（PAFPN、stride-32、无 dense、无 P2 refiner）；历史 full_image 契约下受监督坍缩影响（best segm/mAP 0.4773），是 stride-32 组 box-token 消融的基础对照。",
+      "tags": ["ablation", "box-token", "coarse-points", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/c3_pafpn_coarse_points_box_roi_local.sh",
+      "type": "file",
+      "name": "c3_pafpn_coarse_points_box_roi_local.sh",
+      "filePath": "scripts/ablations/c3_pafpn_coarse_points_box_roi_local.sh",
+      "summary": "C3-roi_local wrapper：与 C3 唯一区别是把 final-mask 坐标契约换成 roi_local（与 B1 相同的标准 BCE），用于隔离 full_image BCE 监督坍缩这一单一变量；结果 0.4773→0.6107 确认坍缩假设并使 coarse route 恢复可学习，此后 roi_local 成为 coarse 路线默认。ABLATION_ID 保持 C3 架构身份，RUN_TAG 附加 _roi_local。",
+      "tags": ["ablation", "roi-local", "supervision-repair", "coarse-points", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense.sh",
+      "type": "file",
+      "name": "c4_pafpn_coarse_points_box_dense.sh",
+      "filePath": "scripts/ablations/c4_pafpn_coarse_points_box_dense.sh",
+      "summary": "C4 wrapper：在 C3 上增加 dense prompt（EXPLICIT_PROMPT_MODE=points_box_dense，可学习 global-sigmoid 门控、alpha 初始 0.25、raw_logits 变换）；筛查显示其 segm/mAP 与 C3 在 epoch 噪声内持平，由此引出 densefix 系列门控归因实验。",
+      "tags": ["ablation", "dense-prompt", "coarse-points", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh",
+      "type": "file",
+      "name": "c4_pafpn_coarse_points_box_dense_densefix.sh",
+      "filePath": "scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh",
+      "summary": "C4-densefix wrapper：单变量门控强度对照——通过 CONFIG_OVERRIDE 选择 densefix 配置变体，把可学习 global-sigmoid dense gate 替换为固定 alpha=0.5 插值系数；ABLATION_ID 保持 C4 架构身份，RUN_TAG 附加 _densefix 防止日志/权重与原 C4 冲突，默认占用 GPU 1,2。",
+      "tags": ["ablation", "dense-prompt", "gate-control", "config-override", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh",
+      "type": "file",
+      "name": "c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh",
+      "filePath": "scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh",
+      "summary": "C4-densefix-unfreeze wrapper：在 densefix 固定门控基础上解冻 PromptEncoder 的 mask_downscaling 三层卷积栈（4684 参数），并把 PROMPT_ENCODER_LR_MULT 设为 1.0 使其以基础学习率训练，检验冻结的 SAM 原始 mask-prompt 变换是否为稀疏 coarse-mask 信号的瓶颈；结论是注入强度翻倍（applied_delta_ratio 0.146→0.307）仍无 segm/mAP 增益。",
+      "tags": ["ablation", "dense-prompt", "unfreeze", "prompt-encoder", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "type": "file",
+      "name": "c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "filePath": "scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "summary": "C5-v2 wrapper：官方 stride-16/64x64 分辨率（SAM_IMAGE_EMBED_STRIDE=16）+ coarse 2P2N + box + dense + P2 boundary refiner（emb64）的完整架构组合；筛查协议下 best segm/mAP 0.6480，是 R1 归因矩阵中 P2 refiner 的参照端。",
+      "tags": ["ablation", "p2-refiner", "stride-16", "dense-prompt", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/m0_aggregator_mlp_full_image.sh",
+      "type": "file",
+      "name": "m0_aggregator_mlp_full_image.sh",
+      "filePath": "scripts/ablations/m0_aggregator_mlp_full_image.sh",
+      "summary": "M0 wrapper：B0 的 full_image 坐标契约对照——aggregator + MLP 路线的位置编码、可训练零 no-mask 嵌入与全部优化设置不变，仅把 final-mask 目标切换为全图 GT 加一次预测期 resize；B0→M0 隔离坐标契约变量，也是矩阵中显式保留的 full_image 控制组。",
+      "tags": ["ablation", "full-image", "mlp-route", "control", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/m1_pafpn_mlp_full_image.sh",
+      "type": "file",
+      "name": "m1_pafpn_mlp_full_image.sh",
+      "filePath": "scripts/ablations/m1_pafpn_mlp_full_image.sh",
+      "summary": "M1 wrapper：B1 的 full_image 坐标契约对照（PAFPN + MLP），与 M0 一起构成 MLP 路线的 full_image 控制组；M1→C2 在同一 full_image 契约下对比 MLP 与 coarse route。",
+      "tags": ["ablation", "full-image", "mlp-route", "pafpn", "control"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "type": "file",
+      "name": "monitor_b0_then_serial.sh",
+      "filePath": "scripts/ablations/monitor_b0_then_serial.sh",
+      "summary": "串行队列监视器：以 flock 非阻塞锁防止重复队列，轮询 B0 训练进程（/proc 存活状态 + cmdline 匹配 torch.distributed.run）并在监视日志中记录 epoch 进度；B0 结束后（成功/失败/无结束标记均继续）按默认顺序（B1、M0、M1、C1-C4、R1 系列、R0、C5-v2）逐个前台执行剩余 wrapper，失败任务记录并跳过而不中断队列，支持 ABLATION_QUEUE/POLL_SECONDS/--print-plan 覆盖。",
+      "tags": ["orchestration", "serial-queue", "process-monitoring", "automation"],
+      "complexity": "moderate",
+      "languageNotes": "子任务以 RUN_IN_BACKGROUND=0 ... 9>&- 启动：前台化保证严格串行，关闭 fd 9 防止 torchrun 子进程继承 flock 锁导致监视器被杀后锁滞留。"
+    },
+    {
+      "id": "file:scripts/ablations/paper_promptminer_rd_p2_whu_full.sh",
+      "type": "file",
+      "name": "paper_promptminer_rd_p2_whu_full.sh",
+      "filePath": "scripts/ablations/paper_promptminer_rd_p2_whu_full.sh",
+      "summary": "论文主实验（main5.tex 单流 PromptMiner-SAM2 公式）的全量数据训练入口，即当前正在运行的全量实验：复用 C5-v2 注册架构（PAFPN + stride-16 + points/box/dense + P2-BRR），dense 采用 detached raw logits 契约，final mask 为 roi_local；在 WHU 全量训练集上训练 100 epochs（GPU 0,1、全局 batch 8、seed 44、EMA 关闭），RUN_TAG 默认 paper_promptminer_rd_p2_whu_full 以区分历史 C5-v2 运行。",
+      "tags": ["ablation", "paper-experiment", "full-data-training", "entry-point", "p2-refiner"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "type": "file",
+      "name": "prompt_content_p2_from_r1_best.sh",
+      "filePath": "scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "summary": "参数化提示内容消融 wrapper：默认从 R1-C4-RD roi_local 的 segm-best checkpoint（best_model_epoch80.pth）初始化并做存在性校验，按位置参数组合 POINT|BOX|MASK x P2 开关共 6 种配置（ABLATION_ID 为 pafpn_coarse_<mode>_emb64_p2br<0|1>），配合 ALLOW_CROSS_ARCH_INIT 在收敛权重上隔离单提示内容与 P2 boundary refiner 的边际贡献。",
+      "tags": ["ablation", "checkpoint-init", "prompt-content", "parameterized-wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/r0_b0_aggregator_mlp_emb64.sh",
+      "type": "file",
+      "name": "r0_b0_aggregator_mlp_emb64.sh",
+      "filePath": "scripts/ablations/r0_b0_aggregator_mlp_emb64.sh",
+      "summary": "R0 wrapper：B0 的 SAM2 空间分辨率对照——aggregator + MLP + roi_local 契约全部不变，仅把 SAM_IMAGE_EMBED_STRIDE 切到 16（官方 64x64 image embedding，256x256 dense-mask 输入），隔离分辨率这一单一变量。",
+      "tags": ["ablation", "stride-16", "mlp-route", "resolution-control", "wrapper"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/ablations/monitor_b0_then_serial.sh:usage",
+      "type": "function",
+      "name": "usage",
+      "filePath": "scripts/ablations/monitor_b0_then_serial.sh",
+      "lineRange": [42, 52],
+      "summary": "打印监视器的调用方式（B0_LOG 环境变量）与全部可用覆盖项：ABLATION_QUEUE 自定义队列、WATCH_PID 前台 torchrun 进程、POLL_SECONDS 轮询间隔、MONITOR_LOG 输出路径及 --print-plan 计划打印。",
+      "tags": ["utility", "cli-help", "monitoring"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/ablations/monitor_b0_then_serial.sh:process_is_b0",
+      "type": "function",
+      "name": "process_is_b0",
+      "filePath": "scripts/ablations/monitor_b0_then_serial.sh",
+      "lineRange": [123, 138],
+      "summary": "判断 B0 的 torchrun 进程是否仍在运行：kill -0 探活、读取 /proc/<pid>/stat 排除僵尸态，再解析 /proc/<pid>/cmdline 要求匹配 torch.distributed.run 或 train_rsprompter_fusion.py，避免误把同 PID 的无关进程当作训练。",
+      "tags": ["process-management", "monitoring", "utility"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "function:scripts/ablations/monitor_b0_then_serial.sh:usage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "function:scripts/ablations/monitor_b0_then_serial.sh:process_is_b0",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:scripts/ablations/b0_aggregator_mlp.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/b1_pafpn_mlp.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/c1_aggregator_coarse_points.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/c2_pafpn_coarse_points.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/c3_pafpn_coarse_points_box.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/c3_pafpn_coarse_points_box_roi_local.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/m0_aggregator_mlp_full_image.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/m1_pafpn_mlp_full_image.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/r0_b0_aggregator_mlp_emb64.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/paper_promptminer_rd_p2_whu_full.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/_run_ablation.sh",
+      "target": "file:scripts/load_environment.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/_run_ablation.sh",
+      "target": "file:scripts/ablations/validate_ablation_contract.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/_run_ablation.sh",
+      "target": "file:train/train_rsprompter_fusion.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "file:scripts/load_environment.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "target": "file:scripts/load_environment.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "file:scripts/ablations/b1_pafpn_mlp.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "file:scripts/ablations/m0_aggregator_mlp_full_image.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "file:scripts/ablations/m1_pafpn_mlp_full_image.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "file:scripts/ablations/c1_aggregator_coarse_points.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "file:scripts/ablations/c2_pafpn_coarse_points.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "file:scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "file:scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "file:scripts/ablations/c3_pafpn_coarse_points_box.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "file:scripts/ablations/r0_b0_aggregator_mlp_emb64.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "target": "file:scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh",
+      "target": "config:configs/whu1024_baseplus_explicit_coarse_densefix.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh",
+      "target": "config:configs/whu1024_baseplus_explicit_coarse_densefix.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/b0_aggregator_mlp.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/b1_pafpn_mlp.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/c1_aggregator_coarse_points.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/c2_pafpn_coarse_points.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/c3_pafpn_coarse_points_box.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/c3_pafpn_coarse_points_box_roi_local.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/m0_aggregator_mlp_full_image.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/m1_pafpn_mlp_full_image.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/paper_promptminer_rd_p2_whu_full.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/README.md",
+      "target": "file:scripts/ablations/r0_b0_aggregator_mlp_emb64.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/ablations/paper_promptminer_rd_p2_whu_full.sh",
+      "target": "file:scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ]
+}

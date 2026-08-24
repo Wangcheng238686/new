@@ -1,0 +1,4109 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "c5641fb67871e0542fd938d96b88409774704f88",
+  "generatedAt": "2026-08-23T07:02:39.514Z",
+  "files": {
+    "configs/_sam2_registry.py": {
+      "filePath": "configs/_sam2_registry.py",
+      "contentHash": "a4e5a2378e620a443996b398e829fd3a6d0e701b4973f7a763b3495bf87ce3fa",
+      "functions": [
+        {
+          "name": "_resolve_checkpoint",
+          "params": [
+            "model_size",
+            "env_ckpt"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "_resolve_yaml",
+          "params": [
+            "model_size",
+            "env_yaml"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_neck_in_channels",
+          "params": [
+            "model_size"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "build_sam2_cfg",
+          "params": [
+            "model_size",
+            "checkpoint",
+            "yaml_path"
+          ],
+          "returnType": "SAM2ModelConfig",
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "sha256_of_file",
+          "params": [
+            "path",
+            "chunk"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 12
+        }
+      ],
+      "classes": [
+        {
+          "name": "SAM2ModelConfig",
+          "methods": [
+            "model_size_is_large"
+          ],
+          "properties": [
+            "model_size",
+            "checkpoint",
+            "yaml",
+            "neck_in_channels"
+          ],
+          "exported": true,
+          "lineCount": 10
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "hashlib",
+          "specifiers": [
+            "hashlib"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        }
+      ],
+      "exports": [
+        "SAM2ModelConfig",
+        "_resolve_checkpoint",
+        "_resolve_yaml",
+        "_neck_in_channels",
+        "build_sam2_cfg",
+        "sha256_of_file"
+      ],
+      "totalLines": 119,
+      "hasStructuralAnalysis": true
+    },
+    "configs/environment.sh": {
+      "filePath": "configs/environment.sh",
+      "contentHash": "e2e631f89526a222b96e1447d1b7e8c4474d7f55ebf70cdd3a4e6ed5c363bf14",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 34,
+      "hasStructuralAnalysis": true
+    },
+    "configs/rsprompter_anchor_satS_v11_sam2_large_full.py": {
+      "filePath": "configs/rsprompter_anchor_satS_v11_sam2_large_full.py",
+      "contentHash": "07181410ef9203812f37075dbf626851736228f3842b3fe9a6e8443e464b66b6",
+      "functions": [
+        {
+          "name": "_load_sam2_registry",
+          "params": [],
+          "exported": true,
+          "lineCount": 22
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "importlib.util",
+          "specifiers": [
+            "importlib.util"
+          ]
+        }
+      ],
+      "exports": [
+        "_load_sam2_registry"
+      ],
+      "totalLines": 379,
+      "hasStructuralAnalysis": true
+    },
+    "configs/whu1024_baseplus_clean.py": {
+      "filePath": "configs/whu1024_baseplus_clean.py",
+      "contentHash": "40c9998eb273c405878af1ac4fe62ebe43aa5eef03a872d906c7c241b4fa8990",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 142,
+      "hasStructuralAnalysis": true
+    },
+    "configs/whu1024_baseplus_explicit_coarse.py": {
+      "filePath": "configs/whu1024_baseplus_explicit_coarse.py",
+      "contentHash": "1a722f851e0159730f14d415f7b4c3e6c47cbe4dffa2376199401cc190ac8e50",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 282,
+      "hasStructuralAnalysis": true
+    },
+    "configs/whu1024_baseplus_explicit_coarse_densefix.py": {
+      "filePath": "configs/whu1024_baseplus_explicit_coarse_densefix.py",
+      "contentHash": "0c576fe54ad1899d549f7f932ff3302b540ef545fde5dc35e3a5cbb7cc45286e",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 28,
+      "hasStructuralAnalysis": true
+    },
+    "data/__init__.py": {
+      "filePath": "data/__init__.py",
+      "contentHash": "70e6817433f4de2f8cd8ba9b48d3e709a1c244bd8e133101a0f362c25d6da2c7",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".loader",
+          "specifiers": [
+            "create_train_loader",
+            "create_test_loader"
+          ]
+        },
+        {
+          "source": "utils.transforms",
+          "specifiers": [
+            "AdaptiveResize"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 9,
+      "hasStructuralAnalysis": true
+    },
+    "data/loader.py": {
+      "filePath": "data/loader.py",
+      "contentHash": "f02df0123b7c39e62d061481b82adbd7fc85b459fab616f211a3f0bfa6b52c9f",
+      "functions": [
+        {
+          "name": "_validate_subset_ratio",
+          "params": [
+            "value",
+            "name"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "_subset_whu_dataset",
+          "params": [
+            "dataset",
+            "ratio",
+            "seed",
+            "split"
+          ],
+          "exported": true,
+          "lineCount": 26
+        },
+        {
+          "name": "_seed_worker",
+          "params": [
+            "worker_id"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "rtmdet_collate_fn",
+          "params": [
+            "batch"
+          ],
+          "exported": true,
+          "lineCount": 47
+        },
+        {
+          "name": "create_train_loader",
+          "params": [
+            "data_root",
+            "batch_size",
+            "flip_prob",
+            "vflip_prob",
+            "gaussian_noise_prob",
+            "gaussian_noise_std",
+            "random_erasing_prob",
+            "random_erasing_scale",
+            "random_erasing_ratio",
+            "image_size",
+            "multi_scale_resize_prob",
+            "multi_scale_mode",
+            "multi_scale_img_scale",
+            "use_drone",
+            "drone_data_root",
+            "num_views",
+            "drone_image_size",
+            "distributed",
+            "rank",
+            "world_size",
+            "val_ratio",
+            "val_batch_size",
+            "num_workers",
+            "normalize_drone",
+            "random_sample",
+            "seed",
+            "dataset_format",
+            "whu_train_ann_file",
+            "whu_val_ann_file",
+            "whu_train_img_subdir",
+            "whu_val_img_subdir",
+            "whu_single_class",
+            "whu_enable_category_mapping",
+            "whu_category_mapping",
+            "train_subset_ratio",
+            "val_subset_ratio"
+          ],
+          "exported": true,
+          "lineCount": 227
+        },
+        {
+          "name": "create_test_loader",
+          "params": [
+            "data_root",
+            "ann_file",
+            "image_subdir",
+            "image_size",
+            "batch_size",
+            "num_workers",
+            "seed"
+          ],
+          "exported": true,
+          "lineCount": 46
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "numpy",
+          "specifiers": [
+            "np"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "torch.utils.data",
+          "specifiers": [
+            "DataLoader"
+          ]
+        },
+        {
+          "source": "torch.utils.data.distributed",
+          "specifiers": [
+            "DistributedSampler"
+          ]
+        },
+        {
+          "source": ".satellite_dataset",
+          "specifiers": [
+            "SatelliteInstanceDataset"
+          ]
+        },
+        {
+          "source": ".whu_instance_dataset",
+          "specifiers": [
+            "WHUCocoInstanceDataset"
+          ]
+        },
+        {
+          "source": ".satellite_drone_dataset",
+          "specifiers": [
+            "SatelliteDroneDataset",
+            "rtmdet_drone_collate_fn",
+            "build_scene_id_mapping"
+          ]
+        }
+      ],
+      "exports": [
+        "_validate_subset_ratio",
+        "_subset_whu_dataset",
+        "_seed_worker",
+        "rtmdet_collate_fn",
+        "create_train_loader",
+        "create_test_loader"
+      ],
+      "totalLines": 385,
+      "hasStructuralAnalysis": true
+    },
+    "data/satellite_dataset.py": {
+      "filePath": "data/satellite_dataset.py",
+      "contentHash": "305c8915d27adccba2ad2d822533fccf204d115cec1a83579026325672447982",
+      "functions": [],
+      "classes": [
+        {
+          "name": "SatelliteInstanceDataset",
+          "methods": [
+            "__init__",
+            "_load_scenes",
+            "__len__",
+            "__getitem__",
+            "_parse_instances",
+            "_apply_random_erasing"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 273
+        }
+      ],
+      "imports": [
+        {
+          "source": "hashlib",
+          "specifiers": [
+            "hashlib"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "List",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "cv2",
+          "specifiers": [
+            "cv2"
+          ]
+        },
+        {
+          "source": "numpy",
+          "specifiers": [
+            "np"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "PIL",
+          "specifiers": [
+            "Image"
+          ]
+        },
+        {
+          "source": "torch.utils.data",
+          "specifiers": [
+            "Dataset"
+          ]
+        }
+      ],
+      "exports": [
+        "SatelliteInstanceDataset"
+      ],
+      "totalLines": 290,
+      "hasStructuralAnalysis": true
+    },
+    "data/satellite_drone_dataset.py": {
+      "filePath": "data/satellite_drone_dataset.py",
+      "contentHash": "d73f3a0fb5cf09b3a00cbcc7e7bf10d5a7ec7167b56fb10ffe155f2a14539b49",
+      "functions": [
+        {
+          "name": "build_scene_id_mapping",
+          "params": [
+            "satellite_data_root",
+            "drone_data_root"
+          ],
+          "returnType": "Dict[str, int]",
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "rtmdet_drone_collate_fn",
+          "params": [
+            "batch"
+          ],
+          "returnType": "Dict",
+          "exported": true,
+          "lineCount": 54
+        }
+      ],
+      "classes": [
+        {
+          "name": "SatelliteDroneDataset",
+          "methods": [
+            "__init__",
+            "_build_drone_transform",
+            "_build_image_index",
+            "_load_scene_data",
+            "__len__",
+            "__getitem__",
+            "_load_drone_data",
+            "_dummy_drone",
+            "_apply_random_erasing",
+            "_parse_instances"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 417
+        }
+      ],
+      "imports": [
+        {
+          "source": "hashlib",
+          "specifiers": [
+            "hashlib"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "List",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "cv2",
+          "specifiers": [
+            "cv2"
+          ]
+        },
+        {
+          "source": "numpy",
+          "specifiers": [
+            "np"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "torch.nn.functional",
+          "specifiers": [
+            "F"
+          ]
+        },
+        {
+          "source": "PIL",
+          "specifiers": [
+            "Image"
+          ]
+        },
+        {
+          "source": "torch.utils.data",
+          "specifiers": [
+            "Dataset"
+          ]
+        },
+        {
+          "source": "torchvision.transforms",
+          "specifiers": [
+            "T"
+          ]
+        }
+      ],
+      "exports": [
+        "build_scene_id_mapping",
+        "SatelliteDroneDataset",
+        "rtmdet_drone_collate_fn"
+      ],
+      "totalLines": 512,
+      "hasStructuralAnalysis": true
+    },
+    "data/whu_instance_dataset.py": {
+      "filePath": "data/whu_instance_dataset.py",
+      "contentHash": "1f4bbe7c3aa0bf26202b57737fc2d435e16a98d1a56108e2b1ec2b9678a54c8f",
+      "functions": [],
+      "classes": [
+        {
+          "name": "WHUCocoInstanceDataset",
+          "methods": [
+            "__init__",
+            "_load_samples",
+            "__len__",
+            "_to_train_label",
+            "_decode_mask",
+            "_parse_instances",
+            "_apply_random_erasing",
+            "_multi_scale_resize",
+            "__getitem__"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 380
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "List",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "cv2",
+          "specifiers": [
+            "cv2"
+          ]
+        },
+        {
+          "source": "numpy",
+          "specifiers": [
+            "np"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "torch.utils.data",
+          "specifiers": [
+            "Dataset"
+          ]
+        }
+      ],
+      "exports": [
+        "WHUCocoInstanceDataset"
+      ],
+      "totalLines": 395,
+      "hasStructuralAnalysis": true
+    },
+    "inference/__init__.py": {
+      "filePath": "inference/__init__.py",
+      "contentHash": "1bef4193a79d6e58cd9e9fcb42ef91303a3b85ca6ab37f3e0e5ddebf32d3ec84",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "inference/infer_from_checkpoint.py": {
+      "filePath": "inference/infer_from_checkpoint.py",
+      "contentHash": "4836939223cdb0f8b546cbe36572ed39bc673d856113775e7116d557f6ce9a1f",
+      "functions": [
+        {
+          "name": "parse_args",
+          "params": [],
+          "returnType": "argparse.Namespace",
+          "exported": true,
+          "lineCount": 49
+        },
+        {
+          "name": "_json_default",
+          "params": [
+            "value"
+          ],
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "_write_json",
+          "params": [
+            "path",
+            "payload"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "_resolve_device",
+          "params": [
+            "value"
+          ],
+          "returnType": "torch.device",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "_load_checkpoint",
+          "params": [
+            "path"
+          ],
+          "returnType": "Dict[str, Any]",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "_snapshot",
+          "params": [
+            "checkpoint"
+          ],
+          "returnType": "Dict[str, Any]",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "_restore_architecture_environment",
+          "params": [
+            "snapshot"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "_restore_embedded_architecture_environment",
+          "params": [
+            "model_config"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "_resolve_sam2_repo",
+          "params": [
+            "args",
+            "snapshot"
+          ],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "_targeted_sam2_checkpoint_override",
+          "params": [
+            "model_config",
+            "checkpoint_path"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "_resolve_model_config",
+          "params": [
+            "args",
+            "snapshot"
+          ],
+          "returnType": "Tuple[Dict[str, Any], str]",
+          "exported": true,
+          "lineCount": 114
+        },
+        {
+          "name": "_register_and_build",
+          "params": [
+            "model_config"
+          ],
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "_select_state_dict",
+          "params": [
+            "checkpoint",
+            "weights"
+          ],
+          "returnType": "Mapping[str, torch.Tensor]",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "_load_model_state",
+          "params": [
+            "model",
+            "state",
+            "allow_nonstrict"
+          ],
+          "returnType": "Dict[str, List[str]]",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "_resolve_dataset_contract",
+          "params": [
+            "args",
+            "snapshot"
+          ],
+          "returnType": "Dict[str, Any]",
+          "exported": true,
+          "lineCount": 56
+        },
+        {
+          "name": "_build_loader",
+          "params": [
+            "contract",
+            "num_workers"
+          ],
+          "returnType": "DataLoader",
+          "exported": true,
+          "lineCount": 26
+        },
+        {
+          "name": "_build_data_samples",
+          "params": [
+            "batch",
+            "device"
+          ],
+          "returnType": "Tuple[torch.Tensor, List[DetDataSample]]",
+          "exported": true,
+          "lineCount": 34
+        },
+        {
+          "name": "_extract_instances_numpy",
+          "params": [
+            "instances",
+            "img_shape"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 41
+        },
+        {
+          "name": "_filter_predictions",
+          "params": [
+            "predictions",
+            "threshold"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_mask_to_rle",
+          "params": [
+            "mask"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "_prediction_records",
+          "params": [
+            "predictions",
+            "meta"
+          ],
+          "returnType": "Iterable[dict]",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "_checkpoint_report",
+          "params": [
+            "checkpoint_path",
+            "checkpoint",
+            "snapshot"
+          ],
+          "returnType": "Dict[str, Any]",
+          "exported": true,
+          "lineCount": 26
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 182
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "copy",
+          "specifiers": [
+            "copy"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "Iterable",
+            "List",
+            "Mapping",
+            "MutableMapping",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "cv2",
+          "specifiers": [
+            "cv2"
+          ]
+        },
+        {
+          "source": "numpy",
+          "specifiers": [
+            "np"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "mmengine.structures",
+          "specifiers": [
+            "InstanceData"
+          ]
+        },
+        {
+          "source": "mmdet.structures",
+          "specifiers": [
+            "DetDataSample"
+          ]
+        },
+        {
+          "source": "mmdet.structures.mask",
+          "specifiers": [
+            "BitmapMasks"
+          ]
+        },
+        {
+          "source": "torch.utils.data",
+          "specifiers": [
+            "DataLoader"
+          ]
+        }
+      ],
+      "exports": [
+        "parse_args",
+        "_json_default",
+        "_write_json",
+        "_resolve_device",
+        "_load_checkpoint",
+        "_snapshot",
+        "_restore_architecture_environment",
+        "_restore_embedded_architecture_environment",
+        "_resolve_sam2_repo",
+        "_targeted_sam2_checkpoint_override",
+        "_resolve_model_config",
+        "_register_and_build",
+        "_select_state_dict",
+        "_load_model_state",
+        "_resolve_dataset_contract",
+        "_build_loader",
+        "_build_data_samples",
+        "_extract_instances_numpy",
+        "_filter_predictions",
+        "_mask_to_rle",
+        "_prediction_records",
+        "_checkpoint_report",
+        "main"
+      ],
+      "totalLines": 807,
+      "hasStructuralAnalysis": true
+    },
+    "rsprompter/__init__.py": {
+      "filePath": "rsprompter/__init__.py",
+      "contentHash": "f365360b6fc4aba6f1739562f0b82b97f5cca4b5315b743685bea14094f5bdca",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 7,
+      "hasStructuralAnalysis": true
+    },
+    "rsprompter/architecture_contract.py": {
+      "filePath": "rsprompter/architecture_contract.py",
+      "contentHash": "1208b17a9a9a8bdb0c473067e5bbf9b47e2646040160b217252a6756cfbd87e1",
+      "functions": [
+        {
+          "name": "file_sha256",
+          "params": [
+            "path"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_plain",
+          "params": [
+            "value",
+            "key"
+          ],
+          "returnType": "Any",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "normalized_model_config",
+          "params": [
+            "model_config"
+          ],
+          "returnType": "Dict[str, Any]",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "architecture_fingerprint",
+          "params": [
+            "model_config"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "architecture_id",
+          "params": [
+            "model_config"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 77
+        },
+        {
+          "name": "architecture_contract",
+          "params": [
+            "model_config"
+          ],
+          "returnType": "Dict[str, Any]",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "assert_checkpoint_architecture",
+          "params": [
+            "checkpoint",
+            "expected",
+            "operation",
+            "allow_cross_arch"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 24
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "hashlib",
+          "specifiers": [
+            "hashlib"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "collections.abc",
+          "specifiers": [
+            "Mapping"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "file_sha256",
+        "_plain",
+        "normalized_model_config",
+        "architecture_fingerprint",
+        "architecture_id",
+        "architecture_contract",
+        "assert_checkpoint_architecture"
+      ],
+      "totalLines": 165,
+      "hasStructuralAnalysis": true
+    },
+    "rsprompter/ckpt_migration.py": {
+      "filePath": "rsprompter/ckpt_migration.py",
+      "contentHash": "310454153a4a74599001a35a4e6c4b9f400988419ca333f3e82e82719238bf1b",
+      "functions": [
+        {
+          "name": "migrate_legacy_shape_gate_state_dict",
+          "params": [
+            "source_state",
+            "target_state"
+          ],
+          "returnType": "Tuple[Dict[str, torch.Tensor], List[Tuple[str, str]]]",
+          "exported": true,
+          "lineCount": 21
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "List",
+            "Mapping",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        }
+      ],
+      "exports": [
+        "migrate_legacy_shape_gate_state_dict"
+      ],
+      "totalLines": 29,
+      "hasStructuralAnalysis": true
+    },
+    "rsprompter/ckpt_utils.py": {
+      "filePath": "rsprompter/ckpt_utils.py",
+      "contentHash": "86aff4570f3a77b837fc67dff82a2903208a3e342248b90129c4ed7511533037",
+      "functions": [
+        {
+          "name": "_match_any_pattern",
+          "params": [
+            "key",
+            "patterns"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "load_module_state_dict_strict",
+          "params": [
+            "module",
+            "state_dict",
+            "module_name",
+            "strict_reproduction",
+            "allowed_missing_patterns",
+            "allowed_unexpected_patterns",
+            "log_prefix"
+          ],
+          "returnType": "Dict[str, int]",
+          "exported": true,
+          "lineCount": 75
+        },
+        {
+          "name": "is_main_process",
+          "params": [],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 14
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "fnmatch",
+          "specifiers": [
+            "fnmatch"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Iterable",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "torch.nn",
+          "specifiers": [
+            "Module"
+          ]
+        }
+      ],
+      "exports": [
+        "_match_any_pattern",
+        "load_module_state_dict_strict",
+        "is_main_process"
+      ],
+      "totalLines": 121,
+      "hasStructuralAnalysis": true
+    },
+    "rsprompter/coarse_mask_loss.py": {
+      "filePath": "rsprompter/coarse_mask_loss.py",
+      "contentHash": "41409e9205d9d829244969e6fc183e0d292eb73765a35dbbf227ad01ae04935b",
+      "functions": [],
+      "classes": [
+        {
+          "name": "CoarseMaskLoss",
+          "methods": [
+            "__init__",
+            "_validate_weight_schedule",
+            "set_current_epoch",
+            "effective_weight",
+            "forward",
+            "_morphological_boundary",
+            "_boundary_loss",
+            "_boundary_metric"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 225
+        }
+      ],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "List",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "torch.nn",
+          "specifiers": [
+            "nn"
+          ]
+        },
+        {
+          "source": "torch.nn.functional",
+          "specifiers": [
+            "F"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "Tensor"
+          ]
+        }
+      ],
+      "exports": [
+        "CoarseMaskLoss"
+      ],
+      "totalLines": 248,
+      "hasStructuralAnalysis": true
+    },
+    "rsprompter/dense_prompt_utils.py": {
+      "filePath": "rsprompter/dense_prompt_utils.py",
+      "contentHash": "eec34836877ba3310be77120850e74aeb3a174fcbee9d0860355a20d624e9e1d",
+      "functions": [
+        {
+          "name": "transform_coarse_prompt",
+          "params": [
+            "coarse_logits",
+            "transform",
+            "gamma",
+            "strength",
+            "clamp_range",
+            "temperature",
+            "detach_input"
+          ],
+          "returnType": "Tensor",
+          "exported": true,
+          "lineCount": 47
+        },
+        {
+          "name": "gaussian_prompt_from_roi_coarse",
+          "params": [
+            "coarse_logits",
+            "boxes",
+            "mask_h",
+            "mask_w",
+            "image_size",
+            "foreground_threshold",
+            "omega",
+            "gamma"
+          ],
+          "returnType": "Tuple[Tensor, Tensor, Dict[str, Tensor]]",
+          "exported": true,
+          "lineCount": 144
+        },
+        {
+          "name": "replace_invalid_dense_with_base",
+          "params": [
+            "dense_embeddings",
+            "base_embeddings",
+            "valid"
+          ],
+          "returnType": "Tensor",
+          "exported": true,
+          "lineCount": 21
+        },
+        {
+          "name": "paste_roi_to_full_canvas",
+          "params": [
+            "roi_prompt_logits",
+            "boxes",
+            "mask_h",
+            "mask_w",
+            "image_size",
+            "outside_fill_logit"
+          ],
+          "returnType": "Tensor",
+          "exported": true,
+          "lineCount": 59
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "torch.nn.functional",
+          "specifiers": [
+            "F"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "Tensor"
+          ]
+        }
+      ],
+      "exports": [
+        "transform_coarse_prompt",
+        "gaussian_prompt_from_roi_coarse",
+        "replace_invalid_dense_with_base",
+        "paste_roi_to_full_canvas"
+      ],
+      "totalLines": 290,
+      "hasStructuralAnalysis": true
+    },
+    "rsprompter/models.py": {
+      "filePath": "rsprompter/models.py",
+      "contentHash": "68f4828938558e4698293a4adc04294e97832e5a00b8323e48d7b8e580e2178a",
+      "functions": [
+        {
+          "name": "interpolate_sam_pos_embed",
+          "params": [
+            "state_dict",
+            "new_image_size",
+            "patch_size"
+          ],
+          "exported": true,
+          "lineCount": 38
+        }
+      ],
+      "classes": [
+        {
+          "name": "LN2d",
+          "methods": [
+            "__init__",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "AP75DualLossShared2FCBBoxHead",
+          "methods": [
+            "__init__",
+            "loss"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 62
+        },
+        {
+          "name": "RSSamPositionalEmbedding",
+          "methods": [
+            "__init__",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 46
+        },
+        {
+          "name": "RSSamVisionEncoder",
+          "methods": [
+            "__init__",
+            "init_weights",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 88
+        },
+        {
+          "name": "RSSamPromptEncoder",
+          "methods": [
+            "__init__",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "RSSamMaskDecoder",
+          "methods": [
+            "__init__",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "RSFPN",
+          "methods": [
+            "__init__",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "RSFeatureAggregator",
+          "methods": [
+            "__init__",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 70
+        },
+        {
+          "name": "RSSimpleFPN",
+          "methods": [
+            "__init__",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 67
+        },
+        {
+          "name": "RSPrompterAnchor",
+          "methods": [
+            "__init__",
+            "_set_grad_false",
+            "get_prompt_debug_stats",
+            "get_uav_debug_stats",
+            "get_image_wide_positional_embeddings",
+            "_select_sam_image_embeddings",
+            "extract_feat",
+            "loss",
+            "predict"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 205
+        },
+        {
+          "name": "RSPrompterAnchorRoIPromptHead",
+          "methods": [
+            "__init__",
+            "get_prompt_debug_stats",
+            "bbox_loss",
+            "_aligned_box_iou",
+            "_decode_positive_refined_boxes",
+            "_mask_forward",
+            "mask_loss",
+            "_shape_prior_aux_loss",
+            "_shape_prior_targets",
+            "loss",
+            "predict_mask",
+            "predict"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 758
+        },
+        {
+          "name": "RSPrompterAnchorMaskHead",
+          "methods": [
+            "__init__",
+            "init_weights",
+            "forward",
+            "get_targets",
+            "loss_and_target",
+            "_predict_by_feat_single"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 190
+        }
+      ],
+      "imports": [
+        {
+          "source": "copy",
+          "specifiers": [
+            "copy"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "List",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "einops",
+          "specifiers": [
+            "einops"
+          ]
+        },
+        {
+          "source": "numpy",
+          "specifiers": [
+            "np"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "torch.nn.functional",
+          "specifiers": [
+            "F"
+          ]
+        },
+        {
+          "source": "mmcv.cnn",
+          "specifiers": [
+            "ConvModule",
+            "build_norm_layer"
+          ]
+        },
+        {
+          "source": "mmengine",
+          "specifiers": [
+            "ConfigDict"
+          ]
+        },
+        {
+          "source": "mmengine.dist",
+          "specifiers": [
+            "is_main_process"
+          ]
+        },
+        {
+          "source": "mmengine.model",
+          "specifiers": [
+            "BaseModule"
+          ]
+        },
+        {
+          "source": "mmengine.registry",
+          "specifiers": [
+            "MMENGINE_MODELS"
+          ]
+        },
+        {
+          "source": ".ckpt_utils",
+          "specifiers": [
+            "load_module_state_dict_strict"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "Tensor",
+            "nn"
+          ]
+        },
+        {
+          "source": "transformers",
+          "specifiers": [
+            "SamConfig"
+          ]
+        },
+        {
+          "source": "transformers.models.sam.modeling_sam",
+          "specifiers": [
+            "SamMaskDecoder",
+            "SamPositionalEmbedding",
+            "SamPromptEncoder",
+            "SamVisionEncoder",
+            "SamVisionEncoderOutput"
+          ]
+        },
+        {
+          "source": "mmdet.models",
+          "specifiers": [
+            "MaskRCNN",
+            "StandardRoIHead"
+          ]
+        },
+        {
+          "source": "mmdet.models.roi_heads.bbox_heads",
+          "specifiers": [
+            "Shared2FCBBoxHead"
+          ]
+        },
+        {
+          "source": "mmdet.models.roi_heads.mask_heads",
+          "specifiers": [
+            "FCNMaskHead"
+          ]
+        },
+        {
+          "source": "mmdet.models.task_modules",
+          "specifiers": [
+            "SamplingResult"
+          ]
+        },
+        {
+          "source": "mmdet.models.utils",
+          "specifiers": [
+            "empty_instances",
+            "unpack_gt_instances"
+          ]
+        },
+        {
+          "source": "mmdet.registry",
+          "specifiers": [
+            "MODELS"
+          ]
+        },
+        {
+          "source": "mmdet.structures",
+          "specifiers": [
+            "DetDataSample",
+            "SampleList"
+          ]
+        },
+        {
+          "source": "mmdet.structures.bbox",
+          "specifiers": [
+            "bbox2roi",
+            "get_box_tensor"
+          ]
+        },
+        {
+          "source": "mmdet.utils",
+          "specifiers": [
+            "ConfigType",
+            "InstanceList",
+            "MultiConfig",
+            "OptConfigType"
+          ]
+        }
+      ],
+      "exports": [
+        "LN2d",
+        "AP75DualLossShared2FCBBoxHead",
+        "RSSamPositionalEmbedding",
+        "interpolate_sam_pos_embed",
+        "RSSamVisionEncoder",
+        "RSSamPromptEncoder",
+        "RSSamMaskDecoder",
+        "RSFPN",
+        "RSFeatureAggregator",
+        "RSSimpleFPN",
+        "RSPrompterAnchor",
+        "RSPrompterAnchorRoIPromptHead",
+        "RSPrompterAnchorMaskHead"
+      ],
+      "totalLines": 1667,
+      "hasStructuralAnalysis": true
+    },
+    "rsprompter/models_sam2.py": {
+      "filePath": "rsprompter/models_sam2.py",
+      "contentHash": "b295ce27d3d4c353f920a95860cee64ea96e06d3051f2af5cac49b75a8c3c3ad",
+      "functions": [
+        {
+          "name": "_load_sam2_checkpoint",
+          "params": [
+            "checkpoint_path",
+            "map_location"
+          ],
+          "returnType": "Dict",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_resolve_sam2_checkpoint_path",
+          "params": [
+            "checkpoint_path"
+          ],
+          "returnType": "Optional[str]",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_load_pretrained_no_mask_embedding",
+          "params": [
+            "checkpoint_path"
+          ],
+          "returnType": "Tensor",
+          "exported": true,
+          "lineCount": 24
+        }
+      ],
+      "classes": [
+        {
+          "name": "_DiscardedIoUPredictionHead",
+          "methods": [
+            "__init__",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "_UnusedPromptEmbedding",
+          "methods": [
+            "__init__",
+            "weight",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "RSSAM2PositionalEmbedding",
+          "methods": [
+            "__init__",
+            "get_dense_pe",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 47
+        },
+        {
+          "name": "RSSAM2VisionEncoder",
+          "methods": [
+            "__init__",
+            "_detect_model_size",
+            "_load_sam2_encoder",
+            "_apply_lora",
+            "_audit_lora_trainable_params",
+            "_freeze_params",
+            "init_weights",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 382
+        },
+        {
+          "name": "RSSAM2MaskDecoderWrapper",
+          "methods": [
+            "__init__",
+            "_load_sam2_decoder",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 195
+        },
+        {
+          "name": "RSFeatureAggregatorSAM2",
+          "methods": [
+            "__init__",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 153
+        },
+        {
+          "name": "RSSAM2PAFPN",
+          "methods": [
+            "__init__",
+            "_conv_block",
+            "_init_weights",
+            "_parse_inputs",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 143
+        },
+        {
+          "name": "RSPrompterAnchorMaskHeadSAM2",
+          "methods": [
+            "__init__",
+            "assert_no_mask_embedding_contract",
+            "init_weights",
+            "_shape_prior_to_prompt_mask",
+            "_select_explicit_prompt_inputs",
+            "_neutralize_invalid_point_tokens",
+            "_effective_shape_dense_alpha",
+            "_dense_embedding_box_support",
+            "_pe_mask_input_size",
+            "_debug_delta_ratio",
+            "set_current_epoch",
+            "_shape_point_gt_stats",
+            "get_uav_debug_stats",
+            "_roi_sam_local_boxes",
+            "_roi_sam_crop_feature",
+            "forward",
+            "get_targets",
+            "get_full_image_targets",
+            "get_final_mask_roi_support",
+            "roi_balanced_final_mask_loss",
+            "get_coarse_targets",
+            "coarse_mask_loss",
+            "loss_and_target",
+            "_predict_by_feat_single"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 1888
+        }
+      ],
+      "imports": [
+        {
+          "source": "math",
+          "specifiers": [
+            "math"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "List",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "einops",
+          "specifiers": [
+            "einops"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "torch.nn",
+          "specifiers": [
+            "nn"
+          ]
+        },
+        {
+          "source": "torch.nn.functional",
+          "specifiers": [
+            "F"
+          ]
+        },
+        {
+          "source": "mmengine",
+          "specifiers": [
+            "ConfigDict"
+          ]
+        },
+        {
+          "source": "mmengine.dist",
+          "specifiers": [
+            "is_main_process"
+          ]
+        },
+        {
+          "source": "mmengine.model",
+          "specifiers": [
+            "BaseModule"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "Tensor"
+          ]
+        },
+        {
+          "source": "mmcv.ops",
+          "specifiers": [
+            "RoIAlign"
+          ]
+        },
+        {
+          "source": "mmdet.models",
+          "specifiers": [
+            "MaskRCNN",
+            "StandardRoIHead"
+          ]
+        },
+        {
+          "source": "mmdet.models.roi_heads.mask_heads",
+          "specifiers": [
+            "FCNMaskHead"
+          ]
+        },
+        {
+          "source": "mmdet.models.task_modules",
+          "specifiers": [
+            "SamplingResult"
+          ]
+        },
+        {
+          "source": "mmdet.models.utils",
+          "specifiers": [
+            "empty_instances",
+            "unpack_gt_instances"
+          ]
+        },
+        {
+          "source": "mmdet.registry",
+          "specifiers": [
+            "MODELS"
+          ]
+        },
+        {
+          "source": "mmdet.structures",
+          "specifiers": [
+            "DetDataSample",
+            "SampleList"
+          ]
+        },
+        {
+          "source": "mmdet.structures.bbox",
+          "specifiers": [
+            "bbox2roi"
+          ]
+        },
+        {
+          "source": "mmdet.structures.mask.mask_target",
+          "specifiers": [
+            "mask_target"
+          ]
+        },
+        {
+          "source": "mmdet.utils",
+          "specifiers": [
+            "ConfigType",
+            "InstanceList",
+            "OptConfigType"
+          ]
+        },
+        {
+          "source": ".ckpt_utils",
+          "specifiers": [
+            "load_module_state_dict_strict"
+          ]
+        }
+      ],
+      "exports": [
+        "_DiscardedIoUPredictionHead",
+        "_UnusedPromptEmbedding",
+        "_load_sam2_checkpoint",
+        "_resolve_sam2_checkpoint_path",
+        "_load_pretrained_no_mask_embedding",
+        "RSSAM2PositionalEmbedding",
+        "RSSAM2VisionEncoder",
+        "RSSAM2MaskDecoderWrapper",
+        "RSFeatureAggregatorSAM2",
+        "RSSAM2PAFPN",
+        "RSPrompterAnchorMaskHeadSAM2"
+      ],
+      "totalLines": 2944,
+      "hasStructuralAnalysis": true
+    },
+    "rsprompter/p2_boundary_refiner.py": {
+      "filePath": "rsprompter/p2_boundary_refiner.py",
+      "contentHash": "8b5b87684672759a2e74a2c0e4cce76258a6eef9d8126b507e4312d3e90be6a3",
+      "functions": [
+        {
+          "name": "_group_norm",
+          "params": [
+            "channels",
+            "preferred_groups"
+          ],
+          "returnType": "nn.GroupNorm",
+          "exported": true,
+          "lineCount": 5
+        }
+      ],
+      "classes": [
+        {
+          "name": "P2BoundaryRefiner",
+          "methods": [
+            "__init__",
+            "_replicate_avg3",
+            "_morphological_boundary",
+            "_dilate",
+            "_raw_support",
+            "forward",
+            "boundary_loss"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 238
+        }
+      ],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "torch.nn",
+          "specifiers": [
+            "nn"
+          ]
+        },
+        {
+          "source": "torch.nn.functional",
+          "specifiers": [
+            "F"
+          ]
+        },
+        {
+          "source": "mmcv.ops",
+          "specifiers": [
+            "RoIAlign"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "Tensor"
+          ]
+        }
+      ],
+      "exports": [
+        "_group_norm",
+        "P2BoundaryRefiner"
+      ],
+      "totalLines": 262,
+      "hasStructuralAnalysis": true
+    },
+    "rsprompter/shape_prior.py": {
+      "filePath": "rsprompter/shape_prior.py",
+      "contentHash": "2034aae9ec8520ab4c77304b4aa0e915c72b9fb5e833993bb49024072935545e",
+      "functions": [
+        {
+          "name": "_logit",
+          "params": [
+            "value"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 3
+        }
+      ],
+      "classes": [
+        {
+          "name": "SmallMaskDecoder",
+          "methods": [
+            "__init__",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 34
+        },
+        {
+          "name": "RoIBoxEncoding",
+          "methods": [
+            "__init__",
+            "forward"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 44
+        },
+        {
+          "name": "ShapePriorInjector",
+          "methods": [
+            "__init__",
+            "forward_context_visual",
+            "_project_context",
+            "_activate",
+            "forward_roi",
+            "get_debug_stats"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 236
+        },
+        {
+          "name": "ShapePointMiner",
+          "methods": [
+            "__init__",
+            "set_current_epoch",
+            "_warmup_stage",
+            "erode",
+            "dilate",
+            "_dilate_steps",
+            "_inside_distance",
+            "_grid",
+            "_pick_platform_center",
+            "_distance_mask",
+            "forward",
+            "get_last_local_points"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 530
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "math",
+          "specifiers": [
+            "math"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "torch.nn",
+          "specifiers": [
+            "nn"
+          ]
+        },
+        {
+          "source": "torch.nn.functional",
+          "specifiers": [
+            "F"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "Tensor"
+          ]
+        }
+      ],
+      "exports": [
+        "SmallMaskDecoder",
+        "RoIBoxEncoding",
+        "_logit",
+        "ShapePriorInjector",
+        "ShapePointMiner"
+      ],
+      "totalLines": 878,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/README.md": {
+      "filePath": "scripts/ablations/README.md",
+      "contentHash": "d08d24e6c90a1d2589341ef449be14cb88889eda2335e1ea6972d8a69f69475e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 849,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/_run_ablation.sh": {
+      "filePath": "scripts/ablations/_run_ablation.sh",
+      "contentHash": "5d1d8c377404f8676cc269315eaf752350ae3d5bf2cc1c448d9630ceaf126ff6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 590,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/b0_aggregator_mlp.sh": {
+      "filePath": "scripts/ablations/b0_aggregator_mlp.sh",
+      "contentHash": "f77ea1f524e0d03fd23853484ffdb07b450cac60fcbe4b8bbb1a9e83f3df4835",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/b1_pafpn_mlp.sh": {
+      "filePath": "scripts/ablations/b1_pafpn_mlp.sh",
+      "contentHash": "414874b7acbf2aec175b058f4cc8311f25ec596cd7f1bb5585b7ea0212b99015",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 9,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/c1_aggregator_coarse_points.sh": {
+      "filePath": "scripts/ablations/c1_aggregator_coarse_points.sh",
+      "contentHash": "23a8e854d3d86459f1719f03ceba57cc5a1d078d208cbb678d96fad5e34801e9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/c2_pafpn_coarse_points.sh": {
+      "filePath": "scripts/ablations/c2_pafpn_coarse_points.sh",
+      "contentHash": "a9605fc757d145f814b9d7dbe0df5e23813bb710a6470d50e99999be758d97ad",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh": {
+      "filePath": "scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh",
+      "contentHash": "d44131cabeed7c6da2f56216bfe8fbf9c6ccc5a4233c5b9d2be820dcc8ab530c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 15,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh": {
+      "filePath": "scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh",
+      "contentHash": "8000b8b79be6e5d1e552116307eb32c44664c6ff8385d1b00c6685fd06d25c0d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 13,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/c3_pafpn_coarse_points_box.sh": {
+      "filePath": "scripts/ablations/c3_pafpn_coarse_points_box.sh",
+      "contentHash": "1b9cf1ba8f0095ba72b3a3610f0d3ee1b684ab4d01b810f30fea737b6d1f1d54",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/c3_pafpn_coarse_points_box_roi_local.sh": {
+      "filePath": "scripts/ablations/c3_pafpn_coarse_points_box_roi_local.sh",
+      "contentHash": "956e4ffb85cb056ae2d4c23e4d14fceb76a1a38e2f944c7571863a2abee23018",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 33,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/c4_pafpn_coarse_points_box_dense.sh": {
+      "filePath": "scripts/ablations/c4_pafpn_coarse_points_box_dense.sh",
+      "contentHash": "89015c4fd8fc6feef8cb7f65a741a7d6c8eadd5a79c96bbcb8c9773bfb270078",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh": {
+      "filePath": "scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh",
+      "contentHash": "0c9ebc62d357c5896db3d2d33d6afb1690cecd8f0225347fb5c1d3cd3be3912e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 27,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh": {
+      "filePath": "scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh",
+      "contentHash": "0a4a29af170ac1f9e95a1105649270754f713729e201421c534a0e8bafff1691",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 32,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh": {
+      "filePath": "scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "contentHash": "2cbcf1c6366323a3cbcf33c7270442fede9eeac3aa0322d4d8007514729844e7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 11,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/coarse_strategy/README.md": {
+      "filePath": "scripts/ablations/coarse_strategy/README.md",
+      "contentHash": "8da822c62307c815c1f341fde53dc18363141f6051f378aec4ef9a6d02a2a735",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 15,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/coarse_strategy/s0_c2_fixed_w010.sh": {
+      "filePath": "scripts/ablations/coarse_strategy/s0_c2_fixed_w010.sh",
+      "contentHash": "99b425d915e617ed55a95479be4bf6cd8710c838d38f060150ac8bdce212c01b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 16,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/coarse_strategy/s1_c2_fixed_w020.sh": {
+      "filePath": "scripts/ablations/coarse_strategy/s1_c2_fixed_w020.sh",
+      "contentHash": "29b9e3b18929c38ad4dbc7a23d5e25cc129ed7e94dc7779a23cc0e0867128680",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 16,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/coarse_strategy/s2_c2_two_stage_w020_w010.sh": {
+      "filePath": "scripts/ablations/coarse_strategy/s2_c2_two_stage_w020_w010.sh",
+      "contentHash": "08335ebf616dc2ec8dfe4283a5c5ddb6b4031ca29a59110b260c68d049c28fac",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 19,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/m0_aggregator_mlp_full_image.sh": {
+      "filePath": "scripts/ablations/m0_aggregator_mlp_full_image.sh",
+      "contentHash": "361e309669fbae8436f468a7bd48d179fa364089a4683ecbab7be18bf84c3d91",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/m1_pafpn_mlp_full_image.sh": {
+      "filePath": "scripts/ablations/m1_pafpn_mlp_full_image.sh",
+      "contentHash": "40401f4e23a02df39804b75743ca8fbe060d0bc7232cca0da562c7fd2223af94",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/monitor_b0_then_serial.sh": {
+      "filePath": "scripts/ablations/monitor_b0_then_serial.sh",
+      "contentHash": "07e181955b4ad79c1562b191b874af214cf839d57b58797ab00d802fd7c1b073",
+      "functions": [
+        {
+          "name": "usage",
+          "params": [],
+          "exported": false,
+          "lineCount": 11
+        },
+        {
+          "name": "monitor_log",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "process_is_b0",
+          "params": [],
+          "exported": false,
+          "lineCount": 16
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 203,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/paper_promptminer_rd_p2_whu_full.sh": {
+      "filePath": "scripts/ablations/paper_promptminer_rd_p2_whu_full.sh",
+      "contentHash": "390ac398f0689bd89b53a3761cadeb65aede9d12ad40a3121f52d6ad5e1a64e5",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 47,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/prompt_content_p2_from_r1_best.sh": {
+      "filePath": "scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "contentHash": "a8fb4bb1c54d848475d1c9f31646ec1e05589c3dd6270ec7cb0cc8bfdd9bd090",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 51,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/prompt_content_p2_matrix/e1_point_p2_off.sh": {
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e1_point_p2_off.sh",
+      "contentHash": "0f1bf9c89afb86f24f90f13171756bbf1d64c04a4f4c4c7978b7505c645c43d0",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/prompt_content_p2_matrix/e2_point_p2_on.sh": {
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e2_point_p2_on.sh",
+      "contentHash": "2ebe988781d39a99cef1f620ee1a873ffc23ce923f776c7bffba8e46947dacf4",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/prompt_content_p2_matrix/e3_box_p2_off.sh": {
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e3_box_p2_off.sh",
+      "contentHash": "a1140a78ca21ef7ca4380adf321a0488c8a16116c393780e3a4e2a63a592f8c6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/prompt_content_p2_matrix/e4_box_p2_on.sh": {
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e4_box_p2_on.sh",
+      "contentHash": "506cd06b22ff388327a1caea32e2cf29031ef37e89e69845c7917c78f99727d3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/prompt_content_p2_matrix/e5_mask_p2_off.sh": {
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e5_mask_p2_off.sh",
+      "contentHash": "25ce747e4b2e65194265932f9a6cc24dd59bb437ad2a1f6a0da889ff643eebea",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/prompt_content_p2_matrix/e6_mask_p2_on.sh": {
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e6_mask_p2_on.sh",
+      "contentHash": "f7794c76fa9420a6b0a0fc7634400047a1ca83f32ad562ced4d3b7aa21b25fb1",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/prompt_content_p2_matrix/run_serial.sh": {
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/run_serial.sh",
+      "contentHash": "b10c8f04ff72dfcf8fc59fdfa2ac372c0b9e3cdc378f7d286d5ad12d3d7a7ed2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 34,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/r0_b0_aggregator_mlp_emb64.sh": {
+      "filePath": "scripts/ablations/r0_b0_aggregator_mlp_emb64.sh",
+      "contentHash": "367c70a81a286d1066c5416994068f8253efc9b8375897943d5eb5e45aa4663f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 11,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh": {
+      "filePath": "scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh",
+      "contentHash": "ea20b4a40d8dba60a2d3d6aa1abd62440230903dbe16c59a36774fd57646c94d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 11,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh": {
+      "filePath": "scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh",
+      "contentHash": "07ab742556a1fc719e72e3774c282625ce0def454e6eebbaa4083c8a4a3d8082",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 16,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh": {
+      "filePath": "scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh",
+      "contentHash": "31c4db021bd6325c1ba084e2cfde0dfe06c437591f746c341fb4f5fd741dcbed",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 11,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh": {
+      "filePath": "scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+      "contentHash": "81bc06530b8242a3a3ffee391d9174e8bc9e63eb308913fca6ff47da175af7ab",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 13,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_roi_local_emb64.sh": {
+      "filePath": "scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_roi_local_emb64.sh",
+      "contentHash": "482c85ea6e25ab2d9c67a959ddd1ec65c0f49e54d84be411b9c164d5309f5766",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 29,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/run_prompt_content_p2_matrix.sh": {
+      "filePath": "scripts/ablations/run_prompt_content_p2_matrix.sh",
+      "contentHash": "aea4e19590ef33454bb60255315defb8b36b2ee2f3ab33839c16f92ac3d7b2d6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 15,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/smoke_all.sh": {
+      "filePath": "scripts/ablations/smoke_all.sh",
+      "contentHash": "c3d6be148313519aa6b0b5c89639cd5522095b6a48a1ac880fb94ef4c1bbfd7c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 194,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/smoke_ddp_control_plane.py": {
+      "filePath": "scripts/ablations/smoke_ddp_control_plane.py",
+      "contentHash": "e61986f1217e75a72130f5242a836552548f8f4bf8de4090d3aae0a4a1593ccd",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 13
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "timedelta"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "torch.distributed",
+          "specifiers": [
+            "dist"
+          ]
+        },
+        {
+          "source": "train.train_rsprompter_fusion",
+          "specifiers": [
+            "_broadcast_stop_training"
+          ]
+        }
+      ],
+      "exports": [
+        "main"
+      ],
+      "totalLines": 37,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/test_dense_prompt_utils.py": {
+      "filePath": "scripts/ablations/test_dense_prompt_utils.py",
+      "contentHash": "9801c828bf5f4bea89f85d118d60edc52489ceaeda55875094bacea757722884",
+      "functions": [],
+      "classes": [
+        {
+          "name": "DensePromptUtilsTest",
+          "methods": [
+            "test_raw_detach_is_an_explicit_gradient_control",
+            "test_gaussian_maps_roi_center_and_area_to_full_canvas",
+            "test_anisotropic_box_still_produces_image_space_isotropic_gaussian",
+            "test_empty_coarse_returns_invalid_zero_prompt",
+            "test_invalid_roi_restores_exact_no_mask_base"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 87
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "rsprompter.dense_prompt_utils",
+          "specifiers": [
+            "gaussian_prompt_from_roi_coarse",
+            "replace_invalid_dense_with_base",
+            "transform_coarse_prompt"
+          ]
+        }
+      ],
+      "exports": [
+        "DensePromptUtilsTest"
+      ],
+      "totalLines": 112,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/validate_ablation_contract.py": {
+      "filePath": "scripts/ablations/validate_ablation_contract.py",
+      "contentHash": "37f4fd18ed5ca9477bd23d7a8f61b87721feabb94fa9047512971fd6dda38fa7",
+      "functions": [
+        {
+          "name": "parse_args",
+          "params": [],
+          "exported": true,
+          "lineCount": 42
+        },
+        {
+          "name": "require",
+          "params": [
+            "condition",
+            "message"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "expected_subset_size",
+          "params": [
+            "full_size",
+            "ratio"
+          ],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 786
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "math",
+          "specifiers": [
+            "math"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        }
+      ],
+      "exports": [
+        "parse_args",
+        "require",
+        "expected_subset_size",
+        "main"
+      ],
+      "totalLines": 859,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations/wait_then_launch_b0_r0.sh": {
+      "filePath": "scripts/ablations/wait_then_launch_b0_r0.sh",
+      "contentHash": "312c2364f92deb0ef801dd513dee310c49877457c9d104d6c28bb893eee15857",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 64,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations_uecoco/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh": {
+      "filePath": "scripts/ablations_uecoco/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+      "contentHash": "1932c060a62e9011d14f590d1afc3f2340b9a90e2ad96393acf70d9b8f3fb03b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 204,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/ablations_uecoco/wait_then_launch_r1_c4_rd.sh": {
+      "filePath": "scripts/ablations_uecoco/wait_then_launch_r1_c4_rd.sh",
+      "contentHash": "3d981648c99e3a5e07e49a73fa3348e37c414e7a24407061e33ce4f338cfdb71",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 56,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/infer_whu_checkpoint.sh": {
+      "filePath": "scripts/infer_whu_checkpoint.sh",
+      "contentHash": "ae6e419bf69ed12de35d89f3b5d31c1f7ce1a87ba5126312bb658699c8d06881",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 21,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/load_environment.sh": {
+      "filePath": "scripts/load_environment.sh",
+      "contentHash": "a8f159775d7101fe60c3bda27ecc5f11848fce07a07176301c3e01e0264e812d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 42,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/resplit_ue_coco.py": {
+      "filePath": "scripts/resplit_ue_coco.py",
+      "contentHash": "2fdeaca097397f3bc989e4e6e97031d9192bce75aecaec3726e400726ed5a81c",
+      "functions": [
+        {
+          "name": "parse_grid",
+          "params": [
+            "file_name"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "load_all_images",
+          "params": [
+            "ann_dir"
+          ],
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "assign_cells",
+          "params": [
+            "cells",
+            "seed"
+          ],
+          "exported": true,
+          "lineCount": 27
+        },
+        {
+          "name": "renumber",
+          "params": [
+            "images",
+            "annotations"
+          ],
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 79
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "shutil",
+          "specifiers": [
+            "shutil"
+          ]
+        },
+        {
+          "source": "collections",
+          "specifiers": [
+            "defaultdict"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "numpy",
+          "specifiers": [
+            "np"
+          ]
+        }
+      ],
+      "exports": [
+        "parse_grid",
+        "load_all_images",
+        "assign_cells",
+        "renumber",
+        "main"
+      ],
+      "totalLines": 200,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/run_whu1024_explicit_coarse_4gpu.sh": {
+      "filePath": "scripts/run_whu1024_explicit_coarse_4gpu.sh",
+      "contentHash": "558368faaacdbbb3fbb7197c155802737d358c70168b03af2f46e3168f16844e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 41,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/smoke_test_components.py": {
+      "filePath": "scripts/smoke_test_components.py",
+      "contentHash": "fcca2f0668ff7d52992f886994ab1e84a8aa548a5e230935e2f7452daff805ca",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 403
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "types",
+          "specifiers": [
+            "SimpleNamespace"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "patch"
+          ]
+        },
+        {
+          "source": "numpy",
+          "specifiers": [
+            "np"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "mmengine",
+          "specifiers": [
+            "ConfigDict"
+          ]
+        },
+        {
+          "source": "mmengine.structures",
+          "specifiers": [
+            "InstanceData"
+          ]
+        },
+        {
+          "source": "mmdet.structures.mask",
+          "specifiers": [
+            "BitmapMasks"
+          ]
+        },
+        {
+          "source": "rsprompter.coarse_mask_loss",
+          "specifiers": [
+            "CoarseMaskLoss"
+          ]
+        },
+        {
+          "source": "rsprompter.dense_prompt_utils",
+          "specifiers": [
+            "paste_roi_to_full_canvas"
+          ]
+        },
+        {
+          "source": "rsprompter.p2_boundary_refiner",
+          "specifiers": [
+            "P2BoundaryRefiner"
+          ]
+        },
+        {
+          "source": "rsprompter.models_sam2",
+          "specifiers": [
+            "RSSAM2PAFPN",
+            "RSSAM2PositionalEmbedding",
+            "RSPrompterAnchorMaskHeadSAM2",
+            "_load_pretrained_no_mask_embedding"
+          ]
+        },
+        {
+          "source": "rsprompter.models",
+          "specifiers": [
+            "RSPrompterAnchor"
+          ]
+        },
+        {
+          "source": "rsprompter.models_sam2",
+          "specifiers": [
+            "models_sam2"
+          ]
+        },
+        {
+          "source": "rsprompter.shape_prior",
+          "specifiers": [
+            "ShapePointMiner",
+            "ShapePriorInjector"
+          ]
+        },
+        {
+          "source": "utils.coco_eval_utils",
+          "specifiers": [
+            "build_coco_gt_and_dt"
+          ]
+        }
+      ],
+      "exports": [
+        "main"
+      ],
+      "totalLines": 439,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/smoke_test_components.sh": {
+      "filePath": "scripts/smoke_test_components.sh",
+      "contentHash": "bcea65b66a1b065bf054a9e468ef297eb5180f74f08f12b7cc1fedb0cdf5223f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 9,
+      "hasStructuralAnalysis": true
+    },
+    "tools/mask_to_coco_whu512.py": {
+      "filePath": "tools/mask_to_coco_whu512.py",
+      "contentHash": "a1d9b12b8ba71e4e949d4bf318601d868d792c7612d8188ba6fb6dc242838f71",
+      "functions": [
+        {
+          "name": "mask_to_polygons",
+          "params": [
+            "binary_mask",
+            "min_area"
+          ],
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "convert_split",
+          "params": [
+            "data_root",
+            "split",
+            "output_dir",
+            "min_area"
+          ],
+          "exported": true,
+          "lineCount": 82
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 16
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "cv2",
+          "specifiers": [
+            "cv2"
+          ]
+        },
+        {
+          "source": "numpy",
+          "specifiers": [
+            "np"
+          ]
+        },
+        {
+          "source": "PIL",
+          "specifiers": [
+            "Image"
+          ]
+        },
+        {
+          "source": "scipy",
+          "specifiers": [
+            "ndimage"
+          ]
+        }
+      ],
+      "exports": [
+        "mask_to_polygons",
+        "convert_split",
+        "main"
+      ],
+      "totalLines": 139,
+      "hasStructuralAnalysis": true
+    },
+    "train/__init__.py": {
+      "filePath": "train/__init__.py",
+      "contentHash": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "train/train_rsprompter_fusion.py": {
+      "filePath": "train/train_rsprompter_fusion.py",
+      "contentHash": "d9156175896cfed5080998b05d9a3bf0689616d2864ab33a5f179fb6979fbb58",
+      "functions": [
+        {
+          "name": "_mask_to_rle",
+          "params": [
+            "binary_mask"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_masks_to_rles",
+          "params": [
+            "binary_masks"
+          ],
+          "returnType": "List[dict]",
+          "exported": true,
+          "lineCount": 27
+        },
+        {
+          "name": "_xyxy_to_xywh",
+          "params": [
+            "bbox"
+          ],
+          "returnType": "np.ndarray",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "build_coco_gt_and_dt",
+          "params": [
+            "all_gt",
+            "all_dt",
+            "img_metas_list",
+            "score_key"
+          ],
+          "returnType": "Tuple",
+          "exported": true,
+          "lineCount": 96
+        },
+        {
+          "name": "run_coco_eval",
+          "params": [
+            "coco_gt",
+            "coco_dt",
+            "iou_type"
+          ],
+          "returnType": "OrderedDict",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "_env_flag",
+          "params": [
+            "name",
+            "default"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_metric_value",
+          "params": [
+            "metrics",
+            "metric_name"
+          ],
+          "returnType": "Optional[float]",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "_weighted_metric_value",
+          "params": [
+            "metrics",
+            "spec"
+          ],
+          "returnType": "Optional[float]",
+          "exported": true,
+          "lineCount": 21
+        },
+        {
+          "name": "_metric_expression_value",
+          "params": [
+            "metrics",
+            "spec"
+          ],
+          "returnType": "Optional[float]",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "_save_verified_best_checkpoint",
+          "params": [
+            "checkpoint_dir",
+            "prefix",
+            "score_label",
+            "score_value",
+            "epoch",
+            "model",
+            "optimizer",
+            "scheduler",
+            "best_metrics",
+            "history",
+            "config_snapshot",
+            "scaler",
+            "ema_state"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 47
+        },
+        {
+          "name": "_extract_instances_numpy",
+          "params": [
+            "instances",
+            "img_shape",
+            "encode_masks"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 60
+        },
+        {
+          "name": "_summarize_mask_density",
+          "params": [
+            "all_dt"
+          ],
+          "returnType": "Tuple[float, float]",
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "_resolve_ddp_timeout_seconds",
+          "params": [],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "_resolve_ddp_control_timeout_seconds",
+          "params": [],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "_init_distributed",
+          "params": [],
+          "returnType": "Dict[str, Any]",
+          "exported": true,
+          "lineCount": 35
+        },
+        {
+          "name": "_broadcast_stop_training",
+          "params": [
+            "stop_training",
+            "control_group"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "_is_main_process",
+          "params": [
+            "rank"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_build_optimizer",
+          "params": [
+            "model",
+            "lr",
+            "sat_backbone_lr_mult",
+            "sat_other_lr_mult",
+            "bbox_head_lr_mult",
+            "drone_lr_mult",
+            "mask_decoder_lr_mult",
+            "no_mask_lr_mult",
+            "prompt_encoder_lr_mult",
+            "shape_prior_lr_mult",
+            "p2_boundary_refiner_lr_mult",
+            "quality_head_lr_mult",
+            "scene_align_lr_mult",
+            "weight_decay"
+          ],
+          "returnType": "optim.Optimizer",
+          "exported": true,
+          "lineCount": 222
+        },
+        {
+          "name": "_set_norm_eval",
+          "params": [
+            "model"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_get_model_core",
+          "params": [
+            "model"
+          ],
+          "returnType": "torch.nn.Module",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "_assert_no_mask_embedding_contract",
+          "params": [
+            "model",
+            "context"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_get_quality_head",
+          "params": [
+            "model"
+          ],
+          "returnType": "torch.nn.Module",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "_set_quality_head_only_train_mode",
+          "params": [
+            "model"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "_log_trainable_state",
+          "params": [
+            "model"
+          ],
+          "exported": true,
+          "lineCount": 36
+        },
+        {
+          "name": "_log_uav_debug_stats",
+          "params": [
+            "model",
+            "epoch",
+            "step",
+            "enabled_prefixes"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 32
+        },
+        {
+          "name": "_accumulate_dense_residual_monitor",
+          "params": [
+            "model",
+            "sums",
+            "counts"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 21
+        },
+        {
+          "name": "_reduce_dense_residual_monitor",
+          "params": [
+            "sums",
+            "counts",
+            "device",
+            "distributed"
+          ],
+          "returnType": "Dict[str, float]",
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "_stat_scalar",
+          "params": [
+            "stats",
+            "key"
+          ],
+          "returnType": "Optional[float]",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "_accumulate_p2br_epoch_monitor",
+          "params": [
+            "model",
+            "sums"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 45
+        },
+        {
+          "name": "_reduce_p2br_epoch_monitor",
+          "params": [
+            "sums",
+            "device",
+            "distributed"
+          ],
+          "returnType": "Dict[str, float]",
+          "exported": true,
+          "lineCount": 47
+        },
+        {
+          "name": "_save_checkpoint",
+          "params": [
+            "path",
+            "model",
+            "optimizer",
+            "scheduler",
+            "epoch",
+            "best_metrics",
+            "history",
+            "config_snapshot",
+            "scaler",
+            "ema_state"
+          ],
+          "exported": true,
+          "lineCount": 41
+        },
+        {
+          "name": "_load_checkpoint",
+          "params": [
+            "path",
+            "model",
+            "optimizer",
+            "scheduler",
+            "scaler",
+            "expected_architecture"
+          ],
+          "returnType": "Dict",
+          "exported": true,
+          "lineCount": 45
+        },
+        {
+          "name": "_load_init_checkpoint",
+          "params": [
+            "path",
+            "model",
+            "exclude_prefixes",
+            "expected_architecture",
+            "allow_cross_arch"
+          ],
+          "returnType": "Dict[str, object]",
+          "exported": true,
+          "lineCount": 54
+        },
+        {
+          "name": "_set_model_current_epoch",
+          "params": [
+            "model",
+            "epoch_number"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "_detection_loss_weight",
+          "params": [
+            "args",
+            "epoch_number"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_scale_loss_value",
+          "params": [
+            "value",
+            "scale"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_apply_detection_loss_weight",
+          "params": [
+            "loss_dict",
+            "scale",
+            "device"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "_materialize_p2_boundary_refiner_loss",
+          "params": [
+            "loss_dict",
+            "model",
+            "distributed"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 39
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 2022
+        }
+      ],
+      "classes": [
+        {
+          "name": "ExponentialMovingAverage",
+          "methods": [
+            "__init__",
+            "update",
+            "apply_to",
+            "restore",
+            "state_dict",
+            "load_state_dict"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 69
+        }
+      ],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "gc",
+          "specifiers": [
+            "gc"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "math",
+          "specifiers": [
+            "math"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "collections",
+          "specifiers": [
+            "OrderedDict"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "timedelta"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "List",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "cv2",
+          "specifiers": [
+            "cv2"
+          ]
+        },
+        {
+          "source": "numpy",
+          "specifiers": [
+            "np"
+          ]
+        },
+        {
+          "source": "torch",
+          "specifiers": [
+            "torch"
+          ]
+        },
+        {
+          "source": "torch.distributed",
+          "specifiers": [
+            "dist"
+          ]
+        },
+        {
+          "source": "torch.optim",
+          "specifiers": [
+            "optim"
+          ]
+        },
+        {
+          "source": "torch.utils.data.distributed",
+          "specifiers": [
+            "DistributedSampler"
+          ]
+        },
+        {
+          "source": "mmdet.structures",
+          "specifiers": [
+            "DetDataSample"
+          ]
+        },
+        {
+          "source": "mmdet.structures.mask",
+          "specifiers": [
+            "BitmapMasks"
+          ]
+        },
+        {
+          "source": "mmengine.structures",
+          "specifiers": [
+            "InstanceData"
+          ]
+        }
+      ],
+      "exports": [
+        "_mask_to_rle",
+        "_masks_to_rles",
+        "_xyxy_to_xywh",
+        "build_coco_gt_and_dt",
+        "run_coco_eval",
+        "_env_flag",
+        "_metric_value",
+        "_weighted_metric_value",
+        "_metric_expression_value",
+        "_save_verified_best_checkpoint",
+        "_extract_instances_numpy",
+        "_summarize_mask_density",
+        "_resolve_ddp_timeout_seconds",
+        "_resolve_ddp_control_timeout_seconds",
+        "_init_distributed",
+        "_broadcast_stop_training",
+        "_is_main_process",
+        "_build_optimizer",
+        "_set_norm_eval",
+        "_get_model_core",
+        "_assert_no_mask_embedding_contract",
+        "ExponentialMovingAverage",
+        "_get_quality_head",
+        "_set_quality_head_only_train_mode",
+        "_log_trainable_state",
+        "_log_uav_debug_stats",
+        "_accumulate_dense_residual_monitor",
+        "_reduce_dense_residual_monitor",
+        "_stat_scalar",
+        "_accumulate_p2br_epoch_monitor",
+        "_reduce_p2br_epoch_monitor",
+        "_save_checkpoint",
+        "_load_checkpoint",
+        "_load_init_checkpoint",
+        "_set_model_current_epoch",
+        "_detection_loss_weight",
+        "_scale_loss_value",
+        "_apply_detection_loss_weight",
+        "_materialize_p2_boundary_refiner_loss",
+        "main"
+      ],
+      "totalLines": 3351,
+      "hasStructuralAnalysis": true
+    },
+    "utils/__init__.py": {
+      "filePath": "utils/__init__.py",
+      "contentHash": "894e663c16862aa07c4702d0c4a56f30fe6e3d1bc5227c30b55d709e5a57d1bc",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".coco_eval_utils",
+          "specifiers": [
+            "build_coco_gt_and_dt",
+            "run_coco_eval"
+          ]
+        },
+        {
+          "source": ".transforms",
+          "specifiers": [
+            "AdaptiveResize"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 5,
+      "hasStructuralAnalysis": true
+    },
+    "utils/coco_eval_utils.py": {
+      "filePath": "utils/coco_eval_utils.py",
+      "contentHash": "9b29cfbbb766339d35def4a83d8f322a20e30a62f6378024374c34b87a26cd57",
+      "functions": [
+        {
+          "name": "_mask_to_rle",
+          "params": [
+            "binary_mask"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_xyxy_to_xywh",
+          "params": [
+            "bbox"
+          ],
+          "returnType": "np.ndarray",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "build_coco_gt_and_dt",
+          "params": [
+            "all_gt",
+            "all_dt",
+            "img_metas_list",
+            "category_name",
+            "score_key"
+          ],
+          "returnType": "Tuple",
+          "exported": true,
+          "lineCount": 91
+        },
+        {
+          "name": "run_coco_eval",
+          "params": [
+            "coco_gt",
+            "coco_dt",
+            "iou_type",
+            "max_dets"
+          ],
+          "returnType": "OrderedDict",
+          "exported": true,
+          "lineCount": 31
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "collections",
+          "specifiers": [
+            "OrderedDict"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "List",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "numpy",
+          "specifiers": [
+            "np"
+          ]
+        }
+      ],
+      "exports": [
+        "_mask_to_rle",
+        "_xyxy_to_xywh",
+        "build_coco_gt_and_dt",
+        "run_coco_eval"
+      ],
+      "totalLines": 149,
+      "hasStructuralAnalysis": true
+    },
+    "utils/transforms.py": {
+      "filePath": "utils/transforms.py",
+      "contentHash": "8656b6f968029b73aafc26acdc0ef5529b471a14d0bb316f8284e2120551bf62",
+      "functions": [],
+      "classes": [
+        {
+          "name": "AdaptiveResize",
+          "methods": [
+            "__init__",
+            "transform",
+            "__repr__"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 113
+        }
+      ],
+      "imports": [
+        {
+          "source": "cv2",
+          "specifiers": [
+            "cv2"
+          ]
+        },
+        {
+          "source": "numpy",
+          "specifiers": [
+            "np"
+          ]
+        },
+        {
+          "source": "mmcv.transforms",
+          "specifiers": [
+            "BaseTransform"
+          ]
+        },
+        {
+          "source": "mmdet.registry",
+          "specifiers": [
+            "TRANSFORMS"
+          ]
+        }
+      ],
+      "exports": [
+        "AdaptiveResize"
+      ],
+      "totalLines": 128,
+      "hasStructuralAnalysis": true
+    }
+  }
+}

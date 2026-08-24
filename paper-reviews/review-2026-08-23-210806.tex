@@ -1,0 +1,217 @@
+\documentclass[UTF8,a4paper,11pt]{ctexart}
+\usepackage{amsmath,amssymb,booktabs,longtable,array,enumitem,geometry,xcolor,hyperref}
+\geometry{margin=2.2cm}
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+\setlist[itemize]{leftmargin=2em,itemsep=0.35em}
+\setlist[enumerate]{leftmargin=2.4em,itemsep=0.55em}
+\newcommand{\sev}[1]{\textbf{严重性：#1}}
+\newcommand{\cert}[1]{\textbf{确定性：#1}}
+\newcommand{\loc}[1]{\textbf{位置：#1}}
+\newcommand{\prob}{\textbf{问题：}}
+\newcommand{\impact}{\textbf{影响：}}
+\newcommand{\fix}{\textbf{建议修改：}}
+
+\title{《GeoViewMiner-SAM2》独立预审报告}
+\author{基于 \texttt{latex-paper-review} 工作流的代码与证据审查}
+\date{2026年8月23日}
+
+\begin{document}
+\maketitle
+
+\section*{审查范围与结论}
+
+本报告完整检查了 \path{main5.tex} 的摘要、引言、相关工作、数据集、全部数学公式、实验、讨论、结论及参考文献，并重点将 PromptMiner-SAM2 的方法表述与本地 R1-C4-RD/P2 实现逐项对照。代码核查覆盖粗掩码解码、P2BoundaryRefiner、2P2N 点挖掘、dense prompt rasterization、PromptEncoder/MaskDecoder 数据流、损失归一化、训练参数和现有评估清单。未进行联网检索；依赖外部论文或数据集事实的判断均标为“需核对/确认”。本次审查未修改论文或模型代码。
+
+总体上，单流方法的主要公式已经相当接近实际实现。尤其是 P2 路径的 $64\to32\to64$ 尺度链、$[-0.4,0.4]$ 残差界、预测边界支持、目标边界仅进入损失支持、coarse BCE+Dice、点提示的形态学距离以及 dense prompt 门控，均未发现会改变算法含义的核心公式错误。摘要、表格和正文中已经给出的数值差值也都算术正确。
+
+但是，论文目前仍不宜按最终稿提交。最关键原因是主结果和消融结果尚未形成可追溯的已完成实验闭环：当前本地“paper”全量训练仍在第42/100轮运行，现有清单中没有论文所报 WHU 测试结果；与此同时，论文中的 WHU 数据规模与运行日志直接冲突。下列问题按严重性排序。
+
+\section*{Critical Issues}
+
+\subsection*{C-01 主结果与消融结果尚无已完成运行产物支撑}
+\loc{摘要第34行；论文表III对应源码第462--491行；论文表V对应源码第527--546行；结论第577行。}
+
+\prob 论文将 PromptMiner-SAM2 的 WHU 测试集结果写为 bbox AP $0.749$、segm AP $0.735$，并进一步报告四行消融结果。审查时，本地用于论文的全量 P2 训练日志仍停留在第42/100轮，进程尚在运行；其当前最佳验证 segm AP 约为 $0.7093$。当前可见的已完成 R1-C4-RD 测试清单报告 segm AP $0.6839$，而最新 P2 checkpoint 的验证集 P2-on/off 诊断分别为 $0.709304$ 与 $0.709296$。本地未发现能够追溯到论文 $0.735/0.944/0.855$ 以及四行消融数据的测试集 \texttt{metrics.json}/\texttt{run\_manifest.json}。
+
+\impact 这不是数值高低问题，而是核心结论的证据链尚未闭合。论文目前的“最高 mask AP”、相对 RSPrompter 的差值、P2 的 $0.005$ 增益、摘要和结论均依赖这些尚不可复核的数字。若这些数字是待完成实验的预留值，则当前稿件的主要实证结论尚未成立。
+
+\fix 等全量训练、验证选模和一次性测试全部完成后，再从同一组不可变的运行清单自动回填表格。每个表格行至少保存 checkpoint 哈希、架构指纹、数据标注文件哈希、训练命令、选择轮次、测试指标及随机种子。消融四行也应各自对应独立、可核验的最终运行产物；在此之前应将相关数字明确标为占位结果，不能作为投稿结论。
+
+\sev{Critical}\quad \cert{确定错误（就当前本地证据状态而言）}
+
+\textbf{Evidence Chain：}“PromptMiner-SAM2 达到 segm AP $0.735$” $\rightarrow$ 论文表III/表V $\rightarrow$ 全量训练与验证选模 $\rightarrow$ 测试运行清单；最后一环目前缺失，且训练仍在进行。
+
+\section*{Major Issues}
+
+\subsection*{M-01 WHU 数据规模与实际训练日志冲突}
+\loc{实验数据集，第422行；当前全量训练日志初始化部分。}
+
+\prob 论文称 WHU 共5,640张图像，划分为2,793/627/2,220。当前全量运行日志明确显示训练集加载2,943张、验证集627张；再加测试集2,220张，总数为5,790而不是5,640。训练配置确实指向 \path{2.4 annotation/annotation/train.json}，因此不是论文所写数字的简单日志标签差异。
+
+\impact 训练集增加150张会影响与文献结果的可比性，也会使“完整训练集”“同一协议”等表述产生歧义。审稿人无法判断实际采用的是哪个 WHU 实例化版本或是否做过重划分。
+
+\fix 直接统计最终提交实验使用的三个 COCO 标注文件，报告图像数、实例数和文件哈希；将正文改成与实际运行完全一致的数字。若2,943张来自自行重划分或转换，应说明相对于引用版本的差异，并保证所有自研消融使用同一划分。
+
+\sev{Major}\quad \cert{确定错误}
+
+\subsection*{M-02 实际启用的早停与平滑选模协议未披露}
+\loc{单流实现细节，第449--451行。}
+
+\prob 论文只写“最多100轮、每轮验证、验证集选模”。实际论文运行启用了从第20轮开始的早停、patience=10、min-delta=$5\times10^{-4}$，并以5次验证的移动平均作为早停判断；checkpoint 则按原始 segm AP 保存。随机种子44和确定性模式也未写入论文。
+
+\impact 早停规则和“平滑指标用于停止、原始指标用于保存”的双重规则会改变训练时长与最终模型，属于复现实验必须知道的协议。消融若未使用完全相同的规则，“只有提示模态和P2不同”的声明也无法验证。
+
+\fix 在实现细节中补充完整的停止与选模规则，并明确所有WHU主实验和消融是否共享 seed、早停规则和模型选择指标。若最终实验不采用早停，则应在最终运行命令中关闭它并以最终清单为准。
+
+\sev{Major}\quad \cert{确定错误}
+
+\subsection*{M-03 P2 的边界机制缺少与核心主张直接对应的证据}
+\loc{贡献第64行；P2方法第212--272行；消融第541、546行；讨论第553--554行。}
+
+\prob P2BoundaryRefiner被定义为独立创新模块，叙述重点是局部边界校准，但最终证据只有 segm AP/AP$_{75}$。论文已经正确承认 AP$_{75}$ 不是边界指标，不过这也意味着当前实验不能直接验证模块命名和机制主张。更值得注意的是，当前第41轮 checkpoint 的验证集 P2-on/off 推理差异小于 $10^{-5}$，训练日志中的 refined coarse Dice/IoU 也经常略低于 raw coarse；这些诊断不能替代最终结果，但提示必须提供更直接的机制验证。
+
+\impact 即使最终 segm AP 提升成立，审稿人仍可能认为收益来自额外训练参数或提示扰动，而不是所声称的边界校准。
+
+\fix 在最终 checkpoint 上至少报告最终实例掩码的 Boundary F-score（明确容差）、Boundary IoU或 trimap IoU，并同时报告 raw/refined coarse mask 的 Dice、IoU和边界指标。P2-on/off 应采用预先声明的训练协议；若只做同一checkpoint的推理开关，应明确其是干预诊断而不是训练消融。
+
+\sev{Major}\quad \cert{证据不足}
+
+\subsection*{M-04 累加式消融只能说明条件增量，不能独立归因每个组件}
+\loc{消融引言第525行；论文表V；第546行。}
+
+\prob 四行按 Point $\to$ Point+Box $\to$ Point+Box+Mask $\to$ Full 的固定顺序累加。该设计能估计“在已有组件条件下加入下一个组件”的增量，却不能区分交互作用，也不能说明Box或Mask在其他提示组合中的独立贡献。正文“isolate the contribution of each component”和“support the proposed component ordering”强于设计本身。
+
+\impact 提示模态高度相关，固定顺序的单次差分容易被审稿人误读为独立因果贡献。
+
+\fix 将表名和正文改为“ordered/cumulative ablation”，把结论限定为条件增量。若要主张独立贡献，至少补充 Full-minus-Point、Full-minus-Box、Full-minus-Mask、Full-minus-P2 的逐项移除实验，或采用完整/部分析因设计并报告交互。
+
+\sev{Major}\quad \cert{证据不足}
+
+\subsection*{M-05 WHU跨论文比较的结果来源与复现行未逐行标记}
+\loc{第460行及论文表III。}
+
+\prob 正文称表中同时包含“文献值”和“我们的P2PFormer复现”，但表内没有符号区分哪些值来自原论文、哪些来自本地复现，也没有给出P2PFormer复现的训练设置或运行方差。其余各行的具体六项数值是否由所引文献直接报告，无法在不查外部论文的情况下确认。
+
+\impact 读者无法复核“最高”这一比较，也无法判断表中不同方法是否使用完全相同的WHU实例划分，尤其考虑到M-01中的划分冲突。
+
+\fix 在表注中逐行标注“reported”与“reproduced”，对复现行给出统一数据划分、输入尺寸、checkpoint选择和代码来源。最终逐一核对每个引文是否直接支持该行全部数值；若协议不一致，保留描述性比较但避免排名式结论。
+
+\sev{Major}\quad \cert{需核对/确认}
+
+\subsection*{M-06 SynSU-Build基线和双流结果缺少本地可复核实现闭环}
+\loc{第427、453--456、494--518行；双流方法第320--412行。}
+
+\prob 论文声称在同一SynSU-Build划分上重训十个目标视角基线，并给出完整双流结果，但当前工作区中未找到与正文所述 $3\times3$ offset retrieval、bbox/mask双门控残差完全对应的双流实现、运行清单或各基线配置。现有 \path{legacy_baseline} 中的跨视角代码结构与论文公式并不相同，不能直接作为这些数字的证据。
+
+\impact 数据集和双流模型是论文另外两项主要贡献；缺少可追溯产物时，论文表IV的公平性和方法公式均无法独立复核。
+
+\fix 明确最终双流代码所在版本和commit，保存每个基线及单/双流模型的配置、数据哈希、模型选择与测试清单。若代码位于当前工作区之外，应在内部归档后再做一次逐公式实现审计。
+
+\sev{Major}\quad \cert{需核对/确认}
+
+\subsection*{M-07 “21.8 instances/image”的分母表述错误}
+\loc{数据集配置表，第180行。}
+
+\prob 表格同一单元写“9,000 RGB images; approx. 32.7k instances; 21.8 instances/image”。$32.7\mathrm{k}/9000\approx3.63$，而$21.8$来自$32.7\mathrm{k}/1500$，即每张有标注的目标视角图像。UAV图像本身没有实例标注。
+
+\impact 当前写法构成直接算术/分母歧义，并可能让读者误以为9,000张图像都有实例标签。
+
+\fix 改成“21.8 target-view instances per scene group（equivalently, per annotated target image）”，并避免使用无修饰的“instances/image”。
+
+\sev{Major}\quad \cert{确定错误}
+
+\section*{Minor Issues}
+
+\subsection*{N-01 形态学算子的数学定义仍不足以精确复现}
+\loc{式(\texttt{eq:p2\_support})--(\texttt{eq:p2\_loss\_support})，第214--260行；式(\texttt{eq:point\_mining\_score})，第275--281行。}
+
+\prob $\partial$、$\operatorname{Dilate}_k$、$\mathcal D_{\mathrm{morph}}$ 和 $\max(R_r,T_r)$ 没有明确结构元素、边界填充和逐元素语义。代码使用零填充的$3\times3$方形膨胀/腐蚀，$k$表示按Chebyshev邻域扩张的像素半径；$\max$为逐元素最大值。另一方面，平滑平均采用replicate padding。
+
+\impact 不同形态学库的圆形/十字/方形结构元素及边界处理会生成不同支持带，尤其影响贴近ROI边缘或全前景粗掩码的样本。
+
+\fix 在方法中用一句话统一定义这些算子，并指出平均池化使用replicate padding，而形态学边界将ROI外视为背景。
+
+\sev{Minor}\quad \cert{疑似问题}
+
+\subsection*{N-02 coarse loss公式的批次归约和 $\epsilon$ 未显式定义}
+\loc{式(\texttt{eq:coarse\_loss})，第301--308行。}
+
+\prob 公式保留了ROI索引$r$，却写成单ROI标量，之后仅以文字说“averaged over candidate instances”；BCE的像素归约和$\epsilon$数值也未给出。代码是全元素mean BCE，加上逐ROI Dice loss后再对ROI取mean，平滑项默认为实现配置值。
+
+\impact 这不会改变当前结论，但会妨碍公式与代码的一一对应，并在ROI尺寸或batch组成改变时产生归约歧义。
+
+\fix 写成显式的 $|\mathcal R|^{-1}\sum_{r\in\mathcal R}$ 形式，分别定义像素mean BCE和逐ROI Dice，并给出$\epsilon$。
+
+\sev{Minor}\quad \cert{疑似问题}
+
+\subsection*{N-03 $\operatorname{Place}$ 隐藏了会影响提示值的量化细节}
+\loc{式(\texttt{eq:dense\_canvas})及第283--295行。}
+
+\prob 论文只称其为“bounded raw-logit preprocessing followed by bilinear resize-and-rasterization”。实际论文运行对logit截断到$[-8,8]$，将box缩放到PromptEncoder原生mask canvas后对左上角取floor、右下角取ceil，box外填0，再双线性插值。当前数学定义无法唯一确定这些操作。
+
+\impact box边缘量化和外部填充值会改变PromptEncoder的dense embedding，属于实现面对公式的重要边界条件。
+
+\fix 在实现细节或附录中给出clamp范围、canvas尺寸来源、floor/ceil规则及box外填充值；主文可保持简洁，但应提供可定位的完整定义。
+
+\sev{Minor}\quad \cert{确定错误（公式不完备，不是前向实现错误）}
+
+\subsection*{N-04 评估符号 $P$ 与特征金字塔 $P_2$--$P_6$ 重名}
+\loc{总体架构第199行；评估公式第431--438行。}
+
+\prob 方法中$P_l$表示PAFPN层，评估中又用$P$表示prediction。局部上下文能够区分，但全文符号表中会形成不必要的重载。
+
+\impact 对公式较密集的稿件，这会增加读者在$P_2$与预测集合之间切换的认知成本。
+
+\fix 将评估预测改记为$\widehat G$、$\mathcal P$或$M^{\mathrm{pred}}$，或在评估小节明确说明该符号仅局部使用。
+
+\sev{Minor}\quad \cert{疑似问题}
+
+\subsection*{N-05 参考文献存在两个未使用条目}
+\loc{参考文献中的 \texttt{ref\_sam} 与 \texttt{ref\_samassist}。}
+
+\prob 两个bibitem未在正文引用；所有实际使用的citation key均已定义，交叉引用也未发现undefined或multiply-defined问题。
+
+\impact 不影响科学结论，但会造成参考文献卫生问题，也可能暗示相关工作删改后遗留。
+
+\fix 删除未使用条目，或在确有必要的位置加入有实质作用的引用，不要仅为保留条目而堆引用。
+
+\sev{Minor}\quad \cert{确定错误}
+
+\section*{Writing Suggestion}
+
+\subsection*{W-01 将外部比较中的“最高”进一步降格为表内描述}
+\loc{第491行。}
+
+\prob 当前句子已说明协议异质，但“has the highest”仍容易在摘要式阅读中被截取为严格SOTA结论。
+
+\impact 在M-01和M-05未解决前，排名语气会放大可比性风险。
+
+\fix 使用“among the heterogeneous values collected in Table~II”或“the largest listed value”并紧邻协议限定；最终逐行核验后再决定是否保留更强措辞。
+
+\sev{Writing Suggestion}\quad \cert{证据不足}
+
+\section*{高优先级修改顺序}
+
+\begin{enumerate}
+  \item 完成并冻结主实验与每个消融实验，生成可追溯测试清单，再回填全文数字。
+  \item 统一WHU标注文件与2,943/627/2,220实际划分，并补全早停、选模和随机种子协议。
+  \item 为P2增加最终mask边界指标和raw/refined coarse诊断，避免只靠AP$_{75}$讲边界故事。
+  \item 将累加式消融明确解释为条件增量；若篇幅和算力允许，再补逐项移除实验。
+  \item 归档SynSU-Build所有基线与双流模型的实现和运行清单，并对外部表格逐行核对来源。
+\end{enumerate}
+
+\section*{需核对/确认事项}
+
+\begin{itemize}
+  \item 论文表I中每个数据集关于S--U pairing、Multi-UAV、$K/T$和实例标注的勾选状态，需要回看原始论文或官方文档逐项确认。
+  \item “Among representative datasets, none combines ...”及“To our knowledge”属于有限检索后的新颖性主张，需要正式文献检索记录支持。
+  \item 论文表III全部外部方法的六项数值、数据划分和训练协议，需要逐篇核对；尤其应区分原文报告值和本地复现值。
+  \item 2026年文献条目（如RS4D、UniGeoRS）的最终出版信息、页码和题名需要在投稿前查证。
+  \item 双流公式与最终代码尚需在实现归档后单独做代码级审计；本报告只确认其内部符号链基本自洽，未能确认与最终实现完全一致。
+\end{itemize}
+
+\section*{编译与静态检查}
+
+\path{main5.tex} 可由 \texttt{latexmk -pdf} 成功编译；日志中没有未定义引用、未定义citation或重复label，仅有少量Underfull box排版提示。已按skill要求运行 \path{scripts/proofing_scan.py}；命中的semicolon-capitalization候选均为正常句法或表格缩写，没有形成新增实质finding。全文表格差值核算未发现算术错误，除M-07所述分母标签问题外。
+
+\end{document}

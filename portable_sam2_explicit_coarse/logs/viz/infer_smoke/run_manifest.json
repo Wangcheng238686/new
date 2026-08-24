@@ -1,0 +1,88 @@
+{
+  "checkpoint": "/data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/smoke_isaid_15cls/last_checkpoint.pth",
+  "checkpoint_schema_version": 2,
+  "epoch": 0,
+  "best_metrics": {
+    "best_train_loss": 2.4156582947121934,
+    "best_val_loss": Infinity,
+    "best_segm_map": 0.0,
+    "best_bbox_score": 0.0,
+    "best_bbox_metric": "bbox/mAP",
+    "best_composite_score": 0.0,
+    "best_composite_metric": "0.5*bbox/mAP_75+0.5*segm/mAP_75",
+    "best_early_stopping_score": 0.0,
+    "early_stopping_metric": "segm/mAP",
+    "early_counter": 0,
+    "early_stopping_start_epoch": 999,
+    "early_stopping_min_delta": 0.0005,
+    "early_stopping_smooth_window": 5,
+    "early_stopping_metric_history": [
+      0.0
+    ]
+  },
+  "has_model_config": true,
+  "has_training_args": true,
+  "has_data_config": true,
+  "has_ema_state": false,
+  "config_path": "configs/isaid_baseplus_explicit_coarse.py",
+  "neck_type": "",
+  "explicit_prompt_mode": "",
+  "p2_boundary_refiner": {
+    "enabled": false,
+    "p2_in_channels": 512,
+    "projected_channels": 64,
+    "mid_channels": 64,
+    "roi_output_size": 32,
+    "coarse_size": 64,
+    "spatial_scale": 0.25,
+    "sampling_ratio": 0,
+    "aligned": true,
+    "beta": 0.2,
+    "delta_logit_max": 2.0,
+    "foreground_thr": 0.5,
+    "boundary_band_radius": 2,
+    "search_band_radius": 4,
+    "max_search_coverage": 0.5,
+    "boundary_loss_weight": 0.05,
+    "zero_init_residual": true
+  },
+  "architecture_contract": {
+    "schema_version": 2,
+    "architecture_id": "c4_pafpn_coarse_points_box_dense",
+    "model_fingerprint": "c3efefb141b7e1d35ec4a32f639005e46e0716ab08e0a6a08715055d36410ba0"
+  },
+  "image_size": [
+    1024,
+    1024
+  ],
+  "config_source": "/home/wangcheng/project/new/portable_sam2_explicit_coarse/configs/isaid_baseplus_explicit_coarse.py",
+  "sam2_repo": "/home/wangcheng/project/new/sam2",
+  "weights": "model",
+  "strict": true,
+  "load_report": {
+    "missing_keys": [],
+    "unexpected_keys": []
+  },
+  "dataset": {
+    "data_root": "/data1/wangcheng/dataset/iSAID",
+    "ann_file": "isaid_patches_800/val/instances_isaid_val.json",
+    "image_subdir": "isaid_patches_800/val/images",
+    "image_size": [
+      1024,
+      1024
+    ],
+    "batch_size": 1,
+    "single_class": false
+  },
+  "device": "cuda:0",
+  "score_thr": 0.0,
+  "bbox_score_key": "scores",
+  "segm_score_key": "scores",
+  "segm_score_mode": "detector",
+  "mask_postprocess": "roi_local_bbox_paste",
+  "processed_images": 8,
+  "ground_truth_instances": 395,
+  "predicted_instances": 0,
+  "predictions": "/home/wangcheng/project/new/portable_sam2_explicit_coarse/logs/viz/infer_smoke/predictions.json",
+  "metrics": {}
+}

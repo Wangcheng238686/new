@@ -1,0 +1,416 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 20,
+  "filesSkipped": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 20,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 20
+    }
+  },
+  "results": [
+    {
+      "path": "scripts/ablations/README.md",
+      "language": "markdown",
+      "fileCategory": "docs",
+      "totalLines": 848,
+      "nonEmptyLines": 695,
+      "sections": [
+        {
+          "heading": "WHU-1024 ablation matrix",
+          "level": 1,
+          "line": 1
+        },
+        {
+          "heading": "R1-C4-G: Gaussian dense representation",
+          "level": 2,
+          "line": 125
+        },
+        {
+          "heading": "C4 dense-gate repair (densefix)",
+          "level": 2,
+          "line": 170
+        },
+        {
+          "heading": "C4 densefix + unfreeze mask_downscaling",
+          "level": 3,
+          "line": 208
+        },
+        {
+          "heading": "C3/C4/densefix-unfreeze/C5-v2 stride-32 vs stride-16 diagnosis (2026-07-30)",
+          "level": 2,
+          "line": 235
+        },
+        {
+          "heading": "Dense monitor across the three stride-32 runs",
+          "level": 3,
+          "line": 266
+        },
+        {
+          "heading": "What is and is not proven",
+          "level": 3,
+          "line": 277
+        },
+        {
+          "heading": "Hypothesis on the stride-32 mechanism",
+          "level": 3,
+          "line": 304
+        },
+        {
+          "heading": "What the P2 refiner actually changed",
+          "level": 3,
+          "line": 317
+        },
+        {
+          "heading": "Next experiments needed to close the attribution",
+          "level": 3,
+          "line": 334
+        },
+        {
+          "heading": "full_image mask-supervision collapse hypothesis (2026-07-31)",
+          "level": 2,
+          "line": 347
+        },
+        {
+          "heading": "Why C2-L (roi_balanced_dice) did not fix it",
+          "level": 3,
+          "line": 375
+        },
+        {
+          "heading": "roi_local results: collapse confirmed, coarse route surpasses MLP",
+          "level": 3,
+          "line": 385
+        },
+        {
+          "heading": "B1 vs R1-C4-RD-roi_local validation and test (2026-07-31)",
+          "level": 3,
+          "line": 424
+        },
+        {
+          "heading": "Machine environment configuration",
+          "level": 2,
+          "line": 479
+        },
+        {
+          "heading": "Dataset subsets",
+          "level": 2,
+          "line": 502
+        },
+        {
+          "heading": "Historical baseline hyperparameter contract",
+          "level": 2,
+          "line": 559
+        },
+        {
+          "heading": "B0 screening reproduction diagnosis (2026-07-29)",
+          "level": 2,
+          "line": 622
+        },
+        {
+          "heading": "Smoke and dry-run",
+          "level": 2,
+          "line": 668
+        },
+        {
+          "heading": "Background execution",
+          "level": 2,
+          "line": 688
+        },
+        {
+          "heading": "Serial queue after B0",
+          "level": 2,
+          "line": 712
+        },
+        {
+          "heading": "Coarse strategy controls",
+          "level": 2,
+          "line": 787
+        },
+        {
+          "heading": "Terminal logs and hyperparameter snapshots",
+          "level": 2,
+          "line": 819
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 23
+      }
+    },
+    {
+      "path": "scripts/ablations/_run_ablation.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 589,
+      "nonEmptyLines": 574,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/b0_aggregator_mlp.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 9,
+      "nonEmptyLines": 9,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/b1_pafpn_mlp.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 8,
+      "nonEmptyLines": 8,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/c1_aggregator_coarse_points.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 9,
+      "nonEmptyLines": 9,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/c2_pafpn_coarse_points.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 9,
+      "nonEmptyLines": 9,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 14,
+      "nonEmptyLines": 14,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 12,
+      "nonEmptyLines": 12,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/c3_pafpn_coarse_points_box.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 9,
+      "nonEmptyLines": 9,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/c3_pafpn_coarse_points_box_roi_local.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 32,
+      "nonEmptyLines": 32,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/c4_pafpn_coarse_points_box_dense.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 9,
+      "nonEmptyLines": 9,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 26,
+      "nonEmptyLines": 26,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 31,
+      "nonEmptyLines": 31,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 10,
+      "nonEmptyLines": 10,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/m0_aggregator_mlp_full_image.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 9,
+      "nonEmptyLines": 9,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/m1_pafpn_mlp_full_image.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 9,
+      "nonEmptyLines": 9,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/monitor_b0_then_serial.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 202,
+      "nonEmptyLines": 181,
+      "functions": [
+        {
+          "name": "usage",
+          "startLine": 42,
+          "endLine": 52,
+          "params": []
+        },
+        {
+          "name": "monitor_log",
+          "startLine": 82,
+          "endLine": 85,
+          "params": []
+        },
+        {
+          "name": "process_is_b0",
+          "startLine": 123,
+          "endLine": 138,
+          "params": []
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 3,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/paper_promptminer_rd_p2_whu_full.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 46,
+      "nonEmptyLines": 43,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 50,
+      "nonEmptyLines": 44,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "scripts/ablations/r0_b0_aggregator_mlp_emb64.sh",
+      "language": "shell",
+      "fileCategory": "script",
+      "totalLines": 10,
+      "nonEmptyLines": 10,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    }
+  ]
+}

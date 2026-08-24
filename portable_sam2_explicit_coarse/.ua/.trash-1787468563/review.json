@@ -1,0 +1,29 @@
+{
+  "issues": [],
+  "warnings": [
+    "Node 'file:train/__init__.py' has no edges (orphan)"
+  ],
+  "stats": {
+    "totalNodes": 200,
+    "totalEdges": 391,
+    "totalLayers": 7,
+    "tourSteps": 10,
+    "nodeTypes": {
+      "file": 77,
+      "function": 88,
+      "class": 33,
+      "document": 2
+    },
+    "edgeTypes": {
+      "contains": 121,
+      "exports": 81,
+      "imports": 18,
+      "calls": 23,
+      "depends_on": 106,
+      "documents": 21,
+      "related": 4,
+      "configures": 16,
+      "tested_by": 1
+    }
+  }
+}

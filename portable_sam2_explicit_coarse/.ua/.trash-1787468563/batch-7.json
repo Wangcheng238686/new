@@ -1,0 +1,155 @@
+{
+  "nodes": [
+    {
+      "id": "file:scripts/ablations/prompt_content_p2_matrix/e1_point_p2_off.sh",
+      "type": "file",
+      "name": "e1_point_p2_off.sh",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e1_point_p2_off.sh",
+      "summary": "消融矩阵实验 e1 的包装脚本：设置可被环境变量覆盖的默认超参（lr=5e-5、max_epochs=20、早停 patience=5、起始 epoch 1），强制前台运行，并以 point 提示 + 关闭 P2 boundary refiner（参数 point 0）exec 转发到共享启动器 prompt_content_p2_from_r1_best.sh。",
+      "tags": ["消融实验", "wrapper-script", "point-prompt", "超参数默认值", "shell"],
+      "complexity": "simple",
+      "languageNotes": "使用 ${VAR:-default} 参数展开实现环境变量可覆盖的默认值，并用 exec bash 将当前 shell 进程替换为启动器进程。"
+    },
+    {
+      "id": "file:scripts/ablations/prompt_content_p2_matrix/e2_point_p2_on.sh",
+      "type": "file",
+      "name": "e2_point_p2_on.sh",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e2_point_p2_on.sh",
+      "summary": "消融矩阵实验 e2 的包装脚本：设置与 e1 相同的默认超参，以 point 提示 + 开启 P2 boundary refiner（参数 point 1）exec 转发到共享启动器 prompt_content_p2_from_r1_best.sh。",
+      "tags": ["消融实验", "wrapper-script", "point-prompt", "p2-refiner", "shell"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/prompt_content_p2_matrix/e3_box_p2_off.sh",
+      "type": "file",
+      "name": "e3_box_p2_off.sh",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e3_box_p2_off.sh",
+      "summary": "消融矩阵实验 e3 的包装脚本：设置与 e1 相同的默认超参，以 box 提示 + 关闭 P2 boundary refiner（参数 box 0）exec 转发到共享启动器 prompt_content_p2_from_r1_best.sh。",
+      "tags": ["消融实验", "wrapper-script", "box-prompt", "超参数默认值", "shell"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/prompt_content_p2_matrix/e4_box_p2_on.sh",
+      "type": "file",
+      "name": "e4_box_p2_on.sh",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e4_box_p2_on.sh",
+      "summary": "消融矩阵实验 e4 的包装脚本：设置与 e1 相同的默认超参，以 box 提示 + 开启 P2 boundary refiner（参数 box 1）exec 转发到共享启动器 prompt_content_p2_from_r1_best.sh。",
+      "tags": ["消融实验", "wrapper-script", "box-prompt", "p2-refiner", "shell"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/prompt_content_p2_matrix/e5_mask_p2_off.sh",
+      "type": "file",
+      "name": "e5_mask_p2_off.sh",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e5_mask_p2_off.sh",
+      "summary": "消融矩阵实验 e5 的包装脚本：设置与 e1 相同的默认超参，以 mask 提示 + 关闭 P2 boundary refiner（参数 mask 0）exec 转发到共享启动器 prompt_content_p2_from_r1_best.sh。",
+      "tags": ["消融实验", "wrapper-script", "mask-prompt", "超参数默认值", "shell"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/prompt_content_p2_matrix/e6_mask_p2_on.sh",
+      "type": "file",
+      "name": "e6_mask_p2_on.sh",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e6_mask_p2_on.sh",
+      "summary": "消融矩阵实验 e6 的包装脚本：设置与 e1 相同的默认超参，以 mask 提示 + 开启 P2 boundary refiner（参数 mask 1）exec 转发到共享启动器 prompt_content_p2_from_r1_best.sh。",
+      "tags": ["消融实验", "wrapper-script", "mask-prompt", "p2-refiner", "shell"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/prompt_content_p2_matrix/run_serial.sh",
+      "type": "file",
+      "name": "run_serial.sh",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/run_serial.sh",
+      "summary": "串行编排 3×2 提示内容（point/box/mask）× P2 boundary refiner（开/关）消融矩阵的驱动脚本：将全部输出 tee 到带时间戳的日志文件 logs/ablations/，并按 e1–e6 顺序逐个调用实验包装脚本，同时记录每个实验的开始/完成时间戳。",
+      "tags": ["消融实验", "编排脚本", "串行执行", "日志记录", "shell"],
+      "complexity": "simple",
+      "languageNotes": "使用 bash 进程替换 exec > >(tee -a ...) 将 stdout 与 stderr 同时输出到终端并追加到日志文件。"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_matrix/e1_point_p2_off.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_matrix/e2_point_p2_on.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_matrix/e3_box_p2_off.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_matrix/e4_box_p2_on.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_matrix/e5_mask_p2_off.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_matrix/e6_mask_p2_on.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_matrix/run_serial.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_matrix/e1_point_p2_off.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_matrix/run_serial.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_matrix/e2_point_p2_on.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_matrix/run_serial.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_matrix/e3_box_p2_off.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_matrix/run_serial.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_matrix/e4_box_p2_on.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_matrix/run_serial.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_matrix/e5_mask_p2_off.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/prompt_content_p2_matrix/run_serial.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_matrix/e6_mask_p2_on.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

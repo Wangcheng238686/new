@@ -1,0 +1,410 @@
+{
+  "projectRoot": "/home/wangcheng/project/new/portable_sam2_explicit_coarse",
+  "files": [
+    {
+      "path": ".ua/.understandignore",
+      "language": "unknown",
+      "fileCategory": "code"
+    },
+    {
+      "path": ".ua/config.json",
+      "language": "json",
+      "fileCategory": "config"
+    },
+    {
+      "path": "configs/_sam2_registry.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "configs/environment.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "configs/rsprompter_anchor_satS_v11_sam2_large_full.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "configs/whu1024_baseplus_clean.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "configs/whu1024_baseplus_explicit_coarse.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "configs/whu1024_baseplus_explicit_coarse_densefix.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "data/__init__.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "data/loader.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "data/satellite_dataset.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "data/satellite_drone_dataset.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "data/whu_instance_dataset.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "inference/__init__.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "inference/infer_from_checkpoint.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "rsprompter/__init__.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "rsprompter/architecture_contract.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "rsprompter/ckpt_migration.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "rsprompter/ckpt_utils.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "rsprompter/coarse_mask_loss.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "rsprompter/dense_prompt_utils.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "rsprompter/models.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "rsprompter/models_sam2.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "rsprompter/p2_boundary_refiner.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "rsprompter/shape_prior.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/ablations/README.md",
+      "language": "markdown",
+      "fileCategory": "docs"
+    },
+    {
+      "path": "scripts/ablations/_run_ablation.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/b0_aggregator_mlp.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/b1_pafpn_mlp.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/c1_aggregator_coarse_points.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/c2_pafpn_coarse_points.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/c3_pafpn_coarse_points_box.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/c3_pafpn_coarse_points_box_roi_local.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/c4_pafpn_coarse_points_box_dense.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/coarse_strategy/README.md",
+      "language": "markdown",
+      "fileCategory": "docs"
+    },
+    {
+      "path": "scripts/ablations/coarse_strategy/s0_c2_fixed_w010.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/coarse_strategy/s1_c2_fixed_w020.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/coarse_strategy/s2_c2_two_stage_w020_w010.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/m0_aggregator_mlp_full_image.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/m1_pafpn_mlp_full_image.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/monitor_b0_then_serial.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/paper_promptminer_rd_p2_whu_full.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/prompt_content_p2_matrix/e1_point_p2_off.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/prompt_content_p2_matrix/e2_point_p2_on.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/prompt_content_p2_matrix/e3_box_p2_off.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/prompt_content_p2_matrix/e4_box_p2_on.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/prompt_content_p2_matrix/e5_mask_p2_off.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/prompt_content_p2_matrix/e6_mask_p2_on.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/prompt_content_p2_matrix/run_serial.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/r0_b0_aggregator_mlp_emb64.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_roi_local_emb64.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/run_prompt_content_p2_matrix.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/smoke_all.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations/smoke_ddp_control_plane.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/ablations/test_dense_prompt_utils.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/ablations/validate_ablation_contract.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/ablations/wait_then_launch_b0_r0.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations_uecoco/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/ablations_uecoco/wait_then_launch_r1_c4_rd.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/infer_whu_checkpoint.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/load_environment.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/resplit_ue_coco.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/run_whu1024_explicit_coarse_4gpu.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/smoke_test_components.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/smoke_test_components.sh",
+      "language": "shell",
+      "fileCategory": "script"
+    },
+    {
+      "path": "tools/mask_to_coco_whu512.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "train/__init__.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "train/train_rsprompter_fusion.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "utils/__init__.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "utils/coco_eval_utils.py",
+      "language": "python",
+      "fileCategory": "code"
+    },
+    {
+      "path": "utils/transforms.py",
+      "language": "python",
+      "fileCategory": "code"
+    }
+  ]
+}

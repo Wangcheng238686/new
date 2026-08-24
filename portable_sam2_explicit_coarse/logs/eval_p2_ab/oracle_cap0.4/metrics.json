@@ -1,0 +1,23 @@
+{
+  "checkpoint": "/data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/paper_promptminer_rd_p2_whu_full_tr1.0_va1.0/best_model_epoch43.pth",
+  "oracle_cap": 0.4,
+  "target_logit_k": 8.0,
+  "match_iou": 0.3,
+  "segm_score_key": "scores",
+  "segm_score_mode": "detector",
+  "images": 627,
+  "metrics": {
+    "segm/mAP": 0.7175310555828897,
+    "segm/mAP_50": 0.9222490698322491,
+    "segm/mAP_75": 0.8535479445068402,
+    "segm/mAP_s": 0.3783988332644881,
+    "segm/mAP_m": 0.7512044011748598,
+    "segm/mAP_l": 0.8043457040451407,
+    "segm/AR@1": 0.025951274645234206,
+    "segm/AR@10": 0.1906881828456612,
+    "segm/AR@100": 0.7487881451714178,
+    "segm/AR_s": 0.4681366191093817,
+    "segm/AR_m": 0.7823986282025419,
+    "segm/AR_l": 0.8320698924731182
+  }
+}

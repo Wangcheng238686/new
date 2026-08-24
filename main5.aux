@@ -1,0 +1,187 @@
+\relax 
+\citation{ref_university,ref_unigeo}
+\citation{ref_sam2}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-A}}Contributions}{1}{}\protected@file@percent }
+\citation{ref_synthinel}
+\citation{ref_urbanscene3d}
+\citation{ref_skyscenes}
+\citation{ref_uemmair}
+\citation{ref_synrs3d}
+\citation{ref_gtauav}
+\citation{ref_maskrcnn}
+\citation{ref_cascade,ref_htc}
+\citation{ref_hqisnet}
+\citation{ref_pointrend}
+\citation{ref_p2pformer}
+\citation{ref_mask2former}
+\citation{ref_sam}
+\citation{ref_samrsapp}
+\citation{ref_samrs}
+\citation{ref_rsprompter}
+\citation{ref_mcsamseg}
+\citation{ref_rs4d}
+\citation{ref_cascadepsp}
+\citation{ref_segrefiner}
+\citation{ref_samrefiner}
+\citation{ref_isaid}
+\citation{ref_whu}
+\citation{ref_spacenet}
+\citation{ref_xbd}
+\citation{ref_university}
+\citation{ref_transgeo}
+\citation{ref_denseuav}
+\@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{2}{}\protected@file@percent }
+\newlabel{sec:related}{{II}{2}{}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Synthetic Data for Remote Sensing}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Remote Sensing Instance Segmentation}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}Cross-View Learning}{2}{}\protected@file@percent }
+\citation{ref_cvt}
+\citation{ref_sgbeyv}
+\citation{ref_isaid}
+\citation{ref_whu}
+\citation{ref_spacenet}
+\citation{ref_xbd}
+\citation{ref_university}
+\citation{ref_denseuav}
+\citation{ref_gtauav}
+\citation{ref_urbanscene3d}
+\citation{ref_skyscenes}
+\citation{ref_uemmair}
+\citation{ref_synrs3d}
+\citation{ref_citysample}
+\citation{ref_worldpartition}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Comparison with Representative Instance-Level, Cross-View, and Synthetic Remote Sensing Datasets}}{3}{}\protected@file@percent }
+\newlabel{tab:dataset_comparison}{{I}{3}{}{table.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {III}Dataset}{3}{}\protected@file@percent }
+\newlabel{sec:dataset}{{III}{3}{}{section.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Overview of the SynSU-Build sampling and rendering pipeline. Left: urban sampling uses a coarse spatial grid with up to 25 candidate centers per cell and content-based filtering. Middle: five oblique UAV cameras surround a common scene center, while one synthetic satellite-like camera observes it from nadir. Right: each accepted group contains five unannotated UAV RGB images with camera parameters and a paired satellite-like RGB image with its building instance mask.}}{3}{}\protected@file@percent }
+\newlabel{fig:sampling_pipeline}{{1}{3}{}{figure.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces SynSU-Build Sampling and Camera Configuration}}{4}{}\protected@file@percent }
+\newlabel{tab:synsu_configuration}{{II}{4}{}{table.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Method}{4}{}\protected@file@percent }
+\newlabel{sec:method}{{IV}{4}{}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}PromptMiner-SAM2: Explicit Prompt Mining from Coarse Shapes}{4}{}\protected@file@percent }
+\newlabel{sec:single_method}{{\mbox  {IV-A}}{4}{}{subsection.4.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-A}1}Overall Architecture}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-A}2}Proposal-Conditioned Coarse Shape}{4}{}\protected@file@percent }
+\newlabel{eq:coarse_logits}{{1}{4}{}{equation.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-A}3}P2 Boundary Calibration}{4}{}\protected@file@percent }
+\newlabel{eq:p2_support}{{2}{4}{}{equation.2}{}}
+\newlabel{eq:p2_bands}{{3}{5}{}{equation.3}{}}
+\newlabel{eq:p2_fusion}{{5}{5}{}{equation.5}{}}
+\newlabel{eq:p2_refinement}{{6}{5}{}{equation.6}{}}
+\newlabel{eq:p2_loss_support}{{7}{5}{}{equation.7}{}}
+\newlabel{eq:p2_loss}{{8}{5}{}{equation.8}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-A}4}Explicit Prompt Mining and Decoding}{5}{}\protected@file@percent }
+\newlabel{eq:point_mining_score}{{9}{5}{}{equation.9}{}}
+\newlabel{eq:dense_canvas}{{10}{5}{}{equation.10}{}}
+\newlabel{eq:dense_prompt_gate}{{11}{5}{}{equation.11}{}}
+\citation{ref_cvt}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-A}5}Training Objective}{6}{}\protected@file@percent }
+\newlabel{eq:coarse_loss}{{12}{6}{}{equation.12}{}}
+\newlabel{eq:single_loss}{{13}{6}{}{equation.13}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}GeoViewMiner-SAM2}{6}{}\protected@file@percent }
+\newlabel{sec:dual_method}{{\mbox  {IV-B}}{6}{}{subsection.4.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}1}Geometric Conditions and UAV BEV Construction}{6}{}\protected@file@percent }
+\newlabel{eq:cvt_qkv}{{14}{6}{}{equation.14}{}}
+\newlabel{eq:uav_bev}{{15}{6}{}{equation.15}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}2}Ground-Referenced ROI Candidate Retrieval}{6}{}\protected@file@percent }
+\citation{ref_whu,ref_p2pformer}
+\newlabel{eq:roi_coordinate_chain}{{16}{7}{}{equation.16}{}}
+\newlabel{eq:candidate_score}{{18}{7}{}{equation.18}{}}
+\newlabel{eq:uav_roi}{{21}{7}{}{equation.21}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}3}BBox and Mask ROI Residual Fusion}{7}{}\protected@file@percent }
+\newlabel{eq:dual_residual}{{23}{7}{}{equation.23}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}4}Learning Objective}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {V}Experiments}{7}{}\protected@file@percent }
+\newlabel{sec:experiments}{{V}{7}{}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Datasets and Comparison Protocol}{7}{}\protected@file@percent }
+\newlabel{sec:experimental_datasets}{{\mbox  {V-A}}{7}{}{subsection.5.1}{}}
+\citation{ref_maskrcnn}
+\citation{ref_msrcnn}
+\citation{ref_htc}
+\citation{ref_scnet}
+\citation{ref_condinst}
+\citation{ref_solov2}
+\citation{ref_mask2former}
+\citation{ref_catnet}
+\citation{ref_hqisnet}
+\citation{ref_rsprompter}
+\citation{ref_mcsamseg}
+\citation{ref_rs4d}
+\citation{ref_p2pformer}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Evaluation Metrics}{8}{}\protected@file@percent }
+\newlabel{sec:evaluation_metrics}{{\mbox  {V-B}}{8}{}{subsection.5.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Implementation Details and Main Results}{8}{}\protected@file@percent }
+\newlabel{sec:implementation_results}{{\mbox  {V-C}}{8}{}{subsection.5.3}{}}
+\newlabel{sec:whu}{{\mbox  {V-C}}{8}{}{subsection.5.3}{}}
+\citation{ref_htc}
+\citation{ref_scnet}
+\citation{ref_condinst}
+\citation{ref_catnet}
+\citation{ref_hqisnet}
+\citation{ref_p2pformer}
+\citation{ref_mask2former}
+\citation{ref_maskrcnn}
+\citation{ref_msrcnn}
+\citation{ref_rsprompter}
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Comparison with Instance Segmentation Methods on the WHU Building Benchmark}}{9}{}\protected@file@percent }
+\newlabel{tab:whu}{{III}{9}{}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Ablation Studies}{9}{}\protected@file@percent }
+\newlabel{sec:ablations}{{\mbox  {V-D}}{9}{}{subsection.5.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Discussion}{9}{}\protected@file@percent }
+\newlabel{sec:discussion}{{VI}{9}{}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-A}}Interpretation of the Single-Stream Results}{9}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Comparison of Single- and Dual-Stream Methods on the SynSU-Build Test Set}}{10}{}\protected@file@percent }
+\newlabel{tab:synsu_dual}{{IV}{10}{}{table.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Ablation of Explicit Prompt Modalities and P2 Boundary Refinement on the WHU Building Benchmark}}{10}{}\protected@file@percent }
+\newlabel{tab:single_ablation}{{V}{10}{}{table.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-B}}Interpretation of the Cross-View Comparison}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-C}}Design Rationale}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-D}}Limitations}{10}{}\protected@file@percent }
+\bibstyle{IEEEtran}
+\bibcite{ref_sam}{1}
+\bibcite{ref_sam2}{2}
+\bibcite{ref_samrsapp}{3}
+\bibcite{ref_samrs}{4}
+\bibcite{ref_rsprompter}{5}
+\bibcite{ref_isaid}{6}
+\bibcite{ref_spacenet}{7}
+\bibcite{ref_xbd}{8}
+\bibcite{ref_maskrcnn}{9}
+\bibcite{ref_msrcnn}{10}
+\bibcite{ref_cascade}{11}
+\bibcite{ref_hqisnet}{12}
+\bibcite{ref_scnet}{13}
+\bibcite{ref_condinst}{14}
+\bibcite{ref_solov2}{15}
+\bibcite{ref_catnet}{16}
+\bibcite{ref_mask2former}{17}
+\bibcite{ref_htc}{18}
+\bibcite{ref_mcsamseg}{19}
+\bibcite{ref_p2pformer}{20}
+\bibcite{ref_rs4d}{21}
+\bibcite{ref_transgeo}{22}
+\bibcite{ref_denseuav}{23}
+\bibcite{ref_university}{24}
+\bibcite{ref_pointrend}{25}
+\bibcite{ref_cascadepsp}{26}
+\bibcite{ref_segrefiner}{27}
+\bibcite{ref_samrefiner}{28}
+\bibcite{ref_worldpartition}{29}
+\bibcite{ref_citysample}{30}
+\bibcite{ref_urbanscene3d}{31}
+\bibcite{ref_uemmair}{32}
+\@writefile{toc}{\contentsline {section}{\numberline {VII}Conclusion}{11}{}\protected@file@percent }
+\newlabel{sec:conclusion}{{VII}{11}{}{section.7}{}}
+\@writefile{toc}{\contentsline {section}{References}{11}{}\protected@file@percent }
+\bibcite{ref_synrs3d}{33}
+\bibcite{ref_synthinel}{34}
+\bibcite{ref_skyscenes}{35}
+\bibcite{ref_gtauav}{36}
+\bibcite{ref_whu}{37}
+\bibcite{ref_unigeo}{38}
+\bibcite{ref_cvt}{39}
+\bibcite{ref_sgbeyv}{40}
+\gdef \@abspage@last{12}

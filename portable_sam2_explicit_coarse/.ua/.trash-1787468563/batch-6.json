@@ -1,0 +1,87 @@
+{
+  "nodes": [
+    {
+      "id": "document:scripts/ablations/coarse_strategy/README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "scripts/ablations/coarse_strategy/README.md",
+      "summary": "coarse-loss 权重策略消融实验(s0/s1/s2)的说明文档:三组实验固定 C2 架构(PAFPN + adaptive coarse 2P2N,不含 box、dense prompt 或 DenseBR),仅隔离 coarse 损失权重(固定 0.10 / 固定 0.20 / 两阶段 0.20→0.10)。文档还说明这些包装脚本继承共享消融数据集默认值,并每 50 次训练迭代输出一次 prompt 诊断。",
+      "tags": ["documentation", "ablation", "experiment-notes", "coarse-loss"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/coarse_strategy/s0_c2_fixed_w010.sh",
+      "type": "file",
+      "name": "s0_c2_fixed_w010.sh",
+      "filePath": "scripts/ablations/coarse_strategy/s0_c2_fixed_w010.sh",
+      "summary": "消融实验 s0 的包装脚本:在固定 C2 架构(PAFPN neck、coarse 路由、points 显式提示、关闭 P2 边界精修)下,将 shape prior/coarse 损失权重固定为 0.10(SHAPE_LOSS_SCHEDULE_MODE=fixed),最后 exec 委托共享启动器 _run_ablation.sh 执行。",
+      "tags": ["ablation", "shell-wrapper", "experiment", "coarse-loss"],
+      "complexity": "simple",
+      "languageNotes": "采用「环境变量导出 + exec bash 共享启动器」的纯配置包装模式:exec 替换当前 shell 进程,保证退出码与信号正确传递;RUN_TAG 使用 bash 默认值展开 ${VAR:-default} 支持外部覆盖。"
+    },
+    {
+      "id": "file:scripts/ablations/coarse_strategy/s1_c2_fixed_w020.sh",
+      "type": "file",
+      "name": "s1_c2_fixed_w020.sh",
+      "filePath": "scripts/ablations/coarse_strategy/s1_c2_fixed_w020.sh",
+      "summary": "消融实验 s1 的包装脚本:与 s0 使用完全相同的 C2 架构配置(PAFPN + coarse 路由 points 提示),仅将 coarse 损失权重固定为 0.20 以对比权重敏感性,通过 exec 委托 _run_ablation.sh 运行。",
+      "tags": ["ablation", "shell-wrapper", "experiment", "coarse-loss"],
+      "complexity": "simple",
+      "languageNotes": "与 s0 脚本逐行同构,唯一差异是 SHAPE_PRIOR_LOSS_WEIGHT=0.20 与 ABLATION_ID/RUN_TAG 命名,体现了单变量消融的对照设计。"
+    },
+    {
+      "id": "file:scripts/ablations/coarse_strategy/s2_c2_two_stage_w020_w010.sh",
+      "type": "file",
+      "name": "s2_c2_two_stage_w020_w010.sh",
+      "filePath": "scripts/ablations/coarse_strategy/s2_c2_two_stage_w020_w010.sh",
+      "summary": "消融实验 s2 的包装脚本:采用两阶段 coarse 损失权重调度(SHAPE_LOSS_SCHEDULE_MODE=two_stage),epochs 1-5 用 0.20、epoch 6+ 降为 0.10(由 SHAPE_LOSS_STAGE1_END=5 与两级权重变量控制),架构与 s0/s1 一致,exec 委托 _run_ablation.sh 执行。",
+      "tags": ["ablation", "shell-wrapper", "experiment", "loss-schedule", "coarse-loss"],
+      "complexity": "simple",
+      "languageNotes": "通过 SHAPE_LOSS_STAGE1_END / SHAPE_LOSS_WEIGHT_STAGE1 / SHAPE_LOSS_WEIGHT_STAGE2 三个环境变量把两阶段调度策略参数化,基础权重 SHAPE_PRIOR_LOSS_WEIGHT 保持为第二阶段值 0.10。"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:scripts/ablations/coarse_strategy/s0_c2_fixed_w010.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/coarse_strategy/s1_c2_fixed_w020.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/coarse_strategy/s2_c2_two_stage_w020_w010.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:scripts/ablations/coarse_strategy/README.md",
+      "target": "file:scripts/ablations/coarse_strategy/s0_c2_fixed_w010.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/coarse_strategy/README.md",
+      "target": "file:scripts/ablations/coarse_strategy/s1_c2_fixed_w020.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:scripts/ablations/coarse_strategy/README.md",
+      "target": "file:scripts/ablations/coarse_strategy/s2_c2_two_stage_w020_w010.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ]
+}

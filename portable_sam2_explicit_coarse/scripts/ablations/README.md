@@ -22,6 +22,7 @@
 | C5-v2 | 64×64 official | PAFPN | coarse 2P2N | full-image | no | yes | yes | yes |
 | C3-roi_local | 32×32 legacy | PAFPN | coarse 2P2N | **ROI-local** | no | yes | no | no |
 | R1-C4-RD-roi_local | 64×64 official | PAFPN | coarse 2P2N | **ROI-local** | no | yes | raw logits (detached) | no |
+| Paper PromptMiner RD+P2 | 64×64 official | PAFPN | coarse 2P2N | **ROI-local** | yes | yes | raw logits (detached) | yes |
 
 The C1–C5 / R1-C* rows above were trained under the historical `full-image`
 final-mask contract, which collapses under sparse WHU targets (see the

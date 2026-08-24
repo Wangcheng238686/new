@@ -26,11 +26,31 @@ from rsprompter.models_sam2 import (
 from rsprompter.models import RSPrompterAnchor
 import rsprompter.models_sam2 as models_sam2
 from rsprompter.shape_prior import ShapePointMiner, ShapePriorInjector
+from inference.infer_from_checkpoint import (
+    _restore_embedded_architecture_environment,
+)
 from utils.coco_eval_utils import build_coco_gt_and_dt
 
 
 def main():
     torch.manual_seed(44)
+
+    # Early schema-v2 checkpoints keep the P2 switch only inside the embedded
+    # mask-head config.  Checkpoint inference must restore it before falling
+    # back to the recorded config factory for architecture verification.
+    for enabled, expected in ((True, "1"), (False, "0")):
+        embedded = {
+            "roi_head": {
+                "mask_head": {
+                    "p2_boundary_refiner_cfg": {"enabled": enabled},
+                }
+            }
+        }
+        with patch.dict(
+            os.environ, {"P2_BOUNDARY_REFINER_ENABLED": "stale"}
+        ):
+            _restore_embedded_architecture_environment(embedded)
+            assert os.environ["P2_BOUNDARY_REFINER_ENABLED"] == expected
 
     # C5-v2 construction is RNG-isolated: all shared modules created before or
     # after the optional refiner must be byte-exact with the R1-C4 control.
@@ -333,6 +353,7 @@ def main():
     points, _, _ = RSPrompterAnchorMaskHeadSAM2._select_explicit_prompt_inputs(
         SimpleNamespace(
             prompt_sparse_mode="shape_point",
+            explicit_use_point_prompt=True,
             explicit_use_box_prompt=False,
             explicit_use_dense_prompt=False,
         ),

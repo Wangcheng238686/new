@@ -1,0 +1,16 @@
+{
+  "fixedSectionOk": true,
+  "nodesRecovered": 0,
+  "edgesRestored": 2,
+  "crossBatchEdgesAdded": 0,
+  "typesRemapped": 0,
+  "complexityRemapped": 0,
+  "notes": [
+    "No mechanical-fix section appeared in the merge report (no ID/complexity corrections were needed), so nothing to re-verify there; node types (file/function/class/document) and complexity values (simple/moderate/complex) are all valid.",
+    "Both dropped depends_on edges were retargeted from the nonexistent 'config:configs/whu1024_baseplus_explicit_coarse_densefix.py' to 'file:configs/whu1024_baseplus_explicit_coarse_densefix.py', which is the graph-wide convention (zero config: nodes exist; all 6 config .py files use file: IDs). Original edge attributes from batch-4.json preserved (depends_on, forward, weight 0.6); no node re-creation needed since the config node already existed.",
+    "All 18 imports edges match the importMap ground truth exactly (18 expected pairs; 0 missing, 0 extra), including data/loader <- 3 dataset modules, train-script <- smoke_ddp_control_plane, and rsprompter/models* <- ckpt_utils. No cross-batch imports edges needed to be added.",
+    "Architecture spot-check passed: class:rsprompter/models_sam2.py:RSPrompterAnchorMaskHeadSAM2 (complex) has contains+exports from its file and calls edges to all four components (ShapePointMiner, ShapePriorInjector, CoarseMaskLoss, P2BoundaryRefiner); file-level depends_on edges to the three component files and configures edges from whu1024_baseplus_explicit_coarse.py to all four modules are present.",
+    "Post-fix integrity: 0 dangling edges, 0 duplicate (source,target,type) keys, all 200 nodes have id/type/summary/tags/complexity. The single tested_by edge (dense_prompt_utils.py <- test_dense_prompt_utils.py) is consistent with importMap.",
+    "Minor observation: only 1 tested_by edge and 0 path-convention supplements were produced by the linker despite ~15 test/smoke scripts being present; test coverage linkage is underrepresented but this is an upstream analysis limitation, not a merge error."
+  ]
+}

@@ -120,6 +120,30 @@ for script in "${MATRIX[@]}"; do
   esac
 done
 
+echo "[3b/5] single-content prompt x P2 matrix contracts"
+for content in point box mask; do
+  for p2 in 0 1; do
+    echo "---- prompt_content_${content}_p2_${p2}"
+    smoke_output="$(DRY_RUN=1 CHECK_DATA=0 PREFLIGHT_MODEL=0 \
+      bash "${SCRIPT_DIR}/prompt_content_p2_from_r1_best.sh" \
+      "${content}" "${p2}")"
+    printf '%s\n' "${smoke_output}"
+    expected_mode="${content}"
+    [[ "${content}" == "point" ]] && expected_mode="points"
+    grep -q "^explicit_prompt_mode=${expected_mode}$" <<<"${smoke_output}"
+    grep -q "^p2_boundary_refiner_enabled=${p2}$" <<<"${smoke_output}"
+    grep -q '^sam_image_embedding_stride=16$' <<<"${smoke_output}"
+    grep -q '^final_mask_coordinate_mode=roi_local$' <<<"${smoke_output}"
+    grep -q '^allow_cross_arch_init=1$' <<<"${smoke_output}"
+    grep -q '/best_model_epoch80.pth$' <<<"$(grep '^init_from=' <<<"${smoke_output}")"
+    if [[ "${content}" == "mask" ]]; then
+      grep -q '"dense_prompt_enabled": true' <<<"${smoke_output}"
+    else
+      grep -q '"dense_prompt_enabled": false' <<<"${smoke_output}"
+    fi
+  done
+done
+
 val_loss_override_output="$(DRY_RUN=1 CHECK_DATA=0 PREFLIGHT_MODEL=0 \
   COMPUTE_VAL_LOSS=1 NPROC_PER_NODE=4 CUDA_VISIBLE_DEVICES=0,1,2,3 \
   GRAD_ACCUM_STEPS=2 bash "${SCRIPT_DIR}/b0_aggregator_mlp.sh")"

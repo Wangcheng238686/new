@@ -1,0 +1,227 @@
+{
+  "nodes": [
+    {
+      "id": "file:data/__init__.py",
+      "type": "file",
+      "name": "__init__.py",
+      "filePath": "data/__init__.py",
+      "summary": "data 包的入口 barrel 文件，从 data.loader 重导出 create_train_loader 与 create_test_loader，并导入 AdaptiveResize 以触发自定义 transform 在 mmdet 注册表中的注册。",
+      "tags": ["entry-point", "barrel", "data-loading", "package-init"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:utils/__init__.py",
+      "type": "file",
+      "name": "__init__.py",
+      "filePath": "utils/__init__.py",
+      "summary": "utils 包的入口 barrel 文件，统一重导出 COCO 评测工具 build_coco_gt_and_dt、run_coco_eval 以及自定义 transform AdaptiveResize。",
+      "tags": ["entry-point", "barrel", "package-init", "utility"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:utils/coco_eval_utils.py",
+      "type": "file",
+      "name": "coco_eval_utils.py",
+      "filePath": "utils/coco_eval_utils.py",
+      "summary": "基于 pycocotools 的 COCO 格式评测工具模块：将 GT 与预测的 bbox/mask 转换为 COCO 的 GT/Detection 对象，并运行 COCOeval 输出 AP/AR 指标（支持 bbox 与 segm 两种 iouType），服务于建筑提取结果的量化评估。",
+      "tags": ["utility", "evaluation", "coco-eval", "serialization", "metrics"],
+      "complexity": "moderate",
+      "languageNotes": "pycocotools 采用函数内延迟导入以隔离依赖；RLE 编码要求 Fortran 序连续内存，故先经 np.asfortranarray 转换。"
+    },
+    {
+      "id": "function:utils/coco_eval_utils.py:_mask_to_rle",
+      "type": "function",
+      "name": "_mask_to_rle",
+      "filePath": "utils/coco_eval_utils.py",
+      "lineRange": [7, 14],
+      "summary": "将 (H, W) 二值掩码编码为 COCO RLE 格式，并把 counts 字节串解码为 UTF-8 字符串以便 JSON 序列化。",
+      "tags": ["utility", "mask", "rle", "serialization"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:utils/coco_eval_utils.py:_xyxy_to_xywh",
+      "type": "function",
+      "name": "_xyxy_to_xywh",
+      "filePath": "utils/coco_eval_utils.py",
+      "lineRange": [17, 22],
+      "summary": "将 [x1, y1, x2, y2] 格式边界框转换为 COCO 标注使用的 [x, y, w, h] 格式，支持批量维度。",
+      "tags": ["utility", "bbox", "coordinate-conversion", "formatting"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:utils/coco_eval_utils.py:build_coco_gt_and_dt",
+      "type": "function",
+      "name": "build_coco_gt_and_dt",
+      "filePath": "utils/coco_eval_utils.py",
+      "lineRange": [25, 115],
+      "summary": "将逐图的 GT（bboxes/labels/masks）与预测结果（bboxes/scores/masks）组装成 pycocotools 的 COCO 真值对象和检测结果对象；配置的 score_key 缺失时抛出 KeyError 而非静默回退。",
+      "tags": ["evaluation", "coco-eval", "data-conversion", "ground-truth", "detection"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:utils/coco_eval_utils.py:run_coco_eval",
+      "type": "function",
+      "name": "run_coco_eval",
+      "filePath": "utils/coco_eval_utils.py",
+      "lineRange": [118, 148],
+      "summary": "运行 COCOeval（evaluate/accumulate/summarize），并将 12 项统计指标映射为带 bbox/segm 前缀的 OrderedDict（mAP、mAP_50/75、AR@maxDets 及按目标尺度分组的指标）。",
+      "tags": ["evaluation", "coco-eval", "metrics", "map-ar"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:utils/transforms.py",
+      "type": "file",
+      "name": "transforms.py",
+      "filePath": "utils/transforms.py",
+      "summary": "定义并向 mmdet TRANSFORMS 注册表注册 AdaptiveResize 自适应缩放 transform：将 512×512 输入上采样到 1024×1024 以匹配 SAM2 预训练分辨率，同时同步缩放边界框与掩码。",
+      "tags": ["transform", "data-pipeline", "mmdet", "registry", "preprocessing"],
+      "complexity": "moderate",
+      "languageNotes": "通过 @TRANSFORMS.register_module(force=True) 强制注册进 mmdet transform 注册表；掩码缩放使用 INTER_NEAREST 最近邻插值以避免标签失真。"
+    },
+    {
+      "id": "class:utils/transforms.py:AdaptiveResize",
+      "type": "class",
+      "name": "AdaptiveResize",
+      "filePath": "utils/transforms.py",
+      "lineRange": [15, 127],
+      "summary": "继承 mmcv BaseTransform 的自适应 Resize transform：检测到 512×512（±2 像素容差）输入时上采样到 target_size，其余尺寸保持不变；同步更新 img_shape/scale_factor 并等比缩放 gt_bboxes 与 gt_masks。",
+      "tags": ["transform", "resize", "mmdet", "data-augmentation", "registry"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:data/__init__.py",
+      "target": "file:data/loader.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:data/__init__.py",
+      "target": "file:utils/transforms.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:utils/__init__.py",
+      "target": "file:utils/coco_eval_utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:utils/__init__.py",
+      "target": "file:utils/transforms.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:utils/coco_eval_utils.py",
+      "target": "function:utils/coco_eval_utils.py:_mask_to_rle",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:utils/coco_eval_utils.py",
+      "target": "function:utils/coco_eval_utils.py:_xyxy_to_xywh",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:utils/coco_eval_utils.py",
+      "target": "function:utils/coco_eval_utils.py:build_coco_gt_and_dt",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:utils/coco_eval_utils.py",
+      "target": "function:utils/coco_eval_utils.py:run_coco_eval",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:utils/transforms.py",
+      "target": "class:utils/transforms.py:AdaptiveResize",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:utils/coco_eval_utils.py",
+      "target": "function:utils/coco_eval_utils.py:build_coco_gt_and_dt",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:utils/coco_eval_utils.py",
+      "target": "function:utils/coco_eval_utils.py:run_coco_eval",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:utils/transforms.py",
+      "target": "class:utils/transforms.py:AdaptiveResize",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:utils/__init__.py",
+      "target": "function:utils/coco_eval_utils.py:build_coco_gt_and_dt",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:utils/__init__.py",
+      "target": "function:utils/coco_eval_utils.py:run_coco_eval",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:utils/__init__.py",
+      "target": "class:utils/transforms.py:AdaptiveResize",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:data/__init__.py",
+      "target": "function:data/loader.py:create_train_loader",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:data/__init__.py",
+      "target": "function:data/loader.py:create_test_loader",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:data/__init__.py",
+      "target": "class:utils/transforms.py:AdaptiveResize",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:utils/coco_eval_utils.py",
+      "target": "file:scripts/smoke_test_components.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ]
+}

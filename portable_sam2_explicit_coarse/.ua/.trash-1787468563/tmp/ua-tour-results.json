@@ -1,0 +1,944 @@
+{
+  "scriptCompleted": true,
+  "entryPointCandidates": [
+    {
+      "id": "file:scripts/smoke_test_components.py",
+      "score": 3,
+      "name": "smoke_test_components.py",
+      "type": "file",
+      "summary": "组件级冒烟测试脚本:以 RNG 隔离对照验证可选 refiner 不扰动共享随机态,并逐一断言 CoarseMaskLoss、ShapePriorInjector/ShapePointMiner、P2BoundaryRefiner、RSSAM2PAFPN、no-mask embedding 加载契约、最终掩码坐标系回归契约与 COCO 评估辅助,通过后打印 OK。"
+    },
+    {
+      "id": "file:scripts/run_whu1024_explicit_coarse_4gpu.sh",
+      "score": 3,
+      "name": "run_whu1024_explicit_coarse_4gpu.sh",
+      "type": "file",
+      "summary": "WHU1024 显式粗粒度（explicit coarse）实验的 4 GPU 训练启动器：设置模型规模（base_plus）、提示模式、P2 边界精化开关、训练子集比例与 checkpoint 目录等默认超参，再按提示模式/精化开关/嵌入步幅的组合通过 case 分发到 scripts/ablations/ 下对应的消融包装脚本执行。"
+    },
+    {
+      "id": "file:configs/rsprompter_anchor_satS_v11_sam2_large_full.py",
+      "score": 3,
+      "name": "rsprompter_anchor_satS_v11_sam2_large_full.py",
+      "type": "file",
+      "summary": "RSPrompter + SAM2-Hiera 完整检测器根 config：定义 RSPrompterAnchor 两阶段模型（RSSAM2VisionEncoder LoRA backbone、NECK_TYPE 可切换 PAFPN/Aggregator、RPN + RSPrompterAnchorRoIPromptHead + RSPrompterAnchorMaskHeadSAM2）、512 分辨率 SatDataset 数据管道与 AdamW + warmup/cosine 训练策略，是所有 WHU1024 config 的继承基座。"
+    },
+    {
+      "id": "file:inference/infer_from_checkpoint.py",
+      "score": 3,
+      "name": "infer_from_checkpoint.py",
+      "type": "file",
+      "summary": "自描述 checkpoint 推理入口：从训练 checkpoint 内嵌的 config_snapshot 与架构契约重建模型（旧 checkpoint 可回退 --config），恢复 SAM2 repo/checkpoint 环境并载入权重，随后在 WHU COCO split 上推理，输出 COCO RLE 预测与 JSON 诊断报告。"
+    },
+    {
+      "id": "file:train/train_rsprompter_fusion.py",
+      "score": 3,
+      "name": "train_rsprompter_fusion.py",
+      "type": "file",
+      "summary": "项目主训练入口（DDP/FSDP 双模式）：按 mmengine config 经 mmdet 注册表构建 RSPrompterAnchor 检测器，执行 warmup+cosine 调度（按 optimizer step 计数）、梯度累积、AMP、EMA 与分组件学习率组优化；训练循环调用 model.loss 得到 loss_dict（检测损失按 epoch 三阶段加权、P2 refiner 损失跨 rank 归约、coarse shape 监督由 config 调度），rank-0 独占全量验证并跑 COCO bbox/segm 评估，按可配置 metric（含加权/复合表达式）保存 verified best checkpoint（内嵌架构契约与 config 快照），支持 --test-only、--init-from 跨架构初始化与早停。"
+    },
+    {
+      "id": "file:rsprompter/models_sam2.py",
+      "score": 2,
+      "name": "models_sam2.py",
+      "type": "file",
+      "summary": "当前实验的核心模型文件:SAM2 适配版 RSPrompter 模型族,包含 RSSAM2VisionEncoder(支持 LoRA 与 Base+/Large)、RSSAM2PAFPN 检测 neck、RSSAM2MaskDecoderWrapper,以及统一承载显式粗点提示、稠密/形状先验提示、coarse mask 监督与 P2 边界细化的 RSPrompterAnchorMaskHeadSAM2。"
+    },
+    {
+      "id": "file:utils/__init__.py",
+      "score": 2,
+      "name": "__init__.py",
+      "type": "file",
+      "summary": "utils 包的入口 barrel 文件，统一重导出 COCO 评测工具 build_coco_gt_and_dt、run_coco_eval 以及自定义 transform AdaptiveResize。"
+    },
+    {
+      "id": "file:data/loader.py",
+      "score": 2,
+      "name": "loader.py",
+      "type": "file",
+      "summary": "数据加载工厂模块，按 dataset_format（satellite-drone / whu / satellite）构建训练与测试 DataLoader，统一处理分布式采样、WHU 子集采样、种子 worker 与 RTMDet 风格 collate。"
+    }
+  ],
+  "fanInRanking": [
+    {
+      "id": "file:scripts/ablations/_run_ablation.sh",
+      "fanIn": 26,
+      "name": "_run_ablation.sh"
+    },
+    {
+      "id": "file:scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "fanIn": 8,
+      "name": "prompt_content_p2_from_r1_best.sh"
+    },
+    {
+      "id": "file:train/train_rsprompter_fusion.py",
+      "fanIn": 8,
+      "name": "train_rsprompter_fusion.py"
+    },
+    {
+      "id": "file:scripts/load_environment.sh",
+      "fanIn": 7,
+      "name": "load_environment.sh"
+    },
+    {
+      "id": "file:scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "fanIn": 5,
+      "name": "c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh"
+    },
+    {
+      "id": "file:rsprompter/models_sam2.py",
+      "fanIn": 4,
+      "name": "models_sam2.py"
+    },
+    {
+      "id": "file:scripts/ablations/c2_pafpn_coarse_points.sh",
+      "fanIn": 4,
+      "name": "c2_pafpn_coarse_points.sh"
+    },
+    {
+      "id": "file:scripts/ablations/c3_pafpn_coarse_points_box.sh",
+      "fanIn": 4,
+      "name": "c3_pafpn_coarse_points_box.sh"
+    },
+    {
+      "id": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense.sh",
+      "fanIn": 4,
+      "name": "c4_pafpn_coarse_points_box_dense.sh"
+    },
+    {
+      "id": "file:scripts/ablations/r0_b0_aggregator_mlp_emb64.sh",
+      "fanIn": 4,
+      "name": "r0_b0_aggregator_mlp_emb64.sh"
+    },
+    {
+      "id": "file:rsprompter/coarse_mask_loss.py",
+      "fanIn": 3,
+      "name": "coarse_mask_loss.py"
+    },
+    {
+      "id": "file:rsprompter/models.py",
+      "fanIn": 3,
+      "name": "models.py"
+    },
+    {
+      "id": "file:rsprompter/p2_boundary_refiner.py",
+      "fanIn": 3,
+      "name": "p2_boundary_refiner.py"
+    },
+    {
+      "id": "file:rsprompter/shape_prior.py",
+      "fanIn": 3,
+      "name": "shape_prior.py"
+    },
+    {
+      "id": "file:scripts/ablations/b0_aggregator_mlp.sh",
+      "fanIn": 3,
+      "name": "b0_aggregator_mlp.sh"
+    },
+    {
+      "id": "file:scripts/ablations/b1_pafpn_mlp.sh",
+      "fanIn": 3,
+      "name": "b1_pafpn_mlp.sh"
+    },
+    {
+      "id": "file:scripts/ablations/c1_aggregator_coarse_points.sh",
+      "fanIn": 3,
+      "name": "c1_aggregator_coarse_points.sh"
+    },
+    {
+      "id": "file:scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh",
+      "fanIn": 3,
+      "name": "c2l_pafpn_coarse_points_roi_loss.sh"
+    },
+    {
+      "id": "file:scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh",
+      "fanIn": 3,
+      "name": "c2r_pafpn_coarse_points_roi_sam.sh"
+    },
+    {
+      "id": "file:scripts/ablations/m0_aggregator_mlp_full_image.sh",
+      "fanIn": 3,
+      "name": "m0_aggregator_mlp_full_image.sh"
+    }
+  ],
+  "fanOutRanking": [
+    {
+      "id": "document:scripts/ablations/README.md",
+      "fanOut": 18,
+      "name": "README.md"
+    },
+    {
+      "id": "file:scripts/ablations/smoke_all.sh",
+      "fanOut": 18,
+      "name": "smoke_all.sh"
+    },
+    {
+      "id": "file:scripts/ablations/monitor_b0_then_serial.sh",
+      "fanOut": 12,
+      "name": "monitor_b0_then_serial.sh"
+    },
+    {
+      "id": "file:scripts/smoke_test_components.py",
+      "fanOut": 7,
+      "name": "smoke_test_components.py"
+    },
+    {
+      "id": "file:configs/whu1024_baseplus_explicit_coarse.py",
+      "fanOut": 7,
+      "name": "whu1024_baseplus_explicit_coarse.py"
+    },
+    {
+      "id": "file:scripts/ablations/prompt_content_p2_matrix/run_serial.sh",
+      "fanOut": 6,
+      "name": "run_serial.sh"
+    },
+    {
+      "id": "file:scripts/run_whu1024_explicit_coarse_4gpu.sh",
+      "fanOut": 6,
+      "name": "run_whu1024_explicit_coarse_4gpu.sh"
+    },
+    {
+      "id": "file:rsprompter/models_sam2.py",
+      "fanOut": 4,
+      "name": "models_sam2.py"
+    },
+    {
+      "id": "file:configs/rsprompter_anchor_satS_v11_sam2_large_full.py",
+      "fanOut": 4,
+      "name": "rsprompter_anchor_satS_v11_sam2_large_full.py"
+    },
+    {
+      "id": "file:configs/whu1024_baseplus_clean.py",
+      "fanOut": 4,
+      "name": "whu1024_baseplus_clean.py"
+    },
+    {
+      "id": "file:scripts/ablations/validate_ablation_contract.py",
+      "fanOut": 4,
+      "name": "validate_ablation_contract.py"
+    },
+    {
+      "id": "file:scripts/ablations_uecoco/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+      "fanOut": 4,
+      "name": "r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh"
+    },
+    {
+      "id": "file:data/loader.py",
+      "fanOut": 3,
+      "name": "loader.py"
+    },
+    {
+      "id": "file:scripts/ablations/_run_ablation.sh",
+      "fanOut": 3,
+      "name": "_run_ablation.sh"
+    },
+    {
+      "id": "document:scripts/ablations/coarse_strategy/README.md",
+      "fanOut": 3,
+      "name": "README.md"
+    },
+    {
+      "id": "file:train/train_rsprompter_fusion.py",
+      "fanOut": 3,
+      "name": "train_rsprompter_fusion.py"
+    },
+    {
+      "id": "file:data/__init__.py",
+      "fanOut": 2,
+      "name": "__init__.py"
+    },
+    {
+      "id": "file:utils/__init__.py",
+      "fanOut": 2,
+      "name": "__init__.py"
+    },
+    {
+      "id": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh",
+      "fanOut": 2,
+      "name": "c4_pafpn_coarse_points_box_dense_densefix.sh"
+    },
+    {
+      "id": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh",
+      "fanOut": 2,
+      "name": "c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh"
+    }
+  ],
+  "bfsTraversal": {
+    "startNode": "file:scripts/smoke_test_components.py",
+    "order": [
+      "file:scripts/smoke_test_components.py",
+      "file:rsprompter/coarse_mask_loss.py",
+      "file:rsprompter/dense_prompt_utils.py",
+      "file:rsprompter/models.py",
+      "file:rsprompter/models_sam2.py",
+      "file:rsprompter/p2_boundary_refiner.py",
+      "file:rsprompter/shape_prior.py",
+      "file:utils/coco_eval_utils.py",
+      "file:rsprompter/ckpt_utils.py"
+    ],
+    "depthMap": {
+      "file:scripts/smoke_test_components.py": 0,
+      "file:rsprompter/coarse_mask_loss.py": 1,
+      "file:rsprompter/dense_prompt_utils.py": 1,
+      "file:rsprompter/models.py": 1,
+      "file:rsprompter/models_sam2.py": 1,
+      "file:rsprompter/p2_boundary_refiner.py": 1,
+      "file:rsprompter/shape_prior.py": 1,
+      "file:utils/coco_eval_utils.py": 1,
+      "file:rsprompter/ckpt_utils.py": 2
+    },
+    "byDepth": {
+      "0": [
+        "file:scripts/smoke_test_components.py"
+      ],
+      "1": [
+        "file:rsprompter/coarse_mask_loss.py",
+        "file:rsprompter/dense_prompt_utils.py",
+        "file:rsprompter/models.py",
+        "file:rsprompter/models_sam2.py",
+        "file:rsprompter/p2_boundary_refiner.py",
+        "file:rsprompter/shape_prior.py",
+        "file:utils/coco_eval_utils.py"
+      ],
+      "2": [
+        "file:rsprompter/ckpt_utils.py"
+      ]
+    }
+  },
+  "nonCodeFiles": {
+    "documentation": [
+      {
+        "id": "document:scripts/ablations/README.md",
+        "name": "README.md",
+        "summary": "WHU-1024 消融矩阵的权威实验文档：以表格定义 B0/B1、M0/M1、C1-C5、R0/R1 各实验的架构变量（neck、prompt route、final-mask 坐标契约、dense prompt、P2 refiner、stride）。完整记录 full_image BCE 监督坍缩诊断与 roi_local 修复结论（R1-C4-RD-roi_local 0.6957 超越 B1 的 0.6888）、stride-32 vs stride-16 归因分析、B0 筛查复现诊断，以及机器环境、数据子集、超参数契约与后台/串行运行手册。"
+      },
+      {
+        "id": "document:scripts/ablations/coarse_strategy/README.md",
+        "name": "README.md",
+        "summary": "coarse-loss 权重策略消融实验(s0/s1/s2)的说明文档:三组实验固定 C2 架构(PAFPN + adaptive coarse 2P2N,不含 box、dense prompt 或 DenseBR),仅隔离 coarse 损失权重(固定 0.10 / 固定 0.20 / 两阶段 0.20→0.10)。文档还说明这些包装脚本继承共享消融数据集默认值,并每 50 次训练迭代输出一次 prompt 诊断。"
+      }
+    ],
+    "infrastructure": [],
+    "data": [],
+    "config": []
+  },
+  "clusters": [
+    {
+      "nodes": [
+        "file:rsprompter/dense_prompt_utils.py",
+        "file:scripts/ablations/test_dense_prompt_utils.py"
+      ],
+      "edgeCount": 2
+    }
+  ],
+  "layers": {
+    "count": 7,
+    "list": [
+      {
+        "id": "layer:model-architecture",
+        "name": "模型架构层",
+        "description": "基于 SAM2 与 RSPrompter 的提示学习模型核心，包含 mask head、粗掩码监督损失、形状先验点挖掘、P2 边界精修、稠密提示工具，以及 checkpoint 迁移与架构契约校验。",
+        "nodeIds": [
+          "file:rsprompter/ckpt_utils.py",
+          "file:rsprompter/coarse_mask_loss.py",
+          "file:rsprompter/models.py",
+          "file:rsprompter/models_sam2.py",
+          "file:rsprompter/p2_boundary_refiner.py",
+          "file:rsprompter/shape_prior.py",
+          "file:rsprompter/__init__.py",
+          "file:rsprompter/architecture_contract.py",
+          "file:rsprompter/ckpt_migration.py",
+          "file:rsprompter/dense_prompt_utils.py"
+        ]
+      },
+      {
+        "id": "layer:data",
+        "name": "数据与评估层",
+        "description": "WHU 建筑实例、卫星/无人机跨视角数据集的加载与增强，COCO 评估与 mmdet 数据变换工具，以及 COCO 格式转换与 UE-COCO 数据集重划分等预处理脚本。",
+        "nodeIds": [
+          "file:data/__init__.py",
+          "file:utils/__init__.py",
+          "file:utils/coco_eval_utils.py",
+          "file:utils/transforms.py",
+          "file:data/loader.py",
+          "file:data/satellite_dataset.py",
+          "file:data/satellite_drone_dataset.py",
+          "file:data/whu_instance_dataset.py",
+          "file:scripts/resplit_ue_coco.py",
+          "file:tools/mask_to_coco_whu512.py"
+        ]
+      },
+      {
+        "id": "layer:training",
+        "name": "训练层",
+        "description": "DDP 分布式训练入口 train_rsprompter_fusion.py，负责融合粗掩码提示学习训练流程的构建与启动。",
+        "nodeIds": [
+          "file:train/__init__.py",
+          "file:train/train_rsprompter_fusion.py"
+        ]
+      },
+      {
+        "id": "layer:experiment-orchestration",
+        "name": "实验编排层",
+        "description": "四十余个消融实验启动器（coarse points、dense prompt、P2 refiner、ROI 监督等变体）及其 GPU 等待调度、串行监控与环境加载脚本，并附实验矩阵记录 README。",
+        "nodeIds": [
+          "document:scripts/ablations/README.md",
+          "file:scripts/ablations/_run_ablation.sh",
+          "file:scripts/ablations/b0_aggregator_mlp.sh",
+          "file:scripts/ablations/b1_pafpn_mlp.sh",
+          "file:scripts/ablations/c1_aggregator_coarse_points.sh",
+          "file:scripts/ablations/c2_pafpn_coarse_points.sh",
+          "file:scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh",
+          "file:scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh",
+          "file:scripts/ablations/c3_pafpn_coarse_points_box.sh",
+          "file:scripts/ablations/c3_pafpn_coarse_points_box_roi_local.sh",
+          "file:scripts/ablations/c4_pafpn_coarse_points_box_dense.sh",
+          "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh",
+          "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh",
+          "file:scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+          "file:scripts/ablations/m0_aggregator_mlp_full_image.sh",
+          "file:scripts/ablations/m1_pafpn_mlp_full_image.sh",
+          "file:scripts/ablations/monitor_b0_then_serial.sh",
+          "file:scripts/ablations/paper_promptminer_rd_p2_whu_full.sh",
+          "file:scripts/ablations/prompt_content_p2_from_r1_best.sh",
+          "file:scripts/ablations/r0_b0_aggregator_mlp_emb64.sh",
+          "file:scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh",
+          "file:scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh",
+          "file:scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh",
+          "file:scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+          "file:scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_roi_local_emb64.sh",
+          "file:scripts/ablations/run_prompt_content_p2_matrix.sh",
+          "file:scripts/ablations/wait_then_launch_b0_r0.sh",
+          "document:scripts/ablations/coarse_strategy/README.md",
+          "file:scripts/ablations/coarse_strategy/s0_c2_fixed_w010.sh",
+          "file:scripts/ablations/coarse_strategy/s1_c2_fixed_w020.sh",
+          "file:scripts/ablations/coarse_strategy/s2_c2_two_stage_w020_w010.sh",
+          "file:scripts/ablations/prompt_content_p2_matrix/e1_point_p2_off.sh",
+          "file:scripts/ablations/prompt_content_p2_matrix/e2_point_p2_on.sh",
+          "file:scripts/ablations/prompt_content_p2_matrix/e3_box_p2_off.sh",
+          "file:scripts/ablations/prompt_content_p2_matrix/e4_box_p2_on.sh",
+          "file:scripts/ablations/prompt_content_p2_matrix/e5_mask_p2_off.sh",
+          "file:scripts/ablations/prompt_content_p2_matrix/e6_mask_p2_on.sh",
+          "file:scripts/ablations/prompt_content_p2_matrix/run_serial.sh",
+          "file:scripts/load_environment.sh",
+          "file:scripts/run_whu1024_explicit_coarse_4gpu.sh",
+          "file:scripts/ablations_uecoco/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+          "file:scripts/ablations_uecoco/wait_then_launch_r1_c4_rd.sh"
+        ]
+      },
+      {
+        "id": "layer:test",
+        "name": "测试与验证层",
+        "description": "组件级冒烟测试（smoke test）、DDP 控制面测试、dense prompt 单元测试与消融架构契约校验，用于实验配置的回归验证。",
+        "nodeIds": [
+          "file:scripts/smoke_test_components.py",
+          "file:scripts/ablations/smoke_all.sh",
+          "file:scripts/smoke_test_components.sh",
+          "file:scripts/ablations/smoke_ddp_control_plane.py",
+          "file:scripts/ablations/test_dense_prompt_utils.py",
+          "file:scripts/ablations/validate_ablation_contract.py"
+        ]
+      },
+      {
+        "id": "layer:config",
+        "name": "配置层",
+        "description": "mmengine 配置体系，包含 SAM2 模型注册、WHU1024 基线与 explicit-coarse 实验配置、densefix 消融覆盖以及运行环境默认值。",
+        "nodeIds": [
+          "file:configs/_sam2_registry.py",
+          "file:configs/environment.sh",
+          "file:configs/rsprompter_anchor_satS_v11_sam2_large_full.py",
+          "file:configs/whu1024_baseplus_clean.py",
+          "file:configs/whu1024_baseplus_explicit_coarse.py",
+          "file:configs/whu1024_baseplus_explicit_coarse_densefix.py"
+        ]
+      },
+      {
+        "id": "layer:inference",
+        "name": "推理层",
+        "description": "从 checkpoint 加载训练模型，对 WHU 数据集执行实例分割推理并输出 COCO 格式结果的入口与封装脚本。",
+        "nodeIds": [
+          "file:scripts/infer_whu_checkpoint.sh",
+          "file:inference/__init__.py",
+          "file:inference/infer_from_checkpoint.py"
+        ]
+      }
+    ]
+  },
+  "nodeSummaryIndex": {
+    "file:rsprompter/ckpt_utils.py": {
+      "name": "ckpt_utils.py",
+      "type": "file",
+      "summary": "提供 checkpoint 严格加载工具 load_module_state_dict_strict,按白名单校验 missing/unexpected keys,修复旧版 strict=False 静默加载错误权重的问题;附带 is_main_process 分布式主进程判断。",
+      "filePath": "rsprompter/ckpt_utils.py"
+    },
+    "file:rsprompter/coarse_mask_loss.py": {
+      "name": "coarse_mask_loss.py",
+      "type": "file",
+      "summary": "定义 ROI-local coarse mask 的独立强监督损失 CoarseMaskLoss(BCE+Dice+min-pool 可微边界项),带 epoch 权重调度与 boundary tp/fp/fn 诊断,替代 models.py 中旧的 _shape_prior_aux_loss。",
+      "filePath": "rsprompter/coarse_mask_loss.py"
+    },
+    "file:rsprompter/models.py": {
+      "name": "models.py",
+      "type": "file",
+      "summary": "基于 SAM(transformers)的 RSPrompter 基线模型族:RSPrompterAnchor(MaskRCNN)检测器、RSPrompterAnchorRoIPromptHead 提示学习 RoI 头、RSPrompterAnchorMaskHead 掩码头,以及 RSSam 系列编码器/解码器适配器、SimpleFPN/特征聚合器等 neck 组件。",
+      "filePath": "rsprompter/models.py"
+    },
+    "file:rsprompter/models_sam2.py": {
+      "name": "models_sam2.py",
+      "type": "file",
+      "summary": "当前实验的核心模型文件:SAM2 适配版 RSPrompter 模型族,包含 RSSAM2VisionEncoder(支持 LoRA 与 Base+/Large)、RSSAM2PAFPN 检测 neck、RSSAM2MaskDecoderWrapper,以及统一承载显式粗点提示、稠密/形状先验提示、coarse mask 监督与 P2 边界细化的 RSPrompterAnchorMaskHeadSAM2。",
+      "filePath": "rsprompter/models_sam2.py"
+    },
+    "file:rsprompter/p2_boundary_refiner.py": {
+      "name": "p2_boundary_refiner.py",
+      "type": "file",
+      "summary": "实现 P2BoundaryRefiner:在 P2(stride-4)高分辨率特征上,围绕粗掩码原始边界的有界搜索带内学习高频残差;真值仅通过训练期 boundary_loss 进入,不控制推理前向。",
+      "filePath": "rsprompter/p2_boundary_refiner.py"
+    },
+    "file:rsprompter/shape_prior.py": {
+      "name": "shape_prior.py",
+      "type": "file",
+      "summary": "形状先验模块:ShapePriorInjector 生成带显式监督的 ROI-local coarse mask 提示(默认 roi_only,可选 gated spatial FiLM 消融),ShapePointMiner 从 detach 的粗掩码自适应挖掘困难 2P2N 点对,配合 SmallMaskDecoder 与 RoIBoxEncoding,仅依赖 PyTorch。",
+      "filePath": "rsprompter/shape_prior.py"
+    },
+    "file:scripts/smoke_test_components.py": {
+      "name": "smoke_test_components.py",
+      "type": "file",
+      "summary": "组件级冒烟测试脚本:以 RNG 隔离对照验证可选 refiner 不扰动共享随机态,并逐一断言 CoarseMaskLoss、ShapePriorInjector/ShapePointMiner、P2BoundaryRefiner、RSSAM2PAFPN、no-mask embedding 加载契约、最终掩码坐标系回归契约与 COCO 评估辅助,通过后打印 OK。",
+      "filePath": "scripts/smoke_test_components.py"
+    },
+    "file:data/__init__.py": {
+      "name": "__init__.py",
+      "type": "file",
+      "summary": "data 包的入口 barrel 文件，从 data.loader 重导出 create_train_loader 与 create_test_loader，并导入 AdaptiveResize 以触发自定义 transform 在 mmdet 注册表中的注册。",
+      "filePath": "data/__init__.py"
+    },
+    "file:utils/__init__.py": {
+      "name": "__init__.py",
+      "type": "file",
+      "summary": "utils 包的入口 barrel 文件，统一重导出 COCO 评测工具 build_coco_gt_and_dt、run_coco_eval 以及自定义 transform AdaptiveResize。",
+      "filePath": "utils/__init__.py"
+    },
+    "file:utils/coco_eval_utils.py": {
+      "name": "coco_eval_utils.py",
+      "type": "file",
+      "summary": "基于 pycocotools 的 COCO 格式评测工具模块：将 GT 与预测的 bbox/mask 转换为 COCO 的 GT/Detection 对象，并运行 COCOeval 输出 AP/AR 指标（支持 bbox 与 segm 两种 iouType），服务于建筑提取结果的量化评估。",
+      "filePath": "utils/coco_eval_utils.py"
+    },
+    "file:utils/transforms.py": {
+      "name": "transforms.py",
+      "type": "file",
+      "summary": "定义并向 mmdet TRANSFORMS 注册表注册 AdaptiveResize 自适应缩放 transform：将 512×512 输入上采样到 1024×1024 以匹配 SAM2 预训练分辨率，同时同步缩放边界框与掩码。",
+      "filePath": "utils/transforms.py"
+    },
+    "file:data/loader.py": {
+      "name": "loader.py",
+      "type": "file",
+      "summary": "数据加载工厂模块，按 dataset_format（satellite-drone / whu / satellite）构建训练与测试 DataLoader，统一处理分布式采样、WHU 子集采样、种子 worker 与 RTMDet 风格 collate。",
+      "filePath": "data/loader.py"
+    },
+    "file:data/satellite_dataset.py": {
+      "name": "satellite_dataset.py",
+      "type": "file",
+      "summary": "卫星影像实例分割 Dataset 实现：从 data_root 加载场景图像与 JSON 标注，将多边形解析为实例掩码，并提供翻转、高斯噪声、随机擦除等在线数据增强。",
+      "filePath": "data/satellite_dataset.py"
+    },
+    "file:data/satellite_drone_dataset.py": {
+      "name": "satellite_drone_dataset.py",
+      "type": "file",
+      "summary": "卫星-无人机跨视角配对 Dataset 模块：除卫星实例解析与增强外，还按场景采样无人机多视角图像及其相机内外参，并提供 RTMDet 风格的无人机 collate 函数与 scene_id 映射构建工具。",
+      "filePath": "data/satellite_drone_dataset.py"
+    },
+    "file:data/whu_instance_dataset.py": {
+      "name": "whu_instance_dataset.py",
+      "type": "file",
+      "summary": "WHU 建筑实例数据集的 COCO 格式 Dataset 实现：解析 COCO JSON 标注（多边形或 RLE）生成实例掩码，默认单类训练并保留类别映射扩展，支持多尺度 resize 与多种在线增强。",
+      "filePath": "data/whu_instance_dataset.py"
+    },
+    "document:scripts/ablations/README.md": {
+      "name": "README.md",
+      "type": "document",
+      "summary": "WHU-1024 消融矩阵的权威实验文档：以表格定义 B0/B1、M0/M1、C1-C5、R0/R1 各实验的架构变量（neck、prompt route、final-mask 坐标契约、dense prompt、P2 refiner、stride）。完整记录 full_image BCE 监督坍缩诊断与 roi_local 修复结论（R1-C4-RD-roi_local 0.6957 超越 B1 的 0.6888）、stride-32 vs stride-16 归因分析、B0 筛查复现诊断，以及机器环境、数据子集、超参数契约与后台/串行运行手册。",
+      "filePath": "scripts/ablations/README.md"
+    },
+    "file:scripts/ablations/_run_ablation.sh": {
+      "name": "_run_ablation.sh",
+      "type": "file",
+      "summary": "全部消融 wrapper 共享的训练启动器：强制校验 wrapper 注入的架构契约变量（ABLATION_ID/NECK_TYPE/PROMPT_ROUTE/EXPLICIT_PROMPT_MODE 等），按 mlp/coarse 两条路线选择 MMEngine 配置并导出数十个带默认值与合法性检查的超参数；先调用 validate_ablation_contract.py 做契约预检、打印 resolved_hyperparameters 完整快照，再以 nohup setsid 后台（默认）或前台方式通过 torch.distributed.run 启动 train/train_rsprompter_fusion.py。",
+      "filePath": "scripts/ablations/_run_ablation.sh"
+    },
+    "file:scripts/ablations/b0_aggregator_mlp.sh": {
+      "name": "b0_aggregator_mlp.sh",
+      "type": "file",
+      "summary": "B0 基线 wrapper：aggregator neck + 历史遗留 5-token MLP prompt route + ROI-local final mask（stride-32），是从 legacy baseline 迁移到新主线后的桥接对照；RUN_TAG 默认 b0_aggregator_mlp_aligned，与 ROI 目标修复前的失效运行隔离。",
+      "filePath": "scripts/ablations/b0_aggregator_mlp.sh"
+    },
+    "file:scripts/ablations/b1_pafpn_mlp.sh": {
+      "name": "b1_pafpn_mlp.sh",
+      "type": "file",
+      "summary": "B1 wrapper：把 B0 的 neck 换成 PAFPN，MLP prompt route 与 roi_local final-mask 契约保持不变；B1 是整个消融矩阵的 MLP 参照基线（20% 筛查协议下 best segm/mAP 0.6888）。",
+      "filePath": "scripts/ablations/b1_pafpn_mlp.sh"
+    },
+    "file:scripts/ablations/c1_aggregator_coarse_points.sh": {
+      "name": "c1_aggregator_coarse_points.sh",
+      "type": "file",
+      "summary": "C1 wrapper：aggregator neck + coarse 显式 2P2N 点提示 route（explicit_mask + shape_point，stride-32），用于与 M0 在同一 full_image 契约下对比 coarse 与 MLP；RUN_TAG 默认附加 _semanticfix_<fusion> 后缀防止不同上下文融合契约的权重互相覆盖。",
+      "filePath": "scripts/ablations/c1_aggregator_coarse_points.sh"
+    },
+    "file:scripts/ablations/c2_pafpn_coarse_points.sh": {
+      "name": "c2_pafpn_coarse_points.sh",
+      "type": "file",
+      "summary": "C2 wrapper：PAFPN neck + coarse 2P2N 点提示 route（stride-32），是 C 系列在 PAFPN 上的起点，也是 C2-L 损失修复与 C2-R ROI-SAM2 变体的直接对照。",
+      "filePath": "scripts/ablations/c2_pafpn_coarse_points.sh"
+    },
+    "file:scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh": {
+      "name": "c2l_pafpn_coarse_points_roi_loss.sh",
+      "type": "file",
+      "summary": "C2-L wrapper：保持 C2 的模型输入、2P2N 点与 full_image 坐标不变，仅把 final-mask 监督换成 roi_balanced_dice（1.2x box 扩张支撑内 BCE+Dice 平衡、外区 0.05 权重 BCE 抑制泄漏）。实验结论是在错误坐标空间内重加权损失反而比标准 full_image 更差。",
+      "filePath": "scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh"
+    },
+    "file:scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh": {
+      "name": "c2r_pafpn_coarse_points_roi_sam.sh",
+      "type": "file",
+      "summary": "C2-R wrapper：启用 ROI-SAM2 替代方案（ROI_SAM_ENABLED=1、RoIAlign sampling ratio 2）——对每个正样本 proposal 用 aligned RoIAlign 裁剪 32x32 图像 embedding 与高分辨率 SAM2 特征，把 2P2N 坐标映射到 canonical 0-1024 ROI-local canvas 上预测 mask；points-only 严格变体，final mask 为 roi_local。",
+      "filePath": "scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh"
+    },
+    "file:scripts/ablations/c3_pafpn_coarse_points_box.sh": {
+      "name": "c3_pafpn_coarse_points_box.sh",
+      "type": "file",
+      "summary": "C3 wrapper：coarse 2P2N 点提示 + box token（PAFPN、stride-32、无 dense、无 P2 refiner）；历史 full_image 契约下受监督坍缩影响（best segm/mAP 0.4773），是 stride-32 组 box-token 消融的基础对照。",
+      "filePath": "scripts/ablations/c3_pafpn_coarse_points_box.sh"
+    },
+    "file:scripts/ablations/c3_pafpn_coarse_points_box_roi_local.sh": {
+      "name": "c3_pafpn_coarse_points_box_roi_local.sh",
+      "type": "file",
+      "summary": "C3-roi_local wrapper：与 C3 唯一区别是把 final-mask 坐标契约换成 roi_local（与 B1 相同的标准 BCE），用于隔离 full_image BCE 监督坍缩这一单一变量；结果 0.4773→0.6107 确认坍缩假设并使 coarse route 恢复可学习，此后 roi_local 成为 coarse 路线默认。ABLATION_ID 保持 C3 架构身份，RUN_TAG 附加 _roi_local。",
+      "filePath": "scripts/ablations/c3_pafpn_coarse_points_box_roi_local.sh"
+    },
+    "file:scripts/ablations/c4_pafpn_coarse_points_box_dense.sh": {
+      "name": "c4_pafpn_coarse_points_box_dense.sh",
+      "type": "file",
+      "summary": "C4 wrapper：在 C3 上增加 dense prompt（EXPLICIT_PROMPT_MODE=points_box_dense，可学习 global-sigmoid 门控、alpha 初始 0.25、raw_logits 变换）；筛查显示其 segm/mAP 与 C3 在 epoch 噪声内持平，由此引出 densefix 系列门控归因实验。",
+      "filePath": "scripts/ablations/c4_pafpn_coarse_points_box_dense.sh"
+    },
+    "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh": {
+      "name": "c4_pafpn_coarse_points_box_dense_densefix.sh",
+      "type": "file",
+      "summary": "C4-densefix wrapper：单变量门控强度对照——通过 CONFIG_OVERRIDE 选择 densefix 配置变体，把可学习 global-sigmoid dense gate 替换为固定 alpha=0.5 插值系数；ABLATION_ID 保持 C4 架构身份，RUN_TAG 附加 _densefix 防止日志/权重与原 C4 冲突，默认占用 GPU 1,2。",
+      "filePath": "scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh"
+    },
+    "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh": {
+      "name": "c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh",
+      "type": "file",
+      "summary": "C4-densefix-unfreeze wrapper：在 densefix 固定门控基础上解冻 PromptEncoder 的 mask_downscaling 三层卷积栈（4684 参数），并把 PROMPT_ENCODER_LR_MULT 设为 1.0 使其以基础学习率训练，检验冻结的 SAM 原始 mask-prompt 变换是否为稀疏 coarse-mask 信号的瓶颈；结论是注入强度翻倍（applied_delta_ratio 0.146→0.307）仍无 segm/mAP 增益。",
+      "filePath": "scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh"
+    },
+    "file:scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh": {
+      "name": "c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "type": "file",
+      "summary": "C5-v2 wrapper：官方 stride-16/64x64 分辨率（SAM_IMAGE_EMBED_STRIDE=16）+ coarse 2P2N + box + dense + P2 boundary refiner（emb64）的完整架构组合；筛查协议下 best segm/mAP 0.6480，是 R1 归因矩阵中 P2 refiner 的参照端。",
+      "filePath": "scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh"
+    },
+    "file:scripts/ablations/m0_aggregator_mlp_full_image.sh": {
+      "name": "m0_aggregator_mlp_full_image.sh",
+      "type": "file",
+      "summary": "M0 wrapper：B0 的 full_image 坐标契约对照——aggregator + MLP 路线的位置编码、可训练零 no-mask 嵌入与全部优化设置不变，仅把 final-mask 目标切换为全图 GT 加一次预测期 resize；B0→M0 隔离坐标契约变量，也是矩阵中显式保留的 full_image 控制组。",
+      "filePath": "scripts/ablations/m0_aggregator_mlp_full_image.sh"
+    },
+    "file:scripts/ablations/m1_pafpn_mlp_full_image.sh": {
+      "name": "m1_pafpn_mlp_full_image.sh",
+      "type": "file",
+      "summary": "M1 wrapper：B1 的 full_image 坐标契约对照（PAFPN + MLP），与 M0 一起构成 MLP 路线的 full_image 控制组；M1→C2 在同一 full_image 契约下对比 MLP 与 coarse route。",
+      "filePath": "scripts/ablations/m1_pafpn_mlp_full_image.sh"
+    },
+    "file:scripts/ablations/monitor_b0_then_serial.sh": {
+      "name": "monitor_b0_then_serial.sh",
+      "type": "file",
+      "summary": "串行队列监视器：以 flock 非阻塞锁防止重复队列，轮询 B0 训练进程（/proc 存活状态 + cmdline 匹配 torch.distributed.run）并在监视日志中记录 epoch 进度；B0 结束后（成功/失败/无结束标记均继续）按默认顺序（B1、M0、M1、C1-C4、R1 系列、R0、C5-v2）逐个前台执行剩余 wrapper，失败任务记录并跳过而不中断队列，支持 ABLATION_QUEUE/POLL_SECONDS/--print-plan 覆盖。",
+      "filePath": "scripts/ablations/monitor_b0_then_serial.sh"
+    },
+    "file:scripts/ablations/paper_promptminer_rd_p2_whu_full.sh": {
+      "name": "paper_promptminer_rd_p2_whu_full.sh",
+      "type": "file",
+      "summary": "论文主实验（main5.tex 单流 PromptMiner-SAM2 公式）的全量数据训练入口，即当前正在运行的全量实验：复用 C5-v2 注册架构（PAFPN + stride-16 + points/box/dense + P2-BRR），dense 采用 detached raw logits 契约，final mask 为 roi_local；在 WHU 全量训练集上训练 100 epochs（GPU 0,1、全局 batch 8、seed 44、EMA 关闭），RUN_TAG 默认 paper_promptminer_rd_p2_whu_full 以区分历史 C5-v2 运行。",
+      "filePath": "scripts/ablations/paper_promptminer_rd_p2_whu_full.sh"
+    },
+    "file:scripts/ablations/prompt_content_p2_from_r1_best.sh": {
+      "name": "prompt_content_p2_from_r1_best.sh",
+      "type": "file",
+      "summary": "参数化提示内容消融 wrapper：默认从 R1-C4-RD roi_local 的 segm-best checkpoint（best_model_epoch80.pth）初始化并做存在性校验，按位置参数组合 POINT|BOX|MASK x P2 开关共 6 种配置（ABLATION_ID 为 pafpn_coarse_<mode>_emb64_p2br<0|1>），配合 ALLOW_CROSS_ARCH_INIT 在收敛权重上隔离单提示内容与 P2 boundary refiner 的边际贡献。",
+      "filePath": "scripts/ablations/prompt_content_p2_from_r1_best.sh"
+    },
+    "file:scripts/ablations/r0_b0_aggregator_mlp_emb64.sh": {
+      "name": "r0_b0_aggregator_mlp_emb64.sh",
+      "type": "file",
+      "summary": "R0 wrapper：B0 的 SAM2 空间分辨率对照——aggregator + MLP + roi_local 契约全部不变，仅把 SAM_IMAGE_EMBED_STRIDE 切到 16（官方 64x64 image embedding，256x256 dense-mask 输入），隔离分辨率这一单一变量。",
+      "filePath": "scripts/ablations/r0_b0_aggregator_mlp_emb64.sh"
+    },
+    "file:scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh": {
+      "name": "r1_c3_pafpn_coarse_points_box_emb64.sh",
+      "type": "file",
+      "summary": "R1-C3 ablation 实验启动脚本：设置 NECK_TYPE=pafpn、PROMPT_ROUTE=coarse、EXPLICIT_PROMPT_MODE=points_box、SAM_IMAGE_EMBED_STRIDE=16 等环境变量后通过 exec 委托给 _run_ablation.sh 执行，用于验证 stride-16 图像嵌入下 points_box 显式提示组合的效果。",
+      "filePath": "scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh"
+    },
+    "file:scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh": {
+      "name": "r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh",
+      "type": "file",
+      "summary": "R1-C4-G ablation 启动脚本：在 points_box_dense 显式提示基础上启用 Gaussian EDT 密集提示变换（SHAPE_DENSE_TRANSFORM=gaussian_edt、detach=1、foreground_threshold=0.5、omega=15.0、gamma=4.0），用于对比 Gaussian 先验与 raw logits 作为密集提示源的性能差异。",
+      "filePath": "scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh"
+    },
+    "file:scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh": {
+      "name": "r1_c4_pafpn_coarse_points_box_dense_emb64.sh",
+      "type": "file",
+      "summary": "R1-C4 ablation 启动脚本：启用 points_box_dense 显式提示模式（点 + 框 + 密集 mask 提示），配合 pafpn neck 与 stride-16 图像嵌入，设置完环境变量后委托 _run_ablation.sh 执行。",
+      "filePath": "scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh"
+    },
+    "file:scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh": {
+      "name": "r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+      "type": "file",
+      "summary": "R1-C4-RD ablation 启动脚本：将密集提示源配置为 detach 后的 raw logits（SHAPE_DENSE_TRANSFORM=raw_logits、SHAPE_DENSE_DETACH=1），用于验证不回传梯度的原始 logit 密集提示对分割指标的影响。",
+      "filePath": "scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh"
+    },
+    "file:scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_roi_local_emb64.sh": {
+      "name": "r1_c4_rd_pafpn_coarse_points_box_raw_detach_roi_local_emb64.sh",
+      "type": "file",
+      "summary": "R1-C4-RD 的 ROI local 坐标变体：保持架构身份（ABLATION_ID 沿用 R1-C4-RD）不变，仅把 FINAL_MASK_COORDINATE_MODE 切换为 roi_local，注释中详细记录了 full_image mask 监督坍塌假设、roi_local 一个 epoch 内恢复健康监督的诊断结论，以及本实验 isolates 坐标空间这一单变量的动机。",
+      "filePath": "scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_roi_local_emb64.sh"
+    },
+    "file:scripts/ablations/run_prompt_content_p2_matrix.sh": {
+      "name": "run_prompt_content_p2_matrix.sh",
+      "type": "file",
+      "summary": "串行运行提示内容（point/box/mask）× P2 boundary refiner 开关（0/1）共 6 组组合实验，每次调用 prompt_content_p2_from_r1_best.sh 并以 RUN_IN_BACKGROUND=0 前台执行，用于系统对比提示内容与第二阶段精修器的贡献。",
+      "filePath": "scripts/ablations/run_prompt_content_p2_matrix.sh"
+    },
+    "file:scripts/ablations/smoke_all.sh": {
+      "name": "smoke_all.sh",
+      "type": "file",
+      "summary": "ablation 体系的全局冒烟测试套件，分五个阶段执行：密集提示几何单元测试、CPU/Gloo 延迟 rank-0 DDP 控制面检查、对 18 个 ablation 包装脚本做 DRY_RUN 配置穿透与 grep 契约断言（EMA、DDP、batch、final_mask 坐标契约等）、提示内容 × P2 组合契约检查与 val-loss 参数覆盖检查，最后对代表性脚本做完整模型构建预检，并全程验证 DRY_RUN 模式不产生日志哨兵文件。",
+      "filePath": "scripts/ablations/smoke_all.sh"
+    },
+    "file:scripts/ablations/wait_then_launch_b0_r0.sh": {
+      "name": "wait_then_launch_b0_r0.sh",
+      "type": "file",
+      "summary": "GPU 空闲监控脚本：每 POLL_SECONDS 秒轮询 train_rsprompter 进程数，等待全部 GPU 释放（额外 15 秒沉降延迟）后，在 GPU 0,1 启动 B0（stride32 基线）并在 GPU 2,3 启动 R0（stride16），构成判定分辨率单变量收益的对照实验，全部输出 tee 到 logs/ablations/ 日志。",
+      "filePath": "scripts/ablations/wait_then_launch_b0_r0.sh"
+    },
+    "document:scripts/ablations/coarse_strategy/README.md": {
+      "name": "README.md",
+      "type": "document",
+      "summary": "coarse-loss 权重策略消融实验(s0/s1/s2)的说明文档:三组实验固定 C2 架构(PAFPN + adaptive coarse 2P2N,不含 box、dense prompt 或 DenseBR),仅隔离 coarse 损失权重(固定 0.10 / 固定 0.20 / 两阶段 0.20→0.10)。文档还说明这些包装脚本继承共享消融数据集默认值,并每 50 次训练迭代输出一次 prompt 诊断。",
+      "filePath": "scripts/ablations/coarse_strategy/README.md"
+    },
+    "file:scripts/ablations/coarse_strategy/s0_c2_fixed_w010.sh": {
+      "name": "s0_c2_fixed_w010.sh",
+      "type": "file",
+      "summary": "消融实验 s0 的包装脚本:在固定 C2 架构(PAFPN neck、coarse 路由、points 显式提示、关闭 P2 边界精修)下,将 shape prior/coarse 损失权重固定为 0.10(SHAPE_LOSS_SCHEDULE_MODE=fixed),最后 exec 委托共享启动器 _run_ablation.sh 执行。",
+      "filePath": "scripts/ablations/coarse_strategy/s0_c2_fixed_w010.sh"
+    },
+    "file:scripts/ablations/coarse_strategy/s1_c2_fixed_w020.sh": {
+      "name": "s1_c2_fixed_w020.sh",
+      "type": "file",
+      "summary": "消融实验 s1 的包装脚本:与 s0 使用完全相同的 C2 架构配置(PAFPN + coarse 路由 points 提示),仅将 coarse 损失权重固定为 0.20 以对比权重敏感性,通过 exec 委托 _run_ablation.sh 运行。",
+      "filePath": "scripts/ablations/coarse_strategy/s1_c2_fixed_w020.sh"
+    },
+    "file:scripts/ablations/coarse_strategy/s2_c2_two_stage_w020_w010.sh": {
+      "name": "s2_c2_two_stage_w020_w010.sh",
+      "type": "file",
+      "summary": "消融实验 s2 的包装脚本:采用两阶段 coarse 损失权重调度(SHAPE_LOSS_SCHEDULE_MODE=two_stage),epochs 1-5 用 0.20、epoch 6+ 降为 0.10(由 SHAPE_LOSS_STAGE1_END=5 与两级权重变量控制),架构与 s0/s1 一致,exec 委托 _run_ablation.sh 执行。",
+      "filePath": "scripts/ablations/coarse_strategy/s2_c2_two_stage_w020_w010.sh"
+    },
+    "file:scripts/ablations/prompt_content_p2_matrix/e1_point_p2_off.sh": {
+      "name": "e1_point_p2_off.sh",
+      "type": "file",
+      "summary": "消融矩阵实验 e1 的包装脚本：设置可被环境变量覆盖的默认超参（lr=5e-5、max_epochs=20、早停 patience=5、起始 epoch 1），强制前台运行，并以 point 提示 + 关闭 P2 boundary refiner（参数 point 0）exec 转发到共享启动器 prompt_content_p2_from_r1_best.sh。",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e1_point_p2_off.sh"
+    },
+    "file:scripts/ablations/prompt_content_p2_matrix/e2_point_p2_on.sh": {
+      "name": "e2_point_p2_on.sh",
+      "type": "file",
+      "summary": "消融矩阵实验 e2 的包装脚本：设置与 e1 相同的默认超参，以 point 提示 + 开启 P2 boundary refiner（参数 point 1）exec 转发到共享启动器 prompt_content_p2_from_r1_best.sh。",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e2_point_p2_on.sh"
+    },
+    "file:scripts/ablations/prompt_content_p2_matrix/e3_box_p2_off.sh": {
+      "name": "e3_box_p2_off.sh",
+      "type": "file",
+      "summary": "消融矩阵实验 e3 的包装脚本：设置与 e1 相同的默认超参，以 box 提示 + 关闭 P2 boundary refiner（参数 box 0）exec 转发到共享启动器 prompt_content_p2_from_r1_best.sh。",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e3_box_p2_off.sh"
+    },
+    "file:scripts/ablations/prompt_content_p2_matrix/e4_box_p2_on.sh": {
+      "name": "e4_box_p2_on.sh",
+      "type": "file",
+      "summary": "消融矩阵实验 e4 的包装脚本：设置与 e1 相同的默认超参，以 box 提示 + 开启 P2 boundary refiner（参数 box 1）exec 转发到共享启动器 prompt_content_p2_from_r1_best.sh。",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e4_box_p2_on.sh"
+    },
+    "file:scripts/ablations/prompt_content_p2_matrix/e5_mask_p2_off.sh": {
+      "name": "e5_mask_p2_off.sh",
+      "type": "file",
+      "summary": "消融矩阵实验 e5 的包装脚本：设置与 e1 相同的默认超参，以 mask 提示 + 关闭 P2 boundary refiner（参数 mask 0）exec 转发到共享启动器 prompt_content_p2_from_r1_best.sh。",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e5_mask_p2_off.sh"
+    },
+    "file:scripts/ablations/prompt_content_p2_matrix/e6_mask_p2_on.sh": {
+      "name": "e6_mask_p2_on.sh",
+      "type": "file",
+      "summary": "消融矩阵实验 e6 的包装脚本：设置与 e1 相同的默认超参，以 mask 提示 + 开启 P2 boundary refiner（参数 mask 1）exec 转发到共享启动器 prompt_content_p2_from_r1_best.sh。",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/e6_mask_p2_on.sh"
+    },
+    "file:scripts/ablations/prompt_content_p2_matrix/run_serial.sh": {
+      "name": "run_serial.sh",
+      "type": "file",
+      "summary": "串行编排 3×2 提示内容（point/box/mask）× P2 boundary refiner（开/关）消融矩阵的驱动脚本：将全部输出 tee 到带时间戳的日志文件 logs/ablations/，并按 e1–e6 顺序逐个调用实验包装脚本，同时记录每个实验的开始/完成时间戳。",
+      "filePath": "scripts/ablations/prompt_content_p2_matrix/run_serial.sh"
+    },
+    "file:scripts/infer_whu_checkpoint.sh": {
+      "name": "infer_whu_checkpoint.sh",
+      "type": "file",
+      "summary": "推理入口脚本：加载共享运行环境后，以指定的 checkpoint 路径及额外透传参数调用 inference/infer_from_checkpoint.py，在 WHU 数据集上执行推理。",
+      "filePath": "scripts/infer_whu_checkpoint.sh"
+    },
+    "file:scripts/load_environment.sh": {
+      "name": "load_environment.sh",
+      "type": "file",
+      "summary": "供其他脚本 source 的共享环境加载器：优先加载机器本地的 configs/environment.local.sh，否则回退到 configs/environment.sh，也可通过 PORTABLE_SAM2_ENV_FILE 强制指定；随后校验 PYTHON、SAM2_REPO、WHU1024_DATA_ROOT、GPU 与训练超参等必需环境变量，缺失即报错返回。",
+      "filePath": "scripts/load_environment.sh"
+    },
+    "file:scripts/run_whu1024_explicit_coarse_4gpu.sh": {
+      "name": "run_whu1024_explicit_coarse_4gpu.sh",
+      "type": "file",
+      "summary": "WHU1024 显式粗粒度（explicit coarse）实验的 4 GPU 训练启动器：设置模型规模（base_plus）、提示模式、P2 边界精化开关、训练子集比例与 checkpoint 目录等默认超参，再按提示模式/精化开关/嵌入步幅的组合通过 case 分发到 scripts/ablations/ 下对应的消融包装脚本执行。",
+      "filePath": "scripts/run_whu1024_explicit_coarse_4gpu.sh"
+    },
+    "file:scripts/smoke_test_components.sh": {
+      "name": "smoke_test_components.sh",
+      "type": "file",
+      "summary": "组件冒烟测试包装脚本：加载共享环境后执行 scripts/smoke_test_components.py，用于在完整训练前快速验证关键组件的可用性。",
+      "filePath": "scripts/smoke_test_components.sh"
+    },
+    "file:configs/_sam2_registry.py": {
+      "name": "_sam2_registry.py",
+      "type": "file",
+      "summary": "SAM2 模型规格的唯一配置来源（single source of truth）：统一解析 model_size、checkpoint 路径、结构 YAML 与 neck in_channels 的映射，修复此前多处硬编码导致的 baseplus/large 名实不符问题。",
+      "filePath": "configs/_sam2_registry.py"
+    },
+    "file:configs/environment.sh": {
+      "name": "environment.sh",
+      "type": "file",
+      "summary": "机器级默认环境变量脚本：集中定义 Python 解释器、SAM2 repo/checkpoint、WHU 数据根目录、checkpoint/log/tmp 输出根以及 CUDA 设备与 DDP 进程数等执行默认值，外层 shell 已导出的变量优先。",
+      "filePath": "configs/environment.sh"
+    },
+    "file:configs/rsprompter_anchor_satS_v11_sam2_large_full.py": {
+      "name": "rsprompter_anchor_satS_v11_sam2_large_full.py",
+      "type": "file",
+      "summary": "RSPrompter + SAM2-Hiera 完整检测器根 config：定义 RSPrompterAnchor 两阶段模型（RSSAM2VisionEncoder LoRA backbone、NECK_TYPE 可切换 PAFPN/Aggregator、RPN + RSPrompterAnchorRoIPromptHead + RSPrompterAnchorMaskHeadSAM2）、512 分辨率 SatDataset 数据管道与 AdamW + warmup/cosine 训练策略，是所有 WHU1024 config 的继承基座。",
+      "filePath": "configs/rsprompter_anchor_satS_v11_sam2_large_full.py"
+    },
+    "file:configs/whu1024_baseplus_clean.py": {
+      "name": "whu1024_baseplus_clean.py",
+      "type": "file",
+      "summary": "干净的 WHU-1024 / SAM2 Base+ 迁移基线 config：继承 satS_v11 根 config 并剔除 IIMR/SABL/UAV 多视角分支，改用 1024 分辨率 WHUCocoSingleClass 数据集，支持 embedding stride 16/32 与 roi_local/full_image final-mask 坐标模式切换。",
+      "filePath": "configs/whu1024_baseplus_clean.py"
+    },
+    "file:configs/whu1024_baseplus_explicit_coarse.py": {
+      "name": "whu1024_baseplus_explicit_coarse.py",
+      "type": "file",
+      "summary": "当前实验 config：在干净 WHU-1024 Base+ 基线上启用显式粗掩码提示路线（explicit coarse-mask prompt），通过环境变量矩阵（EXPLICIT_PROMPT_MODE、SHAPE_DENSE_TRANSFORM、SHAPE_LOSS_SCHEDULE_MODE、FINAL_MASK_LOSS_MODE 等）参数化 mask_head 的 shape prior 注入、shape point 挖掘、dense prompt 变换、coarse mask 监督调度、P2 boundary refiner、ROI-SAM 与 point warmup 等开关。",
+      "filePath": "configs/whu1024_baseplus_explicit_coarse.py"
+    },
+    "file:configs/whu1024_baseplus_explicit_coarse_densefix.py": {
+      "name": "whu1024_baseplus_explicit_coarse_densefix.py",
+      "type": "file",
+      "summary": "explicit_coarse config 的 C4 densefix 消融覆盖层：把 shape prior 的缩放门改为 fixed 模式（初值 0.5），并可选择开启 PromptEncoder 的 train_mask_downscaling。",
+      "filePath": "configs/whu1024_baseplus_explicit_coarse_densefix.py"
+    },
+    "file:inference/__init__.py": {
+      "name": "__init__.py",
+      "type": "file",
+      "summary": "inference 包的 __init__，仅含 docstring，声明该包承载 explicit-coarse 主线的 checkpoint 驱动推理。",
+      "filePath": "inference/__init__.py"
+    },
+    "file:inference/infer_from_checkpoint.py": {
+      "name": "infer_from_checkpoint.py",
+      "type": "file",
+      "summary": "自描述 checkpoint 推理入口：从训练 checkpoint 内嵌的 config_snapshot 与架构契约重建模型（旧 checkpoint 可回退 --config），恢复 SAM2 repo/checkpoint 环境并载入权重，随后在 WHU COCO split 上推理，输出 COCO RLE 预测与 JSON 诊断报告。",
+      "filePath": "inference/infer_from_checkpoint.py"
+    },
+    "file:rsprompter/__init__.py": {
+      "name": "__init__.py",
+      "type": "file",
+      "summary": "rsprompter 包入口：默认全量导入 models 与 models_sam2 完成 mmdet 注册表注册；设置 RSPROMPTER_LIGHT_IMPORT=1 可跳过导入以支持不实例化模型的纯张量单元测试。",
+      "filePath": "rsprompter/__init__.py"
+    },
+    "file:rsprompter/architecture_contract.py": {
+      "name": "architecture_contract.py",
+      "type": "file",
+      "summary": "架构身份与 checkpoint 指纹的规范化工具：把 cfg.model 归一化（屏蔽本机 ckpt 路径）后哈希为 fingerprint，并按 neck、final-mask 模式、embedding stride、coarse 路线等维度生成稳定的 architecture_id，供训练与加载时的架构契约断言使用。",
+      "filePath": "rsprompter/architecture_contract.py"
+    },
+    "file:rsprompter/ckpt_migration.py": {
+      "name": "ckpt_migration.py",
+      "type": "file",
+      "summary": "仅初始化加载所用的 checkpoint 迁移工具：把旧版线性 shape gate 权重换算为现行 sigmoid raw gate（logit 变换），返回迁移后的 state_dict 与迁移清单。",
+      "filePath": "rsprompter/ckpt_migration.py"
+    },
+    "file:rsprompter/dense_prompt_utils.py": {
+      "name": "dense_prompt_utils.py",
+      "type": "file",
+      "summary": "独立于 mask_head 的 dense prompt 变换与挖掘工具集：提供 ROI-local coarse logits 的 raw_logits/confidence_signed 变换、按 ROI 中心/面积生成各向同性 Gaussian 全画布 prompt、无效 ROI 回退 no-mask 嵌入与 ROI 到全图 canvas 的粘贴；处理顺序为 transform → resize → paste → outside_fill → clamp。",
+      "filePath": "rsprompter/dense_prompt_utils.py"
+    },
+    "file:scripts/ablations/smoke_ddp_control_plane.py": {
+      "name": "smoke_ddp_control_plane.py",
+      "type": "file",
+      "summary": "CPU/Gloo 进程组上的 DDP 控制面冒烟测试：rank 0 延迟 2 秒后广播 stop 标志，验证每个 rank 都能收到 rank-0 迟到的控制信号。",
+      "filePath": "scripts/ablations/smoke_ddp_control_plane.py"
+    },
+    "file:scripts/ablations/test_dense_prompt_utils.py": {
+      "name": "test_dense_prompt_utils.py",
+      "type": "file",
+      "summary": "dense_prompt_utils 的纯张量 unittest 套件（RSPROMPTER_LIGHT_IMPORT=1 免加载模型）：覆盖 detach 梯度控制、Gaussian 中心/面积到全画布映射、各向异性 box 在图像空间的各向同性、空 coarse 无效零 prompt 与无效 ROI 精确回退 no-mask base 五项契约。",
+      "filePath": "scripts/ablations/test_dense_prompt_utils.py"
+    },
+    "file:scripts/ablations/validate_ablation_contract.py": {
+      "name": "validate_ablation_contract.py",
+      "type": "file",
+      "summary": "消融实验契约验证器：加载 config 解析 architecture_id 与 wrapper 期望值比对，逐项断言 neck 类型、embedding stride、final-mask 坐标/损失模式、ROI-SAM、P2 refiner、point warmup、shape miner 与 dense prompt 前向数值行为，并实建模型做张量探针，防止 shell 开关与 config 半开错配。",
+      "filePath": "scripts/ablations/validate_ablation_contract.py"
+    },
+    "file:scripts/ablations_uecoco/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh": {
+      "name": "r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+      "type": "file",
+      "summary": "ue_coco 上的 R1-C4-RD 消融自包含启动脚本：复刻 WHU R1-C4-RD 架构（PAFPN neck、stride-16/64x64 embedding、points_box_dense、detach raw-logits dense prompt、无 P2 refiner），先跑 validate_ablation_contract 再用 torchrun 后台启动训练，数据使用防泄漏 clean split，原生 512 图像 resize 到 1024 以对齐 WHU 的 embedding 几何。",
+      "filePath": "scripts/ablations_uecoco/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh"
+    },
+    "file:scripts/ablations_uecoco/wait_then_launch_r1_c4_rd.sh": {
+      "name": "wait_then_launch_r1_c4_rd.sh",
+      "type": "file",
+      "summary": "GPU 空闲监视脚本：轮询 train_rsprompter 进程直至全部退出，再等 15 秒释放显存后以 detached 方式在 0-3 号卡启动 ue_coco R1-C4-RD 实验，事件写入日志。",
+      "filePath": "scripts/ablations_uecoco/wait_then_launch_r1_c4_rd.sh"
+    },
+    "file:scripts/resplit_ue_coco.py": {
+      "name": "resplit_ue_coco.py",
+      "type": "file",
+      "summary": "按网格单元重切 ue_coco 以消除区域泄漏：原 split 把同一地理网格 (gx,gy) 的采样点分给不同 split（81/84 格跨 split），本脚本把整格分配到新 train/val/test（目标 70/15/15），重编号图像与标注并写出 *.clean.json，原始文件首次运行时备份为 *.orig.json。",
+      "filePath": "scripts/resplit_ue_coco.py"
+    },
+    "file:tools/mask_to_coco_whu512.py": {
+      "name": "mask_to_coco_whu512.py",
+      "type": "file",
+      "summary": "把 WHU-512 二值掩码标签转成 COCO 实例分割 JSON 的数据准备工具：逐连通域提取多边形轮廓（最小面积过滤），为每个 split 生成 images/annotations/categories。",
+      "filePath": "tools/mask_to_coco_whu512.py"
+    },
+    "file:train/__init__.py": {
+      "name": "__init__.py",
+      "type": "file",
+      "summary": "train 包的空 __init__.py 占位文件，使 train/ 成为可导入 Python 包（主训练入口 train_rsprompter_fusion.py 位于其中）。",
+      "filePath": "train/__init__.py"
+    },
+    "file:train/train_rsprompter_fusion.py": {
+      "name": "train_rsprompter_fusion.py",
+      "type": "file",
+      "summary": "项目主训练入口（DDP/FSDP 双模式）：按 mmengine config 经 mmdet 注册表构建 RSPrompterAnchor 检测器，执行 warmup+cosine 调度（按 optimizer step 计数）、梯度累积、AMP、EMA 与分组件学习率组优化；训练循环调用 model.loss 得到 loss_dict（检测损失按 epoch 三阶段加权、P2 refiner 损失跨 rank 归约、coarse shape 监督由 config 调度），rank-0 独占全量验证并跑 COCO bbox/segm 评估，按可配置 metric（含加权/复合表达式）保存 verified best checkpoint（内嵌架构契约与 config 快照），支持 --test-only、--init-from 跨架构初始化与早停。",
+      "filePath": "train/train_rsprompter_fusion.py"
+    }
+  },
+  "totalNodes": 79,
+  "totalEdges": 391
+}

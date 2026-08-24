@@ -1,0 +1,292 @@
+{
+  "nodes": [
+    {
+      "id": "file:scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh",
+      "type": "file",
+      "name": "r1_c3_pafpn_coarse_points_box_emb64.sh",
+      "filePath": "scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh",
+      "summary": "R1-C3 ablation 实验启动脚本：设置 NECK_TYPE=pafpn、PROMPT_ROUTE=coarse、EXPLICIT_PROMPT_MODE=points_box、SAM_IMAGE_EMBED_STRIDE=16 等环境变量后通过 exec 委托给 _run_ablation.sh 执行，用于验证 stride-16 图像嵌入下 points_box 显式提示组合的效果。",
+      "tags": ["ablation", "实验启动器", "explicit-prompt", "environment-variables"],
+      "complexity": "simple",
+      "languageNotes": "采用 export 环境变量 + exec bash 的包装器模式：自身不包含训练逻辑，通过进程替换把控制权和变量一并移交给通用执行器 _run_ablation.sh。"
+    },
+    {
+      "id": "file:scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh",
+      "type": "file",
+      "name": "r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh",
+      "filePath": "scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh",
+      "summary": "R1-C4-G ablation 启动脚本：在 points_box_dense 显式提示基础上启用 Gaussian EDT 密集提示变换（SHAPE_DENSE_TRANSFORM=gaussian_edt、detach=1、foreground_threshold=0.5、omega=15.0、gamma=4.0），用于对比 Gaussian 先验与 raw logits 作为密集提示源的性能差异。",
+      "tags": ["ablation", "实验启动器", "gaussian-prompt", "dense-prompt", "environment-variables"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh",
+      "type": "file",
+      "name": "r1_c4_pafpn_coarse_points_box_dense_emb64.sh",
+      "filePath": "scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh",
+      "summary": "R1-C4 ablation 启动脚本：启用 points_box_dense 显式提示模式（点 + 框 + 密集 mask 提示），配合 pafpn neck 与 stride-16 图像嵌入，设置完环境变量后委托 _run_ablation.sh 执行。",
+      "tags": ["ablation", "实验启动器", "dense-prompt", "environment-variables"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+      "type": "file",
+      "name": "r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+      "filePath": "scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+      "summary": "R1-C4-RD ablation 启动脚本：将密集提示源配置为 detach 后的 raw logits（SHAPE_DENSE_TRANSFORM=raw_logits、SHAPE_DENSE_DETACH=1），用于验证不回传梯度的原始 logit 密集提示对分割指标的影响。",
+      "tags": ["ablation", "实验启动器", "dense-prompt", "raw-logits", "environment-variables"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_roi_local_emb64.sh",
+      "type": "file",
+      "name": "r1_c4_rd_pafpn_coarse_points_box_raw_detach_roi_local_emb64.sh",
+      "filePath": "scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_roi_local_emb64.sh",
+      "summary": "R1-C4-RD 的 ROI local 坐标变体：保持架构身份（ABLATION_ID 沿用 R1-C4-RD）不变，仅把 FINAL_MASK_COORDINATE_MODE 切换为 roi_local，注释中详细记录了 full_image mask 监督坍塌假设、roi_local 一个 epoch 内恢复健康监督的诊断结论，以及本实验 isolates 坐标空间这一单变量的动机。",
+      "tags": ["ablation", "实验启动器", "roi-local", "dense-prompt", "单变量对照"],
+      "complexity": "simple",
+      "languageNotes": "巧妙区分 ABLATION_ID（架构身份，保持与基线相同）与 RUN_TAG（运行标识，追加 _roi_local 后缀），使结果归档时既能与基线配对又不混淆实验配置。"
+    },
+    {
+      "id": "file:scripts/ablations/run_prompt_content_p2_matrix.sh",
+      "type": "file",
+      "name": "run_prompt_content_p2_matrix.sh",
+      "filePath": "scripts/ablations/run_prompt_content_p2_matrix.sh",
+      "summary": "串行运行提示内容（point/box/mask）× P2 boundary refiner 开关（0/1）共 6 组组合实验，每次调用 prompt_content_p2_from_r1_best.sh 并以 RUN_IN_BACKGROUND=0 前台执行，用于系统对比提示内容与第二阶段精修器的贡献。",
+      "tags": ["ablation", "矩阵实验", "批处理", "experiment-runner"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/ablations/smoke_all.sh",
+      "type": "file",
+      "name": "smoke_all.sh",
+      "filePath": "scripts/ablations/smoke_all.sh",
+      "summary": "ablation 体系的全局冒烟测试套件，分五个阶段执行：密集提示几何单元测试、CPU/Gloo 延迟 rank-0 DDP 控制面检查、对 18 个 ablation 包装脚本做 DRY_RUN 配置穿透与 grep 契约断言（EMA、DDP、batch、final_mask 坐标契约等）、提示内容 × P2 组合契约检查与 val-loss 参数覆盖检查，最后对代表性脚本做完整模型构建预检，并全程验证 DRY_RUN 模式不产生日志哨兵文件。",
+      "tags": ["smoke-test", "冒烟测试", "配置校验", "contract-testing", "ci-check"],
+      "complexity": "complex",
+      "languageNotes": "使用 DRY_RUN=1 让包装器只打印展开后的配置，再用 grep 对输出逐行断言（配置穿透测试）；通过 shellcheck source 注解标记被 source 的文件，并用哨兵文件检测意外副作用。"
+    },
+    {
+      "id": "file:scripts/ablations/wait_then_launch_b0_r0.sh",
+      "type": "file",
+      "name": "wait_then_launch_b0_r0.sh",
+      "filePath": "scripts/ablations/wait_then_launch_b0_r0.sh",
+      "summary": "GPU 空闲监控脚本：每 POLL_SECONDS 秒轮询 train_rsprompter 进程数，等待全部 GPU 释放（额外 15 秒沉降延迟）后，在 GPU 0,1 启动 B0（stride32 基线）并在 GPU 2,3 启动 R0（stride16），构成判定分辨率单变量收益的对照实验，全部输出 tee 到 logs/ablations/ 日志。",
+      "tags": ["gpu-scheduler", "GPU调度", "资源监控", "experiment-runner"],
+      "complexity": "moderate",
+      "languageNotes": "通过 `ps aux | grep` 轮询判断训练进程是否存活实现简单的 GPU 排队，并用 `exec > >(tee -a ...)` 进程替换把整个脚本会话的 stdout/stderr 镜像到带时间戳的日志文件。"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_roi_local_emb64.sh",
+      "target": "file:scripts/ablations/_run_ablation.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/run_prompt_content_p2_matrix.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/load_environment.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/test_dense_prompt_utils.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/smoke_ddp_control_plane.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/prompt_content_p2_from_r1_best.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/b0_aggregator_mlp.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/b1_pafpn_mlp.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/m0_aggregator_mlp_full_image.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/m1_pafpn_mlp_full_image.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/c1_aggregator_coarse_points.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/c2_pafpn_coarse_points.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/c3_pafpn_coarse_points_box.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/r0_b0_aggregator_mlp_emb64.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/smoke_all.sh",
+      "target": "file:scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh",
+      "target": "file:scripts/ablations/smoke_all.sh",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh",
+      "target": "file:scripts/ablations/smoke_all.sh",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh",
+      "target": "file:scripts/ablations/smoke_all.sh",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh",
+      "target": "file:scripts/ablations/smoke_all.sh",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/ablations/wait_then_launch_b0_r0.sh",
+      "target": "file:scripts/ablations/b0_aggregator_mlp.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/ablations/wait_then_launch_b0_r0.sh",
+      "target": "file:scripts/ablations/r0_b0_aggregator_mlp_emb64.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

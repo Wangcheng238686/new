@@ -1,0 +1,15 @@
+{
+  "projectRoot": "/home/wangcheng/project/new/portable_sam2_explicit_coarse",
+  "batchFiles": [
+    {"path": "scripts/infer_whu_checkpoint.sh", "language": "shell", "sizeLines": 20, "fileCategory": "script"},
+    {"path": "scripts/load_environment.sh", "language": "shell", "sizeLines": 41, "fileCategory": "script"},
+    {"path": "scripts/run_whu1024_explicit_coarse_4gpu.sh", "language": "shell", "sizeLines": 40, "fileCategory": "script"},
+    {"path": "scripts/smoke_test_components.sh", "language": "shell", "sizeLines": 8, "fileCategory": "script"}
+  ],
+  "batchImportData": {
+    "scripts/infer_whu_checkpoint.sh": [],
+    "scripts/load_environment.sh": [],
+    "scripts/run_whu1024_explicit_coarse_4gpu.sh": [],
+    "scripts/smoke_test_components.sh": []
+  }
+}

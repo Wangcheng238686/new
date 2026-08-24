@@ -81,7 +81,7 @@ These datasets establish the utility of controllable rendering and automatic lab
 \subsection{Remote Sensing Instance Segmentation}
 Remote sensing instance segmentation initially followed general-purpose two-stage detectors. Mask R-CNN~\cite{ref_maskrcnn} adds an ROI mask head to object detection, while Cascade R-CNN and HTC~\cite{ref_cascade,ref_htc} progressively improve localization through cascaded stages. Remote-sensing-specific designs such as HQ-ISNet~\cite{ref_hqisnet} strengthen high-resolution and multi-scale feature propagation for small, densely distributed targets. Boundary-oriented methods take a complementary direction: PointRend~\cite{ref_pointrend} adaptively updates uncertain pixels, whereas polygon-based P2PFormer~\cite{ref_p2pformer} directly predicts ordered building contours. Query-based architectures such as Mask2Former~\cite{ref_mask2former} further replace proposal-wise classification with global mask queries and masked attention.
 
-Promptable foundation models introduce a strong category-agnostic mask prior but require an automatic interface for dense instance prediction. Zero-shot remote-sensing studies show that SAM is sensitive to spatial scale and prompt design~\cite{ref_samrsapp}; SAMRS~\cite{ref_samrs} instead uses detector annotations and SAM to scale segmentation data. For automatic instances, RSPrompter~\cite{ref_rsprompter} maps proposal features to learned prompt embeddings, MC-SAM SEG~\cite{ref_mcsamseg} adapts the encoder with task-specific visual modules, and RS4D~\cite{ref_rs4d} transfers foundation-model knowledge into a more efficient dense predictor. PromptMiner-SAM2 differs by retaining the native geometric interface and explicitly constructing point, box, and dense-mask prompts from a supervised proposal-conditioned shape.
+Promptable foundation models such as SAM~\cite{ref_sam} introduce a strong category-agnostic mask prior but require an automatic interface for dense instance prediction. Zero-shot remote-sensing studies show that SAM is sensitive to spatial scale and prompt design~\cite{ref_samrsapp}; SAMRS~\cite{ref_samrs} instead uses detector annotations and SAM to scale segmentation data. For automatic instances, RSPrompter~\cite{ref_rsprompter} maps proposal features to learned prompt embeddings, MC-SAM SEG~\cite{ref_mcsamseg} adapts the encoder with task-specific visual modules, and RS4D~\cite{ref_rs4d} transfers foundation-model knowledge into a more efficient dense predictor. PromptMiner-SAM2 differs by retaining the native geometric interface and explicitly constructing point, box, and dense-mask prompts from a supervised proposal-conditioned shape.
 
 Coarse-mask refinement provides a second relevant connection. CascadePSP~\cite{ref_cascadepsp} combines global and local evidence, SegRefiner~\cite{ref_segrefiner} treats refinement as progressive denoising, and SAMRefiner~\cite{ref_samrefiner} excavates prompts from an externally supplied mask. In contrast, our coarse shape is an internal, instance-conditioned representation learned jointly with detection; P2BoundaryRefiner is restricted to a predicted boundary neighborhood before the refined shape is converted into SAM2 prompts.
 
@@ -177,7 +177,7 @@ UAV optics & 55.4-mm focal length; 36-mm square sensor \\
 Target-view camera & Nadir; 2,000-m altitude; 200-mm focal length; 36-mm square sensor \\
 Target coverage / nominal GSD & Approx. $360\times360$~m / 0.70~m per pixel \\
 Exported UAV geometry & Intrinsics $K_v$ and camera-to-world pose $T_v^{c\rightarrow w}$ \\
-Dataset scale & 9,000 RGB images; approx. 32.7k instances; 21.8 instances/image \\
+Dataset scale & 9,000 RGB images; approx. 32.7k target-view instances; 21.8 instances per annotated target image \\
 Train/validation/test split & 1,200 / 150 / 150 groups (8:1:1) \\
 \bottomrule
 \end{tabular}
@@ -219,7 +219,7 @@ K_r&=\partial\mathbf{1}[\operatorname{Avg}^{\mathrm{rep}}_3(p_r)\geq0.5],
 \end{aligned}
 \label{eq:p2_support}
 \end{equation}
-where $\operatorname{Avg}^{\mathrm{rep}}_3$ is replicate-padded $3\times3$ averaging and $\partial$ extracts a one-pixel morphological boundary. The raw boundary band and residual search support are
+where $\operatorname{Avg}^{\mathrm{rep}}_3$ is replicate-padded $3\times3$ averaging and $\partial$ extracts a one-pixel morphological boundary. All morphological operations use a $3\times3$ square structuring element and treat the region outside the coarse canvas as background. $\operatorname{Dilate}_k$ denotes $k$ repeated dilation steps, equivalent to a Chebyshev-radius-$k$ expansion. The raw boundary band and residual search support are
 \begin{equation}
 R_r=\operatorname{Dilate}_2(K_r),\qquad
 S_r=v_r\operatorname{Dilate}_4(K_r),
@@ -259,6 +259,7 @@ Here $\mathcal{U}_{64}$ denotes bilinear upsampling. Thus $\Delta_r\in[-0.4,0.4]
 W_r=S_r\odot\max(R_r,T_r).
 \label{eq:p2_loss_support}
 \end{equation}
+Here and below, products and maxima between masks are evaluated elementwise.
 For valid instances $\mathcal{V}=\{r:\sum_{ij}W_{r,ij}>0\}$, the unweighted local objective is
 \begin{equation}
 \mathcal{L}_{\mathrm{p2}}=
@@ -285,7 +286,7 @@ For dense prompting, the refined coarse logits are treated as a fixed prompt obs
 Q_r=\operatorname{Place}(\widehat C_r,b_r),
 \label{eq:dense_canvas}
 \end{equation}
-where $\operatorname{Place}$ denotes bounded raw-logit preprocessing followed by bilinear resize-and-rasterization on the native mask-input canvas, with zero logits outside the box. Let $E_r^{\mathrm{mask}}$ be the mask embedding produced by the frozen PromptEncoder, $E^0$ its frozen pretrained no-mask embedding replicated over the dense grid, and $M_r$ the box support at the dense-embedding resolution. The dense embedding supplied to the MaskDecoder is
+where $\operatorname{Place}$ first clips the raw logits to $[-8,8]$, scales $b_r$ to the native mask-input canvas, rounds its left--top and right--bottom corners outward by floor and ceiling, respectively, bilinearly resizes the coarse logits to that extent, and fills the exterior with zero logits. Let $E_r^{\mathrm{mask}}$ be the mask embedding produced by the frozen PromptEncoder, $E^0$ its frozen pretrained no-mask embedding replicated over the dense grid, and $M_r$ the box support at the dense-embedding resolution. The dense embedding supplied to the MaskDecoder is
 \begin{equation}
 D_r=E^0+\alpha M_r\odot
 \left(E_r^{\mathrm{mask}}-E^0\right),
@@ -298,15 +299,18 @@ For every candidate instance, the frozen PromptEncoder encodes four fixed point 
 
 \subsubsection{Training Objective}
 
-The unweighted coarse objective is
+Let $\mathcal{I}$ be the sampled positive instances. The unweighted coarse objective is
 \begin{equation}
-\mathcal{L}_{\mathrm{coarse}}=
-\ell_{\mathrm{BCE}}(C_r,G_r)+1-
-\frac{2\sum_{ij}\sigma(C_{r,ij})G_{r,ij}+\epsilon}
-{\sum_{ij}\sigma(C_{r,ij})+\sum_{ij}G_{r,ij}+\epsilon},
+\begin{aligned}
+\mathcal{L}_{\mathrm{coarse}}
+=\frac{1}{|\mathcal{I}|}\sum_{r\in\mathcal{I}}\Bigg[
+&\frac{1}{H_cW_c}\sum_{ij}\ell_{\mathrm{BCE}}(C_{r,ij},G_{r,ij})\\
+&+1-\frac{2\sum_{ij}\sigma(C_{r,ij})G_{r,ij}+\epsilon}
+{\sum_{ij}\sigma(C_{r,ij})+\sum_{ij}G_{r,ij}+\epsilon}\Bigg],
+\end{aligned}
 \label{eq:coarse_loss}
 \end{equation}
-averaged over candidate instances. The complete single-stream objective is
+where $\epsilon=10^{-6}$ and the loss is zero when $\mathcal{I}$ is empty. The complete single-stream objective is
 \begin{equation}
 \mathcal{L}=\mathcal{L}_{\mathrm{det}}
 +\mathcal{L}_{\mathrm{mask}}
@@ -430,9 +434,10 @@ To our knowledge, no previous method is designed for the same paired satellite--
 \label{sec:evaluation_metrics}
 We use the standard COCO-style metrics for both bounding boxes and instance masks. For an intersection-over-union (IoU) threshold $t$, a prediction is counted as a true positive when it is matched to an unmatched ground-truth instance of the same category with
 \begin{equation}
-\operatorname{IoU}(P,G)=\frac{|P\cap G|}{|P\cup G|}\geq t,
+\operatorname{IoU}(\mathcal{P},\mathcal{G})=
+\frac{|\mathcal{P}\cap\mathcal{G}|}{|\mathcal{P}\cup\mathcal{G}|}\geq t,
 \end{equation}
-where $P$ and $G$ denote either two boxes or two binary masks. Predictions are sorted by confidence to obtain the precision--recall curve, and AP$_t$ is its interpolated area. We report AP$_{50}$ and AP$_{75}$ at IoU thresholds 0.50 and 0.75, respectively, together with the primary mean AP:
+where $\mathcal{P}$ and $\mathcal{G}$ denote a predicted and ground-truth box or binary mask, respectively. Predictions are sorted by confidence to obtain the precision--recall curve, and AP$_t$ is its interpolated area. We report AP$_{50}$ and AP$_{75}$ at IoU thresholds 0.50 and 0.75, respectively, together with the primary mean AP:
 \begin{equation}
 \operatorname{AP}=\frac{1}{10}\sum_{t\in\{0.50,0.55,\ldots,0.95\}}\operatorname{AP}_t.
 \end{equation}
@@ -488,7 +493,7 @@ P2PFormer~\cite{ref_p2pformer} & \textbf{0.757} & 0.914 & 0.842 & 0.725 & 0.913 
 \end{tabular}
 \end{table*}
 
-Among the values listed in Table~\ref{tab:whu}, PromptMiner-SAM2 has the highest mask AP, AP$_{50}$, and AP$_{75}$, reaching 0.735, 0.944, and 0.855, respectively. It also has the highest box AP$_{50}$ and remains competitive in box AP and AP$_{75}$. Relative to RSPrompter, the other automatic-prompting method in the table, the numerical differences in mask AP, AP$_{50}$, and AP$_{75}$ are 1.0, 2.4, and 2.6 percentage points. The larger difference at AP$_{75}$ is compatible with higher-overlap mask predictions, but the heterogeneous training protocols across published rows preclude attributing it solely to prompt construction.
+Among the heterogeneous values collected in Table~\ref{tab:whu}, PromptMiner-SAM2 has the largest listed mask AP, AP$_{50}$, and AP$_{75}$, reaching 0.735, 0.944, and 0.855, respectively. It also has the largest listed box AP$_{50}$ and remains competitive in box AP and AP$_{75}$. Relative to RSPrompter, the other automatic-prompting method in the table, the numerical differences in mask AP, AP$_{50}$, and AP$_{75}$ are 1.0, 2.4, and 2.6 percentage points. The larger difference at AP$_{75}$ is compatible with higher-overlap mask predictions, but the heterogeneous training protocols across published rows preclude attributing it solely to prompt construction.
 
 \noindent\textit{SynSU-Build comparison.}
 Table~\ref{tab:synsu_dual} compares representative target-view-only methods with the proposed single- and dual-stream models on SynSU-Build. All comparison methods and PromptMiner-SAM2 use only the synthetic satellite-like target image, whereas GeoViewMiner-SAM2 additionally receives the five calibrated UAV views. Relative to PromptMiner-SAM2, which is trained independently from the same pretrained initialization with the same optimizer and scheduling form but a different effective batch size, the complete dual-stream model improves bbox AP and mask AP by 2.3 and 3.9 percentage points, respectively. This comparison evaluates the overall difference between the complete calibrated cross-view pathway and the corresponding single-stream reference while retaining the same target-view architecture; it does not attribute the gain to an individual fusion component, added capacity, or UAV content alone.
@@ -591,9 +596,6 @@ L.~P. Osco, Q.~Wu, E.~L. de~Lemos, W.~N. Gon\c{c}alves, A.~P.~M. Ramos, J.~Li, a
 
 \bibitem{ref_samrs}
 D.~Wang, J.~Zhang, B.~Du, M.~Xu, L.~Liu, D.~Tao, and L.~Zhang, ``SAMRS: Scaling-up remote sensing segmentation dataset with Segment Anything Model,'' in \textit{Advances in Neural Information Processing Systems}, vol.~36, 2023.
-
-\bibitem{ref_samassist}
-X.~Ma, Q.~Wu, X.~Zhao, X.~Zhang, M.-O. Pun, and B.~Huang, ``SAM-assisted remote sensing imagery semantic segmentation with object and boundary constraints,'' \textit{arXiv preprint arXiv:2312.02464}, 2023.
 
 \bibitem{ref_rsprompter}
 K.~Chen, C.~Liu, H.~Chen, H.~Zhang, W.~Li, Z.~Zou, and Z.~Shi, ``RSPrompter: Learning to prompt for remote sensing instance segmentation based on visual foundation model,'' \textit{IEEE Trans. Geosci. Remote Sens.}, vol.~62, pp.~1--17, 2024, doi: 10.1109/TGRS.2024.3356074.

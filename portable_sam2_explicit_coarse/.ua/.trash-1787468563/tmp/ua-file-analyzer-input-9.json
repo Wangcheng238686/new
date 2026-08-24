@@ -1,0 +1,27 @@
+{
+  "projectRoot": "/home/wangcheng/project/new/portable_sam2_explicit_coarse",
+  "batchFiles": [
+    {"path": "configs/_sam2_registry.py", "language": "python", "sizeLines": 118, "fileCategory": "code"},
+    {"path": "configs/environment.sh", "language": "shell", "sizeLines": 33, "fileCategory": "script"},
+    {"path": "configs/rsprompter_anchor_satS_v11_sam2_large_full.py", "language": "python", "sizeLines": 378, "fileCategory": "code"},
+    {"path": "configs/whu1024_baseplus_clean.py", "language": "python", "sizeLines": 141, "fileCategory": "code"},
+    {"path": "configs/whu1024_baseplus_explicit_coarse.py", "language": "python", "sizeLines": 281, "fileCategory": "code"},
+    {"path": "configs/whu1024_baseplus_explicit_coarse_densefix.py", "language": "python", "sizeLines": 27, "fileCategory": "code"},
+    {"path": "inference/__init__.py", "language": "python", "sizeLines": 1, "fileCategory": "code"},
+    {"path": "inference/infer_from_checkpoint.py", "language": "python", "sizeLines": 806, "fileCategory": "code"},
+    {"path": "rsprompter/__init__.py", "language": "python", "sizeLines": 6, "fileCategory": "code"},
+    {"path": "rsprompter/architecture_contract.py", "language": "python", "sizeLines": 164, "fileCategory": "code"},
+    {"path": "rsprompter/ckpt_migration.py", "language": "python", "sizeLines": 28, "fileCategory": "code"},
+    {"path": "rsprompter/dense_prompt_utils.py", "language": "python", "sizeLines": 289, "fileCategory": "code"},
+    {"path": "scripts/ablations/smoke_ddp_control_plane.py", "language": "python", "sizeLines": 36, "fileCategory": "code"},
+    {"path": "scripts/ablations/test_dense_prompt_utils.py", "language": "python", "sizeLines": 111, "fileCategory": "code"},
+    {"path": "scripts/ablations/validate_ablation_contract.py", "language": "python", "sizeLines": 858, "fileCategory": "code"},
+    {"path": "scripts/ablations_uecoco/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh", "language": "shell", "sizeLines": 203, "fileCategory": "script"},
+    {"path": "scripts/ablations_uecoco/wait_then_launch_r1_c4_rd.sh", "language": "shell", "sizeLines": 55, "fileCategory": "script"},
+    {"path": "scripts/resplit_ue_coco.py", "language": "python", "sizeLines": 199, "fileCategory": "code"},
+    {"path": "tools/mask_to_coco_whu512.py", "language": "python", "sizeLines": 138, "fileCategory": "code"},
+    {"path": "train/__init__.py", "language": "python", "sizeLines": 1, "fileCategory": "code"},
+    {"path": "train/train_rsprompter_fusion.py", "language": "python", "sizeLines": 3350, "fileCategory": "code"}
+  ],
+  "batchImportData": {"configs/_sam2_registry.py": [], "configs/environment.sh": [], "configs/rsprompter_anchor_satS_v11_sam2_large_full.py": [], "configs/whu1024_baseplus_clean.py": [], "configs/whu1024_baseplus_explicit_coarse.py": [], "configs/whu1024_baseplus_explicit_coarse_densefix.py": [], "inference/__init__.py": [], "inference/infer_from_checkpoint.py": [], "rsprompter/__init__.py": [], "rsprompter/architecture_contract.py": [], "rsprompter/ckpt_migration.py": [], "rsprompter/dense_prompt_utils.py": [], "scripts/ablations/smoke_ddp_control_plane.py": ["train/train_rsprompter_fusion.py"], "scripts/ablations/test_dense_prompt_utils.py": ["rsprompter/dense_prompt_utils.py"], "scripts/ablations/validate_ablation_contract.py": [], "scripts/ablations_uecoco/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh": [], "scripts/ablations_uecoco/wait_then_launch_r1_c4_rd.sh": [], "scripts/resplit_ue_coco.py": [], "tools/mask_to_coco_whu512.py": [], "train/__init__.py": [], "train/train_rsprompter_fusion.py": []}
+}

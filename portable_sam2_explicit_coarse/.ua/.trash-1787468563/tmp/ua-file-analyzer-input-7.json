@@ -1,0 +1,21 @@
+{
+  "projectRoot": "/home/wangcheng/project/new/portable_sam2_explicit_coarse",
+  "batchFiles": [
+    {"path": "scripts/ablations/prompt_content_p2_matrix/e1_point_p2_off.sh", "language": "shell", "sizeLines": 9, "fileCategory": "script"},
+    {"path": "scripts/ablations/prompt_content_p2_matrix/e2_point_p2_on.sh", "language": "shell", "sizeLines": 9, "fileCategory": "script"},
+    {"path": "scripts/ablations/prompt_content_p2_matrix/e3_box_p2_off.sh", "language": "shell", "sizeLines": 9, "fileCategory": "script"},
+    {"path": "scripts/ablations/prompt_content_p2_matrix/e4_box_p2_on.sh", "language": "shell", "sizeLines": 9, "fileCategory": "script"},
+    {"path": "scripts/ablations/prompt_content_p2_matrix/e5_mask_p2_off.sh", "language": "shell", "sizeLines": 9, "fileCategory": "script"},
+    {"path": "scripts/ablations/prompt_content_p2_matrix/e6_mask_p2_on.sh", "language": "shell", "sizeLines": 9, "fileCategory": "script"},
+    {"path": "scripts/ablations/prompt_content_p2_matrix/run_serial.sh", "language": "shell", "sizeLines": 33, "fileCategory": "script"}
+  ],
+  "batchImportData": {
+    "scripts/ablations/prompt_content_p2_matrix/e1_point_p2_off.sh": [],
+    "scripts/ablations/prompt_content_p2_matrix/e2_point_p2_on.sh": [],
+    "scripts/ablations/prompt_content_p2_matrix/e3_box_p2_off.sh": [],
+    "scripts/ablations/prompt_content_p2_matrix/e4_box_p2_on.sh": [],
+    "scripts/ablations/prompt_content_p2_matrix/e5_mask_p2_off.sh": [],
+    "scripts/ablations/prompt_content_p2_matrix/e6_mask_p2_on.sh": [],
+    "scripts/ablations/prompt_content_p2_matrix/run_serial.sh": []
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "checkpoint": "/data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/paper_promptminer_rd_p2_whu_full_tr1.0_va1.0/probe_pinned_e66.pth",
+  "ablation": "zero_high_res",
+  "metrics": {
+    "segm/mAP": 0.7320348535260084,
+    "segm/mAP_50": 0.9044567709472141,
+    "segm/mAP_75": 0.8536549940523243,
+    "segm/mAP_s": 0.3856998678466697,
+    "segm/mAP_m": 0.7693730662222884,
+    "segm/mAP_l": 0.823076621445784,
+    "segm/AR@1": 0.026554062539244007,
+    "segm/AR@10": 0.19434886349365815,
+    "segm/AR@100": 0.7654213236217505,
+    "segm/AR_s": 0.4574578469520104,
+    "segm/AR_m": 0.803621141819649,
+    "segm/AR_l": 0.8533064516129032
+  }
+}
