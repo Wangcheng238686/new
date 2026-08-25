@@ -40,7 +40,11 @@ export GRAD_ACCUM_STEPS="${GRAD_ACCUM_STEPS:-2}"
 export MAX_EPOCHS="${MAX_EPOCHS:-150}"
 export TRAIN_SUBSET_RATIO="${TRAIN_SUBSET_RATIO:-1.0}"
 export VAL_SUBSET_RATIO="${VAL_SUBSET_RATIO:-1.0}"
-export VAL_BATCH_SIZE="${VAL_BATCH_SIZE:-4}"
+# VAL_BATCH_SIZE stays conservative: the validation memory spike is dominated
+# by per-image decoder batching (measured 40.4 GB peak at val batch=1 next to
+# fp32 training's 28.3 GB), and TEST_MAX_PER_IMG=150 now caps the model side
+# too; batch=2 keeps most of the throughput gain without betting on margins.
+export VAL_BATCH_SIZE="${VAL_BATCH_SIZE:-2}"
 export FINAL_MASK_TARGET_SIZE="${FINAL_MASK_TARGET_SIZE:-256}"
 export CUDNN_BENCHMARK="${CUDNN_BENCHMARK:-1}"
 export TEST_MAX_PER_IMG="${TEST_MAX_PER_IMG:-150}"

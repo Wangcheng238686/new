@@ -3076,11 +3076,28 @@ def main():
                 # best-model selection runs at the same maxDets contract as
                 # the final --test-only report (previously this env only
                 # affected the test-only path, silently leaving best selection
-                # at the COCO default maxDets=100).
+                # at the COCO default maxDets=100). The model-side cap mirrors
+                # the test-only override: dense tiles would otherwise batch
+                # hundreds of instances through the SAM2 decoder (~10 GB
+                # spike) only for the eval to keep the top 150 anyway. Ranking
+                # is score-based, so metrics are identical either way.
                 _val_max_dets = None
                 _val_md_env = int(os.environ.get("TEST_MAX_PER_IMG", "0") or 0)
                 if _val_md_env > 0:
                     _val_max_dets = [1, 10, _val_md_env]
+                    _val_model_for_eval = (
+                        model.module if hasattr(model, "module") else model
+                    )
+                    _val_test_cfg = getattr(_val_model_for_eval, "test_cfg", None)
+                    if _val_test_cfg is not None and "rcnn" in _val_test_cfg:
+                        _val_test_cfg["rcnn"]["max_per_img"] = _val_md_env
+                    _val_roi_cfg = getattr(
+                        getattr(_val_model_for_eval, "roi_head", None),
+                        "test_cfg",
+                        None,
+                    )
+                    if _val_roi_cfg is not None and "max_per_img" in _val_roi_cfg:
+                        _val_roi_cfg["max_per_img"] = _val_md_env
                 # The segmentation score contract is stored in cfg.model and
                 # consumed identically by validation and checkpoint inference.
                 # Bbox candidate selection/ranking always remains detector-score based.
