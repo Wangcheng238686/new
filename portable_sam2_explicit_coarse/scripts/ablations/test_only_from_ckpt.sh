@@ -4,6 +4,19 @@
 # Usage:
 #   bash scripts/ablations/test_only_from_ckpt.sh /path/to/xxx.pth [extra trainer args]
 #
+# Examples:
+#   # maxDet=150 (model cap + eval maxDets both set to 150)
+#   TEST_MAX_PER_IMG=150 bash scripts/ablations/test_only_from_ckpt.sh \
+#       /data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/<run_dir>/best_model_epoch98.pth
+#
+#   # COCO default maxDet=100 (do NOT set TEST_MAX_PER_IMG)
+#   bash scripts/ablations/test_only_from_ckpt.sh \
+#       /data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/<run_dir>/best_model_epoch98.pth
+#
+#   # run on GPU 1
+#   CUDA_VISIBLE_DEVICES=1 TEST_MAX_PER_IMG=150 \
+#       bash scripts/ablations/test_only_from_ckpt.sh /path/to/xxx.pth
+#
 # The checkpoint's embedded config_snapshot / architecture_contract are parsed
 # and the launch environment (NECK_TYPE, PROMPT_ROUTE, EXPLICIT_PROMPT_MODE,
 # SAM_IMAGE_EMBED_STRIDE, SHAPE_DENSE_*, P2_BOUNDARY_REFINER_ENABLED, ...) is
@@ -13,8 +26,10 @@
 # Optional env overrides (checked before launch):
 #   CUDA_VISIBLE_DEVICES   default 0
 #   NPROC_PER_NODE         default 1
-#   TEST_MAX_PER_IMG       e.g. 150: caps model detections and eval maxDets
-#   VAL_COMPAT_MAX_DETS    e.g. 100: additionally log mAP at this maxDets
+#   TEST_MAX_PER_IMG       e.g. 150: caps model detections and eval maxDets;
+#                          unset = COCO default maxDets=100
+#   VAL_COMPAT_MAX_DETS    training-validation only; no effect on --test-only
+#   RUN_TAG                default testonly_<ckpt_basename>
 #
 # Notes:
 #   - Only WHU1024 config family checkpoints are supported (the ablation
@@ -22,6 +37,8 @@
 #   - test-only inference needs ~20 GB GPU memory (dense tiles batch hundreds
 #     of instances through the SAM2 decoder); expandable_segments is enabled
 #     by default to reduce fragmentation.
+#   - Results are appended to logs/ablations/testonly_<ckpt>_tr*.log under
+#     "Test bbox/mAP" / "Test segm/mAP" lines.
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
