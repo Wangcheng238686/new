@@ -1644,10 +1644,17 @@ def main():
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    # CUDNN_BENCHMARK=1 trades bit-level reproducibility for conv autotuning
+    # on fixed-size inputs (public runners keep the deterministic default).
+    cudnn_benchmark = os.environ.get("CUDNN_BENCHMARK", "0") == "1"
+    torch.backends.cudnn.deterministic = not cudnn_benchmark
+    torch.backends.cudnn.benchmark = cudnn_benchmark
     if int(os.environ.get("RANK", "0")) == 0:
-        print(f"[seed] Random seed fixed to {args.seed} | cudnn.deterministic=True")
+        print(
+            f"[seed] Random seed fixed to {args.seed} "
+            f"| cudnn.deterministic={not cudnn_benchmark} "
+            f"| cudnn.benchmark={cudnn_benchmark}"
+        )
 
     dist_info = _init_distributed()
     distributed = bool(dist_info.get("distributed", 0))
@@ -3090,6 +3097,37 @@ def main():
                     "Validation segm/mAP: %.4f",
                     segm_metrics.get("segm/mAP", 0.0),
                 )
+
+                # Optional compatibility metric at a second maxDets setting.
+                # Used by accelerated runs whose primary eval runs at a
+                # non-default maxDets (TEST_MAX_PER_IMG) but that still need a
+                # curve directly comparable with historical maxDets=100 logs.
+                # Stored under suffixed keys so best-model/early-stop lookups
+                # on the plain "segm/mAP" key are unaffected.
+                compat_max_dets = int(os.environ.get("VAL_COMPAT_MAX_DETS", "0") or 0)
+                if compat_max_dets > 0:
+                    for _iou_type, _dt in (
+                        ("bbox", coco_bbox_dt),
+                        ("segm", coco_segm_dt),
+                    ):
+                        _compat = run_coco_eval(
+                            coco_gt,
+                            _dt,
+                            iou_type=_iou_type,
+                            max_dets=[1, 10, compat_max_dets],
+                        )
+                        val_metrics.update(
+                            {
+                                f"{k}@md{compat_max_dets}": v
+                                for k, v in _compat.items()
+                            }
+                        )
+                        logger.info(
+                            "Validation %s/mAP@maxDet%d: %.4f",
+                            _iou_type,
+                            compat_max_dets,
+                            _compat.get(f"{_iou_type}/mAP", 0.0),
+                        )
 
         # Match the baseline's post-validation cleanup and reduce allocator
         # fragmentation across long runs.  Non-main ranks reach this point
