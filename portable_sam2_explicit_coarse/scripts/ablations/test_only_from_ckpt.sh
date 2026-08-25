@@ -28,8 +28,16 @@
 #   NPROC_PER_NODE         default 1
 #   TEST_MAX_PER_IMG       e.g. 150: caps model detections and eval maxDets;
 #                          unset = COCO default maxDets=100
-#   VAL_COMPAT_MAX_DETS    training-validation only; no effect on --test-only
+#   TEST_VIS_OUT           e.g. logs/viz/e98: dump predictions.json and render
+#                          mask overlays onto the test images via
+#                          scripts/visualize_instances.py
+#   TEST_VIS_SCORE_THR     visualization score threshold, default 0.3
+#   TEST_VIS_LIMIT         max overlay images rendered, default 50
 #   RUN_TAG                default testonly_<ckpt_basename>
+#
+# Output: full COCO stats (bbox+segm, AP/AR/size splits) are logged line by
+# line as "Test metric <key>: <value>" and written to
+# <checkpoint_dir>/test_metrics.json.
 #
 # Notes:
 #   - Only WHU1024 config family checkpoints are supported (the ablation

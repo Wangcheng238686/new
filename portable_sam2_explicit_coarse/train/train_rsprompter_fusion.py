@@ -2478,6 +2478,110 @@ def main():
                     segm_metrics.get("segm/mAP_s", 0.0),
                     segm_metrics.get("segm/mAP_m", 0.0),
                 )
+
+                # Full COCO stat dump: every metric key of both evals, plus a
+                # test_metrics.json next to the checkpoint dir for scripting.
+                _full_test_metrics = {}
+                if eval_bbox:
+                    _full_test_metrics.update(bbox_metrics)
+                _full_test_metrics.update(segm_metrics)
+                for _mk, _mv in _full_test_metrics.items():
+                    logger.info("Test metric %s: %.6f", _mk, float(_mv))
+                try:
+                    import json as _json
+
+                    _metrics_path = checkpoint_dir / "test_metrics.json"
+                    with _metrics_path.open("w", encoding="utf-8") as _mh:
+                        _json.dump(
+                            {
+                                "checkpoint": str(args.resume_from),
+                                "test_eval_max_dets": _test_eval_max_dets,
+                                "metrics": _full_test_metrics,
+                            },
+                            _mh,
+                            indent=2,
+                        )
+                    logger.info("Full test metrics written: %s", _metrics_path)
+                except Exception:
+                    logger.warning("Failed to write test_metrics.json", exc_info=True)
+
+                # Optional prediction visualization (TEST_VIS_OUT=<dir>).
+                # Records reuse the infer_from_checkpoint predictions.json
+                # contract (model-frame RLE + absolute file_name), which
+                # scripts/visualize_instances.py pred mode rescales onto the
+                # stored images automatically.
+                _vis_out = os.environ.get("TEST_VIS_OUT", "").strip()
+                if _vis_out:
+                    _vis_thr = float(os.environ.get("TEST_VIS_SCORE_THR", "0.3"))
+                    _vis_limit = int(os.environ.get("TEST_VIS_LIMIT", "50"))
+                    _vis_records = []
+                    for _dt, _meta in zip(all_dt, all_img_metas):
+                        _fn = str(
+                            _meta.get("img_path") or _meta.get("filename") or ""
+                        )
+                        _rles = _dt.get("rles")
+                        if _rles is None and _dt.get("masks") is not None:
+                            _masks = _dt["masks"]
+                            if hasattr(_masks, "masks"):
+                                _masks = _masks.masks
+                            _rles = _masks_to_rles(_masks)
+                        for _bb, _sc, _rl in zip(
+                            _dt["bboxes"], _dt["scores"], _rles or []
+                        ):
+                            if float(_sc) < _vis_thr:
+                                continue
+                            _counts = _rl["counts"]
+                            if isinstance(_counts, bytes):
+                                _counts = _counts.decode("utf-8")
+                            _vis_records.append(
+                                {
+                                    "file_name": _fn,
+                                    "category_id": 1,
+                                    "bbox": [
+                                        float(_bb[0]),
+                                        float(_bb[1]),
+                                        float(_bb[2] - _bb[0]),
+                                        float(_bb[3] - _bb[1]),
+                                    ],
+                                    "score": float(_sc),
+                                    "segmentation": {
+                                        "size": _rl["size"],
+                                        "counts": _counts,
+                                    },
+                                }
+                            )
+                    _vis_dir = Path(_vis_out).expanduser().resolve()
+                    _vis_dir.mkdir(parents=True, exist_ok=True)
+                    _pred_json = _vis_dir / "predictions.json"
+                    import json as _vis_json
+
+                    with _pred_json.open("w", encoding="utf-8") as _vh:
+                        _vis_json.dump(_vis_records, _vh)
+                    logger.info(
+                        "Test visualization records: %d (score>=%.2f) -> %s",
+                        len(_vis_records),
+                        _vis_thr,
+                        _pred_json,
+                    )
+                    import subprocess
+                    import sys as _sys
+
+                    _project_root = Path(__file__).resolve().parents[1]
+                    _vis_cmd = [
+                        _sys.executable,
+                        "scripts/visualize_instances.py",
+                        "pred",
+                        "--pred-json",
+                        str(_pred_json),
+                        "--out-dir",
+                        str(_vis_dir / "images"),
+                        "--limit",
+                        str(_vis_limit),
+                    ]
+                    logger.info("Visualization: %s", " ".join(_vis_cmd))
+                    subprocess.run(
+                        _vis_cmd, check=False, cwd=str(_project_root)
+                    )
             else:
                 logger.warning("No valid GT in test split; skipping COCO eval.")
             logger.info("Test-only evaluation complete. Exiting (no training).")
