@@ -204,7 +204,15 @@ def run_coco_eval(coco_gt, coco_dt, iou_type: str = "bbox", max_dets=None) -> Or
             if _aps:
                 coco_eval.stats[0] = sum(_aps) / len(_aps)
         except Exception:
-            pass
+            # A silent -1 here would poison best-model selection for the whole
+            # run (constant metric -> best never updates); surface it loudly.
+            logger.warning(
+                "run_coco_eval custom-maxDets recompute failed for "
+                "iou_type=%s max_dets=%s; mAP may read -1",
+                iou_type,
+                list(max_dets),
+                exc_info=True,
+            )
 
     metric_names = [
         "mAP", "mAP_50", "mAP_75", "mAP_s", "mAP_m", "mAP_l",
@@ -3064,6 +3072,15 @@ def main():
                 )
 
             if total_gt > 0:
+                # Honor TEST_MAX_PER_IMG during per-epoch validation so that
+                # best-model selection runs at the same maxDets contract as
+                # the final --test-only report (previously this env only
+                # affected the test-only path, silently leaving best selection
+                # at the COCO default maxDets=100).
+                _val_max_dets = None
+                _val_md_env = int(os.environ.get("TEST_MAX_PER_IMG", "0") or 0)
+                if _val_md_env > 0:
+                    _val_max_dets = [1, 10, _val_md_env]
                 # The segmentation score contract is stored in cfg.model and
                 # consumed identically by validation and checkpoint inference.
                 # Bbox candidate selection/ranking always remains detector-score based.
@@ -3072,7 +3089,8 @@ def main():
                 )
                 if eval_bbox:
                     bbox_metrics = run_coco_eval(
-                        coco_gt, coco_bbox_dt, iou_type="bbox"
+                        coco_gt, coco_bbox_dt, iou_type="bbox",
+                        max_dets=_val_max_dets,
                     )
                     val_metrics.update(bbox_metrics)
                     logger.info(
@@ -3090,7 +3108,8 @@ def main():
                         score_key=segm_score_key,
                     )
                 segm_metrics = run_coco_eval(
-                    coco_gt, coco_segm_dt, iou_type="segm"
+                    coco_gt, coco_segm_dt, iou_type="segm",
+                    max_dets=_val_max_dets,
                 )
                 val_metrics.update(segm_metrics)
                 logger.info(
