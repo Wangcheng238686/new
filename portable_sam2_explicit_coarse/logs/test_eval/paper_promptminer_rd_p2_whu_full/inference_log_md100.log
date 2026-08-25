@@ -1,0 +1,267 @@
+terminal_log=/home/wangcheng/project/new/portable_sam2_explicit_coarse/logs/ablations/testonly_e98_md100_tr1.0_va1.0_20260825_191210_pid998178.log
+/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/imagecorruptions/corruptions.py:17: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+{"ablation_id": "c5v2_pafpn_coarse_p2_boundary_refiner_emb64", "architecture_contract": {"architecture_id": "c5v2_pafpn_coarse_p2_boundary_refiner_emb64", "model_fingerprint": "36549a00a8282b2b9903d8c07c7cc9ce6f6e8fba3e93d58212de1999b1aa3dab", "schema_version": 2}, "config": "configs/whu1024_baseplus_explicit_coarse.py", "dense_prompt_config": {"clamp_range": [-8.0, 8.0], "detach_input": true, "foreground_threshold": 0.5, "gaussian_gamma": 4.0, "gaussian_omega": 15.0, "outside_fill_logit": 0.0, "temperature": 1.0, "transform": "raw_logits"}, "dense_prompt_enabled": true, "explicit_prompt_mode": "points_box_dense", "final_mask_coordinate_mode": "roi_local", "final_mask_loss_config": {}, "final_mask_loss_mode": "standard", "neck": "RSSAM2PAFPN", "p2_boundary_refiner_config": {"aligned": true, "beta": 0.2, "boundary_band_radius": 2, "boundary_loss_weight": 0.05, "coarse_size": 64, "delta_logit_max": 2.0, "enabled": true, "foreground_thr": 0.5, "max_search_coverage": 0.5, "mid_channels": 64, "p2_in_channels": 512, "projected_channels": 64, "roi_output_size": 32, "sampling_ratio": 0, "search_band_radius": 4, "spatial_scale": 0.25, "zero_init_residual": true}, "p2_boundary_refiner_enabled": true, "prompt_encoder_enabled": true, "prompt_encoder_train_mask_downscaling": false, "prompt_route": "coarse", "prompt_sparse_mode": "shape_point", "quality_head_enabled": false, "roi_sam_config": {}, "roi_sam_enabled": false, "sam_image_embedding_size": 64, "sam_image_embedding_stride": 16, "segm_score_key": "scores", "segm_score_mode": "detector", "shape_context_fusion": "roi_only", "shape_loss_schedule_mode": "fixed", "shape_point_adaptive_validity": true, "shape_prior_enabled": true, "shape_prior_loss_weight": 0.1, "subset_seed": 44, "train_subset_ratio": 1.0, "val_subset_ratio": 1.0}
+ablation contract: OK
+============================================================
+resolved_hyperparameters_begin
+timestamp=20260825_191210
+environment_config=/home/wangcheng/project/new/portable_sam2_explicit_coarse/configs/environment.local.sh
+git_commit=7e9423fa8126f829f5fb782cdddf7990b3401216
+ablation_id=c5v2_pafpn_coarse_p2_boundary_refiner_emb64
+expected_architecture_id=c5v2_pafpn_coarse_p2_boundary_refiner_emb64
+run_tag=testonly_e98_md100
+run_suffix=
+neck_type=pafpn
+prompt_route=coarse
+prompt_generator_mode=explicit_mask
+prompt_sparse_mode=shape_point
+prompt_encoder_enabled=1
+shape_prior_enabled=1
+explicit_prompt_mode=points_box_dense
+shape_dense_transform=raw_logits
+shape_dense_detach=1
+shape_gaussian_foreground_threshold=0.5
+shape_gaussian_omega=15.0
+shape_gaussian_gamma=4.0
+p2_boundary_refiner_enabled=1
+final_mask_coordinate_mode=roi_local
+final_mask_loss_mode=standard
+final_mask_roi_expand_ratio=1.20
+final_mask_roi_bce_weight=1.0
+final_mask_roi_dice_weight=1.0
+final_mask_outside_bce_weight=0.05
+roi_sam_enabled=0
+roi_sam_sampling_ratio=2
+sam_image_embedding_stride=16
+sam_image_embedding_size=64
+train_subset_ratio=1.0
+val_subset_ratio=1.0
+val_batch_size=1
+subset_seed=44
+python=/home/wangcheng/miniconda3/envs/cvt2/bin/python
+nproc_per_node=1
+master_port=38178
+master_port_source=auto_pid
+ddp_timeout_seconds=1800
+ddp_timeout_source=baseline_default
+ddp_control_backend=gloo
+ddp_control_timeout_seconds=86400
+cuda_visible_devices=1
+batch_size_per_rank=1
+grad_accum_steps=4
+effective_global_batch_size=4
+epochs=100
+learning_rate=5e-4
+amp=0
+ema_enabled=0
+ema_decay=0.999
+ema_eval=0
+ema_save_best=0
+val_every_n_epochs=1
+compute_val_loss=0
+save_bbox_best_metric=bbox/mAP
+segm_score_mode=detector
+early_stopping_patience=10
+early_stopping_start_epoch=20
+early_stopping_min_delta=5e-4
+early_stopping_smooth_window=5
+sat_backbone_lr_mult=1.0
+sat_other_lr_mult=1.0
+mask_decoder_lr_mult=1.0
+no_mask_lr_mult=1.0
+prompt_encoder_lr_mult=0.0
+prompt_encoder_train_mask_downscaling=0
+shape_prior_lr_mult=1.0
+shape_context_fusion=roi_only
+p2_boundary_refiner_lr_mult=1.0
+p2_boundary_refiner_projected_channels=64
+p2_boundary_refiner_mid_channels=64
+p2_boundary_refiner_delta_logit_max=2.0
+p2_boundary_refiner_loss_weight=0.05
+allow_cross_arch_init=0
+warmup_iters=100
+weight_decay=0.05
+det_loss_stage1_end=5
+det_loss_stage2_end=10
+det_loss_weight_stage1=1.0
+det_loss_weight_stage2=1.0
+det_loss_weight_stage3=1.0
+ema_update_every=1
+ema_eval_start_epoch=5
+shape_point_adaptive_validity=1
+shape_loss_schedule_mode=fixed
+shape_prior_loss_weight=0.1
+shape_loss_stage1_end=5
+shape_loss_weight_stage1=0.20
+shape_loss_weight_stage2=0.10
+point_warmup_enabled=0
+point_warmup_no_point_epochs=0
+point_warmup_one_pair_epochs=0
+point_warmup_full_start_epoch=1
+prompt_debug_stats=1
+prompt_debug_stats_interval=50
+max_train_batches=0
+max_val_batches=0
+init_from=
+init_exclude_prefixes=
+resume_from=
+check_data=0
+preflight_model=0
+dry_run=0
+run_in_background=1
+sam2_repo=/home/wangcheng/project/new/sam2
+sam2_checkpoint=/data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+data_root=/data1/wangcheng/dataset/WHU
+checkpoint_root=/data1/wangcheng/checkpoint/portable_sam2_explicit_coarse
+log_root=/home/wangcheng/project/new/portable_sam2_explicit_coarse/logs
+tmp_root=/tmp/portable_sam2_explicit_coarse
+config=configs/whu1024_baseplus_explicit_coarse.py
+checkpoint_dir=/data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/testonly_e98_md100_tr1.0_va1.0
+log_file=/home/wangcheng/project/new/portable_sam2_explicit_coarse/logs/ablations/testonly_e98_md100_tr1.0_va1.0_20260825_191210_pid998178.log
+command= /home/wangcheng/miniconda3/envs/cvt2/bin/python -m torch.distributed.run --nproc_per_node=1 --master_port=38178 train/train_rsprompter_fusion.py --config configs/whu1024_baseplus_explicit_coarse.py --data-root /data1/wangcheng/dataset/WHU --use-whu-coco --image-size 1024 1024 --batch-size 1 --grad-accum-steps 4 --epochs 100 --lr 5e-4 --checkpoint-dir /data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/testonly_e98_md100_tr1.0_va1.0 --train-subset-ratio 1.0 --val-subset-ratio 1.0 --val-batch-size 1 --seed 44 --amp 0 --ema-enabled 0 --ema-decay 0.999 --ema-eval 0 --ema-save-best 0 --val-every-n-epochs 1 --compute-val-loss 0 --early-stopping-patience 10 --early-stopping-start-epoch 20 --early-stopping-min-delta 5e-4 --early-stopping-smooth-window 5 --sat-backbone-lr-mult 1.0 --sat-other-lr-mult 1.0 --mask-decoder-lr-mult 1.0 --no-mask-lr-mult 1.0 --prompt-encoder-lr-mult 0.0 --shape-prior-lr-mult 1.0 --p2-boundary-refiner-lr-mult 1.0 --warmup-iters 100 --weight-decay 0.05 --det-loss-stage1-end 5 --det-loss-stage2-end 10 --det-loss-weight-stage1 1.0 --det-loss-weight-stage2 1.0 --det-loss-weight-stage3 1.0 --ema-update-every 1 --ema-eval-start-epoch 5 --prompt-debug-stats 1 --prompt-debug-stats-interval 50 --resume-from /data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/paper_promptminer_rd_p2_whu_full_tr1.0_va1.0/best_model_epoch98.pth --test-only
+resolved_hyperparameters_end
+============================================================
+launch_mode=background
+background_pid=998456
+follow_log=tail -f /home/wangcheng/project/new/portable_sam2_explicit_coarse/logs/ablations/testonly_e98_md100_tr1.0_va1.0_20260825_191210_pid998178.log
+status_command=ps -fp 998456
+/home/wangcheng/miniconda3/envs/cvt2/lib/python3.9/site-packages/imagecorruptions/corruptions.py:17: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+[seed] Random seed fixed to 44 | cudnn.deterministic=True | cudnn.benchmark=False
+2026-08-25 19:12:23,506 - portable_sam_fusion - INFO - DDP process-group timeout: 1800 seconds
+2026-08-25 19:12:24,466 - portable_sam_fusion - INFO - Architecture contract: id=c5v2_pafpn_coarse_p2_boundary_refiner_emb64 schema=2 fingerprint=36549a00a8282b2b9903d8c07c7cc9ce6f6e8fba3e93d58212de1999b1aa3dab
+[RSSAM2VisionEncoder] Loading SAM2 base_plus model
+  - embed_dim: 112
+  - stages: (2, 3, 16, 3)
+  - backbone_channels: [896, 448, 224, 112]
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[ImageEncoder(base_plus)] Loaded 306 keys. missing=0, unexpected=0
+[RSSAM2VisionEncoder] Applied LoRA with config:
+  - r=16, alpha=32
+  - target_modules=['qkv', 'proj']
+  - dropout=0.05
+  - modules_to_save=['neck']
+trainable params: 1,492,528 || all params: 70,599,344 || trainable%: 2.114081966540652
+[RSSAM2VisionEncoder] LoRA audit: backbone total=70599344, trainable=1492528, lora_trainable=1061424, unexpected_trainable=0
+[SAM2] using package: /home/wangcheng/project/new/sam2/sam2/__init__.py
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[MaskDecoder] Loaded 131 keys. missing=0, unexpected=0
+  use_high_res_features: True
+  Has conv_s0: True
+  Has conv_s1: True
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[MaskHead] Initialized no_mask_embed from SAM2 ckpt, frozen, abs_mean=0.01521041
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[PromptEncoder] Loaded 17 keys. missing=0, unexpected=0
+2026-08-25 19:12:28,423 - portable_sam_fusion - INFO - Evaluation score contract: bbox=scores segm=scores mode=detector
+2026-08-25 19:12:30,698 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 2943 (train.json)
+2026-08-25 19:12:30,822 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 627 (validation.json)
+2026-08-25 19:12:30,823 - data.loader - INFO - 创建 WHU 验证集加载器: 627 样本
+2026-08-25 19:12:30,823 - portable_sam_fusion - INFO - Validation policy: rank0_only=1 batch_size=1 every_n_epochs=1 compute_loss=0
+2026-08-25 19:12:30,823 - portable_sam_fusion - INFO - Dataset size: 2943 | mini-batch/epoch=2943 | grad_accum=4 | optimizer_steps/epoch=736 | total_optimizer_steps=73600
+2026-08-25 19:12:30,827 - portable_sam_fusion - INFO - Optimizer group sat_backbone    params=1492528 tensors=112 lr=5.000e-04 wd=5.000e-02 first=backbone.encoder.base_model.model.trunk.patch_embed.proj.lora_A.default.weight last=backbone.encoder.base_model.model.neck.modules_to_save.default.convs.3.conv.bias
+2026-08-25 19:12:30,827 - portable_sam_fusion - INFO - Optimizer group mask_decoder    params=4082497 tensors=125 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.mask_decoder.decoder.transformer.layers.0.self_attn.q_proj.weight last=roi_head.mask_head.mask_decoder.decoder.pred_obj_score_head.layers.2.bias
+2026-08-25 19:12:30,827 - portable_sam_fusion - INFO - Optimizer group shape_prior     params=960385 tensors=18 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.shape_injector.mask_decoder.net.0.weight last=roi_head.mask_head.shape_injector.mask_decoder.net.14.bias
+2026-08-25 19:12:30,827 - portable_sam_fusion - INFO - Optimizer group p2_boundary_refiner params=145729 tensors=14 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.p2_boundary_refiner.p2_projection.0.weight last=roi_head.mask_head.p2_boundary_refiner.residual_head.bias
+2026-08-25 19:12:30,827 - portable_sam_fusion - INFO - Optimizer group quality_head    params=132612 tensors=6 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.mask_decoder.decoder.iou_prediction_head.layers.0.weight last=roi_head.mask_head.mask_decoder.decoder.iou_prediction_head.layers.2.bias
+2026-08-25 19:12:30,827 - portable_sam_fusion - INFO - Optimizer group sat_other       params=37130794 tensors=79 lr=5.000e-04 wd=5.000e-02 first=neck.level_scales last=roi_head.mask_head.shape_dense_alpha_raw
+2026-08-25 19:12:30,830 - portable_sam_fusion - INFO - Trainable state backbone               1492528 / 70599344
+2026-08-25 19:12:30,830 - portable_sam_fusion - INFO - Trainable state shared_image_embedding absent
+2026-08-25 19:12:30,830 - portable_sam_fusion - INFO - Trainable state mask_decoder           4215109 / 4215109
+2026-08-25 19:12:30,830 - portable_sam_fusion - INFO - Trainable state no_mask_embed          0 / 256
+2026-08-25 19:12:30,831 - portable_sam_fusion - INFO - Trainable state prompt_encoder         0 / 6220
+2026-08-25 19:12:30,831 - portable_sam_fusion - INFO - Trainable state shape_injector         960385 / 960385
+2026-08-25 19:12:30,831 - portable_sam_fusion - INFO - Trainable state p2_boundary_refiner    145729 / 145729
+2026-08-25 19:12:30,831 - portable_sam_fusion - INFO - Trainable state quality_head           absent
+2026-08-25 19:12:30,831 - portable_sam_fusion - INFO - Trainable state uav_roi_retriever      absent
+2026-08-25 19:12:30,831 - portable_sam_fusion - INFO - Trainable state uav_roi_gate           absent
+2026-08-25 19:12:30,831 - portable_sam_fusion - INFO - Trainable state uav_roi_dense_prompt   absent
+2026-08-25 19:12:30,831 - portable_sam_fusion - INFO - Trainable state uav_roi_prompt_adapter absent
+2026-08-25 19:12:30,831 - portable_sam_fusion - INFO - Trainable state uav_prompt_adapter_sparse_scale absent
+2026-08-25 19:12:30,831 - portable_sam_fusion - INFO - Trainable state uav_prompt_adapter_dense_scale absent
+2026-08-25 19:12:30,831 - portable_sam_fusion - INFO - Using user-specified warmup: 100 optimizer steps
+2026-08-25 19:12:31,391 - portable_sam_fusion - INFO - RESUME model load: strict=True (all keys matched)
+2026-08-25 19:12:31,488 - portable_sam_fusion - INFO - Resumed from /data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/paper_promptminer_rd_p2_whu_full_tr1.0_va1.0/best_model_epoch98.pth (start_epoch=98, best_segm_map=0.7417, best_bbox_score=0.7779, best_composite_score=0.0000)
+2026-08-25 19:12:32,515 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 2220 (test.json)
+2026-08-25 19:12:32,515 - data.loader - INFO - 创建 WHU 测试集加载器: 2220 样本
+2026-08-25 19:12:32,519 - portable_sam_fusion - INFO - Test-only evaluation: checkpoint=/data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/paper_promptminer_rd_p2_whu_full_tr1.0_va1.0/best_model_epoch98.pth, test split=2220 images
+[DEBUG] RSSAM2PAFPN inputs: 4 tensors
+  [0] shape=torch.Size([1, 256, 256, 256]), dtype=torch.float32
+  [1] shape=torch.Size([1, 256, 128, 128]), dtype=torch.float32
+  [2] shape=torch.Size([1, 256, 64, 64]), dtype=torch.float32
+  [3] shape=torch.Size([1, 256, 32, 32]), dtype=torch.float32
+2026-08-25 19:28:47,512 - portable_sam_fusion - INFO - Test samples: GT=70063, DT=70542, avg_masks_per_image=31.78, avg_mask_fill=0.0036
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.07s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=47.84s).
+Accumulating evaluation results...
+DONE (t=0.70s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.755
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.899
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.839
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.446
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.800
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.862
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.022
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.178
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.797
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.528
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.842
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.897
+2026-08-25 19:29:37,778 - portable_sam_fusion - INFO - Test bbox/mAP: 0.7553 bbox/mAP_75: 0.8389
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=48.16s).
+Accumulating evaluation results...
+DONE (t=0.69s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.729
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.900
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.840
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.435
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.779
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.811
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.021
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.170
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.769
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.515
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.844
+2026-08-25 19:30:26,651 - portable_sam_fusion - INFO - Test segm/mAP: 0.7288 segm/mAP_50: 0.9005 segm/mAP_75: 0.8402 segm/mAP_s: 0.4354 segm/mAP_m: 0.7785
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric bbox/mAP: 0.755275
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric bbox/mAP_50: 0.899466
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric bbox/mAP_75: 0.838938
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric bbox/mAP_s: 0.445652
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric bbox/mAP_m: 0.799556
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric bbox/mAP_l: 0.861923
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric bbox/AR@1: 0.022163
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric bbox/AR@10: 0.178138
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric bbox/AR@100: 0.797044
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric bbox/AR_s: 0.528027
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric bbox/AR_m: 0.842449
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric bbox/AR_l: 0.896946
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric segm/mAP: 0.728792
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric segm/mAP_50: 0.900493
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric segm/mAP_75: 0.840170
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric segm/mAP_s: 0.435382
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric segm/mAP_m: 0.778513
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric segm/mAP_l: 0.810733
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric segm/AR@1: 0.021192
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric segm/AR@10: 0.170318
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric segm/AR@100: 0.768855
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric segm/AR_s: 0.514766
+2026-08-25 19:30:26,652 - portable_sam_fusion - INFO - Test metric segm/AR_m: 0.815891
+2026-08-25 19:30:26,653 - portable_sam_fusion - INFO - Test metric segm/AR_l: 0.844136
+2026-08-25 19:30:26,653 - portable_sam_fusion - INFO - Full test metrics written: /data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/testonly_e98_md100_tr1.0_va1.0/test_metrics.json
+2026-08-25 19:30:29,196 - portable_sam_fusion - INFO - Test visualization records: 67095 (score>=0.30) -> /home/wangcheng/project/new/portable_sam2_explicit_coarse/logs/viz/testonly_e98_md100/predictions.json
+2026-08-25 19:30:29,196 - portable_sam_fusion - INFO - Visualization: /home/wangcheng/miniconda3/envs/cvt2/bin/python scripts/visualize_instances.py pred --pred-json /home/wangcheng/project/new/portable_sam2_explicit_coarse/logs/viz/testonly_e98_md100/predictions.json --out-dir /home/wangcheng/project/new/portable_sam2_explicit_coarse/logs/viz/testonly_e98_md100/images --limit 50
+19:30:30 INFO predictions: 67095 total, 67095 after score>=0.000
+19:30:47 INFO pred: rendered 50 -> /home/wangcheng/project/new/portable_sam2_explicit_coarse/logs/viz/testonly_e98_md100/images
+2026-08-25 19:30:47,784 - portable_sam_fusion - INFO - Test-only evaluation complete. Exiting (no training).
+[rank0]:[W825 19:30:49.144424259 ProcessGroupNCCL.cpp:1538] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())

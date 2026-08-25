@@ -1,0 +1,34 @@
+{
+  "checkpoint": "/data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/paper_promptminer_rd_p2_whu_full_tr1.0_va1.0/best_model_epoch98.pth",
+  "test_eval_max_dets": [
+    1,
+    10,
+    150
+  ],
+  "metrics": {
+    "bbox/mAP": 0.7704595253600125,
+    "bbox/mAP_50": 0.9183523600841822,
+    "bbox/mAP_75": 0.8567677846958737,
+    "bbox/mAP_s": 0.4869834363377562,
+    "bbox/mAP_m": 0.809782158282105,
+    "bbox/mAP_l": 0.8619427015337134,
+    "bbox/AR@1": 0.022162910523386096,
+    "bbox/AR@10": 0.1781382470062658,
+    "bbox/AR@100": 0.8140944578450823,
+    "bbox/AR_s": 0.5837207357859533,
+    "bbox/AR_m": 0.8532620993086109,
+    "bbox/AR_l": 0.8984873145045477,
+    "segm/mAP": 0.7440083468497285,
+    "segm/mAP_50": 0.9194235615538138,
+    "segm/mAP_75": 0.8580074131504293,
+    "segm/mAP_s": 0.4747504231797609,
+    "segm/mAP_m": 0.7879381967195003,
+    "segm/mAP_l": 0.813600728938368,
+    "segm/AR@1": 0.0211923554515222,
+    "segm/AR@10": 0.1703181422434095,
+    "segm/AR@100": 0.7853974280290597,
+    "segm/AR_s": 0.5676337792642141,
+    "segm/AR_m": 0.8266708569034151,
+    "segm/AR_l": 0.8456199138343704
+  }
+}
