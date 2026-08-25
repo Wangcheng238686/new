@@ -28,25 +28,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("portable_sam_fusion")
 
-# iSAID official 15 categories; train labels 0..14 map to ids 1..15 (label+1).
-ISAID_CATEGORIES = [
-    {"id": 1, "name": "storage_tank"},
-    {"id": 2, "name": "Large_Vehicle"},
-    {"id": 3, "name": "Small_Vehicle"},
-    {"id": 4, "name": "plane"},
-    {"id": 5, "name": "ship"},
-    {"id": 6, "name": "Swimming_pool"},
-    {"id": 7, "name": "Harbor"},
-    {"id": 8, "name": "tennis_court"},
-    {"id": 9, "name": "Ground_Track_Field"},
-    {"id": 10, "name": "Soccer_ball_field"},
-    {"id": 11, "name": "baseball_diamond"},
-    {"id": 12, "name": "Bridge"},
-    {"id": 13, "name": "basketball_court"},
-    {"id": 14, "name": "Roundabout"},
-    {"id": 15, "name": "Helicopter"},
-]
-
 
 # ---------------------------------------------------------------------------
 # COCO-style evaluation helpers (from inference_rsprompter_fusion.py)
@@ -103,19 +84,10 @@ def build_coco_gt_and_dt(
     all_dt: List[dict],
     img_metas_list: List[dict],
     score_key: str = "scores",
-    categories: Optional[List[dict]] = None,
 ) -> Tuple:
-    """Build pycocotools COCO objects for GT and detections.
-
-    category_id is derived as ``label + 1``.  For single-class runs (WHU)
-    labels are all 0 so this keeps the historical ``category_id=1`` behavior;
-    for multi-class runs (iSAID 15 classes) labels 0..14 map to the official
-    category ids 1..15 via ``categories``.
-    """
+    """Build pycocotools COCO objects for GT and detections."""
     from pycocotools.coco import COCO
 
-    if categories is None:
-        categories = [{"id": 1, "name": "building"}]
     images = []
     annotations = []
     predictions = []
@@ -146,7 +118,7 @@ def build_coco_gt_and_dt(
                 {
                     "id": ann_id,
                     "image_id": img_id,
-                    "category_id": int(gt_labels[i]) + 1,
+                    "category_id": 1,
                     "bbox": bbox_xywh,
                     "area": area,
                     "segmentation": seg_rle,
@@ -163,9 +135,6 @@ def build_coco_gt_and_dt(
                 "predictions; refusing a silent score fallback"
             )
         dt_scores = dt[score_key]
-        dt_labels = dt.get("labels")
-        if dt_labels is None:
-            dt_labels = np.zeros(len(dt_scores), dtype=np.int64)
         dt_rles = dt.get("rles")
         dt_masks = dt.get("masks")
         if dt_rles is None:
@@ -180,7 +149,7 @@ def build_coco_gt_and_dt(
             predictions.append(
                 {
                     "image_id": img_id,
-                    "category_id": int(dt_labels[i]) + 1,
+                    "category_id": 1,
                     "bbox": bbox_xywh,
                     "score": float(dt_scores[i]),
                     "segmentation": seg_rle,
@@ -191,7 +160,7 @@ def build_coco_gt_and_dt(
     gt_dataset = {
         "images": images,
         "annotations": annotations,
-        "categories": categories,
+        "categories": [{"id": 1, "name": "building"}],
     }
     coco_gt = COCO()
     coco_gt.dataset = gt_dataset
@@ -208,14 +177,34 @@ def build_coco_gt_and_dt(
     return coco_gt, coco_dt
 
 
-def run_coco_eval(coco_gt, coco_dt, iou_type: str = "bbox") -> OrderedDict:
+def run_coco_eval(coco_gt, coco_dt, iou_type: str = "bbox", max_dets=None) -> OrderedDict:
     """Run COCOeval and return metrics dict."""
     from pycocotools.cocoeval import COCOeval
 
     coco_eval = COCOeval(coco_gt, coco_dt, iouType=iou_type)
+    if max_dets is not None:
+        coco_eval.params.maxDets = max_dets
     coco_eval.evaluate()
     coco_eval.accumulate()
     coco_eval.summarize()
+    if max_dets is not None:
+        # summarize() hardcodes maxDets=100 for the primary AP stat and
+        # yields -1 when 100 is absent from params.maxDets. Recompute the
+        # IoU-averaged AP from the accumulated precision array at the
+        # custom cap (no reliance on private summarize helpers).
+        try:
+            _mind = list(coco_eval.params.maxDets).index(list(max_dets)[-1])
+            _prec = coco_eval.eval["precision"]
+            _aps = []
+            for _k in range(_prec.shape[2]):
+                _p = _prec[:, :, _k, 0, _mind]
+                _v = _p[_p > -1]
+                if _v.size:
+                    _aps.append(float(_v.mean()))
+            if _aps:
+                coco_eval.stats[0] = sum(_aps) / len(_aps)
+        except Exception:
+            pass
 
     metric_names = [
         "mAP", "mAP_50", "mAP_75", "mAP_s", "mAP_m", "mAP_l",
@@ -1197,26 +1186,7 @@ def _load_checkpoint(
     if scheduler is not None and "scheduler" in ckpt:
         scheduler.load_state_dict(ckpt["scheduler"])
     if scaler is not None and "scaler" in ckpt:
-        # Checkpoints written with --amp 0 store an empty dict; loading it
-        # into an enabled scaler raises RuntimeError in torch>=2.x. A fresh
-        # AMP run must keep the default 65536 scale (a loaded 1.0 would
-        # underflow fp16 gradients for ~32k optimizer steps).
-        saved_scaler_state = ckpt["scaler"]
-        if scaler.is_enabled() and not saved_scaler_state:
-            if int(os.environ.get("RANK", "0")) == 0:
-                logger.info(
-                    "RESUME scaler: checkpoint has no AMP state (--amp 0 run); "
-                    "keeping fresh scale=%s", scaler.get_scale(),
-                )
-        else:
-            scaler.load_state_dict(saved_scaler_state)
-            if scaler.is_enabled() and scaler.get_scale() == 1.0:
-                scaler._scale.fill_(2 ** 16)
-                if int(os.environ.get("RANK", "0")) == 0:
-                    logger.info(
-                        "RESUME scaler scale reset 1.0 -> %s",
-                        scaler.get_scale(),
-                    )
+        scaler.load_state_dict(ckpt["scaler"])
     return ckpt
 
 
@@ -1416,12 +1386,6 @@ def main():
         action="store_true",
         default=False,
         help="使用 WHU 公开数据集（COCO 格式，自带 train/validation 划分）",
-    )
-    parser.add_argument(
-        "--use-isaid-coco",
-        action="store_true",
-        default=False,
-        help="使用 iSAID 数据集（800x800 patch，COCO 格式，15 类）",
     )
     parser.add_argument(
         "--subset-ratio",
@@ -1883,11 +1847,7 @@ def main():
             val_batch_size=args.val_batch_size,
             random_sample=args.random_sample,
             normalize_drone=args.normalize_drone,
-            dataset_format=(
-                "isaid_coco"
-                if args.use_isaid_coco
-                else ("whu_coco" if args.use_whu_coco else "labelme")
-            ),
+            dataset_format="whu_coco" if args.use_whu_coco else "labelme",
             whu_train_ann_file=os.environ.get(
                 "WHU_TRAIN_ANN_FILE", "2.4 annotation/annotation/train.json"
             ),
@@ -1899,20 +1859,6 @@ def main():
             ),
             whu_val_img_subdir=os.environ.get(
                 "WHU_VAL_IMG_SUBDIR", "2.3 valid/validation"
-            ),
-            isaid_train_ann_file=os.environ.get(
-                "ISAID_TRAIN_ANN_FILE",
-                "isaid_patches_800/train/instances_isaid_train.json",
-            ),
-            isaid_val_ann_file=os.environ.get(
-                "ISAID_VAL_ANN_FILE",
-                "isaid_patches_800/val/instances_isaid_val.json",
-            ),
-            isaid_train_img_subdir=os.environ.get(
-                "ISAID_TRAIN_IMG_SUBDIR", "isaid_patches_800/train/images"
-            ),
-            isaid_val_img_subdir=os.environ.get(
-                "ISAID_VAL_IMG_SUBDIR", "isaid_patches_800/val/images"
             ),
             train_subset_ratio=train_subset_ratio,
             val_subset_ratio=val_subset_ratio,
@@ -2042,14 +1988,10 @@ def main():
         "config_path": str(args.config),
         "training_args": dict(vars(args)),
         "data_config": {
-            "dataset_format": (
-                "isaid_coco"
-                if args.use_isaid_coco
-                else ("whu_coco" if args.use_whu_coco else "labelme")
-            ),
+            "dataset_format": "whu_coco" if args.use_whu_coco else "labelme",
             "data_root": str(args.data_root),
             "image_size": list(args.image_size),
-            "single_class": not args.use_isaid_coco,
+            "single_class": True,
             "validation": {
                 "ann_file": "2.4 annotation/annotation/validation.json",
                 "image_subdir": "2.3 valid/validation",
@@ -2365,6 +2307,27 @@ def main():
                     len(test_loader.dataset),
                 )
             model_for_eval = model.module if hasattr(model, "module") else model
+            # Runtime-only max_per_img override for dense scenes (>100
+            # instances per tile). Mutates the live test_cfg objects, so the
+            # config file and the architecture fingerprint stay untouched.
+            _test_max_per_img = int(os.environ.get("TEST_MAX_PER_IMG", "0") or 0)
+            if _test_max_per_img > 0:
+                _model_test_cfg = getattr(model_for_eval, "test_cfg", None)
+                if _model_test_cfg is not None and "rcnn" in _model_test_cfg:
+                    _model_test_cfg["rcnn"]["max_per_img"] = _test_max_per_img
+                _roi_test_cfg = getattr(
+                    getattr(model_for_eval, "roi_head", None), "test_cfg", None
+                )
+                if _roi_test_cfg is not None and "max_per_img" in _roi_test_cfg:
+                    _roi_test_cfg["max_per_img"] = _test_max_per_img
+                if is_main:
+                    logger.info(
+                        "TEST_MAX_PER_IMG=%d override applied (model-side cap)",
+                        _test_max_per_img,
+                    )
+            _test_eval_max_dets = (
+                [1, 10, _test_max_per_img] if _test_max_per_img > 0 else None
+            )
             with torch.no_grad():
                 for batch_idx, batch in enumerate(test_loader):
                     if args.max_val_batches > 0 and batch_idx >= args.max_val_batches:
@@ -2423,10 +2386,15 @@ def main():
                         ds.gt_instances = gt_instances
                         data_samples.append(ds.to(device))
 
-                    model_inputs = {
-                        "imgs": imgs,
-                        "img_metas": img_metas,
-                    }
+                    # Mirror the validation loop: run the model's
+                    # data_preprocessor (padding/normalization) before predict.
+                    processed = model_for_eval.data_preprocessor(
+                        {"inputs": imgs, "data_samples": data_samples},
+                        training=False,
+                    )
+                    model_inputs = processed["inputs"]
+                    data_samples = processed["data_samples"]
+
                     outputs = model_for_eval.predict(
                         model_inputs, data_samples, rescale=False
                     )
@@ -2461,14 +2429,13 @@ def main():
                 avg_mask_fill,
             )
             if total_gt > 0:
-                eval_categories = ISAID_CATEGORIES if args.use_isaid_coco else None
                 coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
-                    all_gt, all_dt, all_img_metas, score_key="scores",
-                    categories=eval_categories,
+                    all_gt, all_dt, all_img_metas, score_key="scores"
                 )
                 if eval_bbox:
                     bbox_metrics = run_coco_eval(
-                        coco_gt, coco_bbox_dt, iou_type="bbox"
+                        coco_gt, coco_bbox_dt, iou_type="bbox",
+                        max_dets=_test_eval_max_dets,
                     )
                     logger.info(
                         "Test bbox/mAP: %.4f bbox/mAP_75: %.4f",
@@ -2483,14 +2450,18 @@ def main():
                         all_dt,
                         all_img_metas,
                         score_key=segm_score_key,
-                        categories=eval_categories,
                     )
                 segm_metrics = run_coco_eval(
-                    coco_gt, coco_segm_dt, iou_type="segm"
+                    coco_gt, coco_segm_dt, iou_type="segm",
+                    max_dets=_test_eval_max_dets,
                 )
                 logger.info(
-                    "Test segm/mAP: %.4f",
+                    "Test segm/mAP: %.4f segm/mAP_50: %.4f segm/mAP_75: %.4f segm/mAP_s: %.4f segm/mAP_m: %.4f",
                     segm_metrics.get("segm/mAP", 0.0),
+                    segm_metrics.get("segm/mAP_50", 0.0),
+                    segm_metrics.get("segm/mAP_75", 0.0),
+                    segm_metrics.get("segm/mAP_s", 0.0),
+                    segm_metrics.get("segm/mAP_m", 0.0),
                 )
             else:
                 logger.warning("No valid GT in test split; skipping COCO eval.")
@@ -3089,10 +3060,8 @@ def main():
                 # The segmentation score contract is stored in cfg.model and
                 # consumed identically by validation and checkpoint inference.
                 # Bbox candidate selection/ranking always remains detector-score based.
-                eval_categories = ISAID_CATEGORIES if args.use_isaid_coco else None
                 coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
-                    all_gt, all_dt, all_img_metas, score_key="scores",
-                    categories=eval_categories,
+                    all_gt, all_dt, all_img_metas, score_key="scores"
                 )
                 if eval_bbox:
                     bbox_metrics = run_coco_eval(
@@ -3112,7 +3081,6 @@ def main():
                         all_dt,
                         all_img_metas,
                         score_key=segm_score_key,
-                        categories=eval_categories,
                     )
                 segm_metrics = run_coco_eval(
                     coco_gt, coco_segm_dt, iou_type="segm"

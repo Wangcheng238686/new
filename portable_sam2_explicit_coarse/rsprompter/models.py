@@ -1,25 +1,507 @@
 import copy
 from typing import Dict, List, Optional, Tuple
 
+import einops
+import numpy as np
 import torch
 import torch.nn.functional as F
+from mmcv.cnn import ConvModule, build_norm_layer
+from mmengine import ConfigDict
+from mmengine.dist import is_main_process
+from mmengine.model import BaseModule
+from mmengine.registry import MODELS as MMENGINE_MODELS
+
+from .ckpt_utils import load_module_state_dict_strict
 from torch import Tensor, nn
+from transformers import SamConfig
+from transformers.models.sam.modeling_sam import (
+    SamMaskDecoder,
+    SamPositionalEmbedding,
+    SamPromptEncoder,
+    SamVisionEncoder,
+    SamVisionEncoderOutput,
+)
 
 from mmdet.models import MaskRCNN, StandardRoIHead
+from mmdet.models.roi_heads.bbox_heads import Shared2FCBBoxHead
+from mmdet.models.roi_heads.mask_heads import FCNMaskHead
 from mmdet.models.task_modules import SamplingResult
 from mmdet.models.utils import empty_instances, unpack_gt_instances
 from mmdet.registry import MODELS
 from mmdet.structures import DetDataSample, SampleList
-from mmdet.structures.bbox import bbox2roi
-from mmdet.utils import InstanceList
+from mmdet.structures.bbox import bbox2roi, get_box_tensor
+from mmdet.utils import ConfigType, InstanceList, MultiConfig, OptConfigType
 
-try:
-    from transformers.models.sam.modeling_sam import SamVisionEncoderOutput
-except Exception:
-    # HuggingFace backbones return ModelOutput; SAM2 backbones return plain
-    # tuples that must not match this isinstance branch.
-    class SamVisionEncoderOutput(tuple):
-        pass
+
+@MODELS.register_module(force=True)
+class LN2d(nn.Module):
+    def __init__(self, normalized_shape, eps=1e-6):
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(normalized_shape))
+        self.bias = nn.Parameter(torch.zeros(normalized_shape))
+        self.eps = eps
+        self.normalized_shape = (normalized_shape,)
+
+    def forward(self, x):
+        u = x.mean(1, keepdim=True)
+        s = (x - u).pow(2).mean(1, keepdim=True)
+        x = (x - u) / torch.sqrt(s + self.eps)
+        x = self.weight[:, None, None] * x + self.bias[:, None, None]
+        return x
+
+
+MMENGINE_MODELS.register_module(module=LN2d, name="LN2d", force=True)
+
+
+@MODELS.register_module()
+class AP75DualLossShared2FCBBoxHead(Shared2FCBBoxHead):
+    """Shared2FC bbox head with encoded SmoothL1 and decoded IoU losses."""
+
+    def __init__(self, loss_bbox_iou, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.reg_decoded_bbox:
+            raise ValueError(
+                "AP75DualLossShared2FCBBoxHead requires reg_decoded_bbox=False"
+            )
+        self.loss_bbox_iou = MODELS.build(loss_bbox_iou)
+
+    def loss(
+        self,
+        cls_score: Tensor,
+        bbox_pred: Tensor,
+        rois: Tensor,
+        labels: Tensor,
+        label_weights: Tensor,
+        bbox_targets: Tensor,
+        bbox_weights: Tensor,
+        reduction_override: Optional[str] = None,
+    ) -> dict:
+        losses = super().loss(
+            cls_score,
+            bbox_pred,
+            rois,
+            labels,
+            label_weights,
+            bbox_targets,
+            bbox_weights,
+            reduction_override=reduction_override,
+        )
+        if bbox_pred is None:
+            return losses
+
+        pos_inds = (labels >= 0) & (labels < self.num_classes)
+        if not pos_inds.any():
+            losses["loss_bbox_iou"] = bbox_pred.sum() * 0
+            return losses
+
+        if self.reg_class_agnostic:
+            pos_bbox_pred = bbox_pred.view(bbox_pred.size(0), -1)[pos_inds]
+        else:
+            pos_bbox_pred = bbox_pred.view(
+                bbox_pred.size(0), self.num_classes, -1
+            )[pos_inds, labels[pos_inds]]
+
+        pos_rois = rois[pos_inds, 1:]
+        pred_boxes = get_box_tensor(
+            self.bbox_coder.decode(pos_rois, pos_bbox_pred)
+        )
+        target_boxes = get_box_tensor(
+            self.bbox_coder.decode(pos_rois, bbox_targets[pos_inds])
+        )
+        losses["loss_bbox_iou"] = self.loss_bbox_iou(
+            pred_boxes,
+            target_boxes,
+            bbox_weights[pos_inds],
+            avg_factor=bbox_targets.size(0),
+            reduction_override=reduction_override,
+        )
+        return losses
+
+
+@MODELS.register_module()
+class RSSamPositionalEmbedding(SamPositionalEmbedding, BaseModule):
+    def __init__(self, hf_pretrain_name, extra_config=None, init_cfg=None, use_offline_mode=False):
+        BaseModule.__init__(self, init_cfg=init_cfg)
+        
+        # Support offline mode by using local config instead of downloading
+        if use_offline_mode:
+            # Create a basic SAM config for offline mode
+            from transformers import SamConfig
+            sam_config = SamConfig()
+            sam_config = sam_config.vision_config
+        else:
+            sam_config = SamConfig.from_pretrained(hf_pretrain_name).vision_config
+        if extra_config is not None:
+            sam_config.update(extra_config)
+        self.shared_image_embedding = SamPositionalEmbedding(sam_config)
+        
+        if init_cfg is not None:
+            checkpoint_path = init_cfg.get("checkpoint")
+            from mmengine.runner.checkpoint import _load_checkpoint
+
+            checkpoint = _load_checkpoint(checkpoint_path, map_location="cpu")
+            if "state_dict" in checkpoint:
+                state_dict = checkpoint["state_dict"]
+            else:
+                state_dict = checkpoint
+
+            # Revise keys
+            new_state_dict = {}
+            for k, v in state_dict.items():
+                new_k = k
+                if new_k.startswith("module."):
+                    new_k = new_k[7:]
+                if new_k.startswith("shared_image_embedding."):
+                    new_k = new_k[23:]
+                new_state_dict[new_k] = v
+            
+            # 问题 13：用严格加载工具打印 missing/unexpected 明细
+            load_module_state_dict_strict(
+                self.shared_image_embedding,
+                new_state_dict,
+                module_name="PositionalEmbedding",
+                strict_reproduction=os.environ.get("SAM2_STRICT_CKPT", "0") == "1",
+            )
+
+    def forward(self, *args, **kwargs):
+        return self.shared_image_embedding(*args, **kwargs)
+
+
+def interpolate_sam_pos_embed(state_dict, new_image_size, patch_size=16):
+    """
+    Interpolate SAM vision encoder positional embeddings for different image sizes.
+    """
+    if "pos_embed" in state_dict:
+        pos_embed = state_dict["pos_embed"]  # [1, h, w, c]
+        _, old_h, old_w, c = pos_embed.shape
+        new_h, new_w = new_image_size // patch_size, new_image_size // patch_size
+        if old_h != new_h or old_w != new_w:
+            # [1, h, w, c] -> [1, c, h, w]
+            pos_embed = pos_embed.permute(0, 3, 1, 2)
+            pos_embed = F.interpolate(
+                pos_embed, size=(new_h, new_w), mode="bilinear", align_corners=False
+            )
+            # [1, c, h, w] -> [1, h, w, c]
+            state_dict["pos_embed"] = pos_embed.permute(0, 2, 3, 1)
+
+    # Interpolate relative positional embeddings
+    for k in list(state_dict.keys()):
+        if "rel_pos_h" in k or "rel_pos_w" in k:
+            rel_pos = state_dict[k]  # [L, c]
+            old_L, c = rel_pos.shape
+            # SAM uses 2*window_size - 1 or 2*grid_size - 1
+            # If it's a global attention, L will be 2*old_grid_size - 1
+            # If it's window attention, L will be 2*window_size - 1
+            if old_L > 30:  # Heuristic for global attention (usually 127 for 64x64)
+                old_grid_size = (old_L + 1) // 2
+                new_grid_size = new_image_size // patch_size
+                new_L = 2 * new_grid_size - 1
+                if old_L != new_L:
+                    # [L, c] -> [1, c, L]
+                    rel_pos = rel_pos.reshape(1, old_L, c).permute(0, 2, 1)
+                    rel_pos = F.interpolate(
+                        rel_pos, size=new_L, mode="linear", align_corners=False
+                    )
+                    # [1, c, L] -> [L, c]
+                    state_dict[k] = rel_pos.permute(0, 2, 1).reshape(new_L, c)
+    return state_dict
+
+
+@MODELS.register_module()
+class RSSamVisionEncoder(BaseModule):
+    def __init__(
+        self,
+        hf_pretrain_name,
+        extra_config=None,
+        peft_config=None,
+        init_cfg=None,
+        use_offline_mode=False,
+        use_gradient_checkpointing=False,
+    ):
+        BaseModule.__init__(self, init_cfg=init_cfg)
+        
+        if use_offline_mode:
+            from transformers import SamConfig
+            sam_config = SamConfig()
+            sam_config = sam_config.vision_config
+        else:
+            sam_config = SamConfig.from_pretrained(hf_pretrain_name).vision_config
+        if extra_config is not None:
+            sam_config.update(extra_config)
+        
+        self.image_size = sam_config.image_size
+        self.use_gradient_checkpointing = use_gradient_checkpointing
+        vision_encoder = SamVisionEncoder(sam_config)
+        
+        if init_cfg is not None:
+            checkpoint_path = init_cfg.get("checkpoint")
+            from mmengine.runner.checkpoint import _load_checkpoint
+
+            checkpoint = _load_checkpoint(checkpoint_path, map_location="cpu")
+            if "state_dict" in checkpoint:
+                state_dict = checkpoint["state_dict"]
+            else:
+                state_dict = checkpoint
+
+            new_state_dict = {}
+            for k, v in state_dict.items():
+                new_k = k
+                if new_k.startswith("module."):
+                    new_k = new_k[7:]
+                if new_k.startswith("vision_encoder."):
+                    new_k = new_k[15:]
+                new_state_dict[new_k] = v
+            
+            new_state_dict = interpolate_sam_pos_embed(new_state_dict, self.image_size)
+
+            load_module_state_dict_strict(
+                vision_encoder,
+                new_state_dict,
+                module_name="VisionEncoder(interpolated)",
+                strict_reproduction=os.environ.get("SAM2_STRICT_CKPT", "0") == "1",
+            )
+
+        if peft_config is not None:
+            from peft import get_peft_config, get_peft_model
+
+            if isinstance(peft_config, dict):
+                config = {
+                    "peft_type": "LORA",
+                    "r": 16,
+                    "target_modules": ["qkv"],
+                    "lora_alpha": 32,
+                    "lora_dropout": 0.05,
+                    "bias": "none",
+                    "inference_mode": False,
+                }
+                config.update(peft_config)
+                peft_config = get_peft_config(config)
+            self.vision_encoder = get_peft_model(vision_encoder, peft_config)
+            if is_main_process():
+                self.vision_encoder.print_trainable_parameters()
+        else:
+            self.vision_encoder = vision_encoder
+        self.vision_encoder.is_init = True
+        
+        if self.use_gradient_checkpointing and is_main_process():
+            print("Enabled gradient checkpointing for SAM VisionEncoder (via forward wrapper)")
+
+    def init_weights(self):
+        if is_main_process():
+            print("the vision encoder has been initialized")
+
+    def forward(self, *args, **kwargs):
+        if self.use_gradient_checkpointing and self.training:
+            return torch.utils.checkpoint.checkpoint(
+                self.vision_encoder, *args, use_reentrant=False, **kwargs
+            )
+        return self.vision_encoder(*args, **kwargs)
+
+
+@MODELS.register_module()
+class RSSamPromptEncoder(SamPromptEncoder, BaseModule):
+    def __init__(self, hf_pretrain_name, extra_config=None, init_cfg=None, use_offline_mode=False):
+        BaseModule.__init__(self, init_cfg=init_cfg)
+        
+        # Support offline mode by using local config instead of downloading
+        if use_offline_mode:
+            # Create a basic SAM config for offline mode
+            from transformers import SamConfig
+            sam_config = SamConfig()
+            sam_config = sam_config.prompt_encoder_config
+        else:
+            sam_config = SamConfig.from_pretrained(hf_pretrain_name).prompt_encoder_config
+        if extra_config is not None:
+            sam_config.update(extra_config)
+        self.prompt_encoder = SamPromptEncoder(sam_config, shared_patch_embedding=None)
+
+    def forward(self, *args, **kwargs):
+        return self.prompt_encoder(*args, **kwargs)
+
+
+@MODELS.register_module()
+class RSSamMaskDecoder(SamMaskDecoder, BaseModule):
+    def __init__(self, hf_pretrain_name, extra_config=None, init_cfg=None, use_offline_mode=False):
+        BaseModule.__init__(self, init_cfg=init_cfg)
+        
+        # Support offline mode by using local config instead of downloading
+        if use_offline_mode:
+            # Create a basic SAM config for offline mode
+            from transformers import SamConfig
+            sam_config = SamConfig()
+            sam_config = sam_config.mask_decoder_config
+        else:
+            sam_config = SamConfig.from_pretrained(hf_pretrain_name).mask_decoder_config
+        if extra_config is not None:
+            sam_config.update(extra_config)
+        self.mask_decoder = SamMaskDecoder(sam_config)
+
+    def forward(self, *args, **kwargs):
+        return self.mask_decoder(*args, **kwargs)
+
+
+@MODELS.register_module()
+class RSFPN(BaseModule):
+    def __init__(self, feature_aggregator=None, feature_spliter=None, init_cfg=None):
+        super().__init__(init_cfg=init_cfg)
+        if feature_aggregator is not None:
+            self.feature_aggregator = MODELS.build(feature_aggregator)
+        if feature_spliter is not None:
+            self.feature_spliter = MODELS.build(feature_spliter)
+
+    def forward(self, inputs):
+        if hasattr(self, "feature_aggregator"):
+            x = self.feature_aggregator(inputs)
+        else:
+            x = inputs
+        if hasattr(self, "feature_spliter"):
+            x = self.feature_spliter(x)
+        else:
+            x = (x,)
+        return x
+
+
+@MODELS.register_module()
+class RSFeatureAggregator(BaseModule):
+    in_channels_dict = {
+        "base": [768] * (12 + 1),
+        "large": [1024] * (24 + 1),
+        "huge": [1280] * (32 + 1),
+    }
+
+    def __init__(
+        self,
+        in_channels,
+        hidden_channels=64,
+        out_channels=256,
+        select_layers=range(1, 12, 2),
+        init_cfg=None,
+    ):
+        super().__init__(init_cfg=init_cfg)
+        assert isinstance(in_channels, str)
+        model_arch = "base" if "base" in in_channels else "large" if "large" in in_channels else "huge"
+        self.in_channels = self.in_channels_dict[model_arch]
+        self.select_layers = select_layers
+
+        self.downconvs = nn.ModuleList()
+        for i_layer in self.select_layers:
+            self.downconvs.append(
+                nn.Sequential(
+                    nn.Conv2d(self.in_channels[i_layer], hidden_channels, 1),
+                    nn.BatchNorm2d(hidden_channels),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(hidden_channels, hidden_channels, 3, padding=1),
+                    nn.BatchNorm2d(hidden_channels),
+                    nn.ReLU(inplace=True),
+                )
+            )
+
+        self.hidden_convs = nn.ModuleList()
+        for _ in self.select_layers:
+            self.hidden_convs.append(
+                nn.Sequential(
+                    nn.Conv2d(hidden_channels, hidden_channels, 3, padding=1),
+                    nn.BatchNorm2d(hidden_channels),
+                    nn.ReLU(inplace=True),
+                )
+            )
+
+        self.fusion_conv = nn.Sequential(
+            nn.Conv2d(hidden_channels, out_channels, 1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, 3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, 3, padding=1),
+        )
+
+    def forward(self, inputs):
+        assert len(inputs) == len(self.in_channels)
+        inputs = [einops.rearrange(x, "b h w c -> b c h w") for x in inputs]
+
+        features = []
+        for idx, i_layer in enumerate(self.select_layers):
+            features.append(self.downconvs[idx](inputs[i_layer]))
+
+        x = None
+        for hidden_state, hidden_conv in zip(features, self.hidden_convs):
+            if x is not None:
+                hidden_state = x + hidden_state
+            residual = hidden_conv(hidden_state)
+            x = hidden_state + residual
+        x = self.fusion_conv(x)
+        return x
+
+
+@MODELS.register_module()
+class RSSimpleFPN(BaseModule):
+    def __init__(
+        self,
+        backbone_channel: int,
+        in_channels: List[int],
+        out_channels: int,
+        num_outs: int,
+        conv_cfg: OptConfigType = None,
+        norm_cfg: OptConfigType = None,
+        act_cfg: OptConfigType = None,
+        init_cfg: MultiConfig = None,
+    ) -> None:
+        super().__init__(init_cfg=init_cfg)
+        assert isinstance(in_channels, list)
+        self.backbone_channel = backbone_channel
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.num_ins = len(in_channels)
+        self.num_outs = num_outs
+
+        self.fpn1 = nn.Sequential(
+            nn.ConvTranspose2d(self.backbone_channel, self.backbone_channel // 2, 2, 2),
+            build_norm_layer(norm_cfg, self.backbone_channel // 2)[1],
+            nn.GELU(),
+            nn.ConvTranspose2d(self.backbone_channel // 2, self.backbone_channel // 4, 2, 2),
+        )
+        self.fpn2 = nn.Sequential(nn.ConvTranspose2d(self.backbone_channel, self.backbone_channel // 2, 2, 2))
+        self.fpn3 = nn.Sequential(nn.Identity())
+        self.fpn4 = nn.Sequential(nn.MaxPool2d(kernel_size=2, stride=2))
+
+        self.lateral_convs = nn.ModuleList()
+        self.fpn_convs = nn.ModuleList()
+
+        for i in range(self.num_ins):
+            l_conv = ConvModule(
+                in_channels[i],
+                out_channels,
+                1,
+                conv_cfg=conv_cfg,
+                norm_cfg=norm_cfg,
+                act_cfg=act_cfg,
+                inplace=False,
+            )
+            fpn_conv = ConvModule(
+                out_channels,
+                out_channels,
+                3,
+                padding=1,
+                conv_cfg=conv_cfg,
+                norm_cfg=norm_cfg,
+                act_cfg=act_cfg,
+                inplace=False,
+            )
+
+            self.lateral_convs.append(l_conv)
+            self.fpn_convs.append(fpn_conv)
+
+    def forward(self, input: Tensor) -> tuple:
+        inputs = [self.fpn1(input), self.fpn2(input), self.fpn3(input), self.fpn4(input)]
+
+        laterals = [lateral_conv(inputs[i]) for i, lateral_conv in enumerate(self.lateral_convs)]
+        outs = [self.fpn_convs[i](laterals[i]) for i in range(self.num_ins)]
+
+        if self.num_outs > len(outs):
+            for _ in range(self.num_outs - self.num_ins):
+                outs.append(F.max_pool2d(outs[-1], 1, stride=2))
+        return tuple(outs)
 
 
 @MODELS.register_module()
@@ -241,9 +723,6 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
     ):
         super().__init__(*args, **kwargs)
         self.bbox_train_fp32 = bool(bbox_train_fp32)
-        self._last_prompt_box_stats: Dict[str, object] = {}
-        self._last_box_jitter_stats: Dict[str, object] = {}
-        self._last_coarse_stats: Dict[str, object] = {}
         if with_extra_pe:
             out_channels = self.bbox_roi_extractor.out_channels
             positional_encoding = dict(num_feats=out_channels // 2, normalize=True)
@@ -259,7 +738,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         for key, value in (getattr(self, "_last_coarse_stats", {}) or {}).items():
             stats[f"COARSE/{key}"] = value
         stats.update(getattr(self, "_last_box_jitter_stats", {}) or {})
-        stats.update(getattr(self, "_last_prompt_box_stats", {}) or {})
+        stats.update(self._last_prompt_box_stats or {})
 
         # Convert count/sum diagnostics into interpretable local-rank ratios.
         def _ratio(out_key: str, num_key: str, den_key: str):
@@ -584,23 +1063,13 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             pos_inds = []
             device = bbox_feats.device
             for res in sampling_results:
-                pos_inds.append(
-                    torch.ones(
-                        res.pos_priors.shape[0], device=device, dtype=torch.bool
-                    )
-                )
-                pos_inds.append(
-                    torch.zeros(
-                        res.neg_priors.shape[0], device=device, dtype=torch.bool
-                    )
-                )
+                pos_inds.append(torch.ones(res.pos_priors.shape[0], device=device, dtype=torch.uint8))
+                pos_inds.append(torch.zeros(res.neg_priors.shape[0], device=device, dtype=torch.uint8))
             pos_inds = torch.cat(pos_inds)
             mask_results = self._mask_forward(
                 x,
                 pos_inds=pos_inds,
                 bbox_feats=bbox_feats,
-                image_embeddings=image_embeddings,
-                image_positional_embeddings=image_positional_embeddings,
                 high_res_features=high_res_features,
                 roi_img_ids_override=pos_rois[:, 0] if len(pos_rois) > 0 else None,
                 boxes_override=pos_rois[:, 1:] if len(pos_rois) > 0 else None,
@@ -925,36 +1394,16 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             )
             return results_list
 
-        # Dense images can keep ~100 ROIs after NMS; feeding them through the
-        # frozen SAM2 decoder at once spikes activation memory (high-res
-        # features are per-ROI). Chunking is numerically identical and caps
-        # the peak. Set mask_roi_chunk_size=0 on the roi head to disable.
-        chunk_size = int(getattr(self, "mask_roi_chunk_size", 32) or 0)
-        if chunk_size > 0 and mask_rois.shape[0] > chunk_size:
-            mask_preds_parts = []
-            quality_parts = []
-            for start in range(0, mask_rois.shape[0], chunk_size):
-                chunk_results = self._mask_forward(
-                    x,
-                    mask_rois[start : start + chunk_size],
-                    image_embeddings=image_embeddings,
-                    image_positional_embeddings=image_positional_embeddings,
-                    high_res_features=high_res_features,
-                )
-                mask_preds_parts.append(chunk_results["mask_preds"])
-                quality_parts.append(chunk_results["quality_predictions"])
-            mask_preds = torch.cat(mask_preds_parts, dim=0)
-            quality_preds = torch.cat(quality_parts, dim=0)
-        else:
-            mask_results = self._mask_forward(
-                x,
-                mask_rois,
-                image_embeddings=image_embeddings,
-                image_positional_embeddings=image_positional_embeddings,
-                high_res_features=high_res_features,
-            )
-            mask_preds = mask_results["mask_preds"]
-            quality_preds = mask_results["quality_predictions"]
+        mask_results = self._mask_forward(
+            x,
+            mask_rois,
+            image_embeddings=image_embeddings,
+            image_positional_embeddings=image_positional_embeddings,
+            high_res_features=high_res_features,
+        )
+
+        mask_preds = mask_results["mask_preds"]
+        quality_preds = mask_results["quality_predictions"]
         num_mask_rois_per_img = [len(res) for res in results_list]
         mask_preds = mask_preds.split(num_mask_rois_per_img, 0)
         quality_preds = quality_preds.split(num_mask_rois_per_img, 0)
@@ -1022,3 +1471,196 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                 high_res_features=high_res_features,
             )
         return results_list
+
+
+@MODELS.register_module()
+class RSPrompterAnchorMaskHead(FCNMaskHead, BaseModule):
+    def __init__(
+        self,
+        mask_decoder,
+        in_channels,
+        roi_feat_size=14,
+        per_pointset_point=5,
+        with_sincos=True,
+        multimask_output=False,
+        attention_similarity=None,
+        target_embedding=None,
+        output_attentions=None,
+        class_agnostic=False,
+        loss_mask: ConfigType = dict(type="CrossEntropyLoss", use_mask=True, loss_weight=1.0),
+        init_cfg=None,
+        *args,
+        **kwargs,
+    ):
+        BaseModule.__init__(self, init_cfg=init_cfg)
+        self.in_channels = in_channels
+        self.roi_feat_size = roi_feat_size
+        self.per_pointset_point = per_pointset_point
+        self.with_sincos = with_sincos
+        self.multimask_output = multimask_output
+        self.attention_similarity = attention_similarity
+        self.target_embedding = target_embedding
+        self.output_attentions = output_attentions
+
+        self.mask_decoder = MODELS.build(mask_decoder)
+
+        prompt_encoder = dict(
+            type="RSSamPromptEncoder",
+            hf_pretrain_name=copy.deepcopy(mask_decoder.get("hf_pretrain_name")),
+            init_cfg=copy.deepcopy(mask_decoder.get("init_cfg")),
+            use_offline_mode=mask_decoder.get("use_offline_mode", False),
+        )
+        prompt_encoder = MODELS.build(prompt_encoder)
+        prompt_encoder.init_weights()
+        self.no_mask_embed = prompt_encoder.prompt_encoder.no_mask_embed
+
+        num_sincos = 2 if with_sincos else 1
+        self.point_emb = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, 3, stride=2, padding=1),
+            nn.BatchNorm2d(in_channels),
+            nn.ReLU(inplace=True),
+            nn.Flatten(),
+            nn.Linear(in_channels * roi_feat_size**2 // 4, in_channels),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_channels, in_channels),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_channels, in_channels * num_sincos * per_pointset_point),
+        )
+
+        self.loss_mask = MODELS.build(loss_mask)
+        self.class_agnostic = class_agnostic
+
+    def init_weights(self) -> None:
+        BaseModule.init_weights(self)
+
+    def forward(self, x, image_embeddings, image_positional_embeddings, roi_img_ids=None):
+        img_bs = image_embeddings.shape[0]
+        roi_bs = x.shape[0]
+        image_embedding_size = image_embeddings.shape[-2:]
+
+        point_embedings = self.point_emb(x)
+        point_embedings = einops.rearrange(point_embedings, "b (n c) -> b n c", n=self.per_pointset_point)
+        if self.with_sincos:
+            point_embedings = torch.sin(point_embedings[..., ::2]) + point_embedings[..., 1::2]
+
+        sparse_embeddings = point_embedings.unsqueeze(1)
+        num_roi_per_image = torch.bincount(roi_img_ids.long())
+        num_roi_per_image = torch.cat(
+            [
+                num_roi_per_image,
+                torch.zeros(
+                    img_bs - len(num_roi_per_image),
+                    device=num_roi_per_image.device,
+                    dtype=num_roi_per_image.dtype,
+                ),
+            ]
+        )
+
+        dense_embeddings = self.no_mask_embed.weight.reshape(1, -1, 1, 1).expand(
+            roi_bs, -1, image_embedding_size[0], image_embedding_size[1]
+        )
+        image_embeddings = image_embeddings.repeat_interleave(num_roi_per_image, dim=0)
+        image_positional_embeddings = image_positional_embeddings.repeat_interleave(num_roi_per_image, dim=0)
+
+        low_res_masks, iou_predictions, _ = self.mask_decoder(
+            image_embeddings=image_embeddings,
+            image_positional_embeddings=image_positional_embeddings,
+            sparse_prompt_embeddings=sparse_embeddings,
+            dense_prompt_embeddings=dense_embeddings,
+            multimask_output=self.multimask_output,
+            attention_similarity=self.attention_similarity,
+            target_embedding=self.target_embedding,
+            output_attentions=self.output_attentions,
+        )
+        h, w = low_res_masks.shape[-2:]
+        low_res_masks = low_res_masks.reshape(roi_bs, -1, h, w)
+        iou_predictions = iou_predictions.reshape(roi_bs, -1)
+        return low_res_masks, iou_predictions
+
+    def get_targets(
+        self,
+        sampling_results: List[SamplingResult],
+        batch_gt_instances: InstanceList,
+        rcnn_train_cfg: ConfigDict,
+    ) -> Tensor:
+        pos_proposals = [res.pos_priors for res in sampling_results]
+        pos_assigned_gt_inds = [res.pos_assigned_gt_inds for res in sampling_results]
+        gt_masks = [res.masks for res in batch_gt_instances]
+        mask_targets_list = []
+        mask_size = rcnn_train_cfg.mask_size
+        device = pos_proposals[0].device
+        for pos_gt_inds, gt_mask in zip(pos_assigned_gt_inds, gt_masks):
+            if len(pos_gt_inds) == 0:
+                mask_targets = torch.zeros((0,) + mask_size, device=device, dtype=torch.float32)
+            else:
+                mask_targets = gt_mask[pos_gt_inds.cpu()].to_tensor(dtype=torch.float32, device=device)
+            mask_targets_list.append(mask_targets)
+        mask_targets = torch.cat(mask_targets_list)
+        return mask_targets
+
+    def loss_and_target(
+        self,
+        mask_preds: Tensor,
+        sampling_results: List[SamplingResult],
+        batch_gt_instances: InstanceList,
+        rcnn_train_cfg: ConfigDict,
+    ) -> dict:
+        mask_targets = self.get_targets(sampling_results=sampling_results, batch_gt_instances=batch_gt_instances, rcnn_train_cfg=rcnn_train_cfg)
+        pos_labels = torch.cat([res.pos_gt_labels for res in sampling_results])
+        mask_preds = F.interpolate(mask_preds, size=mask_targets.shape[-2:], mode="bilinear", align_corners=False)
+
+        loss = dict()
+        if mask_preds.size(0) == 0:
+            loss_mask = mask_preds.sum()
+        else:
+            if self.class_agnostic:
+                loss_mask = self.loss_mask(mask_preds, mask_targets, torch.zeros_like(pos_labels))
+            else:
+                loss_mask = self.loss_mask(mask_preds, mask_targets, pos_labels)
+        loss["loss_mask"] = loss_mask
+        return dict(loss_mask=loss, mask_targets=mask_targets)
+
+    def _predict_by_feat_single(
+        self,
+        mask_preds: Tensor,
+        bboxes: Tensor,
+        labels: Tensor,
+        img_meta: dict,
+        rcnn_test_cfg: ConfigDict,
+        rescale: bool = False,
+        activate_map: bool = False,
+    ) -> Tensor:
+        _ = labels
+        scale_factor = bboxes.new_tensor(img_meta["scale_factor"]).repeat((1, 2))
+        img_h, img_w = img_meta["ori_shape"][:2]
+        if not activate_map:
+            mask_preds = mask_preds.sigmoid()
+        else:
+            mask_preds = bboxes.new_tensor(mask_preds)
+
+        if rescale:
+            bboxes /= scale_factor
+        else:
+            w_scale, h_scale = scale_factor[0, 0], scale_factor[0, 1]
+            img_h = np.round(img_h * h_scale.item()).astype(np.int32)
+            img_w = np.round(img_w * w_scale.item()).astype(np.int32)
+        threshold = rcnn_test_cfg.mask_thr_binary
+        im_mask = F.interpolate(
+            mask_preds,
+            size=img_meta["batch_input_shape"],
+            mode="bilinear",
+            align_corners=False,
+        ).squeeze(1)
+
+        scale_factor_w, scale_factor_h = img_meta["scale_factor"]
+        ori_rescaled_size = (img_h * scale_factor_h, img_w * scale_factor_w)
+        im_mask = im_mask[:, : int(ori_rescaled_size[0]), : int(ori_rescaled_size[1])]
+
+        h, w = img_meta["ori_shape"]
+        im_mask = F.interpolate(im_mask.unsqueeze(1), size=(h, w), mode="bilinear", align_corners=False).squeeze(1)
+
+        if threshold >= 0:
+            im_mask = im_mask >= threshold
+        else:
+            im_mask = (im_mask * 255).to(dtype=torch.uint8)
+        return im_mask

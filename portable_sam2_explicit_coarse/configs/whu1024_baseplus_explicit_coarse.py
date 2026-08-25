@@ -84,17 +84,6 @@ if _final_mask_loss_mode not in {"standard", "roi_balanced_dice"}:
         "FINAL_MASK_LOSS_MODE must be standard or roi_balanced_dice, "
         f"got {_final_mask_loss_mode!r}"
     )
-# Per-ROI final-mask supervision grid. The SAM2 decoder natively outputs
-# 256x256 logits; mask_size > 256 only upsamples the supervision canvas and
-# costs per-ROI memory/compute at train time (inference paste is unaffected).
-_final_mask_target_size = int(
-    os.environ.get("FINAL_MASK_TARGET_SIZE", "1024")
-)
-if _final_mask_target_size not in (1024, 512, 256):
-    raise ValueError(
-        "FINAL_MASK_TARGET_SIZE must be 1024, 512 or 256, got "
-        f"{_final_mask_target_size}"
-    )
 _final_mask_loss_override = {}
 if _final_mask_loss_mode == "roi_balanced_dice":
     _final_mask_loss_override["final_mask_loss_cfg"] = dict(
@@ -289,10 +278,4 @@ model = dict(
     )
 )
 
-train_cfg = dict(
-    max_epochs=_epochs,
-    val_interval=1,
-    rcnn=dict(
-        mask_size=(_final_mask_target_size, _final_mask_target_size)
-    ),
-)
+train_cfg = dict(max_epochs=_epochs, val_interval=1)

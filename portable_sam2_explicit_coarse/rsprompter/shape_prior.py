@@ -58,7 +58,7 @@ class SmallMaskDecoder(nn.Module):
 
 class RoIBoxEncoding(nn.Module):
     """Encode normalized ROI geometry with Fourier features."""
-    #傅里叶编码
+
     def __init__(self, out_dim=512, n_freq=16):
         super().__init__()
         self.n_freq = int(n_freq)
