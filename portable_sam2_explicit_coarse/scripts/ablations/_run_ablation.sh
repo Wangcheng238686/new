@@ -223,7 +223,10 @@ if [[ "${COMPUTE_VAL_LOSS}" != "0" && "${COMPUTE_VAL_LOSS}" != "1" ]]; then
   echo "COMPUTE_VAL_LOSS must be 0 or 1, got ${COMPUTE_VAL_LOSS}" >&2
   exit 2
 fi
-SAVE_BBOX_BEST_METRIC="${SAVE_BBOX_BEST_METRIC:-bbox/mAP}"
+# `${VAR-...}` without the colon: an explicitly exported empty string means
+# "disable the bbox-best checkpoint" (best-only retention wrappers); only a
+# completely unset variable falls back to the default metric.
+SAVE_BBOX_BEST_METRIC="${SAVE_BBOX_BEST_METRIC-bbox/mAP}"
 SEGM_SCORE_MODE="${SEGM_SCORE_MODE:-detector}"
 case "${SEGM_SCORE_MODE}" in
   detector|mask_quality) ;;

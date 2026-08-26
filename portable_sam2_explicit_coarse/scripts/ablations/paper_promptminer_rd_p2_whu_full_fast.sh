@@ -14,6 +14,14 @@
 # maxDet=100 (TEST_MAX_PER_IMG=100): all comparison baselines and ablations
 # in this project are scored at maxDets=100, so the training-side contract
 # is pinned to the same value to keep one unified metric contract.
+# EMA runs in tracking-only mode (EMA_ENABLED=1, EMA_EVAL=0): the shadow
+# weights ride along inside every checkpoint while validation, best-model
+# selection and early stopping stay on raw weights. Post-training, compare
+# raw vs EMA on the validation split (infer_from_checkpoint.py --weights
+# {model,ema}) and report test with the winner.
+# Checkpoint retention is best-only: the trainer saves atomically, verifies
+# by loading back, then deletes the previous best, and this wrapper disables
+# the secondary bbox-best checkpoint (SAVE_BBOX_BEST_METRIC="").
 # Early stopping is widened for the 150-epoch cosine (annealing tail starts
 # around epoch 84; patience=10 would risk firing during the mid-plateau).
 #
@@ -54,14 +62,29 @@ export EARLY_STOPPING_START_EPOCH="${EARLY_STOPPING_START_EPOCH:-90}"
 export EARLY_STOPPING_MIN_DELTA="${EARLY_STOPPING_MIN_DELTA:-5e-4}"
 export EARLY_STOPPING_SMOOTH_WINDOW="${EARLY_STOPPING_SMOOTH_WINDOW:-5}"
 
+# --- EMA tracking (shadow-only scheme) + best-only checkpoint retention ---
+# EMA_ENABLED=1 maintains an EMA shadow inside every checkpoint
+# (ckpt["ema_state"]); EMA_EVAL=0 keeps validation/best-selection/early-stop
+# on raw weights so the training curve stays comparable with historical
+# runs. After training, compare raw vs EMA on the validation split via
+# infer_from_checkpoint.py --weights {model,ema} and report test with the
+# winner. EMA_SAVE_BEST is pinned to 0 so best_model.pth always stores raw
+# weights plus the EMA shadow (never EMA weights in the "model" slot).
+# SAVE_BBOX_BEST_METRIC="" disables the secondary bbox-best checkpoint: the
+# trainer already keeps exactly one best_model file (atomic write, verified
+# by load-back, previous best deleted), so a run holds best_model +
+# last_checkpoint (in-place crash-resume overwrite) only;
+# SAVE_LAST_CHECKPOINT=0 drops the latter if space ever gets tight.
+export EMA_ENABLED="${EMA_ENABLED:-1}"
+export EMA_EVAL="${EMA_EVAL:-0}"
+export EMA_SAVE_BEST="${EMA_SAVE_BEST:-0}"
+export SAVE_BBOX_BEST_METRIC="${SAVE_BBOX_BEST_METRIC:-}"
+
 # --- identical to the paper run ---
 export SUBSET_SEED="${SUBSET_SEED:-44}"
 export LEARNING_RATE="${LEARNING_RATE:-5e-4}"
 export WEIGHT_DECAY="${WEIGHT_DECAY:-0.05}"
 export WARMUP_ITERS="${WARMUP_ITERS:-100}"
-export EMA_ENABLED="${EMA_ENABLED:-0}"
-export EMA_EVAL="${EMA_EVAL:-0}"
-export EMA_SAVE_BEST="${EMA_SAVE_BEST:-0}"
 export PROMPT_ENCODER_LR_MULT="${PROMPT_ENCODER_LR_MULT:-0.0}"
 export SHAPE_PRIOR_LOSS_WEIGHT="${SHAPE_PRIOR_LOSS_WEIGHT:-0.10}"
 export P2_BOUNDARY_REFINER_PROJECTED_CHANNELS="${P2_BOUNDARY_REFINER_PROJECTED_CHANNELS:-64}"
