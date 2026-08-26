@@ -7,10 +7,13 @@
 #   - AMP=1 (fp16 autocast; ampcheck log 20260824_114159)
 #   - FINAL_MASK_TARGET_SIZE=256 (per-ROI supervision at the decoder's native
 #     grid; frees the memory that unlocks BATCH_SIZE=2)
-#   - BATCH_SIZE=2 x GRAD_ACCUM_STEPS=1 on 4 GPUs (effective global batch
-#     stays 8, matching the 2-GPU paper protocol; per-GPU memory is the
-#     validated batch-2 AMP profile and optimizer steps per epoch are
-#     unchanged, so warmup/cosine see an identical schedule)
+#   - BATCH_SIZE=1 x GRAD_ACCUM_STEPS=2 on 4 GPUs (effective global batch
+#     stays 8, matching the paper protocol; batch=1 halves the per-forward
+#     SAM2 decoder ROI count (128 -> 64): the batch-2 profile OOMs on this
+#     host's 24 GB cards — it was validated on 40 GB GPUs where fp32
+#     training peaked at 28.3 GB — while batch=1 is also the paper's
+#     original per-GPU batch. Optimizer steps per epoch are unchanged,
+#     so warmup/cosine see an identical schedule.)
 #   - VAL_BATCH_SIZE=4 (eval-mode batching does not change metrics)
 #   - CUDNN_BENCHMARK=1 (autotuned convs; drops bit-level reproducibility)
 # Best-model selection and every downstream report run at the COCO default
@@ -50,8 +53,11 @@ export FINAL_MASK_COORDINATE_MODE="roi_local"
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
 export NPROC_PER_NODE="${NPROC_PER_NODE:-4}"
 export AMP="${AMP:-1}"
-export BATCH_SIZE="${BATCH_SIZE:-2}"
-export GRAD_ACCUM_STEPS="${GRAD_ACCUM_STEPS:-1}"
+export BATCH_SIZE="${BATCH_SIZE:-1}"
+export GRAD_ACCUM_STEPS="${GRAD_ACCUM_STEPS:-2}"
+# 24 GB cards run close to the ceiling at dense-tile decoder peaks; the
+# expandable-segments allocator avoids fragmentation-induced OOM on long runs.
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 export MAX_EPOCHS="${MAX_EPOCHS:-150}"
 export TRAIN_SUBSET_RATIO="${TRAIN_SUBSET_RATIO:-1.0}"
 export VAL_SUBSET_RATIO="${VAL_SUBSET_RATIO:-1.0}"
