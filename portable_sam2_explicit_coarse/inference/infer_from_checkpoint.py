@@ -94,6 +94,12 @@ def parse_args() -> argparse.Namespace:
             "Takes precedence over --disable-p2."
         ),
     )
+    parser.add_argument(
+        "--max-per-img",
+        type=int,
+        default=None,
+        help="Override test_cfg max_per_img (e.g. 150 for the dense-image cap study).",
+    )
     return parser.parse_args()
 
 
@@ -702,6 +708,11 @@ def main() -> None:
         no_mask_validator(f"checkpoint inference ({args.weights})")
     model.to(device)
     model.eval()
+    if args.max_per_img:
+        for cfg_holder in (getattr(model.roi_head, "test_cfg", None),):
+            if cfg_holder is not None and "max_per_img" in cfg_holder:
+                cfg_holder["max_per_img"] = int(args.max_per_img)
+        logger.info("test_cfg max_per_img overridden to %d", int(args.max_per_img))
     if args.disable_p2 or args.p2_beta is not None:
         refiner = getattr(mask_head, "p2_boundary_refiner", None)
         if refiner is None:

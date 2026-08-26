@@ -52,11 +52,51 @@ GRID = 256
 SEPARATION = 16
 
 
+def _crop_gt_to_grid(gt_mask, box, size=256):
+    import torch.nn.functional as F
+
+    height, width = gt_mask.shape
+    x1, y1, x2, y2 = [float(v) for v in box]
+    x1i = int(np.floor(x1).clip(0, width - 1))
+    y1i = int(np.floor(y1).clip(0, height - 1))
+    x2i = int(np.ceil(x2).clip(x1i + 1, width))
+    y2i = int(np.ceil(y2).clip(y1i + 1, height))
+    crop = gt_mask[y1i:y2i, x1i:x2i][None, None].float()
+    resized = F.interpolate(crop, size=(size, size), mode="bilinear", align_corners=False)
+    return (resized[0, 0] >= 0.5).numpy()
+
+
+def _mine_oracle_extra_points(logits256, gt_mask, box, k, sides="both"):
+    """Points on the model's true error regions: FN -> extra positives, FP -> extra negatives."""
+    p = 1.0 / (1.0 + np.exp(-logits256))
+    pred = p >= 0.5
+    gt = _crop_gt_to_grid(gt_mask, box, logits256.shape[0])
+    fn_map = (gt & ~pred).astype(np.float32)
+    fp_map = (~gt & pred).astype(np.float32)
+    x1, y1, x2, y2 = [float(v) for v in box]
+    points = []
+
+    def to_img(x, y, label):
+        return (x1 + (x + 0.5) / logits256.shape[1] * max(x2 - x1, 2.0),
+                y1 + (y + 0.5) / logits256.shape[0] * max(y2 - y1, 2.0), label)
+
+    if sides in ("both", "pos"):
+        for x, y in _greedy_topk(fn_map, k, SEPARATION):
+            points.append(to_img(x, y, 1))
+    if sides in ("both", "neg"):
+        for x, y in _greedy_topk(fp_map, k, SEPARATION):
+            points.append(to_img(x, y, 0))
+    return points or None
+
+
 class E0Hooks:
     """Capture per-chunk rois/coarse logits (round 1) and append points (round 2)."""
 
-    def __init__(self, refiner, miner, mask_head):
+    def __init__(self, refiner, miner, mask_head, oracle=False, sides="both"):
         self.miner = miner
+        self.oracle = oracle
+        self.sides = sides
+        self.batch_gt: List = []
         self.round1 = True
         self.extra: List[Optional[np.ndarray]] = []  # per global row: [K,3] (x, y, label) or None
         self._row_pointer = 0
@@ -126,11 +166,26 @@ class E0Hooks:
         low = torch.cat(self._low_chunks, dim=0)
         self.extra = []
         for row in range(rois.shape[0]):
-            self.extra.append(
-                _mine_extra_points(low[row, 0].numpy(), raw[row, 0].numpy(), rois[row, 1:5], k_extra)
-            )
-        self.round1 = False
-        self._row_pointer = 0
+            if self.oracle:
+                extra = None
+                img = int(rois[row, 0])
+                if img < len(self.batch_gt) and self.batch_gt[img] is not None:
+                    from inference.oracle_p2_probe import _box_iou_one
+
+                    gt_boxes, gt_masks = self.batch_gt[img]
+                    if len(gt_boxes) > 0:
+                        ious = _box_iou_one(rois[row, 1:5], gt_boxes)
+                        best = int(ious.argmax())
+                        if ious[best] >= 0.3:
+                            extra = _mine_oracle_extra_points(
+                                low[row, 0].numpy(), gt_masks[best], rois[row, 1:5],
+                                k_extra, self.sides,
+                            )
+                self.extra.append(extra)
+            else:
+                self.extra.append(
+                    _mine_extra_points(low[row, 0].numpy(), raw[row, 0].numpy(), rois[row, 1:5], k_extra)
+                )
         logger.info("round1 done: %d rois, %d with extra points", len(self.extra),
                     sum(1 for e in self.extra if e is not None and len(e)))
 
@@ -197,6 +252,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--weights", choices=("model", "ema"), default="model")
     parser.add_argument("--sam2-repo", default=None)
     parser.add_argument("--sam2-ckpt", default=None)
+    parser.add_argument("--oracle-points", action="store_true",
+                        help="Mine round-2 points from true error regions (GT vs round-1 mask): "
+                             "FN -> extra positives, FP -> extra negatives. Ceiling of a trained selector.")
+    parser.add_argument("--sides", choices=("both", "pos", "neg"), default="both",
+                        help="which error side to point at in oracle mode")
     parser.add_argument("--output-dir", required=True)
     return parser.parse_args()
 
@@ -218,7 +278,13 @@ def main() -> None:
     model.to(device)
     model.eval()
     mask_head = model.roi_head.mask_head
-    hooks = E0Hooks(mask_head.p2_boundary_refiner, mask_head.shape_point_miner, mask_head)
+    hooks = E0Hooks(
+        mask_head.p2_boundary_refiner,
+        mask_head.shape_point_miner,
+        mask_head,
+        oracle=args.oracle_points,
+        sides=args.sides,
+    )
 
     contract = _resolve_dataset_contract(args, snapshot)
     loader = _build_loader(contract, args.num_workers)
@@ -236,6 +302,17 @@ def main() -> None:
                 processed = model.data_preprocessor(
                     {"inputs": imgs, "data_samples": data_samples}, training=False
                 )
+                if args.oracle_points:
+                    batch_gt = []
+                    for sample in data_samples:
+                        instances = sample.gt_instances
+                        if len(getattr(instances, "bboxes", [])) == 0:
+                            batch_gt.append(None)
+                            continue
+                        boxes = instances.bboxes.detach().cpu().numpy()
+                        masks = instances.masks.to_tensor(dtype=torch.float32, device="cpu")
+                        batch_gt.append((boxes, masks))
+                    hooks.batch_gt = batch_gt
                 hooks.begin_round1()
                 model.predict(processed["inputs"], processed["data_samples"], rescale=False)
                 hooks.finish_round1()
@@ -262,7 +339,11 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     with (output_dir / "metrics.json").open("w") as handle:
         json.dump(
-            {"checkpoint": str(checkpoint_path), "mode": "e0_iterative_4p4n", "metrics": metrics},
+            {
+                "checkpoint": str(checkpoint_path),
+                "mode": ("e1_oracle_" + args.sides) if args.oracle_points else "e0_iterative_4p4n",
+                "metrics": metrics,
+            },
             handle, indent=2,
         )
     print(json.dumps({k: v for k, v in metrics.items() if "mAP" in k}, indent=2))

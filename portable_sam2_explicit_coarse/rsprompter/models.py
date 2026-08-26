@@ -1394,16 +1394,36 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             )
             return results_list
 
-        mask_results = self._mask_forward(
-            x,
-            mask_rois,
-            image_embeddings=image_embeddings,
-            image_positional_embeddings=image_positional_embeddings,
-            high_res_features=high_res_features,
-        )
-
-        mask_preds = mask_results["mask_preds"]
-        quality_preds = mask_results["quality_predictions"]
+        # Dense images can keep ~100 ROIs after NMS; feeding them through the
+        # frozen SAM2 decoder at once spikes activation memory (high-res
+        # features are per-ROI). Chunking is numerically identical and caps
+        # the peak. Set mask_roi_chunk_size=0 on the roi head to disable.
+        chunk_size = int(getattr(self, "mask_roi_chunk_size", 32) or 0)
+        if chunk_size > 0 and mask_rois.shape[0] > chunk_size:
+            mask_preds_parts = []
+            quality_parts = []
+            for start in range(0, mask_rois.shape[0], chunk_size):
+                chunk_results = self._mask_forward(
+                    x,
+                    mask_rois[start : start + chunk_size],
+                    image_embeddings=image_embeddings,
+                    image_positional_embeddings=image_positional_embeddings,
+                    high_res_features=high_res_features,
+                )
+                mask_preds_parts.append(chunk_results["mask_preds"])
+                quality_parts.append(chunk_results["quality_predictions"])
+            mask_preds = torch.cat(mask_preds_parts, dim=0)
+            quality_preds = torch.cat(quality_parts, dim=0)
+        else:
+            mask_results = self._mask_forward(
+                x,
+                mask_rois,
+                image_embeddings=image_embeddings,
+                image_positional_embeddings=image_positional_embeddings,
+                high_res_features=high_res_features,
+            )
+            mask_preds = mask_results["mask_preds"]
+            quality_preds = mask_results["quality_predictions"]
         num_mask_rois_per_img = [len(res) for res in results_list]
         mask_preds = mask_preds.split(num_mask_rois_per_img, 0)
         quality_preds = quality_preds.split(num_mask_rois_per_img, 0)

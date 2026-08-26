@@ -91,6 +91,8 @@ def parse_args() -> argparse.Namespace:
     common.add_argument("--score-thr", type=float, default=0.0)
     common.add_argument("--line-thickness", type=int, default=2)
     common.add_argument("--mask-alpha", type=float, default=0.35)
+    common.add_argument("--mask-only", action="store_true",
+                        help="仅彩色 mask 叠加原图(每实例独立颜色, 无框/无文字/无置信度)")
     common.add_argument("--font-scale", type=float, default=0.5)
     common.add_argument("--categories-json", type=str, default="",
                         help="optional json with a categories list (id/name)")
@@ -203,6 +205,17 @@ def draw_instances(img: np.ndarray, records: List[dict], cat_names: Dict[int, st
     h, w = canvas.shape[:2]
     font = max(0.4, args.font_scale * max(h, w) / 800.0)
     thickness = max(1, args.line_thickness * max(h, w) // 1000)
+
+    if getattr(args, "mask_only", False):
+        # 仅彩色 mask 叠加原图: 每实例独立颜色, 无框/无文字/无置信度
+        # (与对比算法 whu_test_*.py 的可视化口径一致)
+        for i, rec in enumerate(records):
+            m = rec.get("mask")
+            if m is None or not m.any():
+                continue
+            overlay[m > 0] = PALETTE[i % len(PALETTE)]
+        return cv2.addWeighted(overlay, args.mask_alpha, canvas,
+                               1.0 - args.mask_alpha, 0)
 
     for rec in records:
         cat_id = int(rec["category_id"])
