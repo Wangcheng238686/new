@@ -70,7 +70,7 @@ _USER_NPROC="${NPROC_PER_NODE:-}"
 source "${PROJECT_ROOT}/scripts/load_environment.sh"
 CUDA_VISIBLE_DEVICES="${_USER_CUDA:-0}"
 NPROC_PER_NODE="${_USER_NPROC:-1}"
-PYTHON="${PYTHON:-/home/wangcheng/miniconda3/envs/cvt2/bin/python}"
+PYTHON="${PYTHON:-/data2/wangcheng/envs/cvt2/bin/python}"
 
 # ---- parse the checkpoint and emit the launch environment ----
 PARSED="$("${PYTHON}" - "${CKPT}" <<'PYEOF'
