@@ -440,6 +440,15 @@ fi
 CMD+=("${TRAINER_EXTRA_ARGS[@]}")
 
 GIT_COMMIT="$(git -C "${PROJECT_ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)"
+# HEAD alone cannot identify the executed code when the working tree is dirty
+# (the resumed paper run executed 5fff72f + uncommitted edits). Record the
+# dirty flag, the modified/untracked code files, and a diff fingerprint so a
+# log line uniquely pins the exact tree state.
+GIT_STATUS_SHORT="$(git -C "${PROJECT_ROOT}" status --porcelain 2>/dev/null || true)"
+GIT_DIRTY="$( [[ -n "${GIT_STATUS_SHORT}" ]] && echo 1 || echo 0 )"
+GIT_DIRTY_FILES="$(echo "${GIT_STATUS_SHORT}" | awk '{print $2}' | grep -E '\.(py|sh|md)$' | paste -sd, - | cut -c1-400)"
+GIT_DIFF_SHA="$(git -C "${PROJECT_ROOT}" diff HEAD 2>/dev/null | sha256sum | cut -c1-16)"
+[[ -z "${GIT_DIFF_SHA}" ]] && GIT_DIFF_SHA=none
 EFFECTIVE_GLOBAL_BATCH_SIZE=$((BATCH_SIZE * GRAD_ACCUM_STEPS * NPROC_PER_NODE))
 
 echo "============================================================"
@@ -447,6 +456,9 @@ echo "resolved_hyperparameters_begin"
 echo "timestamp=${RUN_TIMESTAMP}"
 echo "environment_config=${PORTABLE_SAM2_ENV_FILE}"
 echo "git_commit=${GIT_COMMIT}"
+echo "git_dirty=${GIT_DIRTY}"
+echo "git_dirty_code_files=${GIT_DIRTY_FILES:-none}"
+echo "git_diff_sha16=${GIT_DIFF_SHA}"
 echo "ablation_id=${ABLATION_ID}"
 echo "expected_architecture_id=${EXPECTED_ARCHITECTURE_ID}"
 echo "run_tag=${RUN_TAG}"

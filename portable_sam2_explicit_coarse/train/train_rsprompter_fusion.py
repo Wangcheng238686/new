@@ -399,6 +399,59 @@ def _summarize_mask_density(all_dt: List[dict]) -> Tuple[float, float]:
     )
 
 
+def _capture_git_state() -> Dict[str, str]:
+    """Fingerprint the executed code: HEAD, dirty flag, tracked-diff sha.
+
+    Complements the runner's resolved_hyperparameters git_* lines so both the
+    training log and every checkpoint pin the exact working-tree state, not
+    just the commit (a dirty tree silently diverging from HEAD is what made
+    the resumed paper run hard to trace).
+    """
+    import subprocess
+
+    def _git(*argv: str) -> str:
+        try:
+            return subprocess.run(
+                ["git", *argv],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            ).stdout.strip()
+        except Exception:
+            return ""
+
+    head = _git("rev-parse", "HEAD") or "unknown"
+    status = _git("status", "--porcelain")
+    dirty = "1" if status else "0"
+    code_files = ",".join(
+        line.split(maxsplit=1)[1].strip()
+        for line in status.splitlines()
+        if line.split(maxsplit=1)[-1].strip().endswith((".py", ".sh", ".md"))
+    )[:400]
+    try:
+        diff_sha = subprocess.run(
+            ["git", "diff", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        import hashlib
+
+        diff_sha16 = (
+            hashlib.sha256(diff_sha.stdout.encode("utf-8")).hexdigest()[:16]
+            if diff_sha.stdout
+            else "none"
+        )
+    except Exception:
+        diff_sha16 = "unknown"
+    return {
+        "git_commit": head,
+        "git_dirty": dirty,
+        "git_dirty_code_files": code_files or "none",
+        "git_diff_sha16": diff_sha16,
+    }
+
+
 def _resolve_ddp_timeout_seconds() -> int:
     raw_value = os.environ.get(
         "TORCH_DDP_TIMEOUT_SECONDS", os.environ.get("NCCL_TIMEOUT", "1800")
@@ -2002,6 +2055,11 @@ def main():
         "architecture_contract": dict(resolved_architecture),
         "config_path": str(args.config),
         "training_args": dict(vars(args)),
+        # HEAD alone cannot identify the executed code when the working tree
+        # is dirty; carry the dirty flag + diff fingerprint so a checkpoint
+        # uniquely pins its code state (same fields as the runner's
+        # resolved_hyperparameters git_* lines).
+        "git_state": _capture_git_state(),
         "data_config": {
             "dataset_format": "whu_coco" if args.use_whu_coco else "labelme",
             "data_root": str(args.data_root),
