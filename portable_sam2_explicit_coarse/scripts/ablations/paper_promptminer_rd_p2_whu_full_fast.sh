@@ -10,9 +10,10 @@
 #   - BATCH_SIZE=2 x GRAD_ACCUM_STEPS=2 (effective global batch stays 8)
 #   - VAL_BATCH_SIZE=4 (eval-mode batching does not change metrics)
 #   - CUDNN_BENCHMARK=1 (autotuned convs; drops bit-level reproducibility)
-# Best-model selection runs at maxDet=150 (TEST_MAX_PER_IMG=150);
-# VAL_COMPAT_MAX_DETS=100 additionally logs mAP@maxDet100 every epoch so the
-# curve stays directly comparable with historical maxDets=100 logs.
+# Best-model selection and every downstream report run at the COCO default
+# maxDet=100 (TEST_MAX_PER_IMG=100): all comparison baselines and ablations
+# in this project are scored at maxDets=100, so the training-side contract
+# is pinned to the same value to keep one unified metric contract.
 # Early stopping is widened for the 150-epoch cosine (annealing tail starts
 # around epoch 84; patience=10 would risk firing during the mid-plateau).
 #
@@ -42,13 +43,12 @@ export TRAIN_SUBSET_RATIO="${TRAIN_SUBSET_RATIO:-1.0}"
 export VAL_SUBSET_RATIO="${VAL_SUBSET_RATIO:-1.0}"
 # VAL_BATCH_SIZE stays conservative: the validation memory spike is dominated
 # by per-image decoder batching (measured 40.4 GB peak at val batch=1 next to
-# fp32 training's 28.3 GB), and TEST_MAX_PER_IMG=150 now caps the model side
-# too; batch=2 keeps most of the throughput gain without betting on margins.
+# fp32 training's 28.3 GB), and TEST_MAX_PER_IMG=100 caps the model side too;
+# batch=2 keeps most of the throughput gain without betting on margins.
 export VAL_BATCH_SIZE="${VAL_BATCH_SIZE:-2}"
 export FINAL_MASK_TARGET_SIZE="${FINAL_MASK_TARGET_SIZE:-256}"
 export CUDNN_BENCHMARK="${CUDNN_BENCHMARK:-1}"
-export TEST_MAX_PER_IMG="${TEST_MAX_PER_IMG:-150}"
-export VAL_COMPAT_MAX_DETS="${VAL_COMPAT_MAX_DETS:-100}"
+export TEST_MAX_PER_IMG="${TEST_MAX_PER_IMG:-100}"
 export EARLY_STOPPING_PATIENCE="${EARLY_STOPPING_PATIENCE:-20}"
 export EARLY_STOPPING_START_EPOCH="${EARLY_STOPPING_START_EPOCH:-90}"
 export EARLY_STOPPING_MIN_DELTA="${EARLY_STOPPING_MIN_DELTA:-5e-4}"
