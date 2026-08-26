@@ -22,6 +22,9 @@
 # Checkpoint retention is best-only: the trainer saves atomically, verifies
 # by loading back, then deletes the previous best, and this wrapper disables
 # the secondary bbox-best checkpoint (SAVE_BBOX_BEST_METRIC="").
+# Train-time augmentation adds vflip 0.5 (mirrors hflip) and multi-scale
+# jitter at prob 0.5 over {896..1152} with the fixed 1024 canvas preserved
+# (frozen SAM2 always sees its native 1024x1024 input).
 # Early stopping is widened for the 150-epoch cosine (annealing tail starts
 # around epoch 84; patience=10 would risk firing during the mid-plateau).
 #
@@ -79,6 +82,21 @@ export EMA_ENABLED="${EMA_ENABLED:-1}"
 export EMA_EVAL="${EMA_EVAL:-0}"
 export EMA_SAVE_BEST="${EMA_SAVE_BEST:-0}"
 export SAVE_BBOX_BEST_METRIC="${SAVE_BBOX_BEST_METRIC:-}"
+
+# --- train-time augmentation (metric-push recipe; trainer default is the
+# historical hflip-only protocol, other wrappers are unaffected) ---
+# vflip 0.5 mirrors hflip: nadir imagery has no canonical orientation.
+# Multi-scale jitter: 50% of samples untouched at native 1024, 50% drawn
+# from {896,960,1024,1088,1152} via value mode (range mode's
+# min-of-two-draws biases square images toward shrinking). The dataset
+# re-normalizes to the fixed 1024 canvas after the jitter, so frozen SAM2
+# always receives its native 1024x1024 input; only object scale varies
+# (at most +-12.5%), keeping half the batches anchored at the val/test
+# scale distribution.
+export TRAIN_VFLIP_PROB="${TRAIN_VFLIP_PROB:-0.5}"
+export TRAIN_MULTI_SCALE_RESIZE_PROB="${TRAIN_MULTI_SCALE_RESIZE_PROB:-0.5}"
+export TRAIN_MULTI_SCALE_MODE="${TRAIN_MULTI_SCALE_MODE:-value}"
+export TRAIN_MULTI_SCALE_IMG_SCALE="${TRAIN_MULTI_SCALE_IMG_SCALE:-896:896,960:960,1024:1024,1088:1088,1152:1152}"
 
 # --- identical to the paper run ---
 export SUBSET_SEED="${SUBSET_SEED:-44}"

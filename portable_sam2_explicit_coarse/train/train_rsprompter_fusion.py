@@ -1890,19 +1890,60 @@ def main():
         if not 0.0 < value <= 1.0:
             raise ValueError(f"{name} must be in (0, 1], got {value}")
 
+    # --- train-time augmentation knobs (env-driven; defaults preserve the
+    # historical hflip-only protocol, individual wrappers opt in) ---
+    train_flip_prob = float(os.environ.get("TRAIN_FLIP_PROB", "0.5"))
+    train_vflip_prob = float(os.environ.get("TRAIN_VFLIP_PROB", "0.0"))
+    train_ms_resize_prob = float(
+        os.environ.get("TRAIN_MULTI_SCALE_RESIZE_PROB", "0.0")
+    )
+    train_ms_mode = os.environ.get("TRAIN_MULTI_SCALE_MODE", "value")
+    train_ms_img_scale_spec = os.environ.get(
+        "TRAIN_MULTI_SCALE_IMG_SCALE",
+        "896:896,960:960,1024:1024,1088:1088,1152:1152",
+    )
+    train_ms_img_scale = None
+    if train_ms_img_scale_spec.strip():
+        train_ms_img_scale = []
+        for part in train_ms_img_scale_spec.split(","):
+            w_text, h_text = part.strip().split(":", 1)
+            train_ms_img_scale.append((int(w_text), int(h_text)))
+    for name, value in (
+        ("TRAIN_FLIP_PROB", train_flip_prob),
+        ("TRAIN_VFLIP_PROB", train_vflip_prob),
+        ("TRAIN_MULTI_SCALE_RESIZE_PROB", train_ms_resize_prob),
+    ):
+        if not 0.0 <= value <= 1.0:
+            raise ValueError(f"{name} must be in [0,1], got {value}")
+    if train_ms_mode not in ("value", "range"):
+        raise ValueError(
+            f"TRAIN_MULTI_SCALE_MODE must be value or range, got {train_ms_mode}"
+        )
+
     train_loader, val_loader, train_dataset = (
         create_train_loader(
             data_root=args.data_root,
             batch_size=args.batch_size,
             # Horizontal flip is safe for dual-stream after fix:
             # only intrinsics cx is adjusted (cx -> W-cx); extrinsics are unchanged.
-            flip_prob=0.5,
-            vflip_prob=0.0,
+            # Vertical flip treats nadir imagery as orientation-free; img,
+            # bbox and mask are flipped in sync inside the dataset.
+            flip_prob=train_flip_prob,
+            vflip_prob=train_vflip_prob,
             gaussian_noise_prob=0.0,
             gaussian_noise_std=0.02,
             random_erasing_prob=0.0,
             random_erasing_scale=(0.02, 0.15),
             random_erasing_ratio=(0.3, 3.3),
+            # Multi-scale jitter resizes BEFORE the fixed resize back to
+            # image_size: the network (and frozen SAM2) always receives its
+            # native 1024x1024 input; only object scale varies. Kept off by
+            # default — random_erasing stays disabled because it erases image
+            # pixels without updating GT masks (label corruption for
+            # instance segmentation).
+            multi_scale_resize_prob=train_ms_resize_prob,
+            multi_scale_mode=train_ms_mode,
+            multi_scale_img_scale=train_ms_img_scale,
             image_size=tuple(args.image_size),
             use_drone=args.use_drone,
             drone_data_root=args.drone_data_root,
@@ -2055,6 +2096,13 @@ def main():
         "architecture_contract": dict(resolved_architecture),
         "config_path": str(args.config),
         "training_args": dict(vars(args)),
+        "train_augmentation": {
+            "flip_prob": train_flip_prob,
+            "vflip_prob": train_vflip_prob,
+            "multi_scale_resize_prob": train_ms_resize_prob,
+            "multi_scale_mode": train_ms_mode,
+            "multi_scale_img_scale": train_ms_img_scale,
+        },
         # HEAD alone cannot identify the executed code when the working tree
         # is dirty; carry the dirty flag + diff fingerprint so a checkpoint
         # uniquely pins its code state (same fields as the runner's
