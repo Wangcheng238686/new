@@ -52,7 +52,7 @@
 \end{scope}
 
 % ================= PANEL 1 : SATELLITE STREAM =================
-\node[panel, minimum width=8.9cm, minimum height=4.5cm] at (8.85,8.1) {};
+\node[panel, minimum width=10.0cm, minimum height=4.5cm] at (8.85,8.1) {};
 \node[tab, fill=orange!75!black] at (5.25,10.1) {\,\;1\,};
 \node[ttl, text=black!75] at (9.6,10.1) {SATELLITE STREAM \; $\cdot$ \; trainable};
 
@@ -64,14 +64,12 @@
   {{\ttl RSSAM2PAFPN Neck}\\{\subf FPN+PAN \; $5\times512$\,ch}};
 
 % FPN pyramid: stacked isometric planes
-\foreach \i/\name/\pw in {0/P6/1.35,1/P5/1.6,2/P4/1.85,3/P3/2.1,4/P2/2.35} {
+\foreach \i/\name/\pw in {0/P6/1.35,1/P5/1.6,2/P4/1.85,3/{P3 $128^2$}/2.1,4/{P2 $256^2$}/2.35} {
   \begin{scope}[shift={(10.15,6.42+0.37*\i)}, xslant=0.30]
     \draw[plane] (0,0) rectangle (\pw,0.44);
   \end{scope}
   \node[sub, anchor=west] at ($(10.15+\pw+0.35, 6.64+0.37*\i)$) {\name};
 }
-\node[lab, anchor=west] at (13.2,7.78) {P2 $256^2$};
-\node[lab, anchor=west] at (13.2,7.41) {P3 $128^2$};
 
 % ================= PANEL 2 : UAV STREAM =================
 \node[panel, minimum width=5.9cm, minimum height=4.7cm] at (7.35,2.7) {};
@@ -103,15 +101,15 @@
 % ================= PANEL 4 : DETECTION HEADS =================
 \node[panel, minimum width=5.3cm, minimum height=9.7cm] at (24.6,5.45) {};
 \node[tab, fill=blue!55!black] at (22.25,10.05) {\,\;4\,};
-\node[ttl, text=black!75] at (24.9,10.05) {DETECTION HEADS};
+\node[ttl, text=black!75] at (24.9,10.05) {DETECTION HEADS \; $\cdot$ \; unchanged};
 
 \node[headbox, minimum width=4.7cm, minimum height=4.35cm] (mhbox) at (24.6,7.55) {};
 \node[ttl, text=blue!40!black] at (24.6,9.42) {RoI Mask Head};
 \node[stepbox, fill=blue!8, minimum width=3.9cm] at (24.6,8.92) {{\subf point prompts (point\textunderscore emb)}};
-\node[stepbox, fill=blue!8, minimum width=3.9cm] at (24.6,8.34) {{\subf shape-prior injector}};
-\node[stepbox, fill=blue!8, minimum width=3.9cm] at (24.6,7.76) {{\subf P2 boundary refiner $\leftarrow$ P2}};
+\node[stepbox, fill=blue!8, minimum width=3.9cm] at (24.6,8.34) {{\subf coarse mask (shape-prior injector)}};
+\node[stepbox, fill=blue!8, minimum width=3.9cm] at (24.6,7.76) {{\subf P2 boundary refiner $\leftarrow$ fused P2}};
 \node[stepbox, fill=blue!8, minimum width=3.9cm, minimum height=0.85cm] at (24.6,7.05) {{\subf SAM2 Mask Decoder}\\{\subf + quality head}};
-\node[lab, text=blue!35!black] at (24.6,6.35) {decodes directly on the fused image embedding};
+\node[lab, text=blue!35!black] at (24.6,6.35) {decoder canvas $=$ satellite image embedding};
 
 \node[headbox, minimum width=3.7cm, minimum height=0.75cm] (rpn) at (24.6,4.35) {{\ttl RPN Head (s4--64)}};
 \node[headbox, minimum width=3.7cm, minimum height=0.75cm] (bboxh) at (24.6,3.25) {{\ttl BBox Head}};
@@ -138,7 +136,7 @@
 \node[lab, text=black!60] at (8.0,-0.3) {K \; $\cdot$ \; W2C \; $\cdot$ \; scene center};
 % queries: P3 plane -> BEV west
 \draw[flow] (10.0,7.55) -- (9.35,7.55) -- (9.35,2.85) -- (11.4,2.85);
-\node[lab, rotate=90] at (9.13,5.2) {queries: sat P3};
+\node[lab, rotate=90] at (9.13,5.2) {queries: satellite P3};
 
 % BEV -> P2/P3 gate (up through corridor)
 \node[labg] at (12.35,5.42) {BEV};
@@ -147,22 +145,16 @@
 \draw[flowg] (p2p3.north) -- (10.55,6.62);
 \node[labg, anchor=east] at (10.3,6.35) {$\gamma_{p2},\gamma_{p3}$};
 
-% BEV -> embedding gate (riser on the right)
-\draw[flowg] (17.6,4.68) -- (17.6,4.95) -- (19.3,4.95) -- (19.3,9.0);
-\node[labg, rotate=90] at (19.55,6.9) {BEV $128{\times}128{\times}128$};
-
-% image embedding -> plus -> mask head
-\node[plus] (pemb) at (19.3,9.35) {$+$};
-\draw[flow] (13.15,9.35) -- (18.95,9.35);
-\node[labg, anchor=south] at (19.3,9.62) {$\gamma_{emb}$};
-\draw[flow] (19.65,9.35) -- (22.2,9.35);
+% image embedding -> mask head (satellite-only canvas in this variant)
+\draw[flow] (13.15,9.35) -- (22.2,9.35);
+\node[lab] at (17.6,9.58) {image embedding \; (no BEV here)};
 
 % trunk pyramid -> heads, with hop over the riser
-\draw[flow] (13.15,6.75) -- (18.98,6.75) .. controls (19.08,7.0) and (19.52,7.0) .. (19.62,6.75) -- (21.9,6.75);
-\node[lab] at (15.9,6.52) {P2--P6};
+\draw[flow] (13.15,6.75) -- (21.9,6.75);
+\node[lab, text=green!35!black] at (15.9,6.52) {fused P2--P6};
 \draw[flow] (21.9,6.75) -- (21.9,4.35) -- (22.7,4.35);
 \draw[flow] (21.9,6.75) -- (21.9,6.05) -- (22.2,6.05);
-\node[lab, anchor=west] at (21.98,5.55) {mask feats (P2--P5)};
+\node[lab, anchor=west, text=green!35!black] at (21.98,5.55) {mask feats (P2--P5)};
 
 \draw[flow] (rpn.south) -- (bboxh.north);
 \draw[flowd] (rpn.north) -- (24.6,5.32);
