@@ -131,9 +131,14 @@ def architecture_id(model_config: Mapping[str, Any]) -> str:
 
 
 def architecture_contract(model_config: Mapping[str, Any]) -> Dict[str, Any]:
+    architecture = architecture_id(model_config)
+    # Checkpoints with calibrated UAV geometry must never be resumable as a
+    # nominally identical single-stream coarse-mask experiment.
+    if str(model_config.get("type", "")) == "DualStreamRSPrompterAnchor":
+        architecture = f"ue_dual_p2p3_sparse__{architecture}"
     return {
         "schema_version": ARCHITECTURE_SCHEMA_VERSION,
-        "architecture_id": architecture_id(model_config),
+        "architecture_id": architecture,
         "model_fingerprint": architecture_fingerprint(model_config),
     }
 

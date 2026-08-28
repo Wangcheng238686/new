@@ -12,6 +12,7 @@ from mmdet.registry import MODELS
 from mmdet.structures import DetDataSample, SampleList
 from mmdet.structures.bbox import bbox2roi
 from mmdet.utils import InstanceList
+from .dual_stream import EmbeddingZeroGate, GeometrySparseBEV, P2P3ZeroGate
 
 try:
     from transformers.models.sam.modeling_sam import SamVisionEncoderOutput
@@ -135,7 +136,7 @@ class RSPrompterAnchor(MaskRCNN):
             )
         return matches[0]
 
-    def extract_feat(self, batch_inputs: Tensor) -> Tuple[Tensor]:
+    def extract_feat(self, batch_inputs: Tensor, batch_data_samples=None) -> Tuple[Tensor]:
         vision_outputs = self.backbone(batch_inputs)
         if isinstance(vision_outputs, SamVisionEncoderOutput):
             vision_hidden_states = vision_outputs[1]
@@ -182,7 +183,7 @@ class RSPrompterAnchor(MaskRCNN):
         return x, image_embeddings, image_positional_embeddings, high_res_features
 
     def loss(self, batch_inputs: Tensor, batch_data_samples: SampleList) -> dict:
-        x, image_embeddings, image_positional_embeddings, high_res_features = self.extract_feat(batch_inputs)
+        x, image_embeddings, image_positional_embeddings, high_res_features = self.extract_feat(batch_inputs, batch_data_samples)
         losses = dict()
 
         proposal_cfg = self.train_cfg.get("rpn_proposal", self.test_cfg.rpn)
@@ -210,7 +211,7 @@ class RSPrompterAnchor(MaskRCNN):
         return losses
 
     def predict(self, batch_inputs: Tensor, batch_data_samples: SampleList, rescale: bool = True) -> SampleList:
-        x, image_embeddings, image_positional_embeddings, high_res_features = self.extract_feat(batch_inputs)
+        x, image_embeddings, image_positional_embeddings, high_res_features = self.extract_feat(batch_inputs, batch_data_samples)
 
         if batch_data_samples[0].get("proposals", None) is None:
             rpn_results_list = self.rpn_head.predict(x, batch_data_samples, rescale=False)
@@ -228,6 +229,73 @@ class RSPrompterAnchor(MaskRCNN):
         )
         batch_data_samples = self.add_pred_to_datasample(batch_data_samples, results_list)
         return batch_data_samples
+
+
+@MODELS.register_module()
+class DualStreamRSPrompterAnchor(RSPrompterAnchor):
+    """RSPrompter with frozen independent SAM2 UAV encoder and true W2C BEV."""
+    def __init__(self, drone_backbone, fusion_cfg=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.enable_drone_branch = True
+        self.freeze_drone = True
+        self.drone_encoder = MODELS.build(drone_backbone)
+        self.drone_encoder.requires_grad_(False)
+        self.drone_encoder.eval()
+        fusion_cfg = dict(fusion_cfg or {})
+        channels = int(fusion_cfg.pop("channels", 512))
+        bev_dim = int(fusion_cfg.pop("bev_dim", 128))
+        inject_embedding = bool(fusion_cfg.pop("inject_embedding", False))
+        embed_channels = int(fusion_cfg.pop("embed_channels", 256))
+        self.geometry_bev = GeometrySparseBEV(channels=channels, bev_dim=bev_dim, **fusion_cfg)
+        self.p2p3_gate = P2P3ZeroGate(channels=channels, bev_dim=bev_dim)
+        self.embedding_gate = (
+            EmbeddingZeroGate(bev_dim=bev_dim, embed_channels=embed_channels)
+            if inject_embedding else None
+        )
+
+    @staticmethod
+    def _uav_inputs(samples, device):
+        required = ("drone_images", "intrinsics", "extrinsics", "scene_center")
+        missing = [name for name in required if name not in samples[0].metainfo]
+        if missing:
+            raise RuntimeError("dual stream requires calibrated UAV metainfo: " + ", ".join(missing))
+        def stack(name): return torch.stack([s.metainfo[name] for s in samples]).to(device, non_blocking=True)
+        return stack("drone_images"), stack("intrinsics"), stack("extrinsics"), stack("scene_center")
+
+    def train(self, mode=True):
+        super().train(mode)
+        # Frozen UAV BatchNorm/drop-path must remain deterministic.
+        self.drone_encoder.eval()
+        return self
+
+    def get_dual_stream_debug_stats(self) -> Dict[str, object]:
+        """Detached diagnostics from the latest dual-stream forward.
+
+        Lets the trainer verify the fusion path is alive: projection validity,
+        BEV magnitude, gate values and injection ratios.
+        """
+        stats: Dict[str, object] = {}
+        stats.update(getattr(self.geometry_bev, "last_stats", {}) or {})
+        stats.update(getattr(self.p2p3_gate, "last_stats", {}) or {})
+        stats.update(getattr(self.embedding_gate, "last_stats", {}) or {})
+        return stats
+    def extract_feat(self, batch_inputs: Tensor, batch_data_samples=None):
+        x, image_embeddings, image_positional_embeddings, high_res_features = super().extract_feat(batch_inputs, batch_data_samples)
+        if batch_data_samples is None:
+            raise RuntimeError("DualStreamRSPrompterAnchor needs batch_data_samples")
+        drone, intrinsics, extrinsics, centers = self._uav_inputs(batch_data_samples, batch_inputs.device)
+        b, views = drone.shape[:2]
+        # Dataset stores RGB in [0,1]; use the same ImageNet normalization as SAM2.
+        drone = (drone - drone.new_tensor([.485,.456,.406])[None,None,:,None,None]) / drone.new_tensor([.229,.224,.225])[None,None,:,None,None]
+        with torch.no_grad():
+            _, fpn = self.drone_encoder(drone.reshape(b * views, *drone.shape[2:]))
+        fpn = tuple(fpn[-4:])
+        # SAM2 returns coarsest-to-finest in some releases; sort by spatial size.
+        fpn = tuple(sorted(fpn, key=lambda t: t.shape[-2] * t.shape[-1], reverse=True))
+        bev = self.geometry_bev(x[1], fpn, intrinsics, extrinsics, centers)
+        if self.embedding_gate is not None:
+            image_embeddings = self.embedding_gate(image_embeddings, bev)
+        return self.p2p3_gate(x, bev), image_embeddings, image_positional_embeddings, high_res_features
 
 
 @MODELS.register_module()

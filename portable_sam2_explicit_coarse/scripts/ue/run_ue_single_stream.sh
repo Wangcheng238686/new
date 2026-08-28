@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# UE single-stream control.  Optimizer protocol matches the WHU run at 5fff72f.
+set -Eeuo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$ROOT"
+
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-2}"
+export SAM2_CKPT="${SAM2_CKPT:-/data1/wangcheng/pretrained/sam2_hiera_base_plus.pt}"
+export UE_DATA_ROOT="${UE_DATA_ROOT:-/data1/wangcheng/dataset/ue_coco_with_uav}"
+export RUN_TAG="${RUN_TAG:-ue_single_c5v2_control_tr128_va259_s44}"
+export WORK_DIR="${WORK_DIR:-$ROOT/work_dirs/ue/${RUN_TAG}}"
+
+# Exact single-stream protocol inherited from paper_promptminer_rd_p2_whu_full.
+export EXPLICIT_PROMPT_MODE=points_box_dense
+export P2_BOUNDARY_REFINER_ENABLED=1
+export SAM_IMAGE_EMBED_STRIDE=16
+export SHAPE_DENSE_TRANSFORM=raw_logits
+export SHAPE_DENSE_DETACH=1
+export FINAL_MASK_COORDINATE_MODE=roi_local
+
+# --no-capture-output is required with nohup: otherwise conda buffers the
+# trainer's stdout/stderr in an internal pipe until process exit.
+exec /home/wangcheng/miniconda3/bin/conda run --no-capture-output -n cvt2 python train/train_rsprompter_fusion.py \
+  --config configs/whu1024_baseplus_explicit_coarse.py \
+  --run-tag "$RUN_TAG" \
+  --data-root "$UE_DATA_ROOT" --use-ue-data --image-size 1024 1024 \
+  --batch-size 1 --grad-accum-steps 8 --epochs 100 \
+  --lr 5e-4 --weight-decay 0.05 --warmup-iters 100 \
+  --train-subset-ratio 0.1797752808988764 --val-subset-ratio 1.0 --seed 44 \
+  --val-batch-size 1 --val-every-n-epochs 1 --compute-val-loss 0 \
+  --amp 1 --ema-enabled 0 --ema-eval 0 --ema-save-best 0 \
+  --checkpoint-dir "$WORK_DIR" --gpu-id 0 "$@"

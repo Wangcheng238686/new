@@ -28,6 +28,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger("portable_sam_fusion")
 
+
+def _attach_dual_stream_metainfo(data_sample: DetDataSample, batch: Dict, index: int) -> None:
+    """Keep calibrated UAV tensors alongside the MMDet data sample."""
+    if "drone_images" in batch:
+        data_sample.set_metainfo({
+            "drone_images": batch["drone_images"][index],
+            "intrinsics": batch["intrinsics"][index],
+            "extrinsics": batch["extrinsics"][index],
+            "scene_center": batch["scene_centers"][index],
+        })
+
 # iSAID official 15 categories; train labels 0..14 map to ids 1..15 (label+1).
 ISAID_CATEGORIES = [
     {"id": 1, "name": "storage_tank"},
@@ -544,6 +555,9 @@ def _build_optimizer(
             names_scene_align.append(name)
         elif (
             match_name.startswith("drone_encoder.")
+            or match_name.startswith("geometry_bev.")
+            or match_name.startswith("p2p3_gate.")
+            or match_name.startswith("embedding_gate.")
             or match_name.startswith("guidance.")
             or match_name.startswith("bottom_up.")
             or "roi_head.mask_head.uav_roi_" in match_name
@@ -977,6 +991,70 @@ def _reduce_dense_residual_monitor(
     return result
 
 
+_DUAL_STREAM_MONITOR_KEYS = (
+    "valid_ratio",
+    "point_valid_ratio",
+    "bev_abs_mean",
+    "bev_abs_max",
+    "gamma_p2",
+    "gamma_p3",
+    "injected_ratio_p2",
+    "injected_ratio_p3",
+    "gamma_emb",
+    "injected_ratio_emb",
+)
+
+
+def _accumulate_dual_stream_monitor(
+    model: torch.nn.Module,
+    sums: Dict[str, float],
+    counts: Dict[str, int],
+) -> None:
+    """Accumulate dual-stream fusion diagnostics from the latest forward."""
+    model_core = model.module if hasattr(model, "module") else model
+    getter = getattr(model_core, "get_dual_stream_debug_stats", None)
+    if getter is None:
+        return
+    stats = getter() or {}
+    for key in _DUAL_STREAM_MONITOR_KEYS:
+        value = stats.get(key)
+        if torch.is_tensor(value):
+            if value.numel() != 1:
+                continue
+            value = float(value.detach().float().item())
+        if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+            continue
+        sums[key] += float(value)
+        counts[key] += 1
+
+
+def _reduce_dual_stream_monitor(
+    sums: Dict[str, float],
+    counts: Dict[str, int],
+    device: torch.device,
+    distributed: bool,
+) -> Dict[str, float]:
+    """Return rank-aggregated epoch means for the dual-stream monitor fields."""
+    packed = torch.tensor(
+        [
+            item
+            for key in _DUAL_STREAM_MONITOR_KEYS
+            for item in (sums[key], float(counts[key]))
+        ],
+        dtype=torch.float64,
+        device=device,
+    )
+    if distributed and dist.is_initialized():
+        dist.all_reduce(packed, op=dist.ReduceOp.SUM)
+    result = {}
+    for index, key in enumerate(_DUAL_STREAM_MONITOR_KEYS):
+        total = float(packed[2 * index].item())
+        count = float(packed[2 * index + 1].item())
+        if count > 0:
+            result[key] = total / count
+    return result
+
+
 _P2BR_EPOCH_FIELDS = (
     "roi_count",
     "valid_support_count",
@@ -1377,6 +1455,8 @@ def main():
         description="portable_sam_fusion: RSPrompter(SAM) + Drone semantic guidance"
     )
     parser.add_argument("--config", type=str, required=True)
+    parser.add_argument("--run-tag", type=str, default="",
+                        help="Immutable human-readable experiment identifier stored in checkpoints.")
     parser.add_argument(
         "--data-root", type=str, default="/data/wangcheng/dataset/university-test/S"
     )
@@ -1411,6 +1491,10 @@ def main():
     parser.add_argument("--gpu-id", type=int, default=0)
 
     parser.add_argument("--use-drone", action="store_true", default=False)
+    parser.add_argument("--use-ue-dual", action="store_true", default=False,
+                        help="Use official calibrated UE train/val splits.")
+    parser.add_argument("--use-ue-data", action="store_true", default=False,
+                        help="Use official UE train/val splits without enabling UAV fusion.")
     parser.add_argument(
         "--use-whu-coco",
         action="store_true",
@@ -1791,6 +1875,10 @@ def main():
             "Disabling drone data loading."
         )
         args.use_drone = False
+    if args.use_ue_dual and not enable_drone_branch:
+        raise RuntimeError("--use-ue-dual requires DualStreamRSPrompterAnchor")
+    if args.use_ue_dual:
+        args.use_ue_data = True
     if enable_drone_branch and not args.use_drone:
         logger.info(
             "Model has enable_drone_branch=True but --use-drone not set. "
@@ -1864,7 +1952,7 @@ def main():
             batch_size=args.batch_size,
             # Horizontal flip is safe for dual-stream after fix:
             # only intrinsics cx is adjusted (cx -> W-cx); extrinsics are unchanged.
-            flip_prob=0.5,
+            flip_prob=0.0 if args.use_ue_data else 0.5,
             vflip_prob=0.0,
             gaussian_noise_prob=0.0,
             gaussian_noise_std=0.02,
@@ -1872,7 +1960,7 @@ def main():
             random_erasing_scale=(0.02, 0.15),
             random_erasing_ratio=(0.3, 3.3),
             image_size=tuple(args.image_size),
-            use_drone=args.use_drone,
+            use_drone=args.use_drone or args.use_ue_dual,
             drone_data_root=args.drone_data_root,
             num_views=args.num_views,
             drone_image_size=tuple(args.drone_image_size),
@@ -1884,7 +1972,7 @@ def main():
             random_sample=args.random_sample,
             normalize_drone=args.normalize_drone,
             dataset_format=(
-                "isaid_coco"
+                "ue_dual" if args.use_ue_data else "isaid_coco"
                 if args.use_isaid_coco
                 else ("whu_coco" if args.use_whu_coco else "labelme")
             ),
@@ -2040,6 +2128,7 @@ def main():
         "checkpoint_schema_version": 2,
         "architecture_contract": dict(resolved_architecture),
         "config_path": str(args.config),
+        "run_tag": str(args.run_tag),
         "training_args": dict(vars(args)),
         "data_config": {
             "dataset_format": (
@@ -2421,6 +2510,7 @@ def main():
                                 *img_metas[i]["img_shape"],
                             )
                         ds.gt_instances = gt_instances
+                        _attach_dual_stream_metainfo(ds, batch, i)
                         data_samples.append(ds.to(device))
 
                     model_inputs = {
@@ -2524,6 +2614,8 @@ def main():
         dense_monitor_sums = {key: 0.0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
         dense_monitor_counts = {key: 0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
         p2br_monitor_sums = {key: 0.0 for key in _P2BR_EPOCH_FIELDS}
+        dual_monitor_sums = {key: 0.0 for key in _DUAL_STREAM_MONITOR_KEYS}
+        dual_monitor_counts = {key: 0 for key in _DUAL_STREAM_MONITOR_KEYS}
         num_batches = 0
         grad_accum = args.grad_accum_steps
         train_batches_limit = len(train_loader)
@@ -2583,6 +2675,7 @@ def main():
                         *img_metas[i]["img_shape"],
                     )
                 ds.gt_instances = gt_instances
+                _attach_dual_stream_metainfo(ds, batch, i)
                 data_samples.append(ds.to(device))
 
             # Match the historical WHU1024 baseline: empty-GT training batches
@@ -2648,6 +2741,7 @@ def main():
                 model, dense_monitor_sums, dense_monitor_counts
             )
             _accumulate_p2br_epoch_monitor(model, p2br_monitor_sums)
+            _accumulate_dual_stream_monitor(model, dual_monitor_sums, dual_monitor_counts)
 
             finite_flag = torch.isfinite(loss).to(dtype=torch.int32)
             if distributed and dist.is_initialized():
@@ -2761,6 +2855,12 @@ def main():
         p2br_monitor_epoch = _reduce_p2br_epoch_monitor(
             p2br_monitor_sums, device=device, distributed=distributed
         )
+        dual_monitor_epoch = _reduce_dual_stream_monitor(
+            dual_monitor_sums,
+            dual_monitor_counts,
+            device=device,
+            distributed=distributed,
+        )
 
         if is_main:
             loss_str = []
@@ -2831,6 +2931,26 @@ def main():
                     p2br_monitor_epoch["projected_feature_norm"],
                     p2br_monitor_epoch["highpass_feature_norm"],
                     100.0 * p2br_monitor_epoch["boundary_support_fg_ratio"],
+                )
+            if dual_monitor_epoch:
+                logger.info(
+                    "Epoch %d dual-stream monitor: valid=%.2f%% "
+                    "point_valid=%.2f%% bev[mean/max]=%.6f/%.6f "
+                    "gamma[p2/p3]=%.6f/%.6f "
+                    "gamma_emb=%.6f "
+                    "injected_ratio[p2/p3]=%.6f/%.6f "
+                    "injected_ratio_emb=%.6f",
+                    epoch_number,
+                    100.0 * dual_monitor_epoch.get("valid_ratio", float("nan")),
+                    100.0 * dual_monitor_epoch.get("point_valid_ratio", float("nan")),
+                    dual_monitor_epoch.get("bev_abs_mean", float("nan")),
+                    dual_monitor_epoch.get("bev_abs_max", float("nan")),
+                    dual_monitor_epoch.get("gamma_p2", float("nan")),
+                    dual_monitor_epoch.get("gamma_p3", float("nan")),
+                    dual_monitor_epoch.get("gamma_emb", float("nan")),
+                    dual_monitor_epoch.get("injected_ratio_p2", float("nan")),
+                    dual_monitor_epoch.get("injected_ratio_p3", float("nan")),
+                    dual_monitor_epoch.get("injected_ratio_emb", float("nan")),
                 )
             averaged_components = {
                 key: value / max(1, num_batches) for key, value in loss_meter.items()
@@ -2957,6 +3077,7 @@ def main():
                                 *img_metas[i]["img_shape"],
                             )
                         ds.gt_instances = gt_instances
+                        _attach_dual_stream_metainfo(ds, batch, i)
                         data_samples.append(ds.to(device))
 
                     # Optional validation loss is a second model forward. Public
