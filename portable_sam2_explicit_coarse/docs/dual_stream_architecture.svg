@@ -1,0 +1,199 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="870" viewBox="0 0 1200 870" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#374151"/>
+    </marker>
+    <marker id="arrg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#166534"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="870" fill="#ffffff"/>
+  <text x="600" y="28" text-anchor="middle" font-size="19" font-weight="bold" fill="#111827">Dual-Stream UAV&#8594;Satellite Fusion for Instance Segmentation</text>
+  <text x="600" y="47" text-anchor="middle" font-size="11.5" fill="#6b7280">Geometry-faithful BEV fusion &#183; zero-gated residual injection &#183; frozen UAV encoder (UE dataset, 5 oblique views)</text>
+
+  <!-- ================= INPUTS ================= -->
+  <rect x="20" y="80" width="175" height="64" rx="6" fill="#dbeafe" stroke="#1e40af" stroke-width="1.5"/>
+  <text x="107" y="107" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1e3a8a">Satellite image</text>
+  <text x="107" y="124" text-anchor="middle" font-size="10.5" fill="#1e3a8a">1024&#215;1024&#215;3 (360 m tile)</text>
+
+  <rect x="20" y="470" width="175" height="96" rx="6" fill="#ffedd5" stroke="#9a3412" stroke-width="1.5"/>
+  <text x="107" y="494" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#7c2d12">5 UAV views</text>
+  <text x="107" y="512" text-anchor="middle" font-size="10.5" fill="#7c2d12">512&#215;512&#215;3 (yaw 0/72/144/216/288&#176;)</text>
+  <text x="107" y="528" text-anchor="middle" font-size="10" fill="#7c2d12">K 5&#215;3&#215;3 &#183; W2C 5&#215;4&#215;4</text>
+  <text x="107" y="544" text-anchor="middle" font-size="10" fill="#7c2d12">scene center (UE cm)</text>
+
+  <!-- ================= SATELLITE STREAM ================= -->
+  <rect x="255" y="70" width="205" height="76" rx="6" fill="#dbeafe" stroke="#1e40af" stroke-width="1.5"/>
+  <text x="357" y="95" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1e3a8a">SAM2 Base+ encoder</text>
+  <text x="357" y="112" text-anchor="middle" font-size="10.5" fill="#1e3a8a">+ LoRA r=16 (qkv, proj)</text>
+  <text x="357" y="127" text-anchor="middle" font-size="10" fill="#1e3a8a">trainable 1.49M / 70.6M</text>
+
+  <rect x="560" y="64" width="185" height="56" rx="6" fill="#dbeafe" stroke="#1e40af" stroke-width="1.5"/>
+  <text x="652" y="87" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1e3a8a">image embedding</text>
+  <text x="652" y="104" text-anchor="middle" font-size="10.5" fill="#1e3a8a">64&#215;64&#215;256 (stride 16)</text>
+
+  <rect x="560" y="150" width="185" height="56" rx="6" fill="#dcfce7" stroke="#166534" stroke-width="1.5"/>
+  <text x="652" y="172" text-anchor="middle" font-size="12" font-weight="bold" fill="#14532d">Embedding gate (r3)</text>
+  <text x="652" y="188" text-anchor="middle" font-size="10" fill="#14532d">&#947;_emb &#183; 1&#215;1 conv 128&#8594;256 (0-init)</text>
+  <text x="652" y="200" text-anchor="middle" font-size="9" fill="#166534">injects into decoder canvas</text>
+
+  <rect x="255" y="190" width="205" height="52" rx="6" fill="#dbeafe" stroke="#1e40af" stroke-width="1.5"/>
+  <text x="357" y="211" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1e3a8a">RSSAM2PAFPN neck</text>
+  <text x="357" y="228" text-anchor="middle" font-size="10" fill="#1e3a8a">detection-oriented FPN+PAN</text>
+
+  <rect x="255" y="278" width="205" height="160" rx="6" fill="#dbeafe" stroke="#1e40af" stroke-width="1.5"/>
+  <text x="357" y="297" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#1e3a8a">FPN pyramid &#183; 512 ch</text>
+  <g font-size="10" fill="#1e3a8a">
+    <rect x="272" y="306" width="170" height="22" rx="3" fill="#ffffff" stroke="#60a5fa"/>
+    <text x="357" y="321" text-anchor="middle">P2 256&#215;256 (s4) &#171; &#947;_p2 &#8853;</text>
+    <rect x="272" y="332" width="170" height="22" rx="3" fill="#ffffff" stroke="#60a5fa"/>
+    <text x="357" y="347" text-anchor="middle">P3 128&#215;128 (s8) &#171; &#947;_p3 &#8853;</text>
+    <rect x="272" y="358" width="170" height="22" rx="3" fill="#ffffff" stroke="#60a5fa"/>
+    <text x="357" y="373" text-anchor="middle">P4 64&#215;64 (s16)</text>
+    <rect x="272" y="384" width="170" height="22" rx="3" fill="#ffffff" stroke="#60a5fa"/>
+    <text x="357" y="399" text-anchor="middle">P5 32&#215;32 (s32)</text>
+    <rect x="272" y="410" width="170" height="22" rx="3" fill="#ffffff" stroke="#60a5fa"/>
+    <text x="357" y="425" text-anchor="middle">P6 16&#215;16 (s64)</text>
+  </g>
+
+  <!-- ================= UAV STREAM ================= -->
+  <rect x="255" y="470" width="205" height="76" rx="6" fill="#ffedd5" stroke="#9a3412" stroke-width="1.5" stroke-dasharray="6 3"/>
+  <text x="357" y="495" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#7c2d12">SAM2 Base+ encoder</text>
+  <text x="357" y="512" text-anchor="middle" font-size="10.5" fill="#7c2d12">2nd instance &#183; frozen</text>
+  <text x="357" y="527" text-anchor="middle" font-size="10" fill="#7c2d12">same Base+ init as satellite</text>
+
+  <rect x="255" y="580" width="205" height="48" rx="6" fill="#ffedd5" stroke="#9a3412" stroke-width="1.5" stroke-dasharray="6 3"/>
+  <text x="357" y="599" text-anchor="middle" font-size="12" font-weight="bold" fill="#7c2d12">4-level FPN</text>
+  <text x="357" y="615" text-anchor="middle" font-size="10" fill="#7c2d12">256 ch &#183; strides 4/8/16/32</text>
+
+  <!-- ================= GEOMETRY FUSION ================= -->
+  <rect x="520" y="430" width="270" height="250" rx="6" fill="#dcfce7" stroke="#166534" stroke-width="1.8"/>
+  <text x="655" y="451" text-anchor="middle" font-size="13" font-weight="bold" fill="#14532d">GeometrySparseBEV</text>
+  <g font-size="9.8" fill="#14532d">
+    <rect x="540" y="460" width="230" height="38" rx="3" fill="#ffffff" stroke="#4ade80"/>
+    <text x="655" y="476" text-anchor="middle">ground grid 128&#215;128</text>
+    <text x="655" y="490" text-anchor="middle">360 m square, satellite-aligned</text>
+    <rect x="540" y="504" width="230" height="38" rx="3" fill="#ffffff" stroke="#4ade80"/>
+    <text x="655" y="520" text-anchor="middle">project points: W2C &#183; K &#8594; uv</text>
+    <text x="655" y="534" text-anchor="middle">FP32 (autocast off)</text>
+    <rect x="540" y="548" width="230" height="38" rx="3" fill="#ffffff" stroke="#4ade80"/>
+    <text x="655" y="564" text-anchor="middle">window sampling 7/5/3/3</text>
+    <text x="655" y="578" text-anchor="middle">5 views &#215; 4 levels</text>
+    <rect x="540" y="592" width="230" height="38" rx="3" fill="#ffffff" stroke="#4ade80"/>
+    <text x="655" y="608" text-anchor="middle">cross-attention (4 heads)</text>
+    <text x="655" y="622" text-anchor="middle">Q: sat P3 &#183; K,V: UAV tokens</text>
+  </g>
+  <text x="655" y="668" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#14532d">&#8658; BEV 128&#215;128&#215;128</text>
+
+  <!-- P2P3 gate note -->
+  <rect x="300" y="648" width="185" height="46" rx="6" fill="#dcfce7" stroke="#166534" stroke-width="1.5"/>
+  <text x="392" y="667" text-anchor="middle" font-size="12" font-weight="bold" fill="#14532d">P2P3 gate</text>
+  <text x="392" y="683" text-anchor="middle" font-size="10" fill="#14532d">&#947;_p2, &#947;_p3 &#183; 1&#215;1 conv (0-init)</text>
+
+  <!-- ================= HEADS ================= -->
+  <rect x="935" y="180" width="220" height="40" rx="6" fill="#ede9fe" stroke="#5b21b6" stroke-width="1.5"/>
+  <text x="1045" y="205" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#4c1d95">RPN head (s4&#8211;64)</text>
+
+  <rect x="935" y="235" width="220" height="40" rx="6" fill="#ede9fe" stroke="#5b21b6" stroke-width="1.5"/>
+  <text x="1045" y="260" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#4c1d95">BBox head (RoIAlign)</text>
+
+  <rect x="910" y="300" width="265" height="310" rx="6" fill="#ede9fe" stroke="#5b21b6" stroke-width="1.8"/>
+  <text x="1042" y="322" text-anchor="middle" font-size="13" font-weight="bold" fill="#4c1d95">RoI mask head</text>
+  <g font-size="10" fill="#4c1d95">
+    <rect x="925" y="332" width="235" height="34" rx="3" fill="#ffffff" stroke="#a78bfa"/>
+    <text x="1042" y="353" text-anchor="middle">point prompts (point_emb)</text>
+    <rect x="925" y="374" width="235" height="34" rx="3" fill="#ffffff" stroke="#a78bfa"/>
+    <text x="1042" y="395" text-anchor="middle">shape-prior injector</text>
+    <rect x="925" y="416" width="235" height="34" rx="3" fill="#ffffff" stroke="#a78bfa"/>
+    <text x="1042" y="437" text-anchor="middle">P2 boundary refiner (&#8592; P2 feat)</text>
+    <rect x="925" y="458" width="235" height="56" rx="3" fill="#ffffff" stroke="#a78bfa"/>
+    <text x="1042" y="480" text-anchor="middle">SAM2 mask decoder</text>
+    <text x="1042" y="496" text-anchor="middle">+ quality head</text>
+    <text x="1042" y="520" text-anchor="middle">high-res s4/s8 &#183; proposals</text>
+    <text x="1042" y="536" text-anchor="middle">(inputs, not shown as arrows)</text>
+    <text x="1042" y="560" text-anchor="middle" font-size="9.5" fill="#6d28d9">the decoder attends directly</text>
+    <text x="1042" y="574" text-anchor="middle" font-size="9.5" fill="#6d28d9">to the (fused) image embedding</text>
+  </g>
+
+  <rect x="950" y="650" width="190" height="56" rx="6" fill="#ede9fe" stroke="#5b21b6" stroke-width="1.8"/>
+  <text x="1045" y="674" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#4c1d95">Instance masks</text>
+  <text x="1045" y="691" text-anchor="middle" font-size="10" fill="#4c1d95">+ boxes, quality scores</text>
+
+  <!-- ================= ARROWS ================= -->
+  <g stroke="#374151" stroke-width="1.6" fill="none">
+    <line x1="195" y1="112" x2="249" y2="112" marker-end="url(#arr)"/>
+    <line x1="460" y1="92" x2="554" y2="92" marker-end="url(#arr)"/>
+    <line x1="357" y1="146" x2="357" y2="184" marker-end="url(#arr)"/>
+    <line x1="357" y1="242" x2="357" y2="272" marker-end="url(#arr)"/>
+    <path d="M442,343 L490,343 L490,466 L514,466" marker-end="url(#arr)"/>
+    <!-- pyramid -> RPN, hopped over BEV riser at x=830 -->
+    <path d="M460,320 L822,320 A8,8 0 0 1 838,320 L920,320 L920,200 L929,200" marker-end="url(#arr)"/>
+    <!-- mask feats: below everything -->
+    <path d="M460,421 L480,421 L480,720 L935,720 L935,616" marker-end="url(#arr)"/>
+    <line x1="195" y1="508" x2="249" y2="508" marker-end="url(#arr)"/>
+    <line x1="357" y1="546" x2="357" y2="574" marker-end="url(#arr)"/>
+    <line x1="460" y1="604" x2="514" y2="604" marker-end="url(#arr)"/>
+    <line x1="1045" y1="220" x2="1045" y2="229" marker-end="url(#arr)"/>
+    <line x1="1042" y1="610" x2="1042" y2="644" marker-end="url(#arr)"/>
+    <!-- proposals -->
+    <path d="M1155,200 L1182,200 L1182,340 L1179,340" stroke-dasharray="5 3" marker-end="url(#arr)"/>
+  </g>
+
+  <!-- calibration (dashed, hopped over mask-feats riser at x=480) -->
+  <path d="M195,545 L240,545 L240,655 L472,655 A8,8 0 0 1 488,655 L514,655" stroke="#9a3412" stroke-width="1.4" stroke-dasharray="5 3" fill="none" marker-end="url(#arr)"/>
+
+  <!-- BEV outputs -->
+  <g stroke="#166534" stroke-width="1.8" fill="none">
+    <path d="M790,505 L830,505 L830,178 L753,178" marker-end="url(#arrg)"/>
+    <path d="M652,150 L652,120 L800,120 L800,105" marker-end="url(#arrg)"/>
+    <!-- BEV -> P2P3 gate -->
+    <path d="M520,671 L489,671" marker-end="url(#arrg)"/>
+  </g>
+  <!-- P2P3 gate -> P2/P3 (up the left side) -->
+  <path d="M300,671 L230,671 L230,445 L272,445 L272,436" stroke="#166534" stroke-width="1.8" fill="none" marker-end="url(#arrg)"/>
+  <!-- image emb -> mask head -->
+  <path d="M811,92 L880,92 L880,330 L904,330" stroke="#374151" stroke-width="1.6" fill="none" marker-end="url(#arr)"/>
+
+  <!-- plus circle on image-embedding line -->
+  <circle cx="800" cy="92" r="10" fill="#dcfce7" stroke="#166534" stroke-width="1.6"/>
+  <path d="M795,92 h10 M800,87 v10" stroke="#166534" stroke-width="1.6"/>
+  <!-- plus marks on P2/P3 rows -->
+  <g stroke="#166534" stroke-width="1.4">
+    <circle cx="449" cy="317" r="7" fill="#dcfce7"/>
+    <path d="M445,317 h8 M449,313 v8"/>
+    <circle cx="449" cy="343" r="7" fill="#dcfce7"/>
+    <path d="M445,343 h8 M449,339 v8"/>
+  </g>
+
+  <!-- ================= LABELS ================= -->
+  <g font-size="9.5" fill="#4b5563">
+    <text x="505" y="86" text-anchor="middle">stride 16</text>
+    <text x="363" y="170">hidden states</text>
+    <text x="497" y="410" text-anchor="middle" transform="rotate(-90 497 410)">queries (sat P3)</text>
+    <text x="700" y="713" text-anchor="middle">mask feats (P2&#8211;P5)</text>
+    <text x="472" y="597" text-anchor="middle">K / V tokens</text>
+    <text x="300" y="690" text-anchor="middle" font-size="9" fill="#9a3412">K &#183; W2C &#183; scene center</text>
+    <text x="846" y="360" transform="rotate(-90 846 360)" fill="#166534" font-weight="bold">BEV 128&#215;128&#215;128</text>
+    <text x="890" y="215" transform="rotate(-90 890 215)">image emb + BEV</text>
+    <text x="1191" y="272" transform="rotate(-90 1191 272)">proposals</text>
+    <text x="232" y="560" font-size="9" fill="#9a3412">K, W2C, center</text>
+    <text x="392" y="706" text-anchor="middle" fill="#166534">BEV &#8594; P2 &#8853; / P3 &#8853;</text>
+  </g>
+
+  <!-- ================= LEGEND ================= -->
+  <g font-size="10.5" fill="#374151">
+    <rect x="20" y="775" width="20" height="13" rx="2" fill="#dbeafe" stroke="#1e40af"/>
+    <text x="46" y="786">satellite stream (trainable)</text>
+    <rect x="215" y="775" width="20" height="13" rx="2" fill="#ffedd5" stroke="#9a3412" stroke-dasharray="5 3"/>
+    <text x="241" y="786">UAV stream (frozen)</text>
+    <rect x="385" y="775" width="20" height="13" rx="2" fill="#dcfce7" stroke="#166534"/>
+    <text x="411" y="786">geometry fusion (FP32)</text>
+    <rect x="575" y="775" width="20" height="13" rx="2" fill="#ede9fe" stroke="#5b21b6"/>
+    <text x="601" y="786">detection heads</text>
+    <circle cx="712" cy="781" r="8" fill="#dcfce7" stroke="#166534"/>
+    <path d="M707,781 h10 M712,776 v10" stroke="#166534" stroke-width="1.4"/>
+    <text x="726" y="786">zero-init gated residual &#947;&#183;conv (baseline preserved at init)</text>
+    <text x="20" y="812" fill="#6b7280" font-size="10">Loss: L = L_rpn + L_cls + L_bbox + L_mask + L_shape + L_p2br &#160;&#160;&#183;&#160;&#160; Variants: r2 = P2/P3 injection only &#183; r3 = P2/P3 + image-embedding injection (UE_DUAL_INJECT_EMBEDDING=1)</text>
+  </g>
+</svg>
