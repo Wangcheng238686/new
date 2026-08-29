@@ -1,0 +1,360 @@
+terminal_log=/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/logs/ablations/paper_promptminer_rd_p2_whu_full_fast_tr1.0_va1.0_20260826_233807_pid40052.log
+/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/imagecorruptions/corruptions.py:17: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+{"ablation_id": "c5v2_pafpn_coarse_p2_boundary_refiner_emb64", "architecture_contract": {"architecture_id": "c5v2_pafpn_coarse_p2_boundary_refiner_emb64", "model_fingerprint": "36549a00a8282b2b9903d8c07c7cc9ce6f6e8fba3e93d58212de1999b1aa3dab", "schema_version": 2}, "config": "configs/whu1024_baseplus_explicit_coarse.py", "dense_prompt_config": {"clamp_range": [-8.0, 8.0], "detach_input": true, "foreground_threshold": 0.5, "gaussian_gamma": 4.0, "gaussian_omega": 15.0, "outside_fill_logit": 0.0, "temperature": 1.0, "transform": "raw_logits"}, "dense_prompt_enabled": true, "explicit_prompt_mode": "points_box_dense", "final_mask_coordinate_mode": "roi_local", "final_mask_loss_config": {}, "final_mask_loss_mode": "standard", "neck": "RSSAM2PAFPN", "p2_boundary_refiner_config": {"aligned": true, "beta": 0.2, "boundary_band_radius": 2, "boundary_loss_weight": 0.05, "coarse_size": 64, "delta_logit_max": 2.0, "enabled": true, "foreground_thr": 0.5, "max_search_coverage": 0.5, "mid_channels": 64, "p2_in_channels": 512, "projected_channels": 64, "roi_output_size": 32, "sampling_ratio": 0, "search_band_radius": 4, "spatial_scale": 0.25, "zero_init_residual": true}, "p2_boundary_refiner_enabled": true, "prompt_encoder_enabled": true, "prompt_encoder_train_mask_downscaling": false, "prompt_route": "coarse", "prompt_sparse_mode": "shape_point", "quality_head_enabled": false, "roi_sam_config": {}, "roi_sam_enabled": false, "sam_image_embedding_size": 64, "sam_image_embedding_stride": 16, "segm_score_key": "scores", "segm_score_mode": "detector", "shape_context_fusion": "roi_only", "shape_loss_schedule_mode": "fixed", "shape_point_adaptive_validity": true, "shape_prior_enabled": true, "shape_prior_loss_weight": 0.1, "subset_seed": 44, "train_subset_ratio": 1.0, "val_subset_ratio": 1.0}
+ablation contract: OK
+============================================================
+resolved_hyperparameters_begin
+timestamp=20260826_233807
+environment_config=/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/configs/environment.local.sh
+git_commit=da92f6f79448c3ed0ab517ac02ebbd9e01e8ebbb
+git_dirty=1
+git_dirty_code_files=none
+git_diff_sha16=e3b0c44298fc1c14
+ablation_id=c5v2_pafpn_coarse_p2_boundary_refiner_emb64
+expected_architecture_id=c5v2_pafpn_coarse_p2_boundary_refiner_emb64
+run_tag=paper_promptminer_rd_p2_whu_full_fast
+run_suffix=
+neck_type=pafpn
+prompt_route=coarse
+prompt_generator_mode=explicit_mask
+prompt_sparse_mode=shape_point
+prompt_encoder_enabled=1
+shape_prior_enabled=1
+explicit_prompt_mode=points_box_dense
+shape_dense_transform=raw_logits
+shape_dense_detach=1
+shape_gaussian_foreground_threshold=0.5
+shape_gaussian_omega=15.0
+shape_gaussian_gamma=4.0
+p2_boundary_refiner_enabled=1
+final_mask_coordinate_mode=roi_local
+final_mask_loss_mode=standard
+final_mask_roi_expand_ratio=1.20
+final_mask_roi_bce_weight=1.0
+final_mask_roi_dice_weight=1.0
+final_mask_outside_bce_weight=0.05
+roi_sam_enabled=0
+roi_sam_sampling_ratio=2
+sam_image_embedding_stride=16
+sam_image_embedding_size=64
+train_subset_ratio=1.0
+val_subset_ratio=1.0
+val_batch_size=2
+subset_seed=44
+python=/data/wangcheng/envs/cvt2/bin/python
+nproc_per_node=4
+master_port=20052
+master_port_source=auto_pid
+ddp_timeout_seconds=1800
+ddp_timeout_source=baseline_default
+ddp_control_backend=gloo
+ddp_control_timeout_seconds=86400
+cuda_visible_devices=0,1,2,3
+batch_size_per_rank=2
+grad_accum_steps=1
+effective_global_batch_size=8
+epochs=150
+learning_rate=5e-4
+amp=1
+ema_enabled=1
+ema_decay=0.999
+ema_eval=0
+ema_save_best=0
+val_every_n_epochs=1
+compute_val_loss=0
+save_bbox_best_metric=
+segm_score_mode=detector
+early_stopping_patience=20
+early_stopping_start_epoch=90
+early_stopping_min_delta=5e-4
+early_stopping_smooth_window=5
+sat_backbone_lr_mult=1.0
+sat_other_lr_mult=1.0
+mask_decoder_lr_mult=1.0
+no_mask_lr_mult=1.0
+prompt_encoder_lr_mult=0.0
+prompt_encoder_train_mask_downscaling=0
+shape_prior_lr_mult=1.0
+shape_context_fusion=roi_only
+p2_boundary_refiner_lr_mult=1.0
+p2_boundary_refiner_projected_channels=64
+p2_boundary_refiner_mid_channels=64
+p2_boundary_refiner_delta_logit_max=2.0
+p2_boundary_refiner_loss_weight=0.05
+allow_cross_arch_init=0
+warmup_iters=100
+weight_decay=0.05
+det_loss_stage1_end=5
+det_loss_stage2_end=10
+det_loss_weight_stage1=1.0
+det_loss_weight_stage2=1.0
+det_loss_weight_stage3=1.0
+ema_update_every=1
+ema_eval_start_epoch=5
+shape_point_adaptive_validity=1
+shape_loss_schedule_mode=fixed
+shape_prior_loss_weight=0.10
+shape_loss_stage1_end=5
+shape_loss_weight_stage1=0.20
+shape_loss_weight_stage2=0.10
+point_warmup_enabled=0
+point_warmup_no_point_epochs=0
+point_warmup_one_pair_epochs=0
+point_warmup_full_start_epoch=1
+prompt_debug_stats=1
+prompt_debug_stats_interval=50
+max_train_batches=0
+max_val_batches=0
+init_from=
+init_exclude_prefixes=
+resume_from=
+check_data=0
+preflight_model=0
+dry_run=0
+run_in_background=1
+sam2_repo=/home/wangcheng2021/project/new/sam2
+sam2_checkpoint=/data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+data_root=/data/wangcheng/dataset/WHU
+checkpoint_root=/data/wangcheng/checkpoint/portable_sam2_explicit_coarse
+log_root=/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/logs
+tmp_root=/tmp/portable_sam2_explicit_coarse
+config=configs/whu1024_baseplus_explicit_coarse.py
+checkpoint_dir=/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/paper_promptminer_rd_p2_whu_full_fast_tr1.0_va1.0
+log_file=/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/logs/ablations/paper_promptminer_rd_p2_whu_full_fast_tr1.0_va1.0_20260826_233807_pid40052.log
+command= /data/wangcheng/envs/cvt2/bin/python -m torch.distributed.run --nproc_per_node=4 --master_port=20052 train/train_rsprompter_fusion.py --config configs/whu1024_baseplus_explicit_coarse.py --data-root /data/wangcheng/dataset/WHU --use-whu-coco --image-size 1024 1024 --batch-size 2 --grad-accum-steps 1 --epochs 150 --lr 5e-4 --checkpoint-dir /data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/paper_promptminer_rd_p2_whu_full_fast_tr1.0_va1.0 --train-subset-ratio 1.0 --val-subset-ratio 1.0 --val-batch-size 2 --seed 44 --amp 1 --ema-enabled 1 --ema-decay 0.999 --ema-eval 0 --ema-save-best 0 --val-every-n-epochs 1 --compute-val-loss 0 --early-stopping-patience 20 --early-stopping-start-epoch 90 --early-stopping-min-delta 5e-4 --early-stopping-smooth-window 5 --sat-backbone-lr-mult 1.0 --sat-other-lr-mult 1.0 --mask-decoder-lr-mult 1.0 --no-mask-lr-mult 1.0 --prompt-encoder-lr-mult 0.0 --shape-prior-lr-mult 1.0 --p2-boundary-refiner-lr-mult 1.0 --warmup-iters 100 --weight-decay 0.05 --det-loss-stage1-end 5 --det-loss-stage2-end 10 --det-loss-weight-stage1 1.0 --det-loss-weight-stage2 1.0 --det-loss-weight-stage3 1.0 --ema-update-every 1 --ema-eval-start-epoch 5 --prompt-debug-stats 1 --prompt-debug-stats-interval 50
+resolved_hyperparameters_end
+============================================================
+launch_mode=background
+background_pid=40220
+follow_log=tail -f /home/wangcheng2021/project/new/portable_sam2_explicit_coarse/logs/ablations/paper_promptminer_rd_p2_whu_full_fast_tr1.0_va1.0_20260826_233807_pid40052.log
+status_command=ps -fp 40220
+
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/imagecorruptions/corruptions.py:17: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/imagecorruptions/corruptions.py:17: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/imagecorruptions/corruptions.py:17: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/imagecorruptions/corruptions.py:17: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+[seed] Random seed fixed to 44 | cudnn.deterministic=False | cudnn.benchmark=True
+[Gloo] Rank 3 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 1 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 0 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 2 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+2026-08-26 23:38:22,992 - portable_sam_fusion - INFO - DDP process-group timeout: 1800 seconds
+2026-08-26 23:38:22,992 - portable_sam_fusion - INFO - DDP validation control: backend=gloo timeout=86400 seconds
+2026-08-26 23:38:25,859 - portable_sam_fusion - INFO - Architecture contract: id=c5v2_pafpn_coarse_p2_boundary_refiner_emb64 schema=2 fingerprint=36549a00a8282b2b9903d8c07c7cc9ce6f6e8fba3e93d58212de1999b1aa3dab
+[RSSAM2VisionEncoder] Loading SAM2 base_plus model
+  - embed_dim: 112
+  - stages: (2, 3, 16, 3)
+  - backbone_channels: [896, 448, 224, 112]
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.ptLoads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+[ImageEncoder(base_plus)] Loaded 306 keys. missing=0, unexpected=0
+[RSSAM2VisionEncoder] Applied LoRA with config:
+  - r=16, alpha=32
+  - target_modules=['qkv', 'proj']
+  - dropout=0.05
+  - modules_to_save=['neck']
+trainable params: 1,492,528 || all params: 70,599,344 || trainable%: 2.114081966540652
+[RSSAM2VisionEncoder] LoRA audit: backbone total=70599344, trainable=1492528, lora_trainable=1061424, unexpected_trainable=0
+[SAM2] using package: /home/wangcheng2021/project/new/sam2/sam2/__init__.py
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+[MaskDecoder] Loaded 131 keys. missing=0, unexpected=0
+  use_high_res_features: True
+  Has conv_s0: True
+  Has conv_s1: True
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+[MaskHead] Initialized no_mask_embed from SAM2 ckpt, frozen, abs_mean=0.01521041
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+[PromptEncoder] Loaded 17 keys. missing=0, unexpected=0
+2026-08-26 23:38:28,753 - portable_sam_fusion - INFO - Evaluation score contract: bbox=scores segm=scores mode=detector
+2026-08-26 23:38:31,066 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 2943 (train.json)
+2026-08-26 23:38:31,159 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 2943 (train.json)
+2026-08-26 23:38:31,187 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 2943 (train.json)
+2026-08-26 23:38:31,201 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 2943 (train.json)
+2026-08-26 23:38:31,252 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 627 (validation.json)
+2026-08-26 23:38:31,252 - data.loader - INFO - 创建 WHU 验证集加载器: 627 样本
+2026-08-26 23:38:31,273 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 627 (validation.json)
+2026-08-26 23:38:31,274 - data.loader - INFO - 创建 WHU 验证集加载器: 627 样本
+2026-08-26 23:38:31,301 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 627 (validation.json)
+2026-08-26 23:38:31,301 - data.loader - INFO - 创建 WHU 验证集加载器: 627 样本
+2026-08-26 23:38:31,314 - data.whu_instance_dataset - INFO - 加载 WHU 样本: 627 (validation.json)
+2026-08-26 23:38:31,315 - data.loader - INFO - 创建 WHU 验证集加载器: 627 样本
+2026-08-26 23:38:31,315 - portable_sam_fusion - INFO - Validation policy: rank0_only=1 batch_size=2 every_n_epochs=1 compute_loss=0
+2026-08-26 23:38:31,315 - portable_sam_fusion - INFO - Dataset size: 2943 | mini-batch/epoch=367 | grad_accum=1 | optimizer_steps/epoch=367 | total_optimizer_steps=55050
+2026-08-26 23:38:31,319 - portable_sam_fusion - INFO - Optimizer group sat_backbone    params=1492528 tensors=112 lr=5.000e-04 wd=5.000e-02 first=backbone.encoder.base_model.model.trunk.patch_embed.proj.lora_A.default.weight last=backbone.encoder.base_model.model.neck.modules_to_save.default.convs.3.conv.bias
+2026-08-26 23:38:31,319 - portable_sam_fusion - INFO - Optimizer group mask_decoder    params=4082497 tensors=125 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.mask_decoder.decoder.transformer.layers.0.self_attn.q_proj.weight last=roi_head.mask_head.mask_decoder.decoder.pred_obj_score_head.layers.2.bias
+2026-08-26 23:38:31,319 - portable_sam_fusion - INFO - Optimizer group shape_prior     params=960385 tensors=18 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.shape_injector.mask_decoder.net.0.weight last=roi_head.mask_head.shape_injector.mask_decoder.net.14.bias
+2026-08-26 23:38:31,319 - portable_sam_fusion - INFO - Optimizer group p2_boundary_refiner params=145729 tensors=14 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.p2_boundary_refiner.p2_projection.0.weight last=roi_head.mask_head.p2_boundary_refiner.residual_head.bias
+2026-08-26 23:38:31,319 - portable_sam_fusion - INFO - Optimizer group quality_head    params=132612 tensors=6 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.mask_decoder.decoder.iou_prediction_head.layers.0.weight last=roi_head.mask_head.mask_decoder.decoder.iou_prediction_head.layers.2.bias
+2026-08-26 23:38:31,319 - portable_sam_fusion - INFO - Optimizer group sat_other       params=37130794 tensors=79 lr=5.000e-04 wd=5.000e-02 first=neck.level_scales last=roi_head.mask_head.shape_dense_alpha_raw
+2026-08-26 23:38:31,322 - portable_sam_fusion - INFO - Trainable state backbone               1492528 / 70599344
+2026-08-26 23:38:31,322 - portable_sam_fusion - INFO - Trainable state shared_image_embedding absent
+2026-08-26 23:38:31,322 - portable_sam_fusion - INFO - Trainable state mask_decoder           4215109 / 4215109
+2026-08-26 23:38:31,322 - portable_sam_fusion - INFO - Trainable state no_mask_embed          0 / 256
+2026-08-26 23:38:31,322 - portable_sam_fusion - INFO - Trainable state prompt_encoder         0 / 6220
+2026-08-26 23:38:31,322 - portable_sam_fusion - INFO - Trainable state shape_injector         960385 / 960385
+2026-08-26 23:38:31,322 - portable_sam_fusion - INFO - Trainable state p2_boundary_refiner    145729 / 145729
+2026-08-26 23:38:31,323 - portable_sam_fusion - INFO - Trainable state quality_head           absent
+2026-08-26 23:38:31,323 - portable_sam_fusion - INFO - Trainable state uav_roi_retriever      absent
+2026-08-26 23:38:31,323 - portable_sam_fusion - INFO - Trainable state uav_roi_gate           absent
+2026-08-26 23:38:31,323 - portable_sam_fusion - INFO - Trainable state uav_roi_dense_prompt   absent
+2026-08-26 23:38:31,323 - portable_sam_fusion - INFO - Trainable state uav_roi_prompt_adapter absent
+2026-08-26 23:38:31,323 - portable_sam_fusion - INFO - Trainable state uav_prompt_adapter_sparse_scale absent
+2026-08-26 23:38:31,323 - portable_sam_fusion - INFO - Trainable state uav_prompt_adapter_dense_scale absent
+2026-08-26 23:38:31,323 - portable_sam_fusion - INFO - Using user-specified warmup: 100 optimizer steps
+2026-08-26 23:38:31,518 - portable_sam_fusion - INFO - EMA enabled: decay=0.9990 update_every=1 eval=0 save_best=0 eval_start_epoch=5
+[DEBUG] RSSAM2PAFPN inputs: 4 tensors
+  [0] shape=torch.Size([2, 256, 256, 256]), dtype=torch.float16
+  [1] shape=torch.Size([2, 256, 128, 128]), dtype=torch.float16
+  [2] shape=torch.Size([2, 256, 64, 64]), dtype=torch.float32
+  [3] shape=torch.Size([2, 256, 32, 32]), dtype=torch.float16
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models_sam2.py", line 722, in forward
+[rank0]:     low_res_masks, iou_predictions, mask_tokens_out, _ = self.decoder(
+[rank0]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/wangcheng2021/project/new/sam2/sam2/modeling/sam/mask_decoder.py", line 136, in forward
+[rank0]:     masks, iou_pred, mask_tokens_out, object_score_logits = self.predict_masks(
+[rank0]:   File "/home/wangcheng2021/project/new/sam2/sam2/modeling/sam/mask_decoder.py", line 224, in predict_masks
+[rank0]:     upscaled_embedding = act1(ln1(dc1(src) + feat_s1))
+[rank0]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/wangcheng2021/project/new/sam2/sam2/modeling/sam2_utils.py", line 152, in forward
+[rank0]:     x = self.weight[:, None, None] * x + self.bias[:, None, None]
+[rank0]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 23.57 GiB of which 369.31 MiB is free. Including non-PyTorch memory, this process has 23.18 GiB memory in use. Of the allocated memory 22.44 GiB is allocated by PyTorch, and 318.72 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+
+[rank0]: The above exception was the direct cause of the following exception:
+
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/train/train_rsprompter_fusion.py", line 3686, in <module>
+[rank0]:     main()
+[rank0]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/train/train_rsprompter_fusion.py", line 2801, in main
+[rank0]:     loss_dict = model_for_loss.loss(model_inputs, data_samples)
+[rank0]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models.py", line 683, in loss
+[rank0]:     roi_losses = self.roi_head.loss(
+[rank0]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models.py", line 1339, in loss
+[rank0]:     mask_results = self.mask_loss(
+[rank0]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models.py", line 1055, in mask_loss
+[rank0]:     mask_results = self._mask_forward(
+[rank0]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models.py", line 869, in _mask_forward
+[rank0]:     mask_head_out = self.mask_head(
+[rank0]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models_sam2.py", line 2492, in forward
+[rank0]:     low_res_masks, iou_predictions, mask_tokens_out = self.mask_decoder(
+[rank0]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models_sam2.py", line 733, in forward
+[rank0]:     raise RuntimeError(
+[rank0]: RuntimeError: SAM2 decoder forward failed with image_embeddings=(128, 256, 64, 64), image_pe=(1, 256, 64, 64), sparse=(128, 6, 256), dense=(128, 256, 64, 64), high_res=[(128, 256, 256, 256), (128, 256, 128, 128)], processed_high_res=[(128, 32, 256, 256), (128, 64, 128, 128)]
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models_sam2.py", line 722, in forward
+[rank1]:     low_res_masks, iou_predictions, mask_tokens_out, _ = self.decoder(
+[rank1]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/home/wangcheng2021/project/new/sam2/sam2/modeling/sam/mask_decoder.py", line 136, in forward
+[rank1]:     masks, iou_pred, mask_tokens_out, object_score_logits = self.predict_masks(
+[rank1]:   File "/home/wangcheng2021/project/new/sam2/sam2/modeling/sam/mask_decoder.py", line 224, in predict_masks
+[rank1]:     upscaled_embedding = act1(ln1(dc1(src) + feat_s1))
+[rank1]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/home/wangcheng2021/project/new/sam2/sam2/modeling/sam2_utils.py", line 152, in forward
+[rank1]:     x = self.weight[:, None, None] * x + self.bias[:, None, None]
+[rank1]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 1 has a total capacity of 23.57 GiB of which 407.31 MiB is free. Including non-PyTorch memory, this process has 23.14 GiB memory in use. Of the allocated memory 22.44 GiB is allocated by PyTorch, and 281.21 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+
+[rank1]: The above exception was the direct cause of the following exception:
+
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/train/train_rsprompter_fusion.py", line 3686, in <module>
+[rank1]:     main()
+[rank1]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/train/train_rsprompter_fusion.py", line 2801, in main
+[rank1]:     loss_dict = model_for_loss.loss(model_inputs, data_samples)
+[rank1]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models.py", line 683, in loss
+[rank1]:     roi_losses = self.roi_head.loss(
+[rank1]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models.py", line 1339, in loss
+[rank1]:     mask_results = self.mask_loss(
+[rank1]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models.py", line 1055, in mask_loss
+[rank1]:     mask_results = self._mask_forward(
+[rank1]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models.py", line 869, in _mask_forward
+[rank1]:     mask_head_out = self.mask_head(
+[rank1]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models_sam2.py", line 2492, in forward
+[rank1]:     low_res_masks, iou_predictions, mask_tokens_out = self.mask_decoder(
+[rank1]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:   File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/rsprompter/models_sam2.py", line 733, in forward
+[rank1]:     raise RuntimeError(
+[rank1]: RuntimeError: SAM2 decoder forward failed with image_embeddings=(128, 256, 64, 64), image_pe=(1, 256, 64, 64), sparse=(128, 6, 256), dense=(128, 256, 64, 64), high_res=[(128, 256, 256, 256), (128, 256, 128, 128)], processed_high_res=[(128, 32, 256, 256), (128, 64, 128, 128)]
+[rank0]:[W826 23:39:10.430882588 ProcessGroupNCCL.cpp:1538] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+W0826 23:39:12.614689 40220 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 40278 closing signal SIGTERM
+W0826 23:39:12.617794 40220 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 40279 closing signal SIGTERM
+W0826 23:39:12.618407 40220 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 40280 closing signal SIGTERM
+E0826 23:39:12.734194 40220 site-packages/torch/distributed/elastic/multiprocessing/api.py:874] failed (exitcode: 1) local_rank: 0 (pid: 40277) of binary: /data/wangcheng/envs/cvt2/bin/python
+Traceback (most recent call last):
+  File "/data/wangcheng/envs/cvt2/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/data/wangcheng/envs/cvt2/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/distributed/run.py", line 905, in <module>
+    main()
+  File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 357, in wrapper
+    return f(*args, **kwargs)
+  File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/distributed/run.py", line 901, in main
+    run(args)
+  File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/distributed/run.py", line 892, in run
+    elastic_launch(
+  File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/distributed/launcher/api.py", line 143, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/torch/distributed/launcher/api.py", line 277, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+train/train_rsprompter_fusion.py FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-08-26_23:39:12
+  host      : lthpc
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 40277)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

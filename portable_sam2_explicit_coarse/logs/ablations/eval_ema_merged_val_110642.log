@@ -1,0 +1,866 @@
+/data/wangcheng/envs/cvt2/lib/python3.9/site-packages/imagecorruptions/corruptions.py:17: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+2026-08-29 11:06:48,567 | WARNING | Embedded post-build model_config changed fingerprint; using contract-matching recorded config /home/wangcheng2021/project/new/portable_sam2_explicit_coarse/configs/whu1024_baseplus_explicit_coarse.py
+2026-08-29 11:06:51,783 | INFO | Model rebuilt from /home/wangcheng2021/project/new/portable_sam2_explicit_coarse/configs/whu1024_baseplus_explicit_coarse.py; weights=model strict=True device=cuda:0
+2026-08-29 11:06:51,783 | INFO | Evaluation score contract: bbox=scores segm=scores mode=detector
+2026-08-29 11:06:51,894 | INFO | 加载 WHU 样本: 627 (validation.json)
+{
+  "checkpoint": "/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/paper_promptminer_rd_p2_whu_full_fast_tr1.0_va1.0/best_model_epoch150_ema_merged.pth",
+  "checkpoint_schema_version": 2,
+  "epoch": 149,
+  "best_metrics": {
+    "best_train_loss": 0.29904485880853865,
+    "best_val_loss": Infinity,
+    "best_segm_map": 0.7492667930159944,
+    "best_bbox_score": 0.0,
+    "best_bbox_metric": "",
+    "best_composite_score": 0.0,
+    "best_composite_metric": "0.5*bbox/mAP_75+0.5*segm/mAP_75",
+    "best_early_stopping_score": 0.7481132081908959,
+    "early_stopping_metric": "segm/mAP",
+    "early_counter": 6,
+    "early_stopping_start_epoch": 90,
+    "early_stopping_min_delta": 0.0005,
+    "early_stopping_smooth_window": 5,
+    "early_stopping_metric_history": [
+      0.3680225082741152,
+      0.45209637493879856,
+      0.4920356939869315,
+      0.5120816464865887,
+      0.5451460376237519,
+      0.5698795327529591,
+      0.5649823058861748,
+      0.5364856255364165,
+      0.5525577031974657,
+      0.5523473904273194,
+      0.6029289062948725,
+      0.5968955366723022,
+      0.5850986059625733,
+      0.5870736432791005,
+      0.6059364924641274,
+      0.5800353239416199,
+      0.6012499900789237,
+      0.6316951708970628,
+      0.6102042029426327,
+      0.5730570478421295,
+      0.6026163089996469,
+      0.6210863489948047,
+      0.5840318338236635,
+      0.6252913316886562,
+      0.6215824702582555,
+      0.639413111497301,
+      0.6562740079893542,
+      0.6552028811211744,
+      0.6696755614391608,
+      0.635822807675263,
+      0.6369691124809059,
+      0.643852405816325,
+      0.6371037019917222,
+      0.6235161857052459,
+      0.6619873919871944,
+      0.6462889345330144,
+      0.6252074251372367,
+      0.6387552871829428,
+      0.6492363364820355,
+      0.6523316240136217,
+      0.6459324036154377,
+      0.6648017766119758,
+      0.6631046415739704,
+      0.6555900227706026,
+      0.6753710753488826,
+      0.6645184590755412,
+      0.6764506699586398,
+      0.6719688647854681,
+      0.6736595791764183,
+      0.664132566383376,
+      0.6856255879688181,
+      0.661193336069222,
+      0.6791878698764044,
+      0.6772375393470375,
+      0.6724391828312005,
+      0.6721982641161255,
+      0.6931126205327376,
+      0.6870737216354024,
+      0.674118894852426,
+      0.6687215524519455,
+      0.6898842330436711,
+      0.6550638653780522,
+      0.6562638233342671,
+      0.6852630544512258,
+      0.6915871062871745,
+      0.6968468849366714,
+      0.7081449707045364,
+      0.6806049140490055,
+      0.6823346855094743,
+      0.7051650612547945,
+      0.6911775972863375,
+      0.7028848714591838,
+      0.6988107484958088,
+      0.6998629123322184,
+      0.6915621464564604,
+      0.7054403538773979,
+      0.7015548728064087,
+      0.716621604149485,
+      0.7169462859961276,
+      0.6980493591044153,
+      0.700467944546545,
+      0.7009306321581638,
+      0.7176413092695934,
+      0.7132220109749372,
+      0.7220885675261645,
+      0.7140364913006345,
+      0.7117215622954678,
+      0.720593342693092,
+      0.698962051665579,
+      0.7269564597453141,
+      0.7218844691333178,
+      0.7162893009293122,
+      0.7175300744765716,
+      0.7222502775540051,
+      0.7224605095079087,
+      0.7046500724274721,
+      0.72277523752025,
+      0.7246709285542224,
+      0.7278225817443259,
+      0.7291405587430236,
+      0.7324118189284512,
+      0.725562614391969,
+      0.7330394657513567,
+      0.7331825484208068,
+      0.7125526318782355,
+      0.7289929001133214,
+      0.7354147300822907,
+      0.7265823474085938,
+      0.739264759738149,
+      0.7317466355903052,
+      0.7374838059908894,
+      0.739327661625174,
+      0.7335866738314931,
+      0.7417395908206256,
+      0.7426771430707773,
+      0.744010209032164,
+      0.7337700124963293,
+      0.740181584849546,
+      0.7385633211328512,
+      0.7450574239795269,
+      0.7403557077624323,
+      0.7412445999789329,
+      0.7387365640683741,
+      0.7440522815705737,
+      0.7427981467439613,
+      0.7383699032400766,
+      0.7432760542535973,
+      0.7458554079163818,
+      0.7427164147790034,
+      0.7462377258996722,
+      0.7443976496865458,
+      0.747032290918361,
+      0.7477345615070458,
+      0.7458019079903419,
+      0.7492467742376558,
+      0.7433001062943383,
+      0.7454474829213519,
+      0.7477736839376233,
+      0.7475575732248406,
+      0.7490697207906613,
+      0.7481299599459248,
+      0.7469951236895903,
+      0.7483556468542294,
+      0.7480155896740742,
+      0.7488554919704128,
+      0.7490701230736997,
+      0.747320687377718,
+      0.7480338323530392,
+      0.7484849190895524,
+      0.7492667930159944
+    ]
+  },
+  "has_model_config": true,
+  "has_training_args": true,
+  "has_data_config": true,
+  "has_ema_state": true,
+  "config_path": "configs/whu1024_baseplus_explicit_coarse.py",
+  "neck_type": "pafpn",
+  "explicit_prompt_mode": "points_box_dense",
+  "p2_boundary_refiner": {
+    "enabled": true,
+    "p2_in_channels": 512,
+    "projected_channels": 64,
+    "mid_channels": 64,
+    "roi_output_size": 32,
+    "coarse_size": 64,
+    "spatial_scale": 0.25,
+    "sampling_ratio": 0,
+    "aligned": true,
+    "beta": 0.2,
+    "delta_logit_max": 2.0,
+    "foreground_thr": 0.5,
+    "boundary_band_radius": 2,
+    "search_band_radius": 4,
+    "max_search_coverage": 0.5,
+    "boundary_loss_weight": 0.05,
+    "zero_init_residual": true
+  },
+  "architecture_contract": {
+    "schema_version": 2,
+    "architecture_id": "c5v2_pafpn_coarse_p2_boundary_refiner_emb64",
+    "model_fingerprint": "36549a00a8282b2b9903d8c07c7cc9ce6f6e8fba3e93d58212de1999b1aa3dab"
+  },
+  "image_size": [
+    1024,
+    1024
+  ]
+}
+[RSSAM2VisionEncoder] Loading SAM2 base_plus model
+  - embed_dim: 112
+  - stages: (2, 3, 16, 3)
+  - backbone_channels: [896, 448, 224, 112]
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+[ImageEncoder(base_plus)] Loaded 306 keys. missing=0, unexpected=0
+[RSSAM2VisionEncoder] Applied LoRA with config:
+  - r=16, alpha=32
+  - target_modules=['qkv', 'proj']
+  - dropout=0.05
+  - modules_to_save=['neck']
+trainable params: 1,492,528 || all params: 70,599,344 || trainable%: 2.114081966540652
+[RSSAM2VisionEncoder] LoRA audit: backbone total=70599344, trainable=1492528, lora_trainable=1061424, unexpected_trainable=0
+[SAM2] using package: /home/wangcheng2021/project/new/sam2/sam2/__init__.py
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+[MaskDecoder] Loaded 131 keys. missing=0, unexpected=0
+  use_high_res_features: True
+  Has conv_s0: True
+  Has conv_s1: True
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+[MaskHead] Initialized no_mask_embed from SAM2 ckpt, frozen, abs_mean=0.01521041
+Loads checkpoint by local backend from path: /data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt
+[PromptEncoder] Loaded 17 keys. missing=0, unexpected=0
+2026-08-29 11:06:54,494 | INFO | Processed batch 1/314 (2 images)
+2026-08-29 11:06:56,117 | INFO | Processed batch 2/314 (4 images)
+2026-08-29 11:06:57,360 | INFO | Processed batch 3/314 (6 images)
+2026-08-29 11:06:58,054 | INFO | Processed batch 4/314 (8 images)
+2026-08-29 11:06:58,758 | INFO | Processed batch 5/314 (10 images)
+2026-08-29 11:06:59,767 | INFO | Processed batch 6/314 (12 images)
+2026-08-29 11:07:00,463 | INFO | Processed batch 7/314 (14 images)
+2026-08-29 11:07:02,362 | INFO | Processed batch 8/314 (16 images)
+2026-08-29 11:07:03,996 | INFO | Processed batch 9/314 (18 images)
+2026-08-29 11:07:05,449 | INFO | Processed batch 10/314 (20 images)
+2026-08-29 11:07:06,616 | INFO | Processed batch 11/314 (22 images)
+2026-08-29 11:07:07,285 | INFO | Processed batch 12/314 (24 images)
+2026-08-29 11:07:07,881 | INFO | Processed batch 13/314 (26 images)
+2026-08-29 11:07:09,992 | INFO | Processed batch 14/314 (28 images)
+2026-08-29 11:07:11,772 | INFO | Processed batch 15/314 (30 images)
+2026-08-29 11:07:13,144 | INFO | Processed batch 16/314 (32 images)
+2026-08-29 11:07:14,552 | INFO | Processed batch 17/314 (34 images)
+2026-08-29 11:07:15,343 | INFO | Processed batch 18/314 (36 images)
+2026-08-29 11:07:16,657 | INFO | Processed batch 19/314 (38 images)
+2026-08-29 11:07:18,563 | INFO | Processed batch 20/314 (40 images)
+2026-08-29 11:07:20,212 | INFO | Processed batch 21/314 (42 images)
+2026-08-29 11:07:21,646 | INFO | Processed batch 22/314 (44 images)
+2026-08-29 11:07:22,592 | INFO | Processed batch 23/314 (46 images)
+2026-08-29 11:07:23,134 | INFO | Processed batch 24/314 (48 images)
+2026-08-29 11:07:23,787 | INFO | Processed batch 25/314 (50 images)
+2026-08-29 11:07:25,816 | INFO | Processed batch 26/314 (52 images)
+2026-08-29 11:07:27,494 | INFO | Processed batch 27/314 (54 images)
+2026-08-29 11:07:28,858 | INFO | Processed batch 28/314 (56 images)
+2026-08-29 11:07:29,571 | INFO | Processed batch 29/314 (58 images)
+2026-08-29 11:07:30,237 | INFO | Processed batch 30/314 (60 images)
+2026-08-29 11:07:30,491 | INFO | Processed batch 31/314 (62 images)
+2026-08-29 11:07:32,394 | INFO | Processed batch 32/314 (64 images)
+2026-08-29 11:07:34,034 | INFO | Processed batch 33/314 (66 images)
+2026-08-29 11:07:35,679 | INFO | Processed batch 34/314 (68 images)
+2026-08-29 11:07:36,634 | INFO | Processed batch 35/314 (70 images)
+2026-08-29 11:07:37,251 | INFO | Processed batch 36/314 (72 images)
+2026-08-29 11:07:37,503 | INFO | Processed batch 37/314 (74 images)
+2026-08-29 11:07:39,190 | INFO | Processed batch 38/314 (76 images)
+2026-08-29 11:07:40,784 | INFO | Processed batch 39/314 (78 images)
+2026-08-29 11:07:41,786 | INFO | Processed batch 40/314 (80 images)
+2026-08-29 11:07:43,098 | INFO | Processed batch 41/314 (82 images)
+2026-08-29 11:07:43,861 | INFO | Processed batch 42/314 (84 images)
+2026-08-29 11:07:44,312 | INFO | Processed batch 43/314 (86 images)
+2026-08-29 11:07:45,013 | INFO | Processed batch 44/314 (88 images)
+2026-08-29 11:07:46,232 | INFO | Processed batch 45/314 (90 images)
+2026-08-29 11:07:46,836 | INFO | Processed batch 46/314 (92 images)
+2026-08-29 11:07:47,697 | INFO | Processed batch 47/314 (94 images)
+2026-08-29 11:07:48,285 | INFO | Processed batch 48/314 (96 images)
+2026-08-29 11:07:49,557 | INFO | Processed batch 49/314 (98 images)
+2026-08-29 11:07:49,949 | INFO | Processed batch 50/314 (100 images)
+2026-08-29 11:07:50,371 | INFO | Processed batch 51/314 (102 images)
+2026-08-29 11:07:50,835 | INFO | Processed batch 52/314 (104 images)
+2026-08-29 11:07:51,417 | INFO | Processed batch 53/314 (106 images)
+2026-08-29 11:07:51,891 | INFO | Processed batch 54/314 (108 images)
+2026-08-29 11:07:52,723 | INFO | Processed batch 55/314 (110 images)
+2026-08-29 11:07:53,304 | INFO | Processed batch 56/314 (112 images)
+2026-08-29 11:07:54,048 | INFO | Processed batch 57/314 (114 images)
+2026-08-29 11:07:54,562 | INFO | Processed batch 58/314 (116 images)
+2026-08-29 11:07:54,978 | INFO | Processed batch 59/314 (118 images)
+2026-08-29 11:07:55,368 | INFO | Processed batch 60/314 (120 images)
+2026-08-29 11:07:56,032 | INFO | Processed batch 61/314 (122 images)
+2026-08-29 11:07:56,511 | INFO | Processed batch 62/314 (124 images)
+2026-08-29 11:07:57,021 | INFO | Processed batch 63/314 (126 images)
+2026-08-29 11:07:57,506 | INFO | Processed batch 64/314 (128 images)
+2026-08-29 11:07:57,958 | INFO | Processed batch 65/314 (130 images)
+2026-08-29 11:07:58,855 | INFO | Processed batch 66/314 (132 images)
+2026-08-29 11:07:59,673 | INFO | Processed batch 67/314 (134 images)
+2026-08-29 11:08:00,457 | INFO | Processed batch 68/314 (136 images)
+2026-08-29 11:08:01,033 | INFO | Processed batch 69/314 (138 images)
+2026-08-29 11:08:01,516 | INFO | Processed batch 70/314 (140 images)
+2026-08-29 11:08:02,160 | INFO | Processed batch 71/314 (142 images)
+2026-08-29 11:08:03,490 | INFO | Processed batch 72/314 (144 images)
+2026-08-29 11:08:05,071 | INFO | Processed batch 73/314 (146 images)
+2026-08-29 11:08:05,611 | INFO | Processed batch 74/314 (148 images)
+2026-08-29 11:08:06,888 | INFO | Processed batch 75/314 (150 images)
+2026-08-29 11:08:07,528 | INFO | Processed batch 76/314 (152 images)
+2026-08-29 11:08:08,484 | INFO | Processed batch 77/314 (154 images)
+2026-08-29 11:08:09,770 | INFO | Processed batch 78/314 (156 images)
+2026-08-29 11:08:10,534 | INFO | Processed batch 79/314 (158 images)
+2026-08-29 11:08:12,021 | INFO | Processed batch 80/314 (160 images)
+2026-08-29 11:08:13,404 | INFO | Processed batch 81/314 (162 images)
+2026-08-29 11:08:14,452 | INFO | Processed batch 82/314 (164 images)
+2026-08-29 11:08:15,673 | INFO | Processed batch 83/314 (166 images)
+2026-08-29 11:08:16,226 | INFO | Processed batch 84/314 (168 images)
+2026-08-29 11:08:16,550 | INFO | Processed batch 85/314 (170 images)
+2026-08-29 11:08:17,852 | INFO | Processed batch 86/314 (172 images)
+2026-08-29 11:08:19,348 | INFO | Processed batch 87/314 (174 images)
+2026-08-29 11:08:20,379 | INFO | Processed batch 88/314 (176 images)
+2026-08-29 11:08:20,956 | INFO | Processed batch 89/314 (178 images)
+2026-08-29 11:08:21,259 | INFO | Processed batch 90/314 (180 images)
+2026-08-29 11:08:21,577 | INFO | Processed batch 91/314 (182 images)
+2026-08-29 11:08:22,816 | INFO | Processed batch 92/314 (184 images)
+2026-08-29 11:08:24,098 | INFO | Processed batch 93/314 (186 images)
+2026-08-29 11:08:24,600 | INFO | Processed batch 94/314 (188 images)
+2026-08-29 11:08:24,905 | INFO | Processed batch 95/314 (190 images)
+2026-08-29 11:08:25,356 | INFO | Processed batch 96/314 (192 images)
+2026-08-29 11:08:25,635 | INFO | Processed batch 97/314 (194 images)
+2026-08-29 11:08:26,786 | INFO | Processed batch 98/314 (196 images)
+2026-08-29 11:08:27,894 | INFO | Processed batch 99/314 (198 images)
+2026-08-29 11:08:28,712 | INFO | Processed batch 100/314 (200 images)
+2026-08-29 11:08:29,092 | INFO | Processed batch 101/314 (202 images)
+2026-08-29 11:08:29,339 | INFO | Processed batch 102/314 (204 images)
+2026-08-29 11:08:29,632 | INFO | Processed batch 103/314 (206 images)
+2026-08-29 11:08:30,536 | INFO | Processed batch 104/314 (208 images)
+2026-08-29 11:08:31,962 | INFO | Processed batch 105/314 (210 images)
+2026-08-29 11:08:33,066 | INFO | Processed batch 106/314 (212 images)
+2026-08-29 11:08:33,360 | INFO | Processed batch 107/314 (214 images)
+2026-08-29 11:08:33,658 | INFO | Processed batch 108/314 (216 images)
+2026-08-29 11:08:34,792 | INFO | Processed batch 109/314 (218 images)
+2026-08-29 11:08:35,967 | INFO | Processed batch 110/314 (220 images)
+2026-08-29 11:08:36,955 | INFO | Processed batch 111/314 (222 images)
+2026-08-29 11:08:37,755 | INFO | Processed batch 112/314 (224 images)
+2026-08-29 11:08:38,718 | INFO | Processed batch 113/314 (226 images)
+2026-08-29 11:08:39,242 | INFO | Processed batch 114/314 (228 images)
+2026-08-29 11:08:40,676 | INFO | Processed batch 115/314 (230 images)
+2026-08-29 11:08:41,950 | INFO | Processed batch 116/314 (232 images)
+2026-08-29 11:08:42,593 | INFO | Processed batch 117/314 (234 images)
+2026-08-29 11:08:43,453 | INFO | Processed batch 118/314 (236 images)
+2026-08-29 11:08:45,253 | INFO | Processed batch 119/314 (238 images)
+2026-08-29 11:08:46,799 | INFO | Processed batch 120/314 (240 images)
+2026-08-29 11:08:48,245 | INFO | Processed batch 121/314 (242 images)
+2026-08-29 11:08:49,539 | INFO | Processed batch 122/314 (244 images)
+2026-08-29 11:08:50,232 | INFO | Processed batch 123/314 (246 images)
+2026-08-29 11:08:50,614 | INFO | Processed batch 124/314 (248 images)
+2026-08-29 11:08:51,796 | INFO | Processed batch 125/314 (250 images)
+2026-08-29 11:08:53,340 | INFO | Processed batch 126/314 (252 images)
+2026-08-29 11:08:54,786 | INFO | Processed batch 127/314 (254 images)
+2026-08-29 11:08:56,112 | INFO | Processed batch 128/314 (256 images)
+2026-08-29 11:08:56,739 | INFO | Processed batch 129/314 (258 images)
+2026-08-29 11:08:57,042 | INFO | Processed batch 130/314 (260 images)
+2026-08-29 11:08:57,711 | INFO | Processed batch 131/314 (262 images)
+2026-08-29 11:08:59,489 | INFO | Processed batch 132/314 (264 images)
+2026-08-29 11:09:00,802 | INFO | Processed batch 133/314 (266 images)
+2026-08-29 11:09:01,509 | INFO | Processed batch 134/314 (268 images)
+2026-08-29 11:09:01,979 | INFO | Processed batch 135/314 (270 images)
+2026-08-29 11:09:02,278 | INFO | Processed batch 136/314 (272 images)
+2026-08-29 11:09:02,837 | INFO | Processed batch 137/314 (274 images)
+2026-08-29 11:09:04,349 | INFO | Processed batch 138/314 (276 images)
+2026-08-29 11:09:05,827 | INFO | Processed batch 139/314 (278 images)
+2026-08-29 11:09:06,380 | INFO | Processed batch 140/314 (280 images)
+2026-08-29 11:09:07,259 | INFO | Processed batch 141/314 (282 images)
+2026-08-29 11:09:07,545 | INFO | Processed batch 142/314 (284 images)
+2026-08-29 11:09:07,871 | INFO | Processed batch 143/314 (286 images)
+2026-08-29 11:09:08,837 | INFO | Processed batch 144/314 (288 images)
+2026-08-29 11:09:10,050 | INFO | Processed batch 145/314 (290 images)
+2026-08-29 11:09:10,742 | INFO | Processed batch 146/314 (292 images)
+2026-08-29 11:09:11,591 | INFO | Processed batch 147/314 (294 images)
+2026-08-29 11:09:11,918 | INFO | Processed batch 148/314 (296 images)
+2026-08-29 11:09:12,226 | INFO | Processed batch 149/314 (298 images)
+2026-08-29 11:09:12,670 | INFO | Processed batch 150/314 (300 images)
+2026-08-29 11:09:13,060 | INFO | Processed batch 151/314 (302 images)
+2026-08-29 11:09:14,126 | INFO | Processed batch 152/314 (304 images)
+2026-08-29 11:09:15,044 | INFO | Processed batch 153/314 (306 images)
+2026-08-29 11:09:15,409 | INFO | Processed batch 154/314 (308 images)
+2026-08-29 11:09:15,722 | INFO | Processed batch 155/314 (310 images)
+2026-08-29 11:09:15,969 | INFO | Processed batch 156/314 (312 images)
+2026-08-29 11:09:16,382 | INFO | Processed batch 157/314 (314 images)
+2026-08-29 11:09:16,908 | INFO | Processed batch 158/314 (316 images)
+2026-08-29 11:09:17,853 | INFO | Processed batch 159/314 (318 images)
+2026-08-29 11:09:18,153 | INFO | Processed batch 160/314 (320 images)
+2026-08-29 11:09:18,399 | INFO | Processed batch 161/314 (322 images)
+2026-08-29 11:09:18,686 | INFO | Processed batch 162/314 (324 images)
+2026-08-29 11:09:18,987 | INFO | Processed batch 163/314 (326 images)
+2026-08-29 11:09:19,392 | INFO | Processed batch 164/314 (328 images)
+2026-08-29 11:09:20,065 | INFO | Processed batch 165/314 (330 images)
+2026-08-29 11:09:20,422 | INFO | Processed batch 166/314 (332 images)
+2026-08-29 11:09:20,669 | INFO | Processed batch 167/314 (334 images)
+2026-08-29 11:09:21,018 | INFO | Processed batch 168/314 (336 images)
+2026-08-29 11:09:21,265 | INFO | Processed batch 169/314 (338 images)
+2026-08-29 11:09:21,639 | INFO | Processed batch 170/314 (340 images)
+2026-08-29 11:09:21,950 | INFO | Processed batch 171/314 (342 images)
+2026-08-29 11:09:22,409 | INFO | Processed batch 172/314 (344 images)
+2026-08-29 11:09:22,710 | INFO | Processed batch 173/314 (346 images)
+2026-08-29 11:09:22,956 | INFO | Processed batch 174/314 (348 images)
+2026-08-29 11:09:23,236 | INFO | Processed batch 175/314 (350 images)
+2026-08-29 11:09:23,551 | INFO | Processed batch 176/314 (352 images)
+2026-08-29 11:09:23,943 | INFO | Processed batch 177/314 (354 images)
+2026-08-29 11:09:24,314 | INFO | Processed batch 178/314 (356 images)
+2026-08-29 11:09:24,658 | INFO | Processed batch 179/314 (358 images)
+2026-08-29 11:09:24,945 | INFO | Processed batch 180/314 (360 images)
+2026-08-29 11:09:25,287 | INFO | Processed batch 181/314 (362 images)
+2026-08-29 11:09:25,625 | INFO | Processed batch 182/314 (364 images)
+2026-08-29 11:09:25,941 | INFO | Processed batch 183/314 (366 images)
+2026-08-29 11:09:26,224 | INFO | Processed batch 184/314 (368 images)
+2026-08-29 11:09:26,655 | INFO | Processed batch 185/314 (370 images)
+2026-08-29 11:09:26,904 | INFO | Processed batch 186/314 (372 images)
+2026-08-29 11:09:27,261 | INFO | Processed batch 187/314 (374 images)
+2026-08-29 11:09:27,579 | INFO | Processed batch 188/314 (376 images)
+2026-08-29 11:09:28,039 | INFO | Processed batch 189/314 (378 images)
+2026-08-29 11:09:28,371 | INFO | Processed batch 190/314 (380 images)
+2026-08-29 11:09:28,672 | INFO | Processed batch 191/314 (382 images)
+2026-08-29 11:09:28,918 | INFO | Processed batch 192/314 (384 images)
+2026-08-29 11:09:29,218 | INFO | Processed batch 193/314 (386 images)
+2026-08-29 11:09:29,553 | INFO | Processed batch 194/314 (388 images)
+2026-08-29 11:09:29,937 | INFO | Processed batch 195/314 (390 images)
+2026-08-29 11:09:30,223 | INFO | Processed batch 196/314 (392 images)
+2026-08-29 11:09:30,563 | INFO | Processed batch 197/314 (394 images)
+2026-08-29 11:09:30,811 | INFO | Processed batch 198/314 (396 images)
+2026-08-29 11:09:31,059 | INFO | Processed batch 199/314 (398 images)
+2026-08-29 11:09:31,358 | INFO | Processed batch 200/314 (400 images)
+2026-08-29 11:09:31,658 | INFO | Processed batch 201/314 (402 images)
+2026-08-29 11:09:31,954 | INFO | Processed batch 202/314 (404 images)
+2026-08-29 11:09:32,256 | INFO | Processed batch 203/314 (406 images)
+2026-08-29 11:09:32,584 | INFO | Processed batch 204/314 (408 images)
+2026-08-29 11:09:32,832 | INFO | Processed batch 205/314 (410 images)
+2026-08-29 11:09:33,194 | INFO | Processed batch 206/314 (412 images)
+2026-08-29 11:09:33,508 | INFO | Processed batch 207/314 (414 images)
+2026-08-29 11:09:33,791 | INFO | Processed batch 208/314 (416 images)
+2026-08-29 11:09:34,091 | INFO | Processed batch 209/314 (418 images)
+2026-08-29 11:09:34,450 | INFO | Processed batch 210/314 (420 images)
+2026-08-29 11:09:34,740 | INFO | Processed batch 211/314 (422 images)
+2026-08-29 11:09:35,194 | INFO | Processed batch 212/314 (424 images)
+2026-08-29 11:09:35,567 | INFO | Processed batch 213/314 (426 images)
+2026-08-29 11:09:35,814 | INFO | Processed batch 214/314 (428 images)
+2026-08-29 11:09:36,063 | INFO | Processed batch 215/314 (430 images)
+2026-08-29 11:09:36,400 | INFO | Processed batch 216/314 (432 images)
+2026-08-29 11:09:36,837 | INFO | Processed batch 217/314 (434 images)
+2026-08-29 11:09:37,315 | INFO | Processed batch 218/314 (436 images)
+2026-08-29 11:09:37,686 | INFO | Processed batch 219/314 (438 images)
+2026-08-29 11:09:37,965 | INFO | Processed batch 220/314 (440 images)
+2026-08-29 11:09:38,241 | INFO | Processed batch 221/314 (442 images)
+2026-08-29 11:09:38,490 | INFO | Processed batch 222/314 (444 images)
+2026-08-29 11:09:39,073 | INFO | Processed batch 223/314 (446 images)
+2026-08-29 11:09:39,521 | INFO | Processed batch 224/314 (448 images)
+2026-08-29 11:09:39,927 | INFO | Processed batch 225/314 (450 images)
+2026-08-29 11:09:40,287 | INFO | Processed batch 226/314 (452 images)
+2026-08-29 11:09:40,577 | INFO | Processed batch 227/314 (454 images)
+2026-08-29 11:09:40,825 | INFO | Processed batch 228/314 (456 images)
+2026-08-29 11:09:41,072 | INFO | Processed batch 229/314 (458 images)
+2026-08-29 11:09:41,440 | INFO | Processed batch 230/314 (460 images)
+2026-08-29 11:09:41,775 | INFO | Processed batch 231/314 (462 images)
+2026-08-29 11:09:42,160 | INFO | Processed batch 232/314 (464 images)
+2026-08-29 11:09:42,435 | INFO | Processed batch 233/314 (466 images)
+2026-08-29 11:09:42,715 | INFO | Processed batch 234/314 (468 images)
+2026-08-29 11:09:43,098 | INFO | Processed batch 235/314 (470 images)
+2026-08-29 11:09:43,463 | INFO | Processed batch 236/314 (472 images)
+2026-08-29 11:09:43,839 | INFO | Processed batch 237/314 (474 images)
+2026-08-29 11:09:44,200 | INFO | Processed batch 238/314 (476 images)
+2026-08-29 11:09:44,539 | INFO | Processed batch 239/314 (478 images)
+2026-08-29 11:09:44,821 | INFO | Processed batch 240/314 (480 images)
+2026-08-29 11:09:45,096 | INFO | Processed batch 241/314 (482 images)
+2026-08-29 11:09:45,378 | INFO | Processed batch 242/314 (484 images)
+2026-08-29 11:09:45,896 | INFO | Processed batch 243/314 (486 images)
+2026-08-29 11:09:46,301 | INFO | Processed batch 244/314 (488 images)
+2026-08-29 11:09:46,608 | INFO | Processed batch 245/314 (490 images)
+2026-08-29 11:09:46,986 | INFO | Processed batch 246/314 (492 images)
+2026-08-29 11:09:47,233 | INFO | Processed batch 247/314 (494 images)
+2026-08-29 11:09:47,482 | INFO | Processed batch 248/314 (496 images)
+2026-08-29 11:09:47,796 | INFO | Processed batch 249/314 (498 images)
+2026-08-29 11:09:48,278 | INFO | Processed batch 250/314 (500 images)
+2026-08-29 11:09:48,595 | INFO | Processed batch 251/314 (502 images)
+2026-08-29 11:09:48,871 | INFO | Processed batch 252/314 (504 images)
+2026-08-29 11:09:49,151 | INFO | Processed batch 253/314 (506 images)
+2026-08-29 11:09:49,399 | INFO | Processed batch 254/314 (508 images)
+2026-08-29 11:09:49,648 | INFO | Processed batch 255/314 (510 images)
+2026-08-29 11:09:49,999 | INFO | Processed batch 256/314 (512 images)
+2026-08-29 11:09:50,292 | INFO | Processed batch 257/314 (514 images)
+2026-08-29 11:09:50,540 | INFO | Processed batch 258/314 (516 images)
+2026-08-29 11:09:50,816 | INFO | Processed batch 259/314 (518 images)
+2026-08-29 11:09:51,092 | INFO | Processed batch 260/314 (520 images)
+2026-08-29 11:09:51,340 | INFO | Processed batch 261/314 (522 images)
+2026-08-29 11:09:51,642 | INFO | Processed batch 262/314 (524 images)
+2026-08-29 11:09:51,963 | INFO | Processed batch 263/314 (526 images)
+2026-08-29 11:09:52,301 | INFO | Processed batch 264/314 (528 images)
+2026-08-29 11:09:52,661 | INFO | Processed batch 265/314 (530 images)
+2026-08-29 11:09:52,984 | INFO | Processed batch 266/314 (532 images)
+2026-08-29 11:09:53,266 | INFO | Processed batch 267/314 (534 images)
+2026-08-29 11:09:53,564 | INFO | Processed batch 268/314 (536 images)
+2026-08-29 11:09:53,919 | INFO | Processed batch 269/314 (538 images)
+2026-08-29 11:09:54,205 | INFO | Processed batch 270/314 (540 images)
+2026-08-29 11:09:54,531 | INFO | Processed batch 271/314 (542 images)
+2026-08-29 11:09:55,056 | INFO | Processed batch 272/314 (544 images)
+2026-08-29 11:09:55,353 | INFO | Processed batch 273/314 (546 images)
+2026-08-29 11:09:55,629 | INFO | Processed batch 274/314 (548 images)
+2026-08-29 11:09:55,877 | INFO | Processed batch 275/314 (550 images)
+2026-08-29 11:09:56,172 | INFO | Processed batch 276/314 (552 images)
+2026-08-29 11:09:56,578 | INFO | Processed batch 277/314 (554 images)
+2026-08-29 11:09:56,873 | INFO | Processed batch 278/314 (556 images)
+2026-08-29 11:09:57,522 | INFO | Processed batch 279/314 (558 images)
+2026-08-29 11:09:57,775 | INFO | Processed batch 280/314 (560 images)
+2026-08-29 11:09:58,052 | INFO | Processed batch 281/314 (562 images)
+2026-08-29 11:09:58,328 | INFO | Processed batch 282/314 (564 images)
+2026-08-29 11:09:58,647 | INFO | Processed batch 283/314 (566 images)
+2026-08-29 11:09:58,949 | INFO | Processed batch 284/314 (568 images)
+2026-08-29 11:09:59,197 | INFO | Processed batch 285/314 (570 images)
+2026-08-29 11:09:59,446 | INFO | Processed batch 286/314 (572 images)
+2026-08-29 11:09:59,730 | INFO | Processed batch 287/314 (574 images)
+2026-08-29 11:10:00,018 | INFO | Processed batch 288/314 (576 images)
+2026-08-29 11:10:00,336 | INFO | Processed batch 289/314 (578 images)
+2026-08-29 11:10:00,657 | INFO | Processed batch 290/314 (580 images)
+2026-08-29 11:10:00,907 | INFO | Processed batch 291/314 (582 images)
+2026-08-29 11:10:01,158 | INFO | Processed batch 292/314 (584 images)
+2026-08-29 11:10:01,433 | INFO | Processed batch 293/314 (586 images)
+2026-08-29 11:10:01,720 | INFO | Processed batch 294/314 (588 images)
+2026-08-29 11:10:02,305 | INFO | Processed batch 295/314 (590 images)
+2026-08-29 11:10:02,628 | INFO | Processed batch 296/314 (592 images)
+2026-08-29 11:10:03,000 | INFO | Processed batch 297/314 (594 images)
+2026-08-29 11:10:03,402 | INFO | Processed batch 298/314 (596 images)
+2026-08-29 11:10:03,730 | INFO | Processed batch 299/314 (598 images)
+2026-08-29 11:10:04,080 | INFO | Processed batch 300/314 (600 images)
+2026-08-29 11:10:04,624 | INFO | Processed batch 301/314 (602 images)
+2026-08-29 11:10:04,971 | INFO | Processed batch 302/314 (604 images)
+2026-08-29 11:10:05,639 | INFO | Processed batch 303/314 (606 images)
+2026-08-29 11:10:06,030 | INFO | Processed batch 304/314 (608 images)
+2026-08-29 11:10:06,459 | INFO | Processed batch 305/314 (610 images)
+2026-08-29 11:10:06,818 | INFO | Processed batch 306/314 (612 images)
+2026-08-29 11:10:07,407 | INFO | Processed batch 307/314 (614 images)
+2026-08-29 11:10:07,830 | INFO | Processed batch 308/314 (616 images)
+2026-08-29 11:10:08,543 | INFO | Processed batch 309/314 (618 images)
+2026-08-29 11:10:08,882 | INFO | Processed batch 310/314 (620 images)
+2026-08-29 11:10:09,173 | INFO | Processed batch 311/314 (622 images)
+2026-08-29 11:10:09,509 | INFO | Processed batch 312/314 (624 images)
+2026-08-29 11:10:10,010 | INFO | Processed batch 313/314 (626 images)
+2026-08-29 11:10:10,337 | INFO | Processed batch 314/314 (627 images)
+[DEBUG] RSSAM2PAFPN inputs: 4 tensors
+  [0] shape=torch.Size([2, 256, 256, 256]), dtype=torch.float32
+  [1] shape=torch.Size([2, 256, 128, 128]), dtype=torch.float32
+  [2] shape=torch.Size([2, 256, 64, 64]), dtype=torch.float32
+  [3] shape=torch.Size([2, 256, 32, 32]), dtype=torch.float32
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.02s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=15.03s).
+Accumulating evaluation results...
+DONE (t=0.21s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.750
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.915
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.867
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.405
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.784
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.837
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.027
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.198
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.779
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.486
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.815
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.863
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.02s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=15.08s).
+Accumulating evaluation results...
+DONE (t=0.21s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.786
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.914
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.868
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.427
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.816
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.890
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.028
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.208
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.820
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.518
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.852
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.921
+{
+  "checkpoint": "/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/paper_promptminer_rd_p2_whu_full_fast_tr1.0_va1.0/best_model_epoch150_ema_merged.pth",
+  "checkpoint_schema_version": 2,
+  "epoch": 149,
+  "best_metrics": {
+    "best_train_loss": 0.29904485880853865,
+    "best_val_loss": Infinity,
+    "best_segm_map": 0.7492667930159944,
+    "best_bbox_score": 0.0,
+    "best_bbox_metric": "",
+    "best_composite_score": 0.0,
+    "best_composite_metric": "0.5*bbox/mAP_75+0.5*segm/mAP_75",
+    "best_early_stopping_score": 0.7481132081908959,
+    "early_stopping_metric": "segm/mAP",
+    "early_counter": 6,
+    "early_stopping_start_epoch": 90,
+    "early_stopping_min_delta": 0.0005,
+    "early_stopping_smooth_window": 5,
+    "early_stopping_metric_history": [
+      0.3680225082741152,
+      0.45209637493879856,
+      0.4920356939869315,
+      0.5120816464865887,
+      0.5451460376237519,
+      0.5698795327529591,
+      0.5649823058861748,
+      0.5364856255364165,
+      0.5525577031974657,
+      0.5523473904273194,
+      0.6029289062948725,
+      0.5968955366723022,
+      0.5850986059625733,
+      0.5870736432791005,
+      0.6059364924641274,
+      0.5800353239416199,
+      0.6012499900789237,
+      0.6316951708970628,
+      0.6102042029426327,
+      0.5730570478421295,
+      0.6026163089996469,
+      0.6210863489948047,
+      0.5840318338236635,
+      0.6252913316886562,
+      0.6215824702582555,
+      0.639413111497301,
+      0.6562740079893542,
+      0.6552028811211744,
+      0.6696755614391608,
+      0.635822807675263,
+      0.6369691124809059,
+      0.643852405816325,
+      0.6371037019917222,
+      0.6235161857052459,
+      0.6619873919871944,
+      0.6462889345330144,
+      0.6252074251372367,
+      0.6387552871829428,
+      0.6492363364820355,
+      0.6523316240136217,
+      0.6459324036154377,
+      0.6648017766119758,
+      0.6631046415739704,
+      0.6555900227706026,
+      0.6753710753488826,
+      0.6645184590755412,
+      0.6764506699586398,
+      0.6719688647854681,
+      0.6736595791764183,
+      0.664132566383376,
+      0.6856255879688181,
+      0.661193336069222,
+      0.6791878698764044,
+      0.6772375393470375,
+      0.6724391828312005,
+      0.6721982641161255,
+      0.6931126205327376,
+      0.6870737216354024,
+      0.674118894852426,
+      0.6687215524519455,
+      0.6898842330436711,
+      0.6550638653780522,
+      0.6562638233342671,
+      0.6852630544512258,
+      0.6915871062871745,
+      0.6968468849366714,
+      0.7081449707045364,
+      0.6806049140490055,
+      0.6823346855094743,
+      0.7051650612547945,
+      0.6911775972863375,
+      0.7028848714591838,
+      0.6988107484958088,
+      0.6998629123322184,
+      0.6915621464564604,
+      0.7054403538773979,
+      0.7015548728064087,
+      0.716621604149485,
+      0.7169462859961276,
+      0.6980493591044153,
+      0.700467944546545,
+      0.7009306321581638,
+      0.7176413092695934,
+      0.7132220109749372,
+      0.7220885675261645,
+      0.7140364913006345,
+      0.7117215622954678,
+      0.720593342693092,
+      0.698962051665579,
+      0.7269564597453141,
+      0.7218844691333178,
+      0.7162893009293122,
+      0.7175300744765716,
+      0.7222502775540051,
+      0.7224605095079087,
+      0.7046500724274721,
+      0.72277523752025,
+      0.7246709285542224,
+      0.7278225817443259,
+      0.7291405587430236,
+      0.7324118189284512,
+      0.725562614391969,
+      0.7330394657513567,
+      0.7331825484208068,
+      0.7125526318782355,
+      0.7289929001133214,
+      0.7354147300822907,
+      0.7265823474085938,
+      0.739264759738149,
+      0.7317466355903052,
+      0.7374838059908894,
+      0.739327661625174,
+      0.7335866738314931,
+      0.7417395908206256,
+      0.7426771430707773,
+      0.744010209032164,
+      0.7337700124963293,
+      0.740181584849546,
+      0.7385633211328512,
+      0.7450574239795269,
+      0.7403557077624323,
+      0.7412445999789329,
+      0.7387365640683741,
+      0.7440522815705737,
+      0.7427981467439613,
+      0.7383699032400766,
+      0.7432760542535973,
+      0.7458554079163818,
+      0.7427164147790034,
+      0.7462377258996722,
+      0.7443976496865458,
+      0.747032290918361,
+      0.7477345615070458,
+      0.7458019079903419,
+      0.7492467742376558,
+      0.7433001062943383,
+      0.7454474829213519,
+      0.7477736839376233,
+      0.7475575732248406,
+      0.7490697207906613,
+      0.7481299599459248,
+      0.7469951236895903,
+      0.7483556468542294,
+      0.7480155896740742,
+      0.7488554919704128,
+      0.7490701230736997,
+      0.747320687377718,
+      0.7480338323530392,
+      0.7484849190895524,
+      0.7492667930159944
+    ]
+  },
+  "has_model_config": true,
+  "has_training_args": true,
+  "has_data_config": true,
+  "has_ema_state": true,
+  "config_path": "configs/whu1024_baseplus_explicit_coarse.py",
+  "neck_type": "pafpn",
+  "explicit_prompt_mode": "points_box_dense",
+  "p2_boundary_refiner": {
+    "enabled": true,
+    "p2_in_channels": 512,
+    "projected_channels": 64,
+    "mid_channels": 64,
+    "roi_output_size": 32,
+    "coarse_size": 64,
+    "spatial_scale": 0.25,
+    "sampling_ratio": 0,
+    "aligned": true,
+    "beta": 0.2,
+    "delta_logit_max": 2.0,
+    "foreground_thr": 0.5,
+    "boundary_band_radius": 2,
+    "search_band_radius": 4,
+    "max_search_coverage": 0.5,
+    "boundary_loss_weight": 0.05,
+    "zero_init_residual": true
+  },
+  "architecture_contract": {
+    "schema_version": 2,
+    "architecture_id": "c5v2_pafpn_coarse_p2_boundary_refiner_emb64",
+    "model_fingerprint": "36549a00a8282b2b9903d8c07c7cc9ce6f6e8fba3e93d58212de1999b1aa3dab"
+  },
+  "image_size": [
+    1024,
+    1024
+  ],
+  "config_source": "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/configs/whu1024_baseplus_explicit_coarse.py",
+  "sam2_repo": "/home/wangcheng2021/project/new/sam2",
+  "weights": "model",
+  "strict": true,
+  "disable_p2": false,
+  "p2_beta_override": null,
+  "load_report": {
+    "missing_keys": [],
+    "unexpected_keys": []
+  },
+  "dataset": {
+    "data_root": "/data/wangcheng/dataset/WHU",
+    "ann_file": "2.4 annotation/annotation/validation.json",
+    "image_subdir": "2.3 valid/validation",
+    "image_size": [
+      1024,
+      1024
+    ],
+    "batch_size": 2,
+    "single_class": true
+  },
+  "device": "cuda:0",
+  "score_thr": 0.0,
+  "bbox_score_key": "scores",
+  "segm_score_key": "scores",
+  "segm_score_mode": "detector",
+  "mask_postprocess": "roi_local_bbox_paste",
+  "processed_images": 627,
+  "ground_truth_instances": 15926,
+  "predicted_instances": 16360,
+  "predictions": "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/\"/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/paper_promptminer_rd_p2_whu_full_fast_tr1.0_va1.0/inference_validation_ema_merged/predictions.json",
+  "metrics": {
+    "segm/mAP": 0.7498609004575337,
+    "segm/mAP_50": 0.9151041679768591,
+    "segm/mAP_75": 0.8672248443013318,
+    "segm/mAP_s": 0.4045265879782905,
+    "segm/mAP_m": 0.7835843426402436,
+    "segm/mAP_l": 0.8367789882585597,
+    "segm/AR@1": 0.02694336305412533,
+    "segm/AR@10": 0.1981727991962828,
+    "segm/AR@100": 0.7787391686550295,
+    "segm/AR_s": 0.485603112840467,
+    "segm/AR_m": 0.8150090780714141,
+    "segm/AR_l": 0.8628225806451612,
+    "bbox/mAP": 0.7859692017716556,
+    "bbox/mAP_50": 0.9143137863123137,
+    "bbox/mAP_75": 0.8678996047832096,
+    "bbox/mAP_s": 0.42725223473383594,
+    "bbox/mAP_m": 0.8158639976325474,
+    "bbox/mAP_l": 0.8902401599327648,
+    "bbox/AR@1": 0.02823684541002135,
+    "bbox/AR@10": 0.20816903177194526,
+    "bbox/AR@100": 0.8200301393947005,
+    "bbox/AR_s": 0.5176394293125811,
+    "bbox/AR_m": 0.8523199515836192,
+    "bbox/AR_l": 0.9205645161290323
+  }
+}
+inference complete: /home/wangcheng2021/project/new/portable_sam2_explicit_coarse/"/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/paper_promptminer_rd_p2_whu_full_fast_tr1.0_va1.0/inference_validation_ema_merged
