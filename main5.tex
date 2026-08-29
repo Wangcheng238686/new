@@ -462,7 +462,7 @@ For all SynSU-Build experiments, target-view and UAV images are deterministicall
 
 \noindent\textit{WHU single-stream comparison.}
 \label{sec:whu}
-Table~\ref{tab:whu} reports COCO-style AP, AP$_{50}$, and AP$_{75}$ for bounding boxes and instance masks on the WHU building benchmark. The table covers conventional two-stage and single-stage methods, remote-sensing-specific architectures, and foundation-model-based approaches. The comparison combines values collected from the cited literature with our P2PFormer reproduction. Because the rows are not generated under one controlled implementation and may differ in training schedule, backbone, and data processing, they provide a broad reference rather than a strictly controlled ranking.
+Table~\ref{tab:whu} reports COCO-style AP, AP$_{50}$, and AP$_{75}$ for bounding boxes and instance masks on the WHU building benchmark. The table covers conventional two-stage and single-stage methods, remote-sensing-specific architectures, and foundation-model-based approaches. Six baselines marked with $\dagger$ are rerun under our common WHU-1024 training and test protocol; the remaining values are collected from the cited literature, except for our P2PFormer reproduction. The table therefore provides a controlled comparison for the marked rows and a broader reference for the remaining rows, which may differ in training schedule, backbone, and data processing.
 
 \begin{table*}[!t]
 \caption{Comparison with Instance Segmentation Methods on the WHU Building Benchmark}
@@ -475,25 +475,26 @@ Table~\ref{tab:whu} reports COCO-style AP, AP$_{50}$, and AP$_{75}$ for bounding
 \cmidrule(lr){2-4}\cmidrule(lr){5-7}
 & AP & AP$_{50}$ & AP$_{75}$ & AP & AP$_{50}$ & AP$_{75}$ \\
 \midrule
-Mask R-CNN~\cite{ref_maskrcnn} & 0.620 & 0.873 & 0.692 & 0.634 & 0.889 & 0.719 \\
-MS R-CNN~\cite{ref_msrcnn} & 0.677 & 0.872 & 0.771 & 0.669 & 0.875 & 0.775 \\
-HTC~\cite{ref_htc} & 0.684 & 0.878 & 0.778 & 0.677 & 0.881 & 0.783 \\
+Mask R-CNN$^\dagger$~\cite{ref_maskrcnn} & 0.709 & 0.899 & 0.809 & 0.682 & 0.900 & 0.800 \\
+MS R-CNN$^\dagger$~\cite{ref_msrcnn} & 0.688 & 0.894 & 0.800 & 0.677 & 0.896 & 0.795 \\
+HTC$^\dagger$~\cite{ref_htc} & 0.727 & 0.906 & 0.825 & 0.692 & 0.907 & 0.816 \\
 SCNet~\cite{ref_scnet} & 0.681 & 0.876 & 0.777 & 0.665 & 0.879 & 0.812 \\
-CondInst~\cite{ref_condinst} & 0.667 & 0.875 & 0.767 & 0.666 & 0.878 & 0.787 \\
-SOLOv2~\cite{ref_solov2} & -- & -- & -- & 0.652 & 0.867 & 0.752 \\
+CondInst$^\dagger$~\cite{ref_condinst} & 0.742 & 0.900 & 0.824 & 0.697 & 0.902 & 0.809 \\
+SOLOv2$^\dagger$~\cite{ref_solov2} & -- & -- & -- & 0.668 & 0.864 & 0.769 \\
 Mask2Former~\cite{ref_mask2former} & 0.693 & 0.907 & 0.756 & 0.644 & 0.930 & 0.824 \\
-CATNet~\cite{ref_catnet} & 0.667 & 0.863 & 0.764 & 0.661 & 0.866 & 0.768 \\
+CATNet$^\dagger$~\cite{ref_catnet} & 0.755 & 0.940 & \textbf{0.872} & 0.727 & 0.941 & \textbf{0.865} \\
 HQ-ISNet~\cite{ref_hqisnet} & 0.661 & 0.860 & 0.757 & 0.665 & 0.864 & 0.789 \\
 RSPrompter~\cite{ref_rsprompter} & 0.725 & 0.910 & 0.817 & 0.725 & 0.920 & 0.829 \\
-MC-SAM SEG~\cite{ref_mcsamseg} & 0.710 & 0.911 & \textbf{0.856} & 0.712 & 0.915 & 0.811 \\
+MC-SAM SEG~\cite{ref_mcsamseg} & 0.710 & 0.911 & 0.856 & 0.712 & 0.915 & 0.811 \\
 RS4D-box~\cite{ref_rs4d} & 0.703 & 0.893 & 0.792 & 0.701 & 0.895 & 0.803 \\
 P2PFormer~\cite{ref_p2pformer} & \textbf{0.757} & 0.914 & 0.842 & 0.725 & 0.913 & 0.834 \\
-\textbf{PromptMiner-SAM2 (Ours)} & 0.749 & \textbf{0.942} & 0.855 & \textbf{0.735} & \textbf{0.944} & \textbf{0.855} \\
+\textbf{PromptMiner-SAM2 (Ours)} & 0.749 & \textbf{0.942} & 0.855 & \textbf{0.735} & \textbf{0.944} & 0.855 \\
 \bottomrule
 \end{tabular}
+\par\smallskip\footnotesize $^\dagger$Our rerun under the common WHU-1024 protocol: 2,943 training images, validation-based checkpoint selection, and COCO test evaluation on 2,220 images with maxDets$=100$.
 \end{table*}
 
-Among the heterogeneous values collected in Table~\ref{tab:whu}, PromptMiner-SAM2 has the largest listed mask AP, AP$_{50}$, and AP$_{75}$, reaching 0.735, 0.944, and 0.855, respectively. It also has the largest listed box AP$_{50}$ and remains competitive in box AP and AP$_{75}$. Relative to RSPrompter, the other automatic-prompting method in the table, the numerical differences in mask AP, AP$_{50}$, and AP$_{75}$ are 1.0, 2.4, and 2.6 percentage points. The larger difference at AP$_{75}$ is compatible with higher-overlap mask predictions, but the heterogeneous training protocols across published rows preclude attributing it solely to prompt construction.
+Among the values in Table~\ref{tab:whu}, PromptMiner-SAM2 has the largest listed mask AP and AP$_{50}$, reaching 0.735 and 0.944, respectively; CATNet has the largest listed mask AP$_{75}$ at 0.865. PromptMiner-SAM2 also has the largest listed box AP$_{50}$ and remains competitive in box AP and AP$_{75}$. Relative to RSPrompter, the other automatic-prompting method in the table, the numerical differences in mask AP, AP$_{50}$, and AP$_{75}$ are 1.0, 2.4, and 2.6 percentage points. The larger difference at AP$_{75}$ is compatible with higher-overlap mask predictions, but the heterogeneous protocols of the unmarked published rows preclude attributing it solely to prompt construction.
 
 \noindent\textit{SynSU-Build comparison.}
 Table~\ref{tab:synsu_dual} compares representative target-view-only methods with the proposed single- and dual-stream models on SynSU-Build. All comparison methods and PromptMiner-SAM2 use only the synthetic satellite-like target image, whereas GeoViewMiner-SAM2 additionally receives the five calibrated UAV views. Relative to PromptMiner-SAM2, which is trained independently from the same pretrained initialization with the same optimizer and scheduling form but a different effective batch size, the complete dual-stream model improves bbox AP and mask AP by 2.3 and 3.9 percentage points, respectively. This comparison evaluates the overall difference between the complete calibrated cross-view pathway and the corresponding single-stream reference while retaining the same target-view architecture; it does not attribute the gain to an individual fusion component, added capacity, or UAV content alone.
