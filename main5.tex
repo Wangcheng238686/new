@@ -198,6 +198,15 @@ PromptMiner-SAM2 turns the interactive SAM2 image-segmentation pipeline into an 
 \subsubsection{Overall Architecture}
 For a $1024\times1024$ image, the SAM2 Hiera-Base+ image encoder produces four 256-channel hierarchical maps at strides $\{4,8,16,32\}$. This representation is a principal reason for adopting SAM2: unlike a single terminal feature map, the hierarchy naturally supplies the spatial scales required by a two-stage detector. A detection-oriented PAFPN applies top-down and bottom-up fusion and outputs five 512-channel levels $\{P_2,\ldots,P_6\}$ at strides $\{4,8,16,32,64\}$. An RPN generates proposals, and a Shared2FC bounding-box head performs building classification and box regression. In parallel, we retain the stride-16 $64\times64$ SAM2 image embedding and the two higher-resolution encoder features used by the native MaskDecoder. A single pretrained image encoder therefore supports both automatic instance discovery and prompt-conditioned segmentation.
 
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{单流模型.pdf}
+\caption{Architecture of PromptMiner-SAM2. The SAM2 Hiera backbone feeds a PAFPN, RPN, and RoI heads for proposal discovery. For each mask RoI, the coarse-mask decoder predicts proposal-conditioned shape logits. P2BoundaryRefiner uses high-resolution $P_2$ evidence only in a predicted boundary neighborhood to produce refined logits. The resulting foreground--background points, proposal box, and dense mask are encoded as native SAM2 prompts; together with the SAM2 image embedding and high-resolution features, they are decoded into the final instance mask.}
+\label{fig:single_architecture}
+\end{figure*}
+
+Figure~\ref{fig:single_architecture} summarizes this flow. The upper path supplies multi-scale detection features and candidate boxes, whereas the lower path converts each proposal-conditioned shape into explicit sparse and dense prompts. The shared image encoder and the common proposal geometry couple these paths without replacing SAM2's native prompt interface.
+
 Let $b_r$ denote the candidate box used by the mask branch: a sampled positive proposal during training and a final detected box during inference. Multi-level RoIAlign extracts a $14\times14$ mask feature $X_r\in\mathbb{R}^{512\times14\times14}$ from $P_2$--$P_5$. The same $b_r$ defines the coordinate frame for mask feature extraction, coarse-mask supervision, point-coordinate conversion, dense-mask placement, and the SAM2 box prompt. This shared geometry keeps all prompt modalities aligned with the instance being decoded.
 
 \subsubsection{Proposal-Conditioned Coarse Shape}
@@ -326,6 +335,15 @@ Here $\mathcal{L}_{\mathrm{det}}$ contains the RPN classification and regression
 %==============================================================================
 
 GeoViewMiner-SAM2 retains the complete PromptMiner-SAM2 target-view network and introduces UAV information only after target-view ROI extraction. This design treats PromptMiner-SAM2 as a stable reference path: the overhead image encoder, PAFPN, RPN, box head, coarse-prompt generator, P2BoundaryRefiner, PromptEncoder, and SAM2 MaskDecoder remain unchanged. The UAV branch supplies gated residual features with a bounded scale to the bbox and mask ROI streams, allowing cross-view information to refine the classification and localization of existing proposals and improve mask delineation without replacing the target-view representation.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{双流模型.pdf}
+\caption{Architecture of GeoViewMiner-SAM2. The target-view encoder $E$ feeds the PAFPN--RPN/ROI pathway, while a frozen, weight-shared Hiera encoder extracts features from calibrated UAV views. The Cross-View Transformer (CVT) aggregates camera-conditioned UAV features into a ground-referenced BEV representation. Branch-specific candidate retrieval uses each target-view ROI to select local BEV evidence, which is fused residually before coarse-mask decoding (CD), boundary refinement (BF), prompt encoding (PE), and mask decoding (D). The lower panels expand the camera-aware CVT aggregation and the top-down/bottom-up feature pyramid.}
+\label{fig:dual_architecture}
+\end{figure}
+
+As illustrated in Fig.~\ref{fig:dual_architecture}, the UAV pathway is auxiliary: it contributes ground-referenced residual evidence only after target-view RoI extraction. Consequently, the target-view detector and explicit-prompt decoder remain the primary prediction path, while CVT aggregation and candidate retrieval correct local cross-view disagreement rather than substitute for overhead features.
 
 \subsubsection{Geometric Conditions and UAV BEV Construction}
 For each overhead target image, the auxiliary input comprises $V$ calibrated UAV views $\{I_v,K_v,T_v^{c\rightarrow w}\}_{v=1}^{V}$, where $K_v$ is the intrinsic matrix and $T_v^{c\rightarrow w}$ maps UAV-camera coordinates into the shared world frame. The five UAV images are processed in one batched pass by a weight-shared SAM2 Hiera-Base+ image encoder $E_u$. This UAV encoder is initialized from the same pretrained SAM2 checkpoint as the target-view encoder, but its parameters are frozen and are not tied to the trainable target-view branch. Lightweight trainable adapters map its hierarchical outputs to the four UAV feature levels consumed by the BEV encoder.
