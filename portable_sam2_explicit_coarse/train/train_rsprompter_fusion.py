@@ -802,9 +802,18 @@ class ExponentialMovingAverage:
         if not (0.0 < decay < 1.0):
             raise ValueError(f"EMA decay must be in (0,1), got {decay}")
         self.decay = float(decay)
-        state = _get_model_core(model).state_dict()
+        model_core = _get_model_core(model)
+        state = model_core.state_dict()
         self.ema_state = {k: v.detach().clone() for k, v in state.items()}
         self.backup_state = None
+        # Frozen tensors (params with requires_grad=False, plus buffers) must
+        # be copied verbatim, never averaged: averaging a constant across tens
+        # of thousands of steps accumulates fp32 rounding drift (~1e-6 per
+        # the fast-150 run), which trips strict pretrained-value contract
+        # checks (no_mask_embed) when the EMA state is loaded for inference.
+        _frozen = {n for n, p in model_core.named_parameters() if not p.requires_grad}
+        _frozen.update(n for n, _ in model_core.named_buffers())
+        self._frozen_keys = frozenset(k for k in state if k in _frozen)
 
     @torch.no_grad()
     def update(self, model: torch.nn.Module):
@@ -815,7 +824,10 @@ class ExponentialMovingAverage:
                 self.ema_state[key] = value_detached.clone()
                 continue
             ema_value = self.ema_state[key]
-            if torch.is_floating_point(value_detached):
+            if (
+                torch.is_floating_point(value_detached)
+                and key not in self._frozen_keys
+            ):
                 ema_value.mul_(self.decay).add_(value_detached, alpha=1.0 - self.decay)
             else:
                 ema_value.copy_(value_detached)
