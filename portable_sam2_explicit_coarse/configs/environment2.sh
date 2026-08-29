@@ -42,13 +42,16 @@ export ISAID_VAL_ANN_FILE="${ISAID_VAL_ANN_FILE:-val/Annotations/iSAID_val_patch
 export ISAID_TRAIN_IMG_SUBDIR="${ISAID_TRAIN_IMG_SUBDIR:-train/images}"
 export ISAID_VAL_IMG_SUBDIR="${ISAID_VAL_IMG_SUBDIR:-val/images}"
 
-# NWPU VHR-10 10-class route (instance-mask COCO conversion, seeded 70/30
-# split built under coco_split/). Verified 2026-08-29: train 454 imgs /
-# 2,759 anns, val 196 / 1,162, json file_names match local images exactly.
-# NOTE: the data root path contains spaces; always quote "$VHR10_DATA_ROOT".
+# NWPU VHR-10 10-class route (instance-mask COCO conversion). SPLIT: the
+# RSPrompter-release 80/20 split (train 520 imgs / 3,178 anns, val 130 /
+# 743), copied verbatim into coco_split/ for direct comparability with the
+# RSPrompter baseline — RSPrompter's own test_dataloader == val_dataloader,
+# so the 130-image val doubles as the reporting split on both sides.
+# The self-built seeded 70/30 (instances_{train,val}.json) is kept on disk
+# but no longer referenced. NOTE: path contains spaces; always quote.
 export VHR10_DATA_ROOT="${VHR10_DATA_ROOT:-/data/wangcheng/dataset/NWPU VHR-10 dataset}"
-export VHR10_TRAIN_ANN_FILE="${VHR10_TRAIN_ANN_FILE:-coco_split/instances_train.json}"
-export VHR10_VAL_ANN_FILE="${VHR10_VAL_ANN_FILE:-coco_split/instances_val.json}"
+export VHR10_TRAIN_ANN_FILE="${VHR10_TRAIN_ANN_FILE:-coco_split/NWPU_instances_train.json}"
+export VHR10_VAL_ANN_FILE="${VHR10_VAL_ANN_FILE:-coco_split/NWPU_instances_val.json}"
 export VHR10_TRAIN_IMG_SUBDIR="${VHR10_TRAIN_IMG_SUBDIR:-positive image set}"
 export VHR10_VAL_IMG_SUBDIR="${VHR10_VAL_IMG_SUBDIR:-positive image set}"
 
