@@ -146,6 +146,10 @@ def create_train_loader(
     isaid_val_ann_file: str = "isaid_patches_800/val/instances_isaid_val.json",
     isaid_train_img_subdir: str = "isaid_patches_800/train/images",
     isaid_val_img_subdir: str = "isaid_patches_800/val/images",
+    vhr10_train_ann_file: str = "coco_split/instances_train.json",
+    vhr10_val_ann_file: str = "coco_split/instances_val.json",
+    vhr10_train_img_subdir: str = "positive image set",
+    vhr10_val_img_subdir: str = "positive image set",
     train_subset_ratio: float = 1.0,
     val_subset_ratio: float = 1.0,
 ):
@@ -202,7 +206,7 @@ def create_train_loader(
             )
         else:
             val_loader = None
-    elif dataset_format in ("whu_coco", "isaid_coco"):
+    elif dataset_format in ("whu_coco", "isaid_coco", "vhr10_coco"):
         if dataset_format == "isaid_coco":
             # iSAID 15-class: map official category ids 1..15 -> train labels
             # 0..14 (the official train and val jsons use different numeric id
@@ -215,6 +219,16 @@ def create_train_loader(
             coco_val_ann = isaid_val_ann_file
             coco_train_img = isaid_train_img_subdir
             coco_val_img = isaid_val_img_subdir
+        elif dataset_format == "vhr10_coco":
+            # NWPU VHR-10 10-class (instance-mask COCO conversion of the
+            # Precise Mask R-CNN IGARSS'19 release): ids 1..10 -> labels 0..9.
+            coco_single_class = False
+            coco_enable_mapping = True
+            coco_category_mapping = {i: i - 1 for i in range(1, 11)}
+            coco_train_ann = vhr10_train_ann_file
+            coco_val_ann = vhr10_val_ann_file
+            coco_train_img = vhr10_train_img_subdir
+            coco_val_img = vhr10_val_img_subdir
         else:
             coco_single_class = whu_single_class
             coco_enable_mapping = whu_enable_category_mapping

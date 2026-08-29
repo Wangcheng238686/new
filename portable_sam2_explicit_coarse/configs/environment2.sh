@@ -42,6 +42,16 @@ export ISAID_VAL_ANN_FILE="${ISAID_VAL_ANN_FILE:-val/Annotations/iSAID_val_patch
 export ISAID_TRAIN_IMG_SUBDIR="${ISAID_TRAIN_IMG_SUBDIR:-train/images}"
 export ISAID_VAL_IMG_SUBDIR="${ISAID_VAL_IMG_SUBDIR:-val/images}"
 
+# NWPU VHR-10 10-class route (instance-mask COCO conversion, seeded 70/30
+# split built under coco_split/). Verified 2026-08-29: train 454 imgs /
+# 2,759 anns, val 196 / 1,162, json file_names match local images exactly.
+# NOTE: the data root path contains spaces; always quote "$VHR10_DATA_ROOT".
+export VHR10_DATA_ROOT="${VHR10_DATA_ROOT:-/data/wangcheng/dataset/NWPU VHR-10 dataset}"
+export VHR10_TRAIN_ANN_FILE="${VHR10_TRAIN_ANN_FILE:-coco_split/instances_train.json}"
+export VHR10_VAL_ANN_FILE="${VHR10_VAL_ANN_FILE:-coco_split/instances_val.json}"
+export VHR10_TRAIN_IMG_SUBDIR="${VHR10_TRAIN_IMG_SUBDIR:-positive image set}"
+export VHR10_VAL_IMG_SUBDIR="${VHR10_VAL_IMG_SUBDIR:-positive image set}"
+
 # Writable output and temporary roots.
 export PORTABLE_SAM2_CHECKPOINT_ROOT="${PORTABLE_SAM2_CHECKPOINT_ROOT:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse}"
 export PORTABLE_SAM2_LOG_ROOT="${PORTABLE_SAM2_LOG_ROOT:-${PORTABLE_SAM2_MAINLINE_ROOT}/logs}"

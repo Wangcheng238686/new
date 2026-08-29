@@ -4,6 +4,42 @@ from typing import List, Tuple
 import numpy as np
 
 
+# iSAID official 15 categories; train labels 0..14 map to ids 1..15 (label+1).
+# Order is the canonical train-id order the dataset build remapped BY NAME.
+ISAID_CATEGORIES = [
+    {"id": 1, "name": "storage_tank"},
+    {"id": 2, "name": "Large_Vehicle"},
+    {"id": 3, "name": "Small_Vehicle"},
+    {"id": 4, "name": "plane"},
+    {"id": 5, "name": "ship"},
+    {"id": 6, "name": "Swimming_pool"},
+    {"id": 7, "name": "Harbor"},
+    {"id": 8, "name": "tennis_court"},
+    {"id": 9, "name": "Ground_Track_Field"},
+    {"id": 10, "name": "Soccer_ball_field"},
+    {"id": 11, "name": "baseball_diamond"},
+    {"id": 12, "name": "Bridge"},
+    {"id": 13, "name": "basketball_court"},
+    {"id": 14, "name": "Roundabout"},
+    {"id": 15, "name": "Helicopter"},
+]
+
+# NWPU VHR-10 10 categories (COCO instance-mask conversion); train labels
+# 0..9 map to ids 1..10 (label+1). Order matches the release annotations.json.
+VHR10_CATEGORIES = [
+    {"id": 1, "name": "airplane"},
+    {"id": 2, "name": "ship"},
+    {"id": 3, "name": "storage_tank"},
+    {"id": 4, "name": "baseball_diamond"},
+    {"id": 5, "name": "tennis_court"},
+    {"id": 6, "name": "basketball_court"},
+    {"id": 7, "name": "ground_track_field"},
+    {"id": 8, "name": "harbor"},
+    {"id": 9, "name": "bridge"},
+    {"id": 10, "name": "vehicle"},
+]
+
+
 def _mask_to_rle(binary_mask: np.ndarray) -> dict:
     """Convert binary mask (H, W) to COCO RLE format."""
     from pycocotools import mask as mask_util
@@ -28,9 +64,19 @@ def build_coco_gt_and_dt(
     img_metas_list: List[dict],
     category_name: str = "building",
     score_key: str = "scores",
+    categories: List[dict] = None,
 ) -> Tuple:
-    """Build pycocotools COCO objects for GT and detections."""
+    """Build pycocotools COCO objects for GT and detections.
+
+    category_id is derived as ``label + 1``: single-class runs (WHU, labels
+    all 0) keep the historical category_id=1 behavior; multi-class runs
+    (iSAID 15 / VHR-10 10) pass a ``categories`` table and map labels 0..N-1
+    to ids 1..N.
+    """
     from pycocotools.coco import COCO
+
+    if categories is None:
+        categories = [{"id": 1, "name": category_name}]
 
     images = []
     annotations = []
@@ -57,7 +103,7 @@ def build_coco_gt_and_dt(
                 {
                     "id": ann_id,
                     "image_id": img_id,
-                    "category_id": 1,
+                    "category_id": int(gt_labels[i]) + 1,
                     "bbox": bbox_xywh,
                     "area": area,
                     "segmentation": seg_rle,
@@ -74,6 +120,9 @@ def build_coco_gt_and_dt(
             )
         dt_scores = dt[score_key]
         dt_masks = dt["masks"]
+        dt_labels = dt.get("labels")
+        if dt_labels is None:
+            dt_labels = np.zeros(len(dt_scores), dtype=np.int64)
 
         if hasattr(dt_masks, "masks"):
             dt_masks = dt_masks.masks
@@ -85,7 +134,7 @@ def build_coco_gt_and_dt(
             predictions.append(
                 {
                     "image_id": img_id,
-                    "category_id": 1,
+                    "category_id": int(dt_labels[i]) + 1,
                     "bbox": bbox_xywh,
                     "score": float(dt_scores[i]),
                     "segmentation": seg_rle,
@@ -95,7 +144,7 @@ def build_coco_gt_and_dt(
     gt_dataset = {
         "images": images,
         "annotations": annotations,
-        "categories": [{"id": 1, "name": category_name}],
+        "categories": categories,
     }
     coco_gt = COCO()
     coco_gt.dataset = gt_dataset

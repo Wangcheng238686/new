@@ -29,27 +29,6 @@ logging.basicConfig(
 logger = logging.getLogger("portable_sam_fusion")
 
 
-# iSAID official 15 categories; train labels 0..14 map to ids 1..15 (label+1).
-# Order is the canonical train-id order the dataset build remapped BY NAME.
-ISAID_CATEGORIES = [
-    {"id": 1, "name": "storage_tank"},
-    {"id": 2, "name": "Large_Vehicle"},
-    {"id": 3, "name": "Small_Vehicle"},
-    {"id": 4, "name": "plane"},
-    {"id": 5, "name": "ship"},
-    {"id": 6, "name": "Swimming_pool"},
-    {"id": 7, "name": "Harbor"},
-    {"id": 8, "name": "tennis_court"},
-    {"id": 9, "name": "Ground_Track_Field"},
-    {"id": 10, "name": "Soccer_ball_field"},
-    {"id": 11, "name": "baseball_diamond"},
-    {"id": 12, "name": "Bridge"},
-    {"id": 13, "name": "basketball_court"},
-    {"id": 14, "name": "Roundabout"},
-    {"id": 15, "name": "Helicopter"},
-]
-
-
 # ---------------------------------------------------------------------------
 # COCO-style evaluation helpers (from inference_rsprompter_fusion.py)
 # ---------------------------------------------------------------------------
@@ -1501,6 +1480,12 @@ def main():
         help="使用 iSAID 数据集（800x800 patch，COCO 格式，15 类）",
     )
     parser.add_argument(
+        "--use-vhr10-coco",
+        action="store_true",
+        default=False,
+        help="使用 NWPU VHR-10 数据集（COCO 实例掩码版，10 类）",
+    )
+    parser.add_argument(
         "--subset-ratio",
         type=float,
         default=None,
@@ -1737,6 +1722,10 @@ def main():
 
     project_root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(project_root))
+
+    # Canonical multi-class category tables live in utils.coco_eval_utils so
+    # the trainer and checkpoint inference share one definition.
+    from utils.coco_eval_utils import ISAID_CATEGORIES, VHR10_CATEGORIES
 
     import mmdet.models
     from mmengine.config import Config
@@ -2009,9 +1998,13 @@ def main():
             random_sample=args.random_sample,
             normalize_drone=args.normalize_drone,
             dataset_format=(
-                "isaid_coco"
-                if args.use_isaid_coco
-                else ("whu_coco" if args.use_whu_coco else "labelme")
+                "vhr10_coco"
+                if args.use_vhr10_coco
+                else (
+                    "isaid_coco"
+                    if args.use_isaid_coco
+                    else ("whu_coco" if args.use_whu_coco else "labelme")
+                )
             ),
             isaid_train_ann_file=os.environ.get(
                 "ISAID_TRAIN_ANN_FILE",
@@ -2026,6 +2019,18 @@ def main():
             ),
             isaid_val_img_subdir=os.environ.get(
                 "ISAID_VAL_IMG_SUBDIR", "isaid_patches_800/val/images"
+            ),
+            vhr10_train_ann_file=os.environ.get(
+                "VHR10_TRAIN_ANN_FILE", "coco_split/instances_train.json"
+            ),
+            vhr10_val_ann_file=os.environ.get(
+                "VHR10_VAL_ANN_FILE", "coco_split/instances_val.json"
+            ),
+            vhr10_train_img_subdir=os.environ.get(
+                "VHR10_TRAIN_IMG_SUBDIR", "positive image set"
+            ),
+            vhr10_val_img_subdir=os.environ.get(
+                "VHR10_VAL_IMG_SUBDIR", "positive image set"
             ),
             whu_train_ann_file=os.environ.get(
                 "WHU_TRAIN_ANN_FILE", "2.4 annotation/annotation/train.json"
@@ -2180,13 +2185,22 @@ def main():
         "git_state": _capture_git_state(),
         "data_config": {
             "dataset_format": (
-                "isaid_coco"
-                if args.use_isaid_coco
-                else ("whu_coco" if args.use_whu_coco else "labelme")
+                "vhr10_coco"
+                if args.use_vhr10_coco
+                else (
+                    "isaid_coco"
+                    if args.use_isaid_coco
+                    else ("whu_coco" if args.use_whu_coco else "labelme")
+                )
             ),
             "data_root": str(args.data_root),
             "image_size": list(args.image_size),
-            "single_class": not args.use_isaid_coco,
+            "single_class": not (args.use_isaid_coco or args.use_vhr10_coco),
+            "num_classes": (
+                15
+                if args.use_isaid_coco
+                else (10 if args.use_vhr10_coco else 1)
+            ),
             "validation": (
                 {
                     "ann_file": os.environ.get(
@@ -2198,10 +2212,21 @@ def main():
                     ),
                 }
                 if args.use_isaid_coco
-                else {
-                    "ann_file": "2.4 annotation/annotation/validation.json",
-                    "image_subdir": "2.3 valid/validation",
-                }
+                else (
+                    {
+                        "ann_file": os.environ.get(
+                            "VHR10_VAL_ANN_FILE", "coco_split/instances_val.json"
+                        ),
+                        "image_subdir": os.environ.get(
+                            "VHR10_VAL_IMG_SUBDIR", "positive image set"
+                        ),
+                    }
+                    if args.use_vhr10_coco
+                    else {
+                        "ann_file": "2.4 annotation/annotation/validation.json",
+                        "image_subdir": "2.3 valid/validation",
+                    }
+                )
             ),
             "test": (
                 {
@@ -2214,10 +2239,21 @@ def main():
                     ),
                 }
                 if args.use_isaid_coco
-                else {
-                    "ann_file": "2.4 annotation/annotation/test.json",
-                    "image_subdir": "2.2 test/test",
-                }
+                else (
+                    {
+                        "ann_file": os.environ.get(
+                            "VHR10_VAL_ANN_FILE", "coco_split/instances_val.json"
+                        ),
+                        "image_subdir": os.environ.get(
+                            "VHR10_VAL_IMG_SUBDIR", "positive image set"
+                        ),
+                    }
+                    if args.use_vhr10_coco
+                    else {
+                        "ann_file": "2.4 annotation/annotation/test.json",
+                        "image_subdir": "2.2 test/test",
+                    }
+                )
             ),
         },
         "runtime_config": {
@@ -2648,7 +2684,11 @@ def main():
                 avg_mask_fill,
             )
             if total_gt > 0:
-                eval_categories = ISAID_CATEGORIES if args.use_isaid_coco else None
+                eval_categories = (
+                    ISAID_CATEGORIES
+                    if args.use_isaid_coco
+                    else (VHR10_CATEGORIES if args.use_vhr10_coco else None)
+                )
                 coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
                     all_gt, all_dt, all_img_metas, score_key="scores",
                     categories=eval_categories,
@@ -3412,7 +3452,11 @@ def main():
                 # The segmentation score contract is stored in cfg.model and
                 # consumed identically by validation and checkpoint inference.
                 # Bbox candidate selection/ranking always remains detector-score based.
-                eval_categories = ISAID_CATEGORIES if args.use_isaid_coco else None
+                eval_categories = (
+                    ISAID_CATEGORIES
+                    if args.use_isaid_coco
+                    else (VHR10_CATEGORIES if args.use_vhr10_coco else None)
+                )
                 coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
                     all_gt, all_dt, all_img_metas, score_key="scores",
                     categories=eval_categories,

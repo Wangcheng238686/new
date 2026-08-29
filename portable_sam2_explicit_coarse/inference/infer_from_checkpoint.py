@@ -468,6 +468,7 @@ def _resolve_dataset_contract(
         "image_size": [int(image_size[0]), int(image_size[1])],
         "batch_size": int(batch_size),
         "single_class": bool(data_config.get("single_class", True)),
+        "num_classes": int(data_config.get("num_classes", 0) or 0),
     }
 
 
@@ -476,9 +477,17 @@ def _build_loader(contract: Mapping[str, Any], num_workers: int) -> DataLoader:
     from data.whu_instance_dataset import WHUCocoInstanceDataset
 
     single_class = bool(contract["single_class"])
-    # Multi-class runs (iSAID) train with canonical ids 1..15 -> labels 0..14;
-    # the loader must apply the same mapping so GT labels match the head.
-    category_mapping = None if single_class else {i: i - 1 for i in range(1, 16)}
+    # Multi-class runs train with canonical ids 1..N -> labels 0..N-1; the
+    # loader must apply the same mapping so GT labels match the head. The
+    # num_classes key was added with the VHR-10 route; older iSAID
+    # checkpoints predate it and fall back to 15.
+    num_classes = int(contract.get("num_classes", 0) or 0)
+    if single_class:
+        category_mapping = None
+    elif num_classes > 0:
+        category_mapping = {i: i - 1 for i in range(1, num_classes + 1)}
+    else:
+        category_mapping = {i: i - 1 for i in range(1, 16)}
     dataset = WHUCocoInstanceDataset(
         data_root=contract["data_root"],
         ann_file=contract["ann_file"],
@@ -807,13 +816,25 @@ def main() -> None:
     metrics: Dict[str, float] = {}
     total_gt = sum(len(item["labels"]) for item in all_gt)
     if not args.no_eval and total_gt > 0:
-        from utils.coco_eval_utils import build_coco_gt_and_dt, run_coco_eval
+        from utils.coco_eval_utils import (
+            ISAID_CATEGORIES,
+            VHR10_CATEGORIES,
+            build_coco_gt_and_dt,
+            run_coco_eval,
+        )
 
+        _num_classes = int(contract.get("num_classes", 0) or 0)
+        _eval_categories = (
+            ISAID_CATEGORIES
+            if _num_classes == 15
+            else (VHR10_CATEGORIES if _num_classes == 10 else None)
+        )
         coco_gt, coco_segm_dt = build_coco_gt_and_dt(
             all_gt,
             all_dt,
             all_metas,
             score_key=segm_score_key,
+            categories=_eval_categories,
         )
         metrics.update(run_coco_eval(coco_gt, coco_segm_dt, iou_type="segm"))
         _, coco_bbox_dt = build_coco_gt_and_dt(
@@ -821,6 +842,7 @@ def main() -> None:
             all_dt,
             all_metas,
             score_key="scores",
+            categories=_eval_categories,
         )
         metrics.update(run_coco_eval(coco_gt, coco_bbox_dt, iou_type="bbox"))
     elif not args.no_eval:
