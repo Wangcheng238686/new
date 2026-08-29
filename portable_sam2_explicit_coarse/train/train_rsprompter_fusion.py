@@ -29,6 +29,27 @@ logging.basicConfig(
 logger = logging.getLogger("portable_sam_fusion")
 
 
+# iSAID official 15 categories; train labels 0..14 map to ids 1..15 (label+1).
+# Order is the canonical train-id order the dataset build remapped BY NAME.
+ISAID_CATEGORIES = [
+    {"id": 1, "name": "storage_tank"},
+    {"id": 2, "name": "Large_Vehicle"},
+    {"id": 3, "name": "Small_Vehicle"},
+    {"id": 4, "name": "plane"},
+    {"id": 5, "name": "ship"},
+    {"id": 6, "name": "Swimming_pool"},
+    {"id": 7, "name": "Harbor"},
+    {"id": 8, "name": "tennis_court"},
+    {"id": 9, "name": "Ground_Track_Field"},
+    {"id": 10, "name": "Soccer_ball_field"},
+    {"id": 11, "name": "baseball_diamond"},
+    {"id": 12, "name": "Bridge"},
+    {"id": 13, "name": "basketball_court"},
+    {"id": 14, "name": "Roundabout"},
+    {"id": 15, "name": "Helicopter"},
+]
+
+
 # ---------------------------------------------------------------------------
 # COCO-style evaluation helpers (from inference_rsprompter_fusion.py)
 # ---------------------------------------------------------------------------
@@ -84,9 +105,19 @@ def build_coco_gt_and_dt(
     all_dt: List[dict],
     img_metas_list: List[dict],
     score_key: str = "scores",
+    categories: Optional[List[dict]] = None,
 ) -> Tuple:
-    """Build pycocotools COCO objects for GT and detections."""
+    """Build pycocotools COCO objects for GT and detections.
+
+    category_id is derived as ``label + 1``.  For single-class runs (WHU)
+    labels are all 0 so this keeps the historical ``category_id=1`` behavior;
+    for multi-class runs (iSAID 15 classes) labels 0..14 map to the official
+    category ids 1..15 via ``categories``.
+    """
     from pycocotools.coco import COCO
+
+    if categories is None:
+        categories = [{"id": 1, "name": "building"}]
 
     images = []
     annotations = []
@@ -118,7 +149,7 @@ def build_coco_gt_and_dt(
                 {
                     "id": ann_id,
                     "image_id": img_id,
-                    "category_id": 1,
+                    "category_id": int(gt_labels[i]) + 1,
                     "bbox": bbox_xywh,
                     "area": area,
                     "segmentation": seg_rle,
@@ -143,13 +174,16 @@ def build_coco_gt_and_dt(
             dt_rles = _masks_to_rles(dt_masks)
 
         num_dt = len(dt_scores)
+        dt_labels = dt.get("labels")
+        if dt_labels is None:
+            dt_labels = np.zeros(len(dt_scores), dtype=np.int64)
         for i in range(num_dt):
             bbox_xywh = _xyxy_to_xywh(dt_bboxes[i]).tolist()
             seg_rle = dt_rles[i]
             predictions.append(
                 {
                     "image_id": img_id,
-                    "category_id": 1,
+                    "category_id": int(dt_labels[i]) + 1,
                     "bbox": bbox_xywh,
                     "score": float(dt_scores[i]),
                     "segmentation": seg_rle,
@@ -160,7 +194,7 @@ def build_coco_gt_and_dt(
     gt_dataset = {
         "images": images,
         "annotations": annotations,
-        "categories": [{"id": 1, "name": "building"}],
+        "categories": categories,
     }
     coco_gt = COCO()
     coco_gt.dataset = gt_dataset
@@ -1461,6 +1495,12 @@ def main():
         help="使用 WHU 公开数据集（COCO 格式，自带 train/validation 划分）",
     )
     parser.add_argument(
+        "--use-isaid-coco",
+        action="store_true",
+        default=False,
+        help="使用 iSAID 数据集（800x800 patch，COCO 格式，15 类）",
+    )
+    parser.add_argument(
         "--subset-ratio",
         type=float,
         default=None,
@@ -1968,7 +2008,25 @@ def main():
             val_batch_size=args.val_batch_size,
             random_sample=args.random_sample,
             normalize_drone=args.normalize_drone,
-            dataset_format="whu_coco" if args.use_whu_coco else "labelme",
+            dataset_format=(
+                "isaid_coco"
+                if args.use_isaid_coco
+                else ("whu_coco" if args.use_whu_coco else "labelme")
+            ),
+            isaid_train_ann_file=os.environ.get(
+                "ISAID_TRAIN_ANN_FILE",
+                "isaid_patches_800/train/instances_isaid_train.json",
+            ),
+            isaid_val_ann_file=os.environ.get(
+                "ISAID_VAL_ANN_FILE",
+                "isaid_patches_800/val/instances_isaid_val.json",
+            ),
+            isaid_train_img_subdir=os.environ.get(
+                "ISAID_TRAIN_IMG_SUBDIR", "isaid_patches_800/train/images"
+            ),
+            isaid_val_img_subdir=os.environ.get(
+                "ISAID_VAL_IMG_SUBDIR", "isaid_patches_800/val/images"
+            ),
             whu_train_ann_file=os.environ.get(
                 "WHU_TRAIN_ANN_FILE", "2.4 annotation/annotation/train.json"
             ),
@@ -2121,18 +2179,46 @@ def main():
         # resolved_hyperparameters git_* lines).
         "git_state": _capture_git_state(),
         "data_config": {
-            "dataset_format": "whu_coco" if args.use_whu_coco else "labelme",
+            "dataset_format": (
+                "isaid_coco"
+                if args.use_isaid_coco
+                else ("whu_coco" if args.use_whu_coco else "labelme")
+            ),
             "data_root": str(args.data_root),
             "image_size": list(args.image_size),
-            "single_class": True,
-            "validation": {
-                "ann_file": "2.4 annotation/annotation/validation.json",
-                "image_subdir": "2.3 valid/validation",
-            },
-            "test": {
-                "ann_file": "2.4 annotation/annotation/test.json",
-                "image_subdir": "2.2 test/test",
-            },
+            "single_class": not args.use_isaid_coco,
+            "validation": (
+                {
+                    "ann_file": os.environ.get(
+                        "ISAID_VAL_ANN_FILE",
+                        "isaid_patches_800/val/instances_isaid_val.json",
+                    ),
+                    "image_subdir": os.environ.get(
+                        "ISAID_VAL_IMG_SUBDIR", "isaid_patches_800/val/images"
+                    ),
+                }
+                if args.use_isaid_coco
+                else {
+                    "ann_file": "2.4 annotation/annotation/validation.json",
+                    "image_subdir": "2.3 valid/validation",
+                }
+            ),
+            "test": (
+                {
+                    "ann_file": os.environ.get(
+                        "ISAID_VAL_ANN_FILE",
+                        "isaid_patches_800/val/instances_isaid_val.json",
+                    ),
+                    "image_subdir": os.environ.get(
+                        "ISAID_VAL_IMG_SUBDIR", "isaid_patches_800/val/images"
+                    ),
+                }
+                if args.use_isaid_coco
+                else {
+                    "ann_file": "2.4 annotation/annotation/test.json",
+                    "image_subdir": "2.2 test/test",
+                }
+            ),
         },
         "runtime_config": {
             "sam2_repo": os.environ.get("SAM2_REPO", ""),
@@ -2562,8 +2648,10 @@ def main():
                 avg_mask_fill,
             )
             if total_gt > 0:
+                eval_categories = ISAID_CATEGORIES if args.use_isaid_coco else None
                 coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
-                    all_gt, all_dt, all_img_metas, score_key="scores"
+                    all_gt, all_dt, all_img_metas, score_key="scores",
+                    categories=eval_categories,
                 )
                 if eval_bbox:
                     bbox_metrics = run_coco_eval(
@@ -2583,6 +2671,7 @@ def main():
                         all_dt,
                         all_img_metas,
                         score_key=segm_score_key,
+                        categories=eval_categories,
                     )
                 segm_metrics = run_coco_eval(
                     coco_gt, coco_segm_dt, iou_type="segm",
@@ -3323,8 +3412,10 @@ def main():
                 # The segmentation score contract is stored in cfg.model and
                 # consumed identically by validation and checkpoint inference.
                 # Bbox candidate selection/ranking always remains detector-score based.
+                eval_categories = ISAID_CATEGORIES if args.use_isaid_coco else None
                 coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
-                    all_gt, all_dt, all_img_metas, score_key="scores"
+                    all_gt, all_dt, all_img_metas, score_key="scores",
+                    categories=eval_categories,
                 )
                 if eval_bbox:
                     bbox_metrics = run_coco_eval(
@@ -3345,6 +3436,7 @@ def main():
                         all_dt,
                         all_img_metas,
                         score_key=segm_score_key,
+                        categories=eval_categories,
                     )
                 segm_metrics = run_coco_eval(
                     coco_gt, coco_segm_dt, iou_type="segm",

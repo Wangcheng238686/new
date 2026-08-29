@@ -21,7 +21,7 @@ LOG_FILE="${LOG_DIR}/isaid_15cls_smoke_$(date +%Y%m%d_%H%M%S).log"
 
 "${PYTHON}" -u train/train_rsprompter_fusion.py \
   --config configs/isaid_baseplus_explicit_coarse.py \
-  --data-root /data1/wangcheng/dataset/iSAID \
+  --data-root "${ISAID_DATA_ROOT:-/data1/wangcheng/dataset/iSAID}" \
   --use-isaid-coco \
   --image-size 1024 1024 \
   --batch-size 1 \
