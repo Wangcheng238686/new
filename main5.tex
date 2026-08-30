@@ -26,18 +26,44 @@
 \thanks{Manuscript submitted to IEEE JSTAR, July 2026.}}
 
 \markboth{IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing}%
-{Author \MakeLowercase{\textit{et al.}}: GeoViewMiner-SAM2: Geometry-Guided Satellite--UAV Fusion}
+{Author \MakeLowercase{\textit{et al.}}: GeoViewMiner-SAM2: Geometry-Guided Satellite--UAV
+Fusion}
 
 \maketitle
 
 \begin{abstract}
-Building instance segmentation from overhead imagery remains difficult for small objects, weak roof boundaries, and adjacent instances, while most satellite--UAV studies address image-level retrieval rather than instance-level prediction. To define a controlled paired setting, we first construct \emph{SynSU-Build} from the UE5 City Sample. Its 1,500 aligned groups contain 9,000 RGB images: one synthetic satellite-like target image and five calibrated UAV images per group, with approximately 32.7k target-view building annotations. We then establish the target-view reference with \emph{PromptMiner-SAM2}, which combines a two-stage detector with explicit SAM2 prompting. A supervised coarse mask is refined with high-resolution P2 features and converted into foreground--background points and a dense mask prompt, while the proposal supplies the box prompt. On WHU, PromptMiner-SAM2 obtains bbox AP of 0.764 and mask AP of 0.734 under the reported 150-epoch training protocol. Building on the same target-view pathway, \emph{GeoViewMiner-SAM2} aggregates calibrated UAV features into a ground-referenced BEV using camera-aware cross-view attention. Target-view ROIs retrieve local BEV features and inject them into the bbox and mask branches through bounded residual gates. The method requires UAV calibration and a target-view pixel-to-ground mapping, but no target-view pinhole model, explicit depth, or building-height supervision. On SynSU-Build, it obtains bbox AP of 0.718 and mask AP of 0.721, differences of 0.023 and 0.039 from an independently trained single-stream reference. This comparison evaluates the complete calibrated pathway rather than an individual fusion component.
+Building instance segmentation in overhead imagery remains challenging for small buildings,
+weak roof boundaries, and adjacent instances. Prior satellite--street-view work shows that,
+with geometric alignment, perspective observations can complement satellite representations for
+cross-view semantic segmentation. UAV imagery can therefore serve as an auxiliary perspective
+source for satellite-view building instances. However, existing satellite--UAV benchmarks focus
+mainly on geo-localization and image retrieval, with supervision defined at the image or scene
+level rather than for individual buildings. They therefore cannot evaluate whether UAV
+observations with known camera parameters improve detection and mask delineation in an overhead
+satellite view. We introduce \emph{SynSU-Build}, a controlled paired benchmark based on the UE5
+City Sample. Its 1,500 aligned groups contain 9,000 RGB images: one synthetic satellite-like
+image and five UAV images with renderer-provided intrinsics and poses per group, with
+approximately 32.7k satellite-view building annotations in total. \emph{PromptMiner-SAM2} combines
+a two-stage detector with explicit SAM2 prompts: it refines a supervised coarse mask with local
+high-resolution features and converts it into foreground--background points and a dense mask
+prompt, while the proposal supplies the box prompt. \emph{GeoViewMiner-SAM2} extends this
+satellite-view pathway by using UAV intrinsics and poses to project a satellite-aligned ground-plane
+grid into multiple UAV images, sampling local multi-scale UAV features around the projected
+locations, and fusing the aggregated UAV features into the satellite-view feature pyramid through
+zero-initialized residual paths. It requires UAV intrinsics, world-to-camera poses, and a
+satellite-view pixel-to-ground mapping, but not a satellite-view pinhole model, explicit depth, or
+building-height supervision. PromptMiner-SAM2 obtains a mask AP of 0.735 on WHU. On
+SynSU-Build, GeoViewMiner-SAM2 obtains a mask AP of 0.721, 0.039 higher than that of an
+independently trained single-stream reference. Together, SynSU-Build, PromptMiner-SAM2, and
+GeoViewMiner-SAM2 define a paired benchmark and reference models for evaluating geometry-guided
+fusion of UAV features for satellite-view building instance segmentation.
 \end{abstract}
 
 \begingroup
 \hbadness=10000
 \begin{IEEEkeywords}
-Building instance segmentation, SAM2, PromptMiner-SAM2, GeoViewMiner-SAM2, satellite--UAV fusion, cross-view learning.
+Building instance segmentation, SAM2, PromptMiner-SAM2, GeoViewMiner-SAM2, satellite--UAV
+fusion, cross-view learning.
 \end{IEEEkeywords}
 \endgroup
 
@@ -45,28 +71,80 @@ Building instance segmentation, SAM2, PromptMiner-SAM2, GeoViewMiner-SAM2, satel
 %==============================================================================
 \section{Introduction}
 %==============================================================================
-\IEEEPARstart{R}{emote} sensing object instance segmentation---the task of detecting and delineating every object instance in overhead imagery---supports applications such as cadastral mapping, urban planning, disaster response, and map updating. Building instances remain difficult when roofs are small, weakly contrasted, shadowed, or separated by only narrow gaps. Although oblique UAV views can provide complementary roof and facade evidence, studying their contribution requires paired observations, reliable camera geometry, and instance supervision in the overhead target view.
+\IEEEPARstart{R}{emote} sensing instance segmentation detects and delineates individual objects
+in overhead imagery for cadastral mapping, urban planning, disaster response, and map updating.
+For buildings, the task requires more than separating built-up land from its surroundings:
+adjacent structures must be distinguished and their individual boundaries recovered. This is
+difficult when roofs are small, weakly contrasted, shadowed, or separated by narrow gaps. Even
+when an overhead image supplies broad spatial coverage, it may not contain sufficient visual
+detail to resolve these ambiguities, which motivates the use of complementary perspective
+observations.
 
-The first obstacle is therefore the absence of a suitable evaluation setting. Existing cross-view retrieval benchmarks associate satellite and UAV images at scene level, but generally do not combine calibrated multi-UAV imagery with building-instance masks in the overhead target view~\cite{ref_university,ref_unigeo}. Real acquisition further entangles sensor differences, temporal changes, incomplete metadata, and camera-recovery error. To isolate the modeling question from these uncontrolled factors, we first construct \emph{SynSU-Build}: 1,500 aligned synthetic scene groups containing one satellite-like nadir target image, five calibrated oblique UAV images, and instance supervision only for the target view.
+Prior work on satellite--street-view fusion shows that geometrically aligned street-view
+observations can complement satellite representations for map-view semantic
+segmentation~\cite{ref_sgbeyv,ref_crffnet}. UAV imagery provides nearby oblique observations of the same
+scene for an overhead building task. However, complementary imagery cannot simply be
+concatenated with the satellite-view representation. The two views differ in scale, viewing
+direction, and perspective; their correspondence also varies across the scene. A useful
+cross-view model must therefore identify where UAV features belong in the overhead satellite
+view while preserving the latter as the domain in which boxes and instance masks are predicted.
 
-Given this paired setting, a strong target-view reference is needed before auxiliary UAV information can be meaningfully evaluated. An automatic segmenter must discover buildings, associate each mask with the correct proposal, and preserve fine instance geometry while exploiting the prompt-conditioned prior of SAM2~\cite{ref_sam2}. We therefore develop \emph{PromptMiner-SAM2}. Instead of replacing native prompts with unconstrained latent tokens, it predicts a supervised proposal-conditioned coarse shape, mines foreground--background points together with box and dense-mask prompts, and uses high-resolution P2 evidence to calibrate uncertain boundaries before SAM2 decoding. The resulting single-stream model is evaluated independently on WHU and also defines the complete target-view pathway used in the paired benchmark.
+Existing satellite--UAV benchmarks already provide paired observations, but they are designed
+mainly for retrieval and geo-localization, with supervision defined by image identity, scene
+association, or geographic position~\cite{ref_university,ref_denseuav,ref_unigeo}. Such supervision can
+establish where an image was captured, but not which UAV observations support the boundary of a
+particular overhead-view building. Conversely, satellite--street-view semantic segmentation
+studies demonstrate dense geometric fusion~\cite{ref_sgbeyv,ref_crffnet}, yet semantic maps do not require
+the separation of neighboring instances. These settings therefore leave open a more specific question: when
+per-view camera parameters are known, can UAV observations improve the detection and
+delineation of individual buildings in an overhead satellite view?
 
-We then extend this pathway rather than constructing a separate dual-stream predictor. Calibration alone does not solve feature correspondence: UAV cameras observe roofs and facades under perspective projection, whereas the target mask is defined in a nadir image, and residual displacement remains after ground-plane alignment. \emph{GeoViewMiner-SAM2} consequently aggregates the five calibrated UAV views into a shared ground-referenced BEV, retrieves local BEV evidence for each target-view proposal over a bounded offset neighborhood, and injects it through separate residual gates into the existing bbox and mask branches. The formulation preserves the full PromptMiner-SAM2 path and requires no target-view pinhole model, explicit depth, or building-height supervision.
+We examine this question through \emph{SynSU-Build}, a controlled benchmark comprising 1,500
+aligned synthetic scene groups. Each group contains one satellite-like nadir image, five
+oblique UAV images with renderer-provided intrinsics and poses, and building-instance
+supervision for the satellite view. Synthetic construction makes the scene pairing, camera
+geometry, and satellite-view annotations jointly available, while avoiding confounding changes
+in sensors, acquisition time, metadata, and camera recovery that arise in real collections.
 
-This dataset-first progression makes the relationship between the two models explicit: SynSU-Build defines the paired problem, PromptMiner-SAM2 establishes the target-view solution within that problem, and GeoViewMiner-SAM2 adds calibrated UAV evidence to the same solution path. The experiments can therefore separate single-view segmentation quality from the behavior of the complete satellite--UAV extension without treating the two models as unrelated systems.
+This setting requires both a capable satellite-view segmenter and a geometry-aware mechanism
+for incorporating UAV features. We build the shared satellite-view pathway on
+SAM2~\cite{ref_sam2}, which retains SAM's promptable segmentation interface~\cite{ref_sam} and
+provides a hierarchical image encoder with multi-resolution features that can be shared by the
+two-stage detection pathway and prompt-conditioned mask decoding. \emph{PromptMiner-SAM2}
+establishes this pathway: it predicts a proposal-conditioned coarse shape, converts that shape
+into explicit point, box, and dense-mask prompts for SAM2, and uses local high-resolution
+features to refine uncertain boundaries. \emph{GeoViewMiner-SAM2} extends this pathway by using
+UAV intrinsics and poses to project a satellite-aligned ground-plane grid into multiple UAV
+images, sampling local multi-scale UAV features around the projected locations, and fusing the
+aggregated UAV features into the satellite-view feature pyramid through zero-initialized
+residual paths. The shared satellite-view pathway isolates the complete geometry-guided
+cross-view extension from unrelated architectural changes.
 
 \subsection{Contributions}
 
-The main contributions of this work are summarized as follows:
+We make three contributions:
 \begin{enumerate}
-\item \textbf{SynSU-Build, a synthetic satellite--UAV building instance segmentation benchmark,} whose 1,500 aligned groups provide a synthetic satellite-like target image, five calibrated UAV images, and target-view building-instance masks for each scene.
+\item \textbf{SynSU-Build, a synthetic satellite--UAV building instance segmentation
+      benchmark,} whose 1,500 aligned groups provide a synthetic satellite-like image, five UAV
+      images with renderer-provided intrinsics and poses, and satellite-view building-instance
+      masks for each scene.
 
-\item \textbf{PromptMiner-SAM2, a boundary-aware explicit-prompt architecture,} which converts a supervised proposal-conditioned coarse shape into native point, box, and dense-mask prompts and applies constrained P2 refinement before prompt encoding, thereby establishing the target-view reference path for the paired setting.
+\item \textbf{PromptMiner-SAM2, a boundary-aware explicit-prompt architecture,} which converts
+      a supervised proposal-conditioned coarse shape into native point, box, and dense-mask
+      prompts and applies constrained local high-resolution refinement before prompt encoding,
+      thereby defining the satellite-view pathway for the paired setting.
 
-\item \textbf{GeoViewMiner-SAM2, a geometry-guided dual-stream model,} which combines camera-aware UAV-to-BEV aggregation with target-view-anchored retrieval and separate gated residual fusion for bbox and mask ROI features.
+\item \textbf{GeoViewMiner-SAM2, a geometry-guided dual-stream model,} which projects a
+      satellite-aligned ground-plane grid into UAV images using their known camera parameters,
+      aggregates local multi-scale UAV features, and fuses them into the satellite-view feature
+      pyramid through zero-initialized residual paths.
 \end{enumerate}
 
-The remainder of this paper is organized as follows. Section~\ref{sec:related} reviews related work. Section~\ref{sec:dataset} introduces the construction and configuration of SynSU-Build. Section~\ref{sec:method} presents the single-stream target-view model and its dual-stream cross-view extension. Section~\ref{sec:experiments} presents the experimental setup and results, Section~\ref{sec:discussion} discusses the main findings, and Section~\ref{sec:conclusion} concludes the paper.
+The remainder of this paper is organized as follows. Section~\ref{sec:related} reviews related
+work; Section~\ref{sec:dataset} introduces SynSU-Build; Section~\ref{sec:method} presents the
+single-stream satellite-view model and its dual-stream extension; Section~\ref{sec:experiments}
+reports the experimental setup and results; Section~\ref{sec:discussion} discusses the
+findings; and Section~\ref{sec:conclusion} concludes the paper.
 
 %==============================================================================
 \section{Related Work}
@@ -74,31 +152,93 @@ The remainder of this paper is organized as follows. Section~\ref{sec:related} r
 %==============================================================================
 
 \subsection{Synthetic Data for Remote Sensing}
-Synthetic rendering has become an important alternative when aerial acquisition, camera calibration, or dense annotation is expensive. Synthinel-1~\cite{ref_synthinel} generates overhead urban imagery and building labels for studying synthetic-to-real transfer. UrbanScene3D~\cite{ref_urbanscene3d} combines real reconstructed regions with Unreal Engine and AirSim environments, providing controllable flight patterns, depth, LiDAR, bounding boxes, and building identities for aerial perception and reconstruction. SkyScenes~\cite{ref_skyscenes} expands viewpoint and environmental diversity with densely labeled UAV scenes, while UEMM-Air~\cite{ref_uemmair} produces aligned multimodal UAV observations for multiple perception tasks. At the satellite scale, SynRS3D~\cite{ref_synrs3d} supports land-cover mapping, height estimation, and building change analysis through globally diverse synthetic scenes. GTA-UAV~\cite{ref_gtauav} further demonstrates that game environments can generate large contiguous UAV--satellite regions for cross-view localization.
+Synthetic rendering is useful when aerial acquisition, controlled multi-view capture, or dense
+annotation is costly. Synthinel-1~\cite{ref_synthinel} provides synthetic overhead imagery and
+building labels for building segmentation and synthetic-to-real transfer.
+UrbanScene3D~\cite{ref_urbanscene3d} combines reconstructed urban regions with Unreal Engine
+and AirSim environments, providing varied observation patterns, depth, LiDAR, bounding boxes,
+and building identities. SkyScenes~\cite{ref_skyscenes} broadens the range of synthetic UAV
+scenes and dense labels, while UEMM-Air~\cite{ref_uemmair} provides aligned multimodal UAV
+observations for multiple perception tasks. At the satellite scale, SynRS3D~\cite{ref_synrs3d}
+supports land-cover mapping, height estimation, and building change detection, and
+GTA-UAV~\cite{ref_gtauav} shows that game environments can produce large continuous regions for
+UAV geo-localization.
 
-These datasets establish the utility of controllable rendering and automatic labels, but they are typically organized around a single viewpoint, semantic categories, 3D reconstruction, or image-level geo-localization. Among the representative datasets in Table~\ref{tab:dataset_comparison}, none combines calibrated paired satellite--UAV imagery with building-instance supervision for the overhead target view. This unresolved combination defines the dataset setting considered in this work.
+These datasets show the value of controllable rendering and automatic labels, but they are not
+designed to jointly provide paired satellite--UAV observations, satellite-view building-instance
+supervision, and usable per-view camera parameters. Table~\ref{tab:dataset_comparison} compares
+the three properties required here: paired satellite--UAV observations, satellite-view instance
+supervision, and per-view camera parameters. Together, they allow features from auxiliary UAV
+views to be related to individual buildings in an overhead satellite view.
 
 \subsection{Remote Sensing Instance Segmentation}
-Remote sensing instance segmentation initially followed general-purpose two-stage detectors. Mask R-CNN~\cite{ref_maskrcnn} adds an ROI mask head to object detection, while Cascade R-CNN and HTC~\cite{ref_cascade,ref_htc} progressively improve localization through cascaded stages. Remote-sensing-specific designs such as HQ-ISNet~\cite{ref_hqisnet} strengthen high-resolution and multi-scale feature propagation for small, densely distributed targets. Boundary-oriented methods take a complementary direction: PointRend~\cite{ref_pointrend} adaptively updates uncertain pixels, whereas polygon-based P2PFormer~\cite{ref_p2pformer} directly predicts ordered building contours. Query-based architectures such as Mask2Former~\cite{ref_mask2former} further replace proposal-wise classification with global mask queries and masked attention.
+Remote sensing instance segmentation builds on both general-purpose and remote-sensing-specific
+designs. Mask R-CNN~\cite{ref_maskrcnn} adds a parallel mask branch to Faster R-CNN, and
+Cascade R-CNN~\cite{ref_cascade} improves proposal quality through cascaded stages with
+increasing IoU thresholds. HTC~\cite{ref_htc} further interleaves detection and segmentation
+stages, whereas HQ-ISNet~\cite{ref_hqisnet} emphasizes high-resolution and multi-level feature
+propagation for small, densely distributed targets. Boundary-oriented methods address a
+complementary difficulty: PointRend~\cite{ref_pointrend} predicts adaptively sampled uncertain
+points, while P2PFormer~\cite{ref_p2pformer} segments geometric primitives and predicts their
+order to form building polygons. Mask2Former~\cite{ref_mask2former} instead uses a set of mask
+queries and masked attention for universal segmentation.
 
-Promptable foundation models such as SAM~\cite{ref_sam} introduce a strong category-agnostic mask prior but require an automatic interface for dense instance prediction. Zero-shot remote-sensing studies show that SAM is sensitive to spatial scale and prompt design~\cite{ref_samrsapp}; SAMRS~\cite{ref_samrs} instead uses detector annotations and SAM to scale segmentation data. For automatic instances, RSPrompter~\cite{ref_rsprompter} maps proposal features to learned prompt embeddings, MC-SAM SEG~\cite{ref_mcsamseg} adapts the encoder with task-specific visual modules, and RS4D~\cite{ref_rs4d} transfers foundation-model knowledge into a more efficient dense predictor. PromptMiner-SAM2 differs by retaining the native geometric interface and explicitly constructing point, box, and dense-mask prompts from a supervised proposal-conditioned shape.
+Promptable foundation models introduce a category-agnostic mask prior, but dense instance
+prediction requires an automatic prompting mechanism. For remote sensing, zero- and one-shot
+experiments report that SAM performance depends on image scale and prompt
+design~\cite{ref_samrsapp}; SAMRS~\cite{ref_samrs} combines SAM with existing remote-sensing
+object-detection datasets to construct large-scale segmentation data.
+RSPrompter~\cite{ref_rsprompter} maps instance features to learned prompt embeddings, MC-SAM
+SEG~\cite{ref_mcsamseg} adapts the encoder with task-specific visual modules, and
+RS4D~\cite{ref_rs4d} distills knowledge from a visual foundation model into a linear-time
+state-space backbone for efficient instance segmentation. PromptMiner-SAM2 instead retains the
+native geometric prompt interface and constructs point, box, and dense-mask prompts from a
+supervised proposal-conditioned shape.
 
-Coarse-mask refinement provides a second relevant connection. CascadePSP~\cite{ref_cascadepsp} combines global and local evidence, SegRefiner~\cite{ref_segrefiner} treats refinement as progressive denoising, and SAMRefiner~\cite{ref_samrefiner} excavates prompts from an externally supplied mask. In contrast, our coarse shape is an internal, instance-conditioned representation learned jointly with detection; P2BoundaryRefiner is restricted to a predicted boundary neighborhood before the refined shape is converted into SAM2 prompts.
-
-The task is supported by established single-view benchmarks rather than being unique to the proposed paired setting. iSAID~\cite{ref_isaid} provides multi-category aerial instance masks, WHU Building~\cite{ref_whu} supports building-level evaluation, and SpaceNet Buildings~\cite{ref_spacenet} and xBD~\cite{ref_xbd} provide individual building polygons for footprint extraction or damage assessment. Their limitation for this study is not instance supervision, but the absence of calibrated satellite--multi-UAV observations of the same scene.
+Coarse-mask refinement provides a related route to improving mask quality.
+CascadePSP~\cite{ref_cascadepsp} combines global and local refinement,
+SegRefiner~\cite{ref_segrefiner} formulates refinement as a discrete denoising process, and
+SAMRefiner~\cite{ref_samrefiner} derives prompts from an input coarse mask. In contrast, our
+coarse shape is an internal instance-conditioned representation learned jointly with detection;
+P2BoundaryRefiner is limited to a predicted boundary neighborhood before this shape is
+converted into SAM2 prompts.
 
 \subsection{Cross-View Learning}
-Cross-view learning first developed around image retrieval and geo-localization. University-1652~\cite{ref_university} introduced matched satellite, synthetic UAV, and ground observations for drone-view target localization and navigation. TransGeo~\cite{ref_transgeo} replaced hand-crafted polar alignment with a transformer that models global cross-view correlations, while DenseUAV~\cite{ref_denseuav} moved toward real low-altitude urban imagery, dense spatial sampling, and joint retrieval/localization evaluation. Subsequent UAV--satellite methods continue to improve viewpoint-invariant representations, scale handling, and pose estimation. Nevertheless, their supervision is dominated by image-level identity, retrieval ranking, or geographic position. Such objectives can identify \emph{where} a UAV image was captured without learning instance-level correspondence between UAV observations and individual overhead-view buildings.
+Satellite--UAV cross-view learning has mainly been studied through retrieval and
+geo-localization. University-1652~\cite{ref_university} provides matched satellite, synthetic
+UAV, and ground observations for drone-view target localization and navigation, and
+DenseUAV~\cite{ref_denseuav} moves to real low-altitude urban UAV imagery with dense spatial
+sampling and joint retrieval/localization evaluation. More generally,
+TransGeo~\cite{ref_transgeo} shows that transformer-based global correlation can support
+cross-view geo-localization without hand-crafted polar alignment. The satellite--UAV benchmarks
+provide image-level matching or position supervision, rather than correspondences between UAV
+observations and individual overhead-view building instances.
 
-A second line of work transforms perspective observations into a canonical top-down representation. Cross-View Transformers~\cite{ref_cvt} use camera-aware attention to infer map-view semantic segmentation from calibrated multi-camera images. In a remote sensing context, SG-BEV~\cite{ref_sgbeyv} projects street-view features into BEV space and fuses them with satellite features for fine-grained building-attribute semantic segmentation. These methods demonstrate the value of geometric intermediates and dense cross-view fusion, but their outputs are semantic maps. They also rely on datasets designed for retrieval or semantic labeling rather than paired satellite--UAV observations with camera geometry and satellite-view instance masks.
+A second line of work uses known camera geometry to transform perspective observations into a
+canonical top-down representation. Cross-View Transformers~\cite{ref_cvt} use camera intrinsics
+and extrinsics in map-view semantic segmentation from multi-camera images. In remote sensing,
+SG-BEV~\cite{ref_sgbeyv} projects street-view features into BEV space and fuses them with
+satellite features for fine-grained building-attribute semantic segmentation. These studies
+motivate geometry-guided feature transfer, but their outputs are semantic maps and their paired
+observations are satellite--street-view rather than satellite--UAV.
 
-Unlike retrieval and map-view semantic segmentation, the setting considered here uses UAV views as auxiliary observations and evaluates detection boxes and per-building masks in the overhead target view. It therefore requires instance-level association rather than only image-level matching or dense semantic prediction.
+Neither direction establishes a satellite--UAV pathway for overhead building instance
+segmentation. GeoViewMiner-SAM2 therefore retains the satellite-view instance pathway described
+above and uses renderer-provided UAV intrinsics and poses to localize UAV features before
+feature fusion. In this way, the dual-stream model extends the single-stream segmentation path
+rather than replacing it with an image-level matching objective.
 
 \section{Dataset}
 \label{sec:dataset}
 %==============================================================================
 
-Table~\ref{tab:dataset_comparison} compares SynSU-Build with both established single-view instance-level benchmarks and representative cross-view or synthetic remote sensing datasets. The former demonstrate the maturity of overhead instance and building-footprint prediction, whereas the latter provide multiple views, controllable rendering, or camera information but generally lack target-view instance supervision. SynSU-Build combines these complementary properties through calibrated paired imagery, multiple UAV viewpoints, and building instance masks for the synthetic overhead target view.
+SynSU-Build comprises 1,500 aligned scene groups. Each group contains one synthetic
+satellite-like image with building-instance masks and five oblique UAV RGB images with
+renderer-provided intrinsics and world-to-camera poses. Table~\ref{tab:dataset_comparison}
+compares this setting with established single-view instance-level benchmarks and representative
+cross-view or synthetic remote sensing datasets. The former provide established overhead
+instance labels, whereas the latter provide multiple views, controllable rendering, or camera
+information but generally lack satellite-view instance supervision.
 
 \begin{table*}[!t]
 \caption{Comparison with Representative Instance-Level, Cross-View, and Synthetic Remote Sensing Datasets}
@@ -109,36 +249,44 @@ Table~\ref{tab:dataset_comparison} compares SynSU-Build with both established si
 \renewcommand{\arraystretch}{1.12}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccccl@{}}
 \toprule
-Dataset & Source & Views & S--U Pair & Multi-UAV & Calib. $K/T$ & Aux./3D Inst. & Target Inst. & Primary Task \\
+Dataset & Source & Views & S--U Pair & Multi-UAV & Camera $K/T$ & Aux./3D Inst. & Eval. Inst. & Primary Task \\
 \midrule
 \multicolumn{9}{l}{\textit{Single-view instance and building-footprint datasets}} \\
 iSAID~\cite{ref_isaid} & Real & A & \ding{55} & \ding{55} & \ding{55} & \ding{55} & \ding{51} & Instance segmentation \\
-WHU Building~\cite{ref_whu} & Real & A/S & \ding{55} & \ding{55} & \ding{55} & \ding{55} & \ding{51} & Building instance seg. \\
+WHU Building~\cite{ref_whu} & Real & A/S & \ding{55} & \ding{55} & \ding{55} & \ding{55} & \ding{51} & Instance segmentation \\
 SpaceNet Buildings~\cite{ref_spacenet} & Real & S & \ding{55} & \ding{55} & \ding{55} & \ding{55} & \ding{51} & Building footprints \\
 xBD~\cite{ref_xbd} & Real & S/T & \ding{55} & \ding{55} & $\triangle$ & \ding{55} & \ding{51} & Damage assessment \\
 \midrule
 \multicolumn{9}{l}{\textit{Cross-view and synthetic remote sensing datasets}} \\
 University-1652~\cite{ref_university} & Hybrid & S/U/G & \ding{51} & \ding{51} & \ding{55} & \ding{55} & \ding{55} & Geo-localization \\
 DenseUAV~\cite{ref_denseuav} & Real & S/U & \ding{51} & \ding{51} & $\triangle$ & \ding{55} & \ding{55} & Geo-localization \\
-GTA-UAV~\cite{ref_gtauav} & Synthetic & S/U & $\triangle$ & \ding{51} & $\triangle$ & \ding{55} & \ding{55} & Geo-localization \\
-UrbanScene3D~\cite{ref_urbanscene3d} & Hybrid & U/3D & \ding{55} & \ding{51} & \ding{51} & \ding{51} & \ding{55} & Reconstruction/3D inst. \\
-SkyScenes~\cite{ref_skyscenes} & Synthetic & U & \ding{55} & \ding{51} & $\triangle$ & \ding{51} & \ding{55} & Scene understanding \\
-UEMM-Air~\cite{ref_uemmair} & Synthetic & U/MM & \ding{55} & \ding{51} & $\triangle$ & \ding{51} & \ding{55} & Multimodal perception \\
+GTA-UAV~\cite{ref_gtauav} & Synthetic & S/U & $\triangle$ & $\triangle$ & $\triangle$ & \ding{55} & \ding{55} & Geo-localization \\
+UrbanScene3D~\cite{ref_urbanscene3d} & Hybrid & U/3D & \ding{55} & $\triangle$ & $\triangle$ & \ding{51} & \ding{55} & Reconstruction/3D inst. \\
+SkyScenes~\cite{ref_skyscenes} & Synthetic & U & \ding{55} & \ding{55} & $\triangle$ & \ding{51} & \ding{51} & Scene understanding \\
+UEMM-Air~\cite{ref_uemmair} & Synthetic & U/MM & \ding{55} & \ding{55} & $\triangle$ & \ding{51} & \ding{51} & Multimodal perception \\
 SynRS3D~\cite{ref_synrs3d} & Synthetic & S & \ding{55} & \ding{55} & \ding{55} & \ding{55} & \ding{55} & Semantic/height \\
 \midrule
 \textbf{SynSU-Build} & Synthetic & S/U & \ding{51} & \ding{51} & \ding{51} & \ding{55} & \ding{51} & Instance segmentation \\
 \bottomrule
 \multicolumn{9}{l}{\footnotesize A: aerial; S: satellite; U: UAV; G: ground; T: temporal; MM: multimodal; S--U Pair: scene-level association.} \\
 \multicolumn{9}{l}{\footnotesize Multi-UAV: multiple UAV observations per associated scene; $K/T$: per-view intrinsics and metric extrinsics.} \\
-\multicolumn{9}{l}{\footnotesize Target Inst.: masks or polygons in the evaluated overhead/aerial target view.} \\
+\multicolumn{9}{l}{\footnotesize Eval. Inst.: masks or polygons in the evaluated overhead or aerial image.} \\
 \multicolumn{9}{l}{\footnotesize \ding{51}: available; \ding{55}: unavailable; $\triangle$: incomplete pairing or metadata without full per-view $K/T$.}
 \end{tabular*}
 \end{table*}
 
 \noindent\textit{Scene and spatial sampling.}
-We build SynSU-Build on the UE5 City Sample, whose contiguous urban coverage, stable building actors, programmable cameras, and deterministic rendering support paired satellite--UAV acquisition~\cite{ref_citysample}. UE5 World Partition provides streamable spatial cells while preserving a shared world coordinate system~\cite{ref_worldpartition}. We sample candidate centers on a coarse spatial grid and reject locations with insufficient nearby urban structure using actor-based content filtering. Table~\ref{tab:synsu_configuration} consolidates the resulting sampling, camera, and dataset-scale configuration.
+We build SynSU-Build on the UE5 City Sample, whose contiguous urban coverage, stable building
+actors, programmable cameras, and deterministic rendering support paired satellite--UAV
+acquisition~\cite{ref_citysample}. UE5 World Partition provides streamable spatial cells while
+preserving a shared world coordinate system~\cite{ref_worldpartition}. We sample candidate
+centers on a coarse spatial grid and reject locations with insufficient nearby urban structure
+using actor-based content filtering. Table~\ref{tab:synsu_configuration} lists the sampling,
+camera, and dataset-scale settings.
 
-Figure~\ref{fig:sampling_pipeline} illustrates the spatial sampling strategy, the satellite--UAV camera arrangement, and the synthetic target-view instance annotations generated for each accepted center.
+Figure~\ref{fig:sampling_pipeline} illustrates the spatial sampling strategy, the
+satellite--UAV camera arrangement, and the synthetic satellite-view instance annotations generated
+for each accepted center.
 
 \begin{figure}[!t]
 \centering
@@ -148,13 +296,27 @@ Figure~\ref{fig:sampling_pipeline} illustrates the spatial sampling strategy, th
 \end{figure}
 
 \noindent\textit{Camera configuration.}
-Each accepted center is observed by one nadir target camera and five evenly distributed oblique UAV cameras directed toward the same urban region. The UAV views share one intrinsic configuration, while their calibrated poses provide complementary azimuths around the target. The nadir pinhole rendering approximates satellite-scale ground coverage but does not reproduce the full imaging physics of an orbital sensor; we therefore refer to it as a \emph{synthetic satellite-like view}. All six cameras are expressed in the same metric frame, enabling geometric transformation of UAV observations to the target/world reference.
+Each accepted center is observed by one nadir satellite-view camera and five evenly distributed
+oblique UAV cameras directed toward the same urban region. The UAV views share one intrinsic
+configuration, and their renderer-provided world-to-camera poses provide complementary azimuths
+around the scene centre. The nadir pinhole rendering approximates satellite-scale ground coverage but
+does not reproduce the full imaging physics of an orbital sensor; we therefore refer to it as a
+\emph{synthetic satellite-like view}. All six cameras are expressed in the same metric frame,
+enabling geometric transformation of UAV observations to the satellite-image/world reference.
 
 \noindent\textit{Instance annotation.}
-City Sample buildings can comprise multiple mesh actors. Mesh components assigned to the same rendered building are combined under one frame-local instance label. The target annotation is the visible building region in the satellite-like nadir view; its instance-ID layer shares the same camera frame as the RGB image and is converted into binary masks, bounding boxes, areas, and COCO-format records. The UAV views provide RGB imagery and calibration only, without pixel-level labels or cross-view instance IDs.
+City Sample buildings can comprise multiple mesh actors. Mesh components assigned to the same
+rendered building are combined under one frame-local instance label. The satellite-view annotation is
+the visible building region in the satellite-like nadir view; its instance-ID layer shares the
+same camera frame as the RGB image and is converted into binary masks, bounding boxes, areas,
+and COCO-format records. The UAV views provide RGB imagery and renderer-provided camera
+parameters only, without pixel-level labels or cross-view instance IDs.
 
 \noindent\textit{Dataset scale.}
-The finalized benchmark contains 1,500 aligned groups and approximately 32.7k target-view building-instance occurrences. Counts refer to image-level annotations rather than spatially deduplicated physical buildings, and all partitions are defined at group level to keep the six associated views together.
+The finalized benchmark contains 1,500 aligned groups and approximately 32.7k satellite-view
+building-instance occurrences. Counts refer to image-level annotations rather than spatially
+deduplicated physical buildings, and all partitions are defined at group level to keep the six
+associated views together.
 
 \begin{table}[!t]
 \caption{SynSU-Build Sampling and Camera Configuration}
@@ -169,15 +331,15 @@ Configuration item & Setting \\
 \midrule
 Spatial candidate policy & Coarse grid; up to 25 candidates per cell; actor-based filtering \\
 Accepted scene groups & 1,500 \\
-Views per group & 1 nadir target + 5 oblique UAV \\
+Views per group & 1 nadir satellite + 5 oblique UAV \\
 Native image resolution & $512\times512$ pixels for all views \\
 UAV azimuths & $0^{\circ}$, $72^{\circ}$, $144^{\circ}$, $216^{\circ}$, $288^{\circ}$ \\
 UAV orbit / altitude / pitch & 300~m / 400~m / perturbation within $\pm5^{\circ}$ \\
 UAV optics & 55.4-mm focal length; 36-mm square sensor \\
-Target-view camera & Nadir; 2,000-m altitude; 200-mm focal length; 36-mm square sensor \\
-Target coverage / nominal GSD & Approx. $360\times360$~m / 0.70~m per pixel \\
-Exported UAV geometry & Intrinsics $K_v$ and camera-to-world pose $T_v^{c\rightarrow w}$ \\
-Dataset scale & 9,000 RGB images; approx. 32.7k target-view instances; 21.8 instances per annotated target image \\
+Satellite-view camera & Nadir; 2,000-m altitude; 200-mm focal length; 36-mm square sensor \\
+Satellite coverage / nominal GSD & Approx. $360\times360$~m / 0.70~m per pixel \\
+Exported UAV geometry & Intrinsics $K_v$ and world-to-camera pose $T_v^{w\rightarrow c}$ (UE centimetres) \\
+Dataset scale & 9,000 RGB images; approx. 32.7k satellite-view instances; 21.8 instances per annotated satellite image \\
 Train/validation/test split & 1,200 / 150 / 150 groups (8:1:1) \\
 \bottomrule
 \end{tabular}
@@ -188,38 +350,71 @@ Train/validation/test split & 1,200 / 150 / 150 groups (8:1:1) \\
 \label{sec:method}
 %==============================================================================
 
-With the paired evaluation setting defined by SynSU-Build, we now describe the two models that operate within it. PromptMiner-SAM2 first establishes the complete target-view instance-segmentation path shared by both settings. GeoViewMiner-SAM2 then extends that path with calibrated UAV-to-BEV aggregation, proposal-level retrieval, and bounded residual fusion.
+PromptMiner-SAM2 and GeoViewMiner-SAM2 share the satellite-view instance-segmentation pathway
+defined for SynSU-Build. Given a satellite-view image, PromptMiner-SAM2 predicts candidate boxes
+and masks from that view alone. GeoViewMiner-SAM2 additionally receives UAV RGB images with
+renderer-provided intrinsics and world-to-camera poses, which it uses with a satellite-view
+pixel-to-ground mapping to sample auxiliary UAV features in the feature pyramid. Both models
+produce boxes and masks in the satellite view.
 
 \subsection{PromptMiner-SAM2: Explicit Prompt Mining from Coarse Shapes}
 \label{sec:single_method}
 
-PromptMiner-SAM2 turns the interactive SAM2 image-segmentation pipeline into an automatic building instance segmenter. Its standard detection path discovers candidate instances, while two proposed modules construct explicit prompts: an \emph{Explicit Coarse-Prompt Miner} learns proposal-conditioned instance geometry and converts it into native SAM2 prompts, and \emph{P2BoundaryRefiner} locally calibrates that geometry before prompt construction. The complete single-stream model is formed by adding P2BoundaryRefiner to the point--box--dense-mask prompt path. The resulting prompts are processed by the pretrained PromptEncoder and the SAM2 MaskDecoder.
+PromptMiner-SAM2 adapts the interactive SAM2 image-segmentation pipeline for automatic instance
+segmentation. Its detection path first identifies candidate instances and supplies proposal
+boxes. For each candidate, a coarse-mask branch predicts a proposal-conditioned shape, and a
+boundary-refinement step uses high-resolution $P_2$ features near the predicted contour. The
+refined shape provides foreground--background points and a dense-mask prompt, while the proposal
+box provides the box prompt. The pretrained PromptEncoder and SAM2 MaskDecoder process these
+native prompts to produce the final instance mask.
 
 \subsubsection{Overall Architecture}
-For a $1024\times1024$ image, the SAM2 Hiera-Base+ image encoder produces four 256-channel hierarchical maps at strides $\{4,8,16,32\}$. This representation is a principal reason for adopting SAM2: unlike a single terminal feature map, the hierarchy naturally supplies the spatial scales required by a two-stage detector. A detection-oriented PAFPN applies top-down and bottom-up fusion and outputs five 512-channel levels $\{P_2,\ldots,P_6\}$ at strides $\{4,8,16,32,64\}$. An RPN generates proposals, and a Shared2FC bounding-box head performs building classification and box regression. In parallel, we retain the stride-16 $64\times64$ SAM2 image embedding and the two higher-resolution encoder features used by the native MaskDecoder. A single pretrained image encoder therefore supports both automatic instance discovery and prompt-conditioned segmentation.
+For a $1024\times1024$ image, the SAM2 Hiera-Base+ encoder produces hierarchical features at
+strides $\{4,8,16,32\}$. A detection-oriented PAFPN converts them into pyramid levels
+$\{P_2,\ldots,P_6\}$ for proposal generation and box prediction. The SAM2 image embedding and
+higher-resolution decoder features are retained for prompt-conditioned mask decoding. The
+pretrained image encoder therefore serves both instance discovery and SAM2-based mask
+prediction.
 
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{单流模型.pdf}
-\caption{Architecture of PromptMiner-SAM2. The SAM2 Hiera backbone feeds a PAFPN, RPN, and RoI heads for proposal discovery. For each mask RoI, the coarse-mask decoder predicts proposal-conditioned shape logits. P2BoundaryRefiner uses high-resolution $P_2$ evidence only in a predicted boundary neighborhood to produce refined logits. The resulting foreground--background points, proposal box, and dense mask are encoded as native SAM2 prompts; together with the SAM2 image embedding and high-resolution features, they are decoded into the final instance mask.}
+\caption{Architecture of PromptMiner-SAM2. The SAM2 Hiera backbone feeds a PAFPN, RPN, and RoI heads for proposal discovery. For each mask RoI, the coarse-mask decoder predicts proposal-conditioned shape logits. P2BoundaryRefiner uses high-resolution $P_2$ features only in a predicted boundary neighborhood to produce refined logits. The resulting foreground--background points, proposal box, and dense mask are encoded as native SAM2 prompts; together with the SAM2 image embedding and high-resolution features, they are decoded into the final instance mask.}
 \label{fig:single_architecture}
 \end{figure*}
 
-Figure~\ref{fig:single_architecture} summarizes this flow. The upper path supplies multi-scale detection features and candidate boxes, whereas the lower path converts each proposal-conditioned shape into explicit sparse and dense prompts. The shared image encoder and the common proposal geometry couple these paths without replacing SAM2's native prompt interface.
+Figure~\ref{fig:single_architecture} shows this procedure. The upper path supplies multi-scale
+detection features and candidate boxes; the lower path converts each proposal-conditioned shape
+into explicit sparse and dense prompts. The shared image encoder and proposal geometry link the
+two paths while retaining SAM2's native prompt interface.
 
-Let $b_r$ denote the candidate box used by the mask branch: a sampled positive proposal during training and a final detected box during inference. Multi-level RoIAlign extracts a $14\times14$ mask feature $X_r\in\mathbb{R}^{512\times14\times14}$ from $P_2$--$P_5$. The same $b_r$ defines the coordinate frame for mask feature extraction, coarse-mask supervision, point-coordinate conversion, dense-mask placement, and the SAM2 box prompt. This shared geometry keeps all prompt modalities aligned with the instance being decoded.
+Let $b_r$ denote the candidate box used by the mask branch: a sampled positive proposal during
+training and a final detected box during inference. Multi-level RoIAlign extracts a
+$14\times14$ mask feature $X_r\in\mathbb{R}^{512\times14\times14}$ from $P_2$--$P_5$. The same
+$b_r$ defines the coordinate frame for mask feature extraction, coarse-mask supervision,
+point-coordinate conversion, dense-mask placement, and the SAM2 box prompt. This shared
+geometry keeps all prompt modalities aligned with the instance being decoded.
 
 \subsubsection{Proposal-Conditioned Coarse Shape}
-The Explicit Coarse-Prompt Miner begins by representing each candidate instance with an explicitly supervised intermediate mask rather than mapping $X_r$ directly to unconstrained prompt embeddings. A lightweight convolutional decoder with two upsampling stages predicts
+The Explicit Coarse-Prompt Miner begins by representing each candidate instance with an
+explicitly supervised intermediate mask rather than mapping $X_r$ directly to unconstrained
+prompt embeddings. A lightweight convolutional decoder with two upsampling stages predicts
 \begin{equation}
 C_r=f_{\mathrm{coarse}}(X_r), \qquad
 C_r\in\mathbb{R}^{1\times64\times64}.
 \label{eq:coarse_logits}
 \end{equation}
-Let $G_r\in\{0,1\}^{H_c\times W_c}$ denote the corresponding ground-truth instance cropped by $b_r$ and resized with nearest-neighbor interpolation, where $H_c=W_c=64$. Binary cross-entropy and Dice losses directly supervise $C_r$, making the intermediate geometry inspectable and separately supervised from the final decoder output.
+Let $G_r\in\{0,1\}^{H_c\times W_c}$ denote the corresponding ground-truth instance cropped by
+$b_r$ and resized with nearest-neighbor interpolation, where $H_c=W_c=64$. Binary cross-entropy
+and Dice losses directly supervise $C_r$, making the intermediate geometry inspectable and
+separately supervised from the final decoder output.
 
-\subsubsection{P2 Boundary Calibration}
-The coarse decoder must infer the complete instance shape from a fixed $14\times14$ RoI feature. P2BoundaryRefiner therefore introduces higher-resolution evidence without allowing an unconstrained second mask predictor; its name refers to the high-resolution $P_2$ pyramid feature used for local calibration. Let $\operatorname{sg}(\cdot)$ denote stop-gradient. From the raw coarse prediction it computes
+\subsubsection{P2 Boundary Refinement}
+The coarse decoder infers an entire instance from a fixed $14\times14$ RoI feature.
+P2BoundaryRefiner introduces higher-resolution $P_2$ features, but restricts its correction to
+a support derived from the coarse prediction rather than learning a second global mask. Let
+$\operatorname{sg}(\cdot)$ denote stop-gradient. It first obtains an uncertainty map and a
+one-pixel boundary from the raw coarse prediction:
 \begin{equation}
 \begin{aligned}
 p_r&=\sigma(\operatorname{sg}(C_r)),\\
@@ -228,15 +423,19 @@ K_r&=\partial\mathbf{1}[\operatorname{Avg}^{\mathrm{rep}}_3(p_r)\geq0.5],
 \end{aligned}
 \label{eq:p2_support}
 \end{equation}
-where $\operatorname{Avg}^{\mathrm{rep}}_3$ is replicate-padded $3\times3$ averaging and $\partial$ extracts a one-pixel morphological boundary. All morphological operations use a $3\times3$ square structuring element and treat the region outside the coarse canvas as background. $\operatorname{Dilate}_k$ denotes $k$ repeated dilation steps, equivalent to a Chebyshev-radius-$k$ expansion. The raw boundary band and residual search support are
+where $\operatorname{Avg}^{\mathrm{rep}}_3$ is replicate-padded $3\times3$ averaging,
+$\partial$ extracts a one-pixel morphological boundary, and $\operatorname{Dilate}_k$ denotes
+$k$ repeated dilations. The raw boundary band and residual search support are
 \begin{equation}
 R_r=\operatorname{Dilate}_2(K_r),\qquad
 S_r=v_r\operatorname{Dilate}_4(K_r),
 \label{eq:p2_bands}
 \end{equation}
-where $v_r=1$ only when the radius-four band is nonempty and covers at most half of the coarse canvas; otherwise $v_r=0$. Thus the forward support is generated from the prediction alone and cannot expand into a global rewrite.
+where $v_r=1$ only when the radius-four band is nonempty and covers at most half of the coarse
+canvas; otherwise $v_r=0$. Thus, the forward support is computed from the prediction and
+restricted to a local region.
 
-A projection block consisting of a learned $1\times1$ convolution, GroupNorm, and GELU reduces $P_2$ from 512 to 64 channels before a $32\times32$ RoIAlign crop is extracted at $b_r$. With
+A projection block reduces $P_2$ to a local $32\times32$ RoI feature at $b_r$. With
 \begin{equation}
 \begin{aligned}
 Z_r&=\operatorname{RoIAlign}
@@ -254,7 +453,8 @@ V_r&=h_{\mathrm{fuse}}([Z_r,H_r,\bar p_r,\bar u_r,\bar S_r]),
 \end{aligned}
 \label{eq:p2_fusion}
 \end{equation}
-where $\mathcal{R}_{32}$ is bilinear resizing and $\mathcal{A}_{32}$ is adaptive max pooling. Two convolutional blocks form $h_{\mathrm{fuse}}$; its output is bilinearly resized to $64\times64$ before the residual head predicts
+where $\mathcal{R}_{32}$ is bilinear resizing and $\mathcal{A}_{32}$ is adaptive max pooling.
+The fused local representation is resized to $64\times64$ before the residual head predicts
 \begin{equation}
 \begin{aligned}
 \Delta_r&=0.20\left\{2\tanh\!\left[
@@ -263,7 +463,10 @@ h_{\mathrm{res}}(\mathcal{U}_{64}(V_r))\right]\right\}\odot S_r,\\
 \end{aligned}
 \label{eq:p2_refinement}
 \end{equation}
-Here $\mathcal{U}_{64}$ denotes bilinear upsampling. Thus $\Delta_r\in[-0.4,0.4]$ and is zero outside $S_r$. The residual head is zero initialized, so enabling the module initially leaves the coarse prediction unchanged. The raw coarse mask remains responsible for topology and overall extent; P2BoundaryRefiner can only calibrate a neighborhood supported by its predicted boundary. For training, let $T_r=\operatorname{Dilate}_2(\partial G_r)$ and define
+Here $\mathcal{U}_{64}$ denotes bilinear upsampling. The residual $\Delta_r\in[-0.4,0.4]$ is
+zero outside $S_r$. Because the residual head is zero initialized, the module initially leaves
+the coarse prediction unchanged. For training, let $T_r=\operatorname{Dilate}_2(\partial G_r)$
+and define
 \begin{equation}
 W_r=S_r\odot\max(R_r,T_r).
 \label{eq:p2_loss_support}
@@ -279,32 +482,54 @@ For valid instances $\mathcal{V}=\{r:\sum_{ij}W_{r,ij}>0\}$, the unweighted loca
 \label{eq:p2_loss}
 \end{equation}
 with $\mathcal{L}_{\mathrm{p2}}=0$ when $\mathcal{V}$ is empty.
-The target boundary therefore affects only the training loss support, never the forward support $S_r$. When P2BoundaryRefiner is disabled, we set $\widehat C_r=C_r$, so the non-P2 variants construct their prompts directly from the raw coarse prediction.
+The target boundary affects the training loss support only; it never enters the forward support
+$S_r$. When P2BoundaryRefiner is disabled, $\widehat C_r=C_r$, and the non-P2 variants
+construct prompts directly from the raw coarse prediction.
 
 \subsubsection{Explicit Prompt Mining and Decoding}
-The Explicit Coarse-Prompt Miner converts $\widehat C_r$ into complementary sparse and dense prompts. For sparse prompting, let $\widehat p_r=\sigma(\operatorname{sg}(\widehat C_r))$ and define
+The Explicit Coarse-Prompt Miner converts $\widehat C_r$ into complementary sparse and dense
+prompts. For sparse prompting, let $\widehat p_r=\sigma(\operatorname{sg}(\widehat C_r))$ and
+define
 \begin{equation}
 d_r=\frac{\mathcal{D}_{\mathrm{morph}}(\mathbf{1}[\widehat p_r\geq0.5])}{\min(H_c,W_c)},
 \qquad s_r^{+}=\widehat p_r\odot d_r,
 \label{eq:point_mining_score}
 \end{equation}
-where $\mathcal{D}_{\mathrm{morph}}$ is the discrete interior distance obtained by iterative $3\times3$ morphological erosion. The adaptive 2P2N miner selects at most two foreground and two background points. The first positive maximizes $s_r^{+}$ among pixels with confidence at least 0.60 and normalized interior distance at least 0.05; the second follows the same preference while remaining at least 0.15 of the shorter grid side from the first. The first negative is selected from the one-pixel outer ring of the predicted foreground with confidence at most 0.30. The second is selected from a low-confidence safe-background region outside a foreground dilation of radius 0.10 of the shorter grid side and is separated from the first positive and negative by at least 0.15. If a preferred candidate set is empty, the miner relaxes its confidence condition while preserving foreground/background topology and spatial separation; for an empty prediction, a positive fallback is retained only when the maximum confidence reaches 0.35. Invalid entries are neutralized, and an instance with no reliable point falls back to its remaining prompt modalities. Valid local coordinates are mapped to image coordinates through $b_r$. The same box supplies SAM2's native two-corner box prompt.
+where $\mathcal{D}_{\mathrm{morph}}$ is the discrete interior distance obtained by iterative
+morphological erosion. The adaptive 2P2N miner selects up to two foreground points from
+confident interiors and up to two background points from the exterior of the predicted shape.
+Confidence, topology, and spatial-separation rules keep points away from uncertain boundaries.
+If a reliable point is unavailable, its slot is neutralized and the remaining prompts are used.
+Valid local coordinates are mapped to image coordinates through $b_r$, which also supplies
+SAM2's native two-corner box prompt.
 
-For dense prompting, the refined coarse logits are treated as a fixed prompt observation, resized to the box extent, and rasterized on the native mask-input canvas of the PromptEncoder,
+For dense prompting, the refined coarse logits are used directly as a fixed dense prompt,
+resized to the box extent, and rasterized on the native mask-input canvas of the PromptEncoder,
 \begin{equation}
 Q_r=\operatorname{Place}(\widehat C_r,b_r),
 \label{eq:dense_canvas}
 \end{equation}
-where $\operatorname{Place}$ first clips the raw logits to $[-8,8]$, scales $b_r$ to the native mask-input canvas, rounds its left--top and right--bottom corners outward by floor and ceiling, respectively, bilinearly resizes the coarse logits to that extent, and fills the exterior with zero logits. Let $E_r^{\mathrm{mask}}$ be the mask embedding produced by the frozen PromptEncoder, $E^0$ its frozen pretrained no-mask embedding replicated over the dense grid, and $M_r$ the box support at the dense-embedding resolution. The dense embedding supplied to the MaskDecoder is
+where $\operatorname{Place}$ resizes the coarse logits to the candidate box on the native
+mask-input canvas and fills the exterior with zero logits. Let $E_r^{\mathrm{mask}}$ be the
+mask embedding produced by the frozen PromptEncoder, $E^0$ its frozen pretrained no-mask
+embedding replicated over the dense grid, and $M_r$ the box support at the dense-embedding
+resolution. The dense embedding supplied to the MaskDecoder is
 \begin{equation}
 D_r=E^0+\alpha M_r\odot
 \left(E_r^{\mathrm{mask}}-E^0\right),
 \qquad \alpha=\sigma(a),
 \label{eq:dense_prompt_gate}
 \end{equation}
-where the learnable global gate is initialized with $\alpha=0.25$. The support mask confines the learned dense correction to the candidate box. Points, the box, and $Q_r$ are passed together through a single frozen PromptEncoder call, preserving their native SAM2 semantics while providing interior, exclusion, extent, and shape evidence.
+where the learnable global gate is initialized with $\alpha=0.25$. The support mask confines
+the dense correction to the candidate box. Points, the box, and $Q_r$ are passed together
+through one frozen PromptEncoder call, retaining their native SAM2 semantics and jointly
+encoding interior, exclusion, extent, and shape information.
 
-For every candidate instance, the frozen PromptEncoder encodes four fixed point slots and the box corners together with $Q_r$; embeddings corresponding to invalid point slots are subsequently zeroed. Equation~\eqref{eq:dense_prompt_gate} then forms the gated dense embedding $D_r$. The corresponding stride-16 image embedding is reused across all instances in the image, while the two higher-resolution SAM2 features are repeated in the same instance order. The trainable SAM2 MaskDecoder consumes these image features, positional encoding, and prompt embeddings to predict the final candidate-aligned mask logits $Y_r$. During training, $Y_r$ is resized to and supervised by the assigned ground-truth crop defined by $b_r$; during inference, the predicted mask is pasted into the image using the final detected box.
+For each candidate instance, the frozen PromptEncoder jointly encodes the point slots, box
+corners, and $Q_r$; invalid point embeddings are zeroed. The image embedding is reused for all
+instances in an image, and the higher-resolution SAM2 features follow the same instance order.
+The trainable SAM2 MaskDecoder predicts logits $Y_r$, which are supervised on the crop defined
+by $b_r$ during training and pasted using the final detected box at inference.
 
 \subsubsection{Training Objective}
 
@@ -319,7 +544,8 @@ Let $\mathcal{I}$ be the sampled positive instances. The unweighted coarse objec
 \end{aligned}
 \label{eq:coarse_loss}
 \end{equation}
-where $\epsilon=10^{-6}$ and the loss is zero when $\mathcal{I}$ is empty. The complete single-stream objective is
+where $\epsilon=10^{-6}$ and the loss is zero when $\mathcal{I}$ is empty. The complete
+single-stream objective is
 \begin{equation}
 \mathcal{L}=\mathcal{L}_{\mathrm{det}}
 +\mathcal{L}_{\mathrm{mask}}
@@ -327,111 +553,107 @@ where $\epsilon=10^{-6}$ and the loss is zero when $\mathcal{I}$ is empty. The c
 +0.05\mathcal{L}_{\mathrm{p2}}.
 \label{eq:single_loss}
 \end{equation}
-Here $\mathcal{L}_{\mathrm{det}}$ contains the RPN classification and regression losses and the RoI classification and box-regression losses. $\mathcal{L}_{\mathrm{mask}}$ is the standard per-pixel binary mask loss on $Y_r$. The terms $\mathcal{L}_{\mathrm{coarse}}$ and $\mathcal{L}_{\mathrm{p2}}$ denote the unweighted normalized objectives in Eqs.~\eqref{eq:coarse_loss} and~\eqref{eq:p2_loss}; their weights are 0.10 and 0.05, respectively. Ground truth enters P2BoundaryRefiner only through $\mathcal{L}_{\mathrm{p2}}$, while the refinement support used in both training and inference is derived solely from the raw prediction.
+Here $\mathcal{L}_{\mathrm{det}}$ contains the RPN classification and regression losses and the
+RoI classification and box-regression losses. $\mathcal{L}_{\mathrm{mask}}$ is the standard
+per-pixel binary mask loss on $Y_r$. The terms $\mathcal{L}_{\mathrm{coarse}}$ and
+$\mathcal{L}_{\mathrm{p2}}$ denote the unweighted normalized objectives in
+Eqs.~\eqref{eq:coarse_loss} and~\eqref{eq:p2_loss}; their weights are 0.10 and 0.05,
+respectively. Ground truth enters P2BoundaryRefiner only through $\mathcal{L}_{\mathrm{p2}}$,
+while the refinement support used in both training and inference is derived solely from the raw
+prediction.
 
 %==============================================================================
 \subsection{GeoViewMiner-SAM2}
 \label{sec:dual_method}
 %==============================================================================
 
-GeoViewMiner-SAM2 retains the complete PromptMiner-SAM2 target-view network and introduces UAV information only after target-view ROI extraction. This design treats PromptMiner-SAM2 as a stable reference path: the overhead image encoder, PAFPN, RPN, box head, coarse-prompt generator, P2BoundaryRefiner, PromptEncoder, and SAM2 MaskDecoder remain unchanged. The UAV branch supplies gated residual features with a bounded scale to the bbox and mask ROI streams, allowing cross-view information to refine the classification and localization of existing proposals and improve mask delineation without replacing the target-view representation.
+GeoViewMiner-SAM2 retains the PromptMiner-SAM2 satellite-view network and augments its feature
+pyramid with UAV features aligned by the available camera parameters. The trainable satellite-view
+encoder produces $\{P_2,\ldots,P_6\}$, while an independent frozen Hiera-Base+ encoder
+processes the five UAV images. Their multi-scale features are sampled on a satellite-aligned
+ground grid and aggregated with satellite $P_3$ queries. The resulting feature enters $P_2$ and
+$P_3$ through zero-initialized residual paths, so the satellite-view model is recovered exactly at
+initialization.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{双流模型.pdf}
-\caption{Architecture of GeoViewMiner-SAM2. The target-view encoder $E$ feeds the PAFPN--RPN/ROI pathway, while a frozen, weight-shared Hiera encoder extracts features from calibrated UAV views. The Cross-View Transformer (CVT) aggregates camera-conditioned UAV features into a ground-referenced BEV representation. Branch-specific candidate retrieval uses each target-view ROI to select local BEV evidence, which is fused residually before coarse-mask decoding (CD), boundary refinement (BF), prompt encoding (PE), and mask decoding (D). The lower panels expand the camera-aware CVT aggregation and the top-down/bottom-up feature pyramid.}
+\caption{Architecture of GeoViewMiner-SAM2. The satellite view is processed by the trainable encoder $E$ and PAFPN--RPN/RoI pathway. Five UAV views with renderer-provided camera parameters are processed by an independent frozen Hiera encoder; their multi-scale features are fused by the Cross-View Transformer (CVT) into a ground-aligned BEV feature. Zero-initialized residual paths inject this feature into the $P_2$ and $P_3$ pyramid levels before RPN and RoI processing. CD, BF, PE, and D denote the coarse-mask decoder, boundary refiner, prompt encoder, and mask decoder of the shared satellite-view pathway.}
 \label{fig:dual_architecture}
 \end{figure}
 
-As illustrated in Fig.~\ref{fig:dual_architecture}, the UAV pathway is auxiliary: it contributes ground-referenced residual evidence only after target-view RoI extraction. Consequently, the target-view detector and explicit-prompt decoder remain the primary prediction path, while CVT aggregation and candidate retrieval correct local cross-view disagreement rather than substitute for overhead features.
-
-\subsubsection{Geometric Conditions and UAV BEV Construction}
-For each overhead target image, the auxiliary input comprises $V$ calibrated UAV views $\{I_v,K_v,T_v^{c\rightarrow w}\}_{v=1}^{V}$, where $K_v$ is the intrinsic matrix and $T_v^{c\rightarrow w}$ maps UAV-camera coordinates into the shared world frame. The five UAV images are processed in one batched pass by a weight-shared SAM2 Hiera-Base+ image encoder $E_u$. This UAV encoder is initialized from the same pretrained SAM2 checkpoint as the target-view encoder, but its parameters are frozen and are not tied to the trainable target-view branch. Lightweight trainable adapters map its hierarchical outputs to the four UAV feature levels consumed by the BEV encoder.
-
-For each scene group, we use a local metric frame centered at the sampled scene center and define its nominal ground plane as $z=0$. Its $+Y$ axis follows the rightward direction of the target image, while $+X$ follows the upward direction. The exported UAV poses are expressed in this local frame and converted from the UE convention to the pinhole camera-axis convention used by $K_v$. No physical target-view pinhole camera model is assumed. Instead, a known affine transform maps original target-view pixels to ground-plane world coordinates. This mapping is interpreted as a coarse ground reference rather than an exact correspondence between elevated roof pixels and three-dimensional surfaces.
-
-The UAV encoder provides four feature levels $\{F_v^s\}_{s=1}^{4}$. Following the camera-aware formulation of Cross-View Transformers~\cite{ref_cvt}, we define a learnable BEV prior on an $H_b\times W_b$ grid covering the common ground region. For grid location $(i,j)$, let $P_{ij}=(X_i,Y_j,0,1)^{\top}$ and let $c_v$ denote the center of camera $v$ in the shared frame. A learned embedding of the normalized direction from $c_v$ to $P_{ij}$ forms the camera-conditioned positional component of the BEV query. At feature location $u$ in view $v$ and level $s$, $K_v^{-1}$ maps the image coordinate to a camera ray and $T_v^{c\rightarrow w}$ expresses that ray in the shared frame. A learned embedding of its normalized world direction forms the positional component of the corresponding image token. Thus, camera calibration constrains the relation between BEV queries and image tokens without forcing each query to copy a single projected pixel.
-
-Let $X^{s-1}$ denote the BEV state entering level $s$, with $X^0$ given by the learnable BEV prior. For compactness, write $e^{\mathrm{bev}}_{vij}$ for the camera-conditioned BEV positional embedding and $e^{\mathrm{img},s}_{vu}$ for the image-ray embedding. The query, key, and value tokens are
+\subsubsection{Ground-Grid Projection and Local UAV Aggregation}
+For each scene, the auxiliary input is $\{I_v,K_v,T_v^{w\rightarrow c}\}_{v=1}^{5}$, where
+$K_v$ is the UAV intrinsic matrix and $T_v^{w\rightarrow c}$ is the world-to-camera pose in the
+UE centimetre coordinate system. We form a $H_b\times W_b=128\times128$ grid over the
+$360\times360$~m target region. With $(x_c,y_c)$ denoting the scene centre in UE centimetres,
+the grid centre at row $i$ and column $j$ is
 \begin{equation}
 \begin{aligned}
-q^s_{vij}&=W_q^s\!\left(X^{s-1}_{ij}+e^{\mathrm{bev}}_{vij}\right),\\
-k^s_{vu}&=W_k^s\!\left(\rho_k^s(F_v^s(u))+e^{\mathrm{img},s}_{vu}\right),\\
-z^s_{vu}&=W_v^s\rho_v^s(F_v^s(u)),
+u_j&=\left(j+\tfrac{1}{2}\right)\frac{512}{W_b},\qquad
+v_i=\left(i+\tfrac{1}{2}\right)\frac{512}{H_b},\\
+x_i&=x_c-36000\left(\frac{v_i}{512}-\tfrac{1}{2}\right),\\
+y_j&=y_c+36000\left(\frac{u_j}{512}-\tfrac{1}{2}\right),\\
+P^w_{ij}&=\left(x_i,y_j,0,1\right)^{\top}.
 \end{aligned}
-\label{eq:cvt_qkv}
+\label{eq:ground_projection}
 \end{equation}
-where $\rho_k^s$ and $\rho_v^s$ are trainable level-specific feature projections. Multi-head cross-attention aggregates all UAV views and spatial tokens for each BEV location,
+where $i\in\{0,\ldots,H_b-1\}$ and $j\in\{0,\ldots,W_b-1\}$. Thus, the grid is aligned with the
+original $512\times512$ satellite image without assuming a satellite-view pinhole camera. For each
+UAV view, $P^w_{ij}$ is projected as $\tilde p_{vij}=T_v^{w\rightarrow c}P^w_{ij}$ and $(\tilde
+u_{vij},\tilde v_{vij})^{\top}=(K_v\tilde p_{vij,1:3})_{1:2}/(K_v\tilde p_{vij,1:3})_3$. A
+projection is valid when it has positive camera depth and falls within the original
+$512\times512$ UAV image. This ground reference is approximate for elevated roofs; it supplies
+camera-parameter-derived sampling locations rather than a depth reconstruction.
+
+The frozen UAV encoder provides four 256-channel feature levels $\{F_v^s\}_{s=1}^{4}$. At each
+valid projection, we bilinearly sample a local window from every UAV level; the window widths
+are $7$, $5$, $3$, and $3$, respectively. Let $t=(v,s,\delta)\in\mathcal{T}_{ij}$ index a view,
+feature level, and local-window offset, and let $f_{ijt}$ denote the corresponding sampled UAV
+feature token. A four-head cross-attention layer uses the satellite $P_3$ feature as the query
+and the local UAV tokens as keys and values:
 \begin{equation}
 \begin{aligned}
-\widetilde X^s_{ij}
-&=\sum_{v,u}\operatorname{Softmax}_{v,u}\!\left(
-\frac{(q^s_{vij})^{\top}k^s_{vu}}{\sqrt{d}}
-\right)z^s_{vu},\\
-X^s&=\mathcal{B}^s\!\left(X^{s-1}+\widetilde X^s\right),
+q^a_{ij}&=W_q^aP_{3,ij},\\
+k^a_{ijt}&=W_{k,s}^af_{ijt},\\
+z^a_{ijt}&=W_{v,s}^af_{ijt},\\
+\omega^a_{ijt}&=\operatorname{Softmax}_{t}\!\left(
+\frac{(q^a_{ij})^{\top}k^a_{ijt}}{\sqrt{32}}\right),\\
+B_{ij}&=\operatorname{Concat}_{a=1}^{4}\!\left[
+\sum_{t\in\mathcal{T}_{ij}}\omega^a_{ijt}z^a_{ijt}\right],
 \end{aligned}
-\label{eq:uav_bev}
+\label{eq:local_uav_attention}
 \end{equation}
-where $\mathcal{B}^s$ is a residual convolutional refinement block. Repeating this update over the four UAV feature levels yields $V_{\mathrm{bev}}=X^4\in\mathbb{R}^{C_u\times128\times128}$. Unlike fixed equal-view averaging, the attention weights allow a BEV query to emphasize complementary evidence from different UAVs and nearby image regions while retaining camera geometry as its positional prior.
+where $W_{k,s}^a$ and $W_{v,s}^a$ are level-specific projections, and invalid projected tokens
+are masked before the softmax. The rendered camera configuration provides at least one valid
+token for every grid cell, i.e., $\mathcal{T}_{ij}\neq\varnothing$. The output
+$B\in\mathbb{R}^{128\times H_b\times W_b}$ is a ground-aligned UAV feature map formed from
+projection-defined local neighborhoods, not from a learned BEV prior or an RoI retrieval bank.
 
-For retrieval validity, we additionally define $h_{ij}=1$ when the ground reference point $P_{ij}$ lies inside the calibrated field of view of at least one UAV camera, and $h_{ij}=0$ otherwise. This support mask only prevents sampling outside observed coverage; it does not determine the cross-view attention weights. The resulting BEV is a ground-referenced feature representation, not a depth map or a three-dimensional reconstruction. We use neither discrete height planes nor depth or building-height supervision.
-
-\subsubsection{Ground-Referenced ROI Candidate Retrieval}
-Retrieval is performed independently for the bbox and mask branches, indexed by $l\in\{b,m\}$. Here $F_{r,b}$ and $F_{r,m}$ denote the target-view bbox and mask ROI features, respectively, with $F_{r,l}\in\mathbb{R}^{C_l\times H_l\times W_l}$, and $B^{\mathrm{net}}_{r,l}$ is the box used to extract that feature in the resized target-view network coordinates. Its BEV sampling box is
+\subsubsection{Zero-Initialized Pyramid Fusion}
+The UAV feature map is projected to the satellite-view pyramid and added before proposal
+generation:
 \begin{equation}
-B^{\mathrm{bev}}_{r,l}=\mathcal{N}_{w\rightarrow\mathrm{bev}}\!\left(
-A_{s\rightarrow w}\!\left(
-\mathcal{R}^{-1}\!\left(B^{\mathrm{net}}_{r,l}\right)\right)\right),
-\label{eq:roi_coordinate_chain}
-\end{equation}
-where $\mathcal{R}^{-1}$ returns the ROI to the original $512\times512$ target-view coordinates, $A_{s\rightarrow w}$ is the pixel-to-ground affine, and $\mathcal{N}_{w\rightarrow\mathrm{bev}}$ normalizes the resulting world box to the $128\times128$ BEV domain. This transformation preserves the ROI orientation, width, and height. Since elevated roofs and residual registration errors may displace the best matching BEV region, we search a small neighborhood of horizontal offsets $\mathcal{D}=\{\Delta_m\}_{m=1}^{M}$, where adding $\Delta_m$ translates the BEV box center without changing its extent.
-
-The target-view ROI query is $q_{r,l}=\operatorname{GAP}(F_{r,l})$. For each offset, a coarse BEV crop is average-pooled into the candidate token
-\begin{equation}
-t_{rm,l}=\operatorname{GAP}\!\left(
-\operatorname{GridSample}(V_{\mathrm{bev}},B^{\mathrm{bev}}_{r,l}+\Delta_m)\right).
-\end{equation}
-Branch-specific linear projections $\phi_q^l$ and $\phi_k^l$ map the two tokens into a common $d$-dimensional retrieval space, and candidate relevance is
-\begin{equation}
-s_{rm,l}=
-\frac{\phi_q^l(q_{r,l})^{\top}\phi_k^l(t_{rm,l})}{\sqrt{d}}.
-\label{eq:candidate_score}
-\end{equation}
-A candidate is valid when its sampling grid intersects the BEV support mask $h$:
-\begin{equation}
-c_{rm,l}=\mathbf{1}\!\left[
-\sum_{x\in\mathcal{G}(B^{\mathrm{bev}}_{r,l}+\Delta_m)}h(x)>0\right],
-\end{equation}
-where $\mathcal{G}(\cdot)$ denotes the branch-specific crop grid. We set $s_{rm,l}=-\infty$ when $c_{rm,l}=0$. If all candidates are invalid, the ROI bypasses retrieval before the softmax and uses $U_{r,l}=0$. Otherwise,
-\begin{equation}
-P_{rm,l}=\operatorname{Softmax}_{m}(s_{rm,l}),
-\qquad
-\bar{\Delta}_{r,l}=\sum_mP_{rm,l}\Delta_m.
-\end{equation}
-One full spatial crop is then sampled at the expected offset. Grid sampling uses an $H_l\times W_l$ output grid (with $H_m=W_m=14$ for the mask branch), and a branch-specific convolutional adapter $\phi_v^l$ maps it to the same channel count and spatial resolution as the corresponding target-view ROI feature:
-\begin{equation}
-U_{r,l}=\phi_v^l\!\left(
-\operatorname{GridSample}(V_{\mathrm{bev}},B^{\mathrm{bev}}_{r,l}+\bar{\Delta}_{r,l})\right).
-\label{eq:uav_roi}
-\end{equation}
-This design preserves the spatial structure needed by instance masks while allowing the bbox and mask branches to learn independent offset distributions and feature adapters.
-
-\subsubsection{BBox and Mask ROI Residual Fusion}
-Bbox and mask branches use different ROI sets and spatial resolutions: the bbox head operates on sampled positive and negative proposals before classification and box regression, whereas the mask branch operates on sampled positive instance ROIs during training and final detected boxes after post-processing during inference. We consequently perform retrieval separately for the two branches. The branch adapter above guarantees $U_{r,l}$ and $F_{r,l}$ have identical shapes. A sigmoid gate is predicted from their concatenation,
-\begin{equation}
-G_{r,l}=\sigma\!\left(g_l([F_{r,l},U_{r,l}])\right),
-\end{equation}
-where $g_l$ is a branch-specific $1\times1$ convolution and $G_{r,l}$ has the same spatial and channel dimensions as the ROI feature. The fused feature is
-\begin{equation}
-F'_{r,l}=F_{r,l}+\alpha_lG_{r,l}\odot U_{r,l},
+\begin{aligned}
+P'_3&=P_3+\gamma_3\psi_3(B),\\
+P'_2&=P_2+\gamma_2\psi_2\!\left(\mathcal{U}_{P_2}(B)\right),
+\end{aligned}
 \label{eq:dual_residual}
 \end{equation}
-where $\alpha_l=0.2\,\sigma(\theta_l)\in(0,0.2)$ is a learnable branch-level residual scale. We initialize $\theta_l=\operatorname{logit}(0.01/0.2)\approx-2.944$, giving $\alpha_l=0.01$. If no offset candidate has valid UAV coverage, $U_{r,l}=0$ and the original target-view ROI feature is recovered exactly.
-
-The fused bbox feature is passed to the original classification and regression head, enabling UAV information to affect proposal scoring and box localization directly. The fused mask feature enters the unchanged explicit-prompt chain: coarse-mask prediction, P2 boundary residual refinement, adaptive foreground--background point mining, box and dense-mask prompt encoding, and final SAM2 mask decoding. UAV information can therefore influence the intermediate shape estimate and all derived prompts while retaining the same single-stream segmentation path.
+where $\psi_2$ and $\psi_3$ are $1\times1$ projections to the 512-channel pyramid space,
+$\mathcal{U}_{P_2}$ bilinearly resizes $B$ to the $P_2$ resolution, and $\gamma_2$ and
+$\gamma_3$ are learnable scalars initialized to zero. UAV features are injected only into $P_2$
+and $P_3$, the two finest-resolution levels used by the detection pyramid. At initialization,
+the dual-stream feature pyramid therefore matches the single-stream pyramid exactly; training
+can then open each residual path. The fused $P'_2$ and $P'_3$, together with the unchanged
+higher pyramid levels, feed the RPN and subsequent bbox and mask heads. Thus, the fused UAV
+features can affect proposal generation as well as the proposal-conditioned coarse-mask and
+prompt pathways without an RoI-specific retrieval module.
 
 \subsubsection{Learning Objective}
-The dual-stream model is trained from the common SAM2 pretrained initialization and does not load a trained PromptMiner-SAM2 checkpoint. The target-view path follows the same trainability configuration as PromptMiner-SAM2, while the weight-shared UAV encoder remains frozen. The UAV feature adapters, Cross-View Transformer, retrieval projections, branch-specific feature adapters, gates, and residual scales are optimized end to end using the same detection, coarse-shape, boundary, and final-mask objectives defined for the single-stream model. No additional retrieval, alignment, depth, height, occupancy, or three-dimensional supervision is introduced.
+The dual-stream model uses the detection, coarse-shape, boundary, and final-mask losses in
+Eq.~\eqref{eq:single_loss}. The cross-view aggregation and pyramid residual-fusion modules are
+optimized jointly with the satellite-view pathway.
 
 \section{Experiments}
 \label{sec:experiments}
@@ -440,47 +662,144 @@ The dual-stream model is trained from the common SAM2 pretrained initialization 
 \subsection{Datasets and Comparison Protocol}
 \label{sec:experimental_datasets}
 
-\noindent\textit{WHU Building Dataset.}
-We use the established $1024\times1024$ instance-segmentation version of the WHU aerial building dataset~\cite{ref_whu,ref_p2pformer} to evaluate PromptMiner-SAM2 on real aerial imagery. Its annotated split contains 5,640 RGB images: 2,793 training images, 627 validation images, and 2,220 test images. For our training protocol, we additionally include 150 label-free background images, yielding 2,943 training images. The dataset contains large variations in building scale, shape, density, roof appearance, and surrounding background. Because WHU does not provide paired UAV observations or camera geometry, it is used only for single-view overhead instance segmentation and comparison with existing methods.
+\noindent\textbf{WHU Building Dataset};
+We use the established $1024\times1024$ instance-segmentation version of the WHU aerial
+building dataset~\cite{ref_whu,ref_p2pformer} to evaluate PromptMiner-SAM2 on real aerial
+imagery. Its annotated split contains 5,790 RGB images: 2,943 for training, 627 for validation,
+and 2,220 for testing. Building scale, shape, density, roof appearance, and background vary
+substantially across the images. We use WHU for single-view overhead building instance
+segmentation and comparison with existing methods.
 
-\noindent\textit{SynSU-Build.}
-SynSU-Build is used to evaluate both target-view-only segmentation and satellite--UAV fusion. Each of its 1,500 aligned groups contains one $512\times512$ synthetic satellite-like nadir image, five calibrated $512\times512$ oblique UAV RGB images, and building instance annotations only for the synthetic target view. The complete dataset therefore comprises 9,000 RGB images and approximately 32.7k target-view building-instance annotations. A fixed 8:1:1 group-level partition assigns 1,200 groups to training, 150 to validation, and 150 to testing.
+\noindent\textbf{NWPU VHR-10 Dataset};
+To assess single-view segmentation beyond the single-class building setting, we additionally
+evaluate PromptMiner-SAM2 on the public NWPU VHR-10 benchmark~\cite{ref_nwpu,ref_rsprompter}.
+It covers ten categories---airplane, ship, storage tank, baseball diamond, tennis court,
+basketball court, ground track field, harbor, bridge, and vehicle---in more than 800
+very-high-resolution images. Although NWPU VHR-10 was introduced for object detection, we use
+the publicly released instance masks of Su et al.~\cite{ref_nwpu_instance}. Following
+RSPrompter~\cite{ref_rsprompter}, we allocate 80\% of the images to training and 20\% to testing.
+Table~\ref{tab:nwpu} reports the same COCO-style bbox and mask metrics as
+Table~\ref{tab:whu}.
 
-To our knowledge, no previous method is designed for the same paired satellite--UAV instance-segmentation setting. We therefore retrain the comparison algorithms using only the synthetic satellite-like target images and their masks, so that all existing methods are evaluated as single-stream baselines under the same SynSU-Build split. PromptMiner-SAM2 uses the identical target-view input protocol, whereas GeoViewMiner-SAM2 additionally receives the five UAV images and their camera parameters. This protocol compares the target-view-only reference model with the complete calibrated cross-view model under the same split and target-view architecture; it does not isolate the contribution of individual fusion modules, auxiliary model capacity, or UAV content alone.
+\begin{table*}[!t]
+\caption{Comparison of Instance Segmentation Methods on NWPU VHR-10}
+\label{tab:nwpu}
+\centering
+\footnotesize
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{Method} & \multicolumn{3}{c}{Bounding Box} & \multicolumn{3}{c}{Instance Mask} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+& AP & AP$_{50}$ & AP$_{75}$ & AP & AP$_{50}$ & AP$_{75}$ \\
+\midrule
+\multicolumn{7}{l}{\textit{General-purpose instance-segmentation methods}} \\
+Mask R-CNN~\cite{ref_maskrcnn} & 0.623 & 0.883 & 0.752 & 0.597 & 0.892 & 0.656 \\
+MS R-CNN~\cite{ref_msrcnn} & 0.623 & 0.886 & 0.731 & 0.607 & 0.887 & 0.677 \\
+HTC~\cite{ref_htc} & 0.639 & 0.889 & 0.754 & 0.609 & 0.886 & 0.641 \\
+CondInst~\cite{ref_condinst} & 0.623 & 0.878 & 0.733 & 0.590 & 0.885 & 0.628 \\
+SOLOv2~\cite{ref_solov2} & -- & -- & -- & 0.509 & 0.775 & 0.541 \\
+RTMDet-Ins~\cite{ref_rtmdet} & -- & -- & -- & -- & -- & -- \\
+YOLO11-seg~\cite{ref_yolo11} & -- & -- & -- & -- & -- & -- \\
+Mask2Former~\cite{ref_mask2former} & 0.574 & 0.755 & 0.637 & 0.588 & 0.831 & 0.635 \\
+MaskDINO~\cite{ref_maskdino} & -- & -- & -- & -- & -- & -- \\
+\midrule
+\multicolumn{7}{l}{\textit{Remote-sensing-oriented methods}} \\
+CATNet~\cite{ref_catnet} & 0.632 & 0.890 & 0.738 & 0.604 & 0.896 & 0.655 \\
+RSIISN~\cite{ref_rsiisn} & -- & -- & -- & -- & -- & -- \\
+RS4D-box~\cite{ref_rs4d} & -- & -- & -- & -- & -- & -- \\
+P2PFormer~\cite{ref_p2pformer} & -- & -- & -- & -- & -- & -- \\
+RSPrompter~\cite{ref_rsprompter} & 0.703 & 0.936 & 0.810 & 0.661 & 0.927 & 0.706 \\
+\midrule
+\textbf{PromptMiner-SAM2 (Ours)} & -- & -- & -- & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\noindent\textbf{SynSU-Build};
+SynSU-Build supports both satellite-view-only segmentation and satellite--UAV fusion. Each of its
+1,500 aligned groups contains a $512\times512$ synthetic satellite-like nadir image, five
+$512\times512$ oblique UAV RGB images with renderer-provided intrinsics and poses, and
+building-instance annotations for the synthetic satellite view only. In total, the dataset
+contains 9,000 RGB images and approximately 32.7k satellite-view building instances. We use a
+fixed 8:1:1 group-level split: 1,200 groups for training, 150 for validation, and 150 for
+testing.
+
+To our knowledge, no previous method addresses the same paired satellite--UAV
+instance-segmentation setting. We therefore retrain the comparison algorithms on the synthetic
+satellite-like images and their masks only, treating them as single-stream baselines
+under the SynSU-Build split. PromptMiner-SAM2 follows the same satellite-view input protocol,
+whereas GeoViewMiner-SAM2 also receives the five UAV images and their camera parameters. The
+protocol compares the satellite-view-only reference with the complete geometry-guided cross-view
+model under the same split and satellite-view architecture.
 
 \subsection{Evaluation Metrics}
 \label{sec:evaluation_metrics}
-We use the standard COCO-style metrics for both bounding boxes and instance masks. For an intersection-over-union (IoU) threshold $t$, a prediction is counted as a true positive when it is matched to an unmatched ground-truth instance of the same category with
+We report standard COCO-style metrics for both bounding boxes and instance masks. At an
+intersection-over-union (IoU) threshold $t$, a prediction is a true positive when it matches an
+as-yet-unmatched ground-truth instance in the same category and
 \begin{equation}
 \operatorname{IoU}(\mathcal{P},\mathcal{G})=
 \frac{|\mathcal{P}\cap\mathcal{G}|}{|\mathcal{P}\cup\mathcal{G}|}\geq t,
 \end{equation}
-where $\mathcal{P}$ and $\mathcal{G}$ denote a predicted and ground-truth box or binary mask, respectively. Predictions are sorted by confidence to obtain the precision--recall curve, and AP$_t$ is its interpolated area. We report AP$_{50}$ and AP$_{75}$ at IoU thresholds 0.50 and 0.75, respectively, together with the primary mean AP:
+where $\mathcal{P}$ and $\mathcal{G}$ are a predicted and a ground-truth box or binary mask,
+respectively. For category $c$, $\operatorname{AP}^c_t$ is computed from predictions ranked by
+confidence at threshold $t$. With $\mathcal{C}$ denoting the evaluated category set, the
+primary score averages over categories and thresholds:
 \begin{equation}
-\operatorname{AP}=\frac{1}{10}\sum_{t\in\{0.50,0.55,\ldots,0.95\}}\operatorname{AP}_t.
+\operatorname{AP}=\frac{1}{10|\mathcal{C}|}
+\sum_{c\in\mathcal{C}}\sum_{t\in\{0.50,0.55,\ldots,0.95\}}
+\operatorname{AP}^{c}_t.
 \end{equation}
-The prefixes \emph{bbox} and \emph{segm} distinguish box IoU from mask IoU. Bbox AP is reported separately from segm AP to distinguish localization quality from mask delineation quality.
+AP$_{50}=|\mathcal{C}|^{-1}\sum_{c\in\mathcal{C}}\operatorname{AP}_{0.50}^{c}$ and
+AP$_{75}=|\mathcal{C}|^{-1}\sum_{c\in\mathcal{C}}\operatorname{AP}_{0.75}^{c}$. For the
+single-class WHU and SynSU-Build benchmarks, these expressions reduce to per-class AP; for
+ten-class NWPU VHR-10, they are macro averages over categories. The prefixes \emph{bbox} and
+\emph{segm} distinguish box and mask IoU, respectively.
 
-\subsection{Implementation Details and Main Results}
+\subsection{Experimental Configuration and Main Results}
 \label{sec:implementation_results}
 
 \noindent\textit{Single-stream configuration.}
-For the reported WHU main result, training uses random horizontal and vertical flips, each with a probability of 0.5, together with multi-scale resizing by factors in $[0.875,1.125]$ with a probability of 0.5; the final canvas and SAM2 input resolution remain $1024\times1024$. PromptMiner-SAM2 uses the Hiera-Base+ checkpoint throughout: the image encoder initializes both the hierarchical detection features and the SAM2 image embedding, while the PromptEncoder and MaskDecoder are loaded from the matching checkpoint. The Hiera trunk is adapted with rank-16 LoRA on the attention \texttt{qkv} and output-projection layers, using scale 32 and dropout 0.05; the remaining trunk weights are frozen and the encoder neck is trainable. The complete PromptEncoder and its pretrained no-mask embedding remain frozen. PAFPN, RPN, the Shared2FC box head, coarse-mask decoder, dense-prompt gate, P2BoundaryRefiner, and SAM2 MaskDecoder are optimized.
+For the reported WHU main result, training uses horizontal/vertical flips and multi-scale
+resizing on a final $1024\times1024$ canvas. The model is initialized from SAM2 Hiera-Base+.
+Rank-16 LoRA adapts the Hiera attention projections, while the encoder neck, detection heads,
+prompt-mining modules, and MaskDecoder are optimized; the remaining trunk and PromptEncoder
+remain frozen. The coarse head predicts $64\times64$ logits and uses the loss weights in
+Eq.~\eqref{eq:single_loss}; the 2P2N miner follows the same rules during training and
+inference.
 
-The coarse head predicts a $64\times64$ mask and uses a fixed auxiliary-loss weight of 0.10. Adaptive 2P2N mining is active from the first epoch without a point warm-up, and the same confidence, topology, and distance rules are used for training and inference. The dense-prompt interpolation coefficient is initialized to 0.25. P2BoundaryRefiner uses 64 projected and 64 hidden channels, a $32\times32$ P2 crop, a maximum residual magnitude of 0.4, and boundary-loss weight 0.05. Segmentation confidence is inherited from the detector score rather than a separately trained mask-quality score.
-
-Training uses four GPUs with one image per GPU and two-step gradient accumulation, giving an effective global batch size of eight. We use AMP with fp16 arithmetic and AdamW with learning rate $5\times10^{-4}$, weight decay 0.05, and $\epsilon=10^{-6}$. All trainable parameter groups use the same learning-rate multiplier. The learning rate increases linearly from $10^{-3}$ of its base value over the first 100 optimizer steps and then follows cosine decay to $10^{-3}$ of the base value. Training runs for 150 epochs, with validation performed after every epoch. An exponential moving average is maintained during training; the reported main result uses the validation-selected EMA-merged checkpoint.
-
-All reported WHU single-stream experiments use the complete training split. The validation split is evaluated during training for model selection, and the held-out test split is used only for the final inference and reporting of comparison and ablation results.
+We train with AMP and AdamW (learning rate $5\times10^{-4}$; weight decay 0.05) on four NVIDIA
+RTX 3090 GPUs with an effective batch size of eight. A 100-step linear warm-up is followed by
+cosine decay. Models are trained for 150 epochs and selected by validation performance. We
+retain the better of the raw and EMA-merged weights at the selected epoch for testing. All WHU
+comparison and ablation results use the same 2,943-image training split; validation is used
+only for model selection and the held-out test set only for final reporting. Further
+architecture constants and prompt-construction rules are provided in Section~\ref{sec:single_method}.
 
 \noindent\textit{Dual-stream configuration.}
-GeoViewMiner-SAM2 retains the complete PromptMiner-SAM2 configuration and adds five calibrated UAV views. The UAV views share one frozen SAM2 Hiera-Base+ encoder. Four camera-aware cross-view attention stages use four heads with a 32-dimensional subspace per head and aggregate the hierarchical UAV features into a 128-channel, $128\times128$ ground-plane BEV covering $[-180,180]$~m along both local horizontal axes. The known affine maps a synthetic target-view pixel $(u,v)$ to $Y=(u/512-0.5)\times360$~m and $X=-(v/512-0.5)\times360$~m. The $3\times3$ candidate set is $\mathcal{D}=\{-20,0,20\}\times\{-20,0,20\}$~m. Bbox and mask branches use independent ROI retrieval modules and residual gates, with residual scales initialized to 0.01 and parameterized within $(0,0.20)$.
+GeoViewMiner-SAM2 retains the PromptMiner-SAM2 satellite-view pathway and adds five UAV views with
+renderer-provided camera parameters. A separate frozen SAM2 Hiera-Base+ encoder supplies four
+UAV feature levels. Geometric projection and four-head cross-attention (32-dimensional subspace
+per head) aggregate local UAV windows into a 128-channel, $128\times128$ ground-aligned feature
+map over $[-180,180]$~m along both horizontal axes. The satellite-aligned grid maps a synthetic
+satellite-view pixel $(u,v)$ to $Y=(u/512-0.5)\times360$~m and $X=-(v/512-0.5)\times360$~m. This
+feature is injected into $P_2$ and $P_3$ through zero-initialized residual scales, without
+RoI-specific retrieval.
 
-For all SynSU-Build experiments, target-view and UAV images are deterministically resized from $512\times512$ to $1024\times1024$, and no random geometric or photometric augmentation is applied. For GeoViewMiner-SAM2, camera-ray positional embeddings are formed from coordinates in the original $512\times512$ UAV camera frame and matched to each resized feature level, while target-view ROIs are inversely resized to the original coordinates before applying the ground affine. The single- and dual-stream models are trained independently from the same SAM2 pretrained initialization; neither loads weights from a previously trained single-stream model. Both use AdamW and the same learning-rate scheduling form. The single-stream model uses an effective batch of eight scene groups, whereas the higher-memory dual-stream model uses an effective batch of four scene groups. Both are trained for at most 100 epochs, with validation mask AP used for checkpoint selection. Because their effective batch sizes differ, this protocol does not claim identical optimizer trajectories.
+Ground-grid points are projected in the original UAV camera frame with renderer-provided
+intrinsics and world-to-camera poses before local feature sampling. The single- and dual-stream
+models are trained independently from the same SAM2 pretrained initialization and use AdamW
+with the same scheduling form. They are trained for at most 100 epochs, and validation mask AP
+selects the checkpoint. The single-stream model uses an effective batch of eight scene groups
+and the higher-memory dual-stream model an effective batch of four. Because the effective batch
+sizes differ, the two training runs do not follow identical optimization trajectories.
 
 \noindent\textit{WHU single-stream comparison.}
 \label{sec:whu}
-Table~\ref{tab:whu} reports COCO-style AP, AP$_{50}$, and AP$_{75}$ for bounding boxes and instance masks on the WHU building benchmark. The table covers conventional two-stage and single-stage methods, remote-sensing-specific architectures, and foundation-model-based approaches. Six baselines marked with $\dagger$ are rerun under our common WHU-1024 training and test protocol; the remaining values are collected from the cited literature, except for our P2PFormer reproduction. The table therefore provides a controlled comparison for the marked rows and a broader reference for the remaining rows, which may differ in training schedule, backbone, and data processing.
+Table~\ref{tab:whu} reports COCO-style AP, AP$_{50}$, and AP$_{75}$ for bounding boxes and
+instance masks on WHU. The methods span conventional two-stage and single-stage detectors,
+remote-sensing-specific architectures, and foundation-model-based approaches. Rows for
+additional open-source methods remain blank until their experiments are available.
 
 \begin{table*}[!t]
 \caption{Comparison with Instance Segmentation Methods on the WHU Building Benchmark}
@@ -493,26 +812,44 @@ Table~\ref{tab:whu} reports COCO-style AP, AP$_{50}$, and AP$_{75}$ for bounding
 \cmidrule(lr){2-4}\cmidrule(lr){5-7}
 & AP & AP$_{50}$ & AP$_{75}$ & AP & AP$_{50}$ & AP$_{75}$ \\
 \midrule
-Mask R-CNN$^\dagger$~\cite{ref_maskrcnn} & 0.709 & 0.899 & 0.809 & 0.682 & 0.900 & 0.800 \\
-MS R-CNN$^\dagger$~\cite{ref_msrcnn} & 0.688 & 0.894 & 0.800 & 0.677 & 0.896 & 0.795 \\
-HTC$^\dagger$~\cite{ref_htc} & 0.727 & 0.906 & 0.825 & 0.692 & 0.907 & 0.816 \\
-CondInst$^\dagger$~\cite{ref_condinst} & 0.742 & 0.900 & 0.824 & 0.697 & 0.902 & 0.809 \\
-SOLOv2$^\dagger$~\cite{ref_solov2} & -- & -- & -- & 0.668 & 0.864 & 0.769 \\
+\multicolumn{7}{l}{\textit{General-purpose instance-segmentation methods}} \\
+Mask R-CNN~\cite{ref_maskrcnn} & 0.709 & 0.899 & 0.809 & 0.682 & 0.900 & 0.800 \\
+MS R-CNN~\cite{ref_msrcnn} & 0.688 & 0.894 & 0.800 & 0.677 & 0.896 & 0.795 \\
+HTC~\cite{ref_htc} & 0.727 & 0.906 & 0.825 & 0.692 & 0.907 & 0.816 \\
+CondInst~\cite{ref_condinst} & 0.742 & 0.900 & 0.824 & 0.697 & 0.902 & 0.809 \\
+SOLOv2~\cite{ref_solov2} & -- & -- & -- & 0.668 & 0.864 & 0.769 \\
+RTMDet-Ins~\cite{ref_rtmdet} & -- & -- & -- & -- & -- & -- \\
+YOLO11-seg~\cite{ref_yolo11} & -- & -- & -- & -- & -- & -- \\
 Mask2Former~\cite{ref_mask2former} & 0.693 & 0.907 & 0.756 & 0.644 & 0.930 & 0.824 \\
-CATNet$^\dagger$~\cite{ref_catnet} & 0.755 & \textbf{0.940} & \textbf{0.872} & 0.727 & \textbf{0.941} & \textbf{0.865} \\
-RSPrompter~\cite{ref_rsprompter} & 0.725 & 0.910 & 0.817 & 0.725 & 0.920 & 0.829 \\
+MaskDINO~\cite{ref_maskdino} & -- & -- & -- & -- & -- & -- \\
+\midrule
+\multicolumn{7}{l}{\textit{Remote-sensing-oriented methods}} \\
+CATNet~\cite{ref_catnet} & 0.755 & \textbf{0.940} & \textbf{0.872} & 0.727 & 0.941 & \textbf{0.865} \\
+RSIISN~\cite{ref_rsiisn} & -- & -- & -- & -- & -- & -- \\
 RS4D-box~\cite{ref_rs4d} & 0.703 & 0.893 & 0.792 & 0.701 & 0.895 & 0.803 \\
 P2PFormer~\cite{ref_p2pformer} & 0.757 & 0.914 & 0.842 & 0.725 & 0.913 & 0.834 \\
-\textbf{PromptMiner-SAM2 (Ours)} & \textbf{0.764} & 0.912 & 0.854 & \textbf{0.734} & 0.913 & 0.855 \\
+RSPrompter~\cite{ref_rsprompter} & 0.725 & 0.910 & 0.817 & 0.725 & 0.920 & 0.829 \\
+\midrule
+\textbf{PromptMiner-SAM2 (Ours)} & 0.749 & \textbf{0.942} & 0.855 & \textbf{0.735} & \textbf{0.944} & 0.855 \\
 \bottomrule
 \end{tabular}
-\par\smallskip\footnotesize $^\dagger$Our rerun under the common WHU-1024 protocol: 2,943 training images, validation-based checkpoint selection, and COCO test evaluation on 2,220 images with maxDets$=100$. The PromptMiner-SAM2 row uses the reported 150-epoch AMP training recipe with vertical-flip and multi-scale augmentation.
+\par\smallskip\footnotesize Bold identifies the largest entered value in each column. --: result pending.
 \end{table*}
 
-Among the values in Table~\ref{tab:whu}, PromptMiner-SAM2 has the largest listed bbox AP and mask AP, reaching 0.764 and 0.734, respectively. CATNet has the largest listed AP$_{50}$ and AP$_{75}$ for both bbox and mask prediction. Relative to RSPrompter, the other automatic-prompting method in the table, PromptMiner-SAM2 improves mask AP and AP$_{75}$ by 0.9 and 2.6 percentage points, respectively, while its mask AP$_{50}$ is 0.7 percentage points lower. The higher AP$_{75}$ is compatible with improved high-overlap masks, but the heterogeneous protocols of the unmarked published rows preclude attributing the difference solely to prompt construction.
+Of the completed rows in Table~\ref{tab:whu}, PromptMiner-SAM2 has the highest mask AP (0.735)
+and mask AP$_{50}$ (0.944). P2PFormer attains the highest bbox AP (0.757), and CATNet has the
+highest bbox AP$_{50}$, bbox AP$_{75}$, and mask AP$_{75}$. Compared with RSPrompter,
+PromptMiner-SAM2 is higher by 1.0, 2.4, and 2.6 percentage points in mask AP, AP$_{50}$, and
+AP$_{75}$, respectively.
 
 \noindent\textit{SynSU-Build comparison.}
-Table~\ref{tab:synsu_dual} compares representative target-view-only methods with the proposed single- and dual-stream models on SynSU-Build. All comparison methods and PromptMiner-SAM2 use only the synthetic satellite-like target image, whereas GeoViewMiner-SAM2 additionally receives the five calibrated UAV views. Relative to PromptMiner-SAM2, which is trained independently from the same pretrained initialization with the same optimizer and scheduling form but a different effective batch size, the complete dual-stream model improves bbox AP and mask AP by 2.3 and 3.9 percentage points, respectively. This comparison evaluates the overall difference between the complete calibrated cross-view pathway and the corresponding single-stream reference while retaining the same target-view architecture; it does not attribute the gain to an individual fusion component, added capacity, or UAV content alone.
+Table~\ref{tab:synsu_dual} compares satellite-view-only methods with the proposed single- and
+dual-stream models on SynSU-Build. Every comparison method and PromptMiner-SAM2 uses only the
+synthetic satellite-like image; GeoViewMiner-SAM2 additionally uses five UAV views with
+renderer-provided camera parameters. Against the independently trained PromptMiner-SAM2
+reference, the full dual-stream model improves bbox AP by 2.3 percentage points and mask AP by
+3.9 percentage points. Section~\ref{sec:discussion} discusses the limits of component-level
+interpretation.
 
 \begin{table*}[!t]
 \caption{Comparison of Single- and Dual-Stream Methods on the SynSU-Build Test Set}
@@ -525,14 +862,18 @@ Table~\ref{tab:synsu_dual} compares representative target-view-only methods with
 \cmidrule(lr){3-5}\cmidrule(lr){6-8}
 & & AP & AP$_{50}$ & AP$_{75}$ & AP & AP$_{50}$ & AP$_{75}$ \\
 \midrule
-HTC~\cite{ref_htc} & Satellite & 0.647 & 0.862 & 0.713 & 0.668 & 0.875 & 0.731 \\
-CondInst~\cite{ref_condinst} & Satellite & 0.628 & 0.841 & 0.686 & 0.653 & 0.859 & 0.712 \\
-CATNet~\cite{ref_catnet} & Satellite & 0.621 & 0.833 & 0.677 & 0.645 & 0.848 & 0.701 \\
-P2PFormer~\cite{ref_p2pformer} & Satellite & 0.714 & 0.903 & 0.772 & 0.710 & 0.898 & 0.767 \\
-Mask2Former~\cite{ref_mask2former} & Satellite & 0.652 & 0.843 & 0.706 & 0.671 & 0.892 & 0.764 \\
+\multicolumn{8}{l}{\textit{General-purpose single-stream methods}} \\
 Mask R-CNN~\cite{ref_maskrcnn} & Satellite & 0.637 & 0.891 & 0.735 & 0.654 & 0.862 & 0.768 \\
 MS R-CNN~\cite{ref_msrcnn} & Satellite & 0.651 & 0.896 & 0.753 & 0.648 & 0.865 & 0.742 \\
+HTC~\cite{ref_htc} & Satellite & 0.647 & 0.862 & 0.713 & 0.668 & 0.875 & 0.731 \\
+CondInst~\cite{ref_condinst} & Satellite & 0.628 & 0.841 & 0.686 & 0.653 & 0.859 & 0.712 \\
+Mask2Former~\cite{ref_mask2former} & Satellite & 0.652 & 0.843 & 0.706 & 0.671 & 0.892 & 0.764 \\
+\midrule
+\multicolumn{8}{l}{\textit{Remote-sensing-oriented single-stream methods}} \\
+CATNet~\cite{ref_catnet} & Satellite & 0.621 & 0.833 & 0.677 & 0.645 & 0.848 & 0.701 \\
+P2PFormer~\cite{ref_p2pformer} & Satellite & 0.714 & 0.903 & 0.772 & 0.710 & 0.898 & 0.767 \\
 RSPrompter~\cite{ref_rsprompter} & Satellite & 0.664 & 0.847 & 0.702 & 0.673 & 0.891 & 0.746 \\
+\midrule
 PromptMiner-SAM2 (Single-Stream) & Satellite & 0.695 & 0.921 & 0.804 & 0.682 & 0.913 & 0.807 \\
 \textbf{GeoViewMiner-SAM2 (Full Dual-Stream)} & Satellite+UAV & \textbf{0.718} & \textbf{0.926} & \textbf{0.822} & \textbf{0.721} & \textbf{0.914} & \textbf{0.831} \\
 \bottomrule
@@ -541,7 +882,16 @@ PromptMiner-SAM2 (Single-Stream) & Satellite & 0.695 & 0.921 & 0.804 & 0.682 & 0
 
 \subsection{Ablation Studies}
 \label{sec:ablations}
-We first isolate the contribution of each component in the single-stream prompt path. All variants share the same detector, initialization, training schedule, full WHU training split, validation-based model selection, and test-set evaluation protocol; only the available prompt modalities and P2BoundaryRefiner are changed. The candidate box remains the common internal geometry for RoI extraction, target construction, and point-coordinate conversion in every variant. Thus, ``Point'' denotes that only the mined foreground--background points are exposed to the PromptEncoder, whereas ``Point $+$ Box'' additionally exposes the candidate box as an explicit prompt. The following variants successively add the dense coarse-mask prompt and P2 boundary refinement. These controlled ablations use the original single-stream training recipe; their full-model row is therefore not numerically identical to the extended 150-epoch main result in Table~\ref{tab:whu}.
+We first examine the components of the single-stream prompt path. All variants share the
+detector, initialization, training schedule, 2,943-image WHU training protocol,
+validation-based model selection, and test-set evaluation protocol; they differ only in the
+prompt modalities made available and in the use of P2BoundaryRefiner. The candidate box is the
+common internal geometry for RoI extraction, target construction, and point-coordinate
+conversion in every variant. ``Point'' therefore exposes only mined foreground--background
+points to the PromptEncoder, while ``Point $+$ Box'' also supplies the candidate box as an
+explicit prompt. The remaining variants add the dense coarse-mask prompt and P2 boundary
+refinement in turn. The full-model row is the PromptMiner-SAM2 result reported in
+Table~\ref{tab:whu}.
 
 \begin{table*}[!t]
 \caption{Ablation of Explicit Prompt Modalities and P2 Boundary Refinement on the WHU Building Benchmark}
@@ -562,7 +912,18 @@ Point $+$ Box $+$ Mask & 0.748 & \textbf{0.942} & 0.854 & 0.730 & 0.941 & 0.849 
 \end{tabular}
 \end{table*}
 
-Table~\ref{tab:single_ablation} exhibits a monotonic numerical pattern as the explicit prompt modalities and P2BoundaryRefiner are added. Exposing the box prompt in addition to points changes segm AP from 0.719 to 0.727 and segm AP$_{75}$ from 0.830 to 0.842, which is compatible with reduced ambiguity from an explicit instance extent. Adding the dense coarse-mask prompt changes segm AP to 0.730 and AP$_{75}$ to 0.849, consistent with the availability of proposal-conditioned shape information. The P2BoundaryRefiner variant is associated with a further difference of 0.005 in segm AP and 0.006 in AP$_{75}$, producing the complete-model values of 0.735 and 0.855. Relative to the point-only variant, the complete model differs by 0.016 segm AP, 0.008 AP$_{50}$, and 0.025 AP$_{75}$. Bbox AP varies by only 0.002 across the four variants, localizing the observed changes primarily to the mask pathway. These single-run results support the proposed component ordering, but AP$_{75}$ is not treated as a direct boundary metric and no uncertainty estimate is implied.
+Across the ablation variants in Table~\ref{tab:single_ablation}, mask scores increase as prompt
+modalities and P2BoundaryRefiner are added. Adding the box prompt raises segm AP from 0.719 to
+0.727 and segm AP$_{75}$ from 0.830 to 0.842. With the dense coarse-mask prompt, the
+corresponding scores reach 0.730 and 0.849. Adding P2BoundaryRefiner then raises segm AP by
+0.005 and AP$_{75}$ by 0.006, giving the complete-model values of 0.735 and 0.855. Relative to
+the point-only variant, the complete model gains 0.016 in segm AP, 0.008 in AP$_{50}$, and
+0.025 in AP$_{75}$. Bbox AP changes by only 0.002 across the four variants, so the numerical
+differences are concentrated in the mask pathway. In this single-run ablation, the numerical
+changes follow the order in which the components are added. The larger cumulative gain at
+AP$_{75}$ suggests that the added prompt modalities and P2 refinement may be particularly
+helpful when higher mask overlap is required. Boundary-specific metrics and repeated trials
+would enable a more direct assessment of this effect.
 
 %==============================================================================
 \section{Discussion}
@@ -570,30 +931,72 @@ Table~\ref{tab:single_ablation} exhibits a monotonic numerical pattern as the ex
 %==============================================================================
 
 \subsection{Interpretation of the Single-Stream Results}
-The WHU ablation is more informative about the prompt path than the cross-paper comparison because its variants share the detector, initialization, schedule, and evaluation protocol. The nearly unchanged bbox metrics are expected: the ablated components alter the information supplied to the PromptEncoder and mask pathway rather than the proposal generator. In contrast, the mask metrics increase monotonically as box extent, coarse spatial support, and P2-based local refinement are exposed. The larger cumulative difference at AP$_{75}$ than at AP$_{50}$ is compatible with an effect on higher-overlap masks, but it does not by itself identify boundary accuracy as the causal mechanism. Boundary-specific measures or repeated trials would be needed for that stronger conclusion.
+The WHU ablation provides a clearer view of the prompt pathway than the cross-paper comparison
+because all variants use the same detector, initialization, schedule, and evaluation protocol.
+Bbox scores change little across the variants, which is consistent with the ablated components
+acting on the PromptEncoder and mask pathway rather than on proposal generation. Mask scores,
+by contrast, rise as box extent, coarse spatial support, and P2-based local refinement are
+added. The larger cumulative change at AP$_{75}$ than at AP$_{50}$ is compatible with improved
+higher-overlap masks, but it does not establish boundary accuracy as the mechanism.
+Boundary-specific measures or repeated trials would be required for that stronger claim.
 
-The external WHU table serves a different purpose. Its values place PromptMiner-SAM2 among representative instance-segmentation and prompt-based methods, but the rows may differ in backbone, augmentation, schedule, and reproduction protocol. We therefore interpret the ranking descriptively and rely on the controlled ablation for component-level conclusions.
+The external WHU table answers a different question. It places PromptMiner-SAM2 among
+representative instance-segmentation and prompt-based methods, although the rows may differ in
+backbone, augmentation, and training configuration. We therefore treat the ranking as
+descriptive and draw component-level conclusions from the controlled ablation.
 
 \subsection{Interpretation of the Cross-View Comparison}
-On SynSU-Build, adding the complete calibrated UAV pathway changes bbox AP from 0.695 to 0.718 and segm AP from 0.682 to 0.721. The corresponding AP$_{50}$ differences are 0.005 and 0.001, whereas the AP$_{75}$ differences are 0.018 and 0.024. This pattern is compatible with refinement of localization and mask overlap for instances already represented by target-view proposals, rather than a broad increase in low-threshold detections. That interpretation also follows from the architecture: the UAV branch is introduced after RPN proposal generation and therefore cannot recover an instance for which the target-view RPN supplies no usable proposal.
+On SynSU-Build, the full geometry-guided UAV pathway raises bbox AP from 0.695 to 0.718 and
+segm AP from 0.682 to 0.721. The bbox and mask AP$_{50}$ differences are 0.005 and 0.001,
+whereas the corresponding AP$_{75}$ differences are 0.018 and 0.024. The larger changes at
+AP$_{75}$ are compatible with differences in localization and mask overlap at stricter IoU
+thresholds. UAV features enter $P_2$ and $P_3$ before the RPN, so they can influence both
+proposal generation and the proposal-conditioned mask pathway. This experiment does not
+distinguish between those two routes.
 
-The comparison nevertheless measures the complete dual-stream system, not the isolated effect of camera-aware attention. The dual-stream model changes both its inputs and trainable capacity, is optimized independently, and uses a smaller effective batch size. Without internal dual-stream ablations or repeated runs, the numerical differences cannot be uniquely assigned to the CVT aggregator, local-offset retrieval, residual gates, or UAV content. The reported result therefore establishes the behavior of the complete calibrated pathway in the synthetic paired setting and should not be read as a component-wise causal estimate.
-
-\subsection{Design Rationale}
-Direct feature concatenation leaves cross-view correspondence implicit. GeoViewMiner-SAM2 instead separates cross-view reasoning into two stages. First, the CVT uses UAV calibration to relate image rays to a shared ground-referenced BEV while allowing each BEV query to aggregate semantic evidence from multiple views and image locations. Second, target-view ROIs use the known ground affine only as a coarse anchor and retrieve over a bounded offset neighborhood. The first stage addresses multi-UAV aggregation; the second addresses residual disagreement between the target-view ROI and the ground-referenced UAV representation. Their roles are therefore complementary rather than duplicate attention operations.
-
-Separate bbox and mask retrieval reflects the different proposal sets and spatial requirements of the two heads. The bbox branch can rescore and refine existing proposals, whereas the mask branch receives a spatial feature crop that propagates through coarse-mask prediction and explicit prompting. Bounded residual scales limit the magnitude of the auxiliary update, and invalid-coverage bypass returns the original target-view ROI feature when no UAV-supported candidate exists. These choices make the UAV branch corrective rather than a replacement for the target-view pathway.
+Rather than leaving cross-view correspondence entirely to feature concatenation, the fusion
+design uses known camera parameters to restrict aggregation to projected local neighborhoods.
+Satellite $P_3$ features select among the resulting multi-view, multi-scale UAV tokens, while
+zero-initialized residual fusion leaves the satellite-view pyramid unchanged at the start of
+training. The design routes the fused UAV features to the RPN and RoI heads through
+geometry-guided projection and residual fusion, without learned camera alignment, a depth map,
+or RoI-specific retrieval. The comparison evaluates these choices as one system, however; it
+cannot assign the observed difference to geometric projection, local cross-attention, residual
+fusion, added trainable capacity, or UAV content separately.
 
 \subsection{Limitations}
-SynSU-Build provides controlled camera metadata and target-view annotations, but its rendered appearance does not reproduce the full sensor, atmospheric, seasonal, and geographic variability of real satellite--UAV acquisition. The present evidence therefore does not establish transfer to real paired imagery. The method additionally assumes calibrated UAV views, a known target-view pixel-to-ground mapping, a fixed five-view acquisition pattern, and group-level alignment. Sensitivity to calibration noise, missing UAV views, alternative flight geometries, and a different ground sampling distance remains unmeasured.
+SynSU-Build provides controlled camera metadata and satellite-view annotations, but its rendered
+imagery cannot reproduce the sensor, atmospheric, seasonal, and geographic variation found in
+real satellite--UAV acquisition. The present results therefore do not establish transfer to
+real paired imagery. The method also assumes UAV intrinsics and world-to-camera poses, a known
+satellite-view pixel-to-ground mapping, a fixed five-view acquisition pattern, and group-level
+alignment. Its sensitivity to camera-parameter noise, missing UAV views, alternative flight
+geometries, and different ground sampling distances has not yet been measured.
 
-The BEV is referenced to a single ground plane. It does not explicitly recover roof height, facade geometry, visibility, or occlusion, and camera-aware attention cannot guarantee physically correct correspondences. The finite ROI offset set can correct only bounded horizontal disagreement, while its soft expected offset may interpolate between multiple candidate modes. Finally, the dual-stream study contains no internal fusion ablation and the reported experiments are single runs. These limitations restrict attribution of the observed gain and motivate calibration-robust evaluation, component-level analysis, and repeated trials in future work.
+The ground-aligned feature map assumes a single ground plane. It does not explicitly model roof
+height, facade geometry, visibility, or occlusion, and local cross-attention cannot guarantee
+physically correct correspondences. Fixed projections and finite local windows tolerate only
+limited displacement caused by camera-parameter error or height. The dual-stream study also
+contains no internal fusion ablation, and all reported experiments are single runs. These
+limits prevent a more specific attribution of the observed gain and point to the need for
+perturbed-camera tests, component-level analysis, and repeated trials.
 
 %==============================================================================
 \section{Conclusion}
 \label{sec:conclusion}
 %==============================================================================
-This work studies overhead--UAV building instance segmentation through a dataset-first progression. SynSU-Build supplies 1,500 aligned synthetic scene groups with target-view instance masks and calibrated five-view UAV observations, thereby defining the paired evaluation setting. PromptMiner-SAM2 then establishes the shared target-view path by constructing native point, box, and dense-mask prompts from detected instances and using P2 features for constrained local refinement before SAM2 decoding. GeoViewMiner-SAM2 extends that path by aggregating the UAV observations into a ground-referenced BEV and performing proposal-wise retrieval and bounded residual fusion in the bbox and mask branches. Under the reported 150-epoch WHU training protocol, PromptMiner-SAM2 obtains bbox AP of 0.764 and mask AP of 0.734, while the complete dual-stream model obtains bbox AP of 0.718 and mask AP of 0.721 on SynSU-Build. Relative to their respective controlled or independently trained references, these results support the utility of the explicit-prompt path and motivate further study of calibrated cross-view fusion. Validation on real paired acquisitions, robustness analysis, and internal dual-stream ablation remain necessary before broader conclusions can be drawn.
+We present a satellite--UAV framework for building instance segmentation. SynSU-Build provides
+1,500 aligned synthetic scene groups with satellite-view building-instance masks and UAV images
+with per-view camera parameters. PromptMiner-SAM2 establishes the satellite-view pathway by
+turning a proposal-conditioned coarse shape into native point, box, and dense-mask prompts for
+SAM2. GeoViewMiner-SAM2 extends this pathway by aggregating UAV features on a satellite-aligned
+ground grid and injecting them into the satellite-view feature pyramid through residual fusion.
+
+Under the reported WHU protocol, PromptMiner-SAM2 obtains bbox AP of 0.749 and mask AP of
+0.735. On SynSU-Build, GeoViewMiner-SAM2 obtains bbox AP of 0.718 and mask AP of 0.721, higher
+than the independently trained satellite-view-only reference. Together, the benchmark and the
+two models provide a controlled setting for studying geometry-guided use of UAV observations in
+satellite-view building instance segmentation.
 
 
 \begin{thebibliography}{99}
@@ -635,9 +1038,6 @@ Z.~Cai and N.~Vasconcelos, ``Cascade R-CNN: High quality object detection and in
 \bibitem{ref_hqisnet}
 H.~Su, S.~Wei, S.~Liu, J.~Liang, C.~Wang, J.~Shi, and X.~Zhang, ``HQ-ISNet: High-quality instance segmentation for remote sensing imagery,'' \textit{Remote Sens.}, vol.~12, no.~6, Art.~no.~989, 2020.
 
-\bibitem{ref_scnet}
-T.~Vu, H.~Kang, and C.~D. Yoo, ``SCNet: Training inference sample consistency for instance segmentation,'' in \textit{Proc. AAAI Conf. Artif. Intell.}, vol.~35, no.~3, 2021, pp.~2701--2709.
-
 \bibitem{ref_condinst}
 Z.~Tian, C.~Shen, and H.~Chen, ``Conditional convolutions for instance segmentation,'' in \textit{Proc. Eur. Conf. Comput. Vis. (ECCV)}, 2020, pp.~282--298.
 
@@ -649,6 +1049,18 @@ Y.~Liu, H.~Li, C.~Hu, S.~Luo, Y.~Luo, and C.~W. Chen, ``Learning to aggregate mu
 
 \bibitem{ref_mask2former}
 B.~Cheng, I.~Misra, A.~G. Schwing, A.~Kirillov, and R.~Girdhar, ``Masked-attention mask transformer for universal image segmentation,'' in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2022, pp.~1290--1299.
+
+\bibitem{ref_rtmdet}
+C.~Lyu, W.~Zhang, H.~Huang, Y.~Zhou, Y.~Wang, Y.~Liu, S.~Zhang, and K.~Chen, ``RTMDet: An empirical study of designing real-time object detectors,'' \textit{arXiv preprint arXiv:2212.07784}, 2022.
+
+\bibitem{ref_maskdino}
+F.~Li, H.~Zhang, H.~Xu, S.~Liu, L.~Zhang, L.~M.~Ni, and H.-Y.~Shum, ``Mask DINO: Towards a unified transformer-based framework for object detection and segmentation,'' in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2023, pp.~3041--3050.
+
+\bibitem{ref_yolo11}
+G.~Jocher and J.~Qiu, ``Ultralytics YOLO11,'' software, version 11.0.0, 2024. [Online]. Available: \url{https://github.com/ultralytics/ultralytics}
+
+\bibitem{ref_rsiisn}
+W.~Ye, W.~Zhang, W.~Lei, W.~Zhang, X.~Chen, and Y.~Wang, ``Remote sensing image instance segmentation network with transformer and multi-scale feature representation,'' \textit{Expert Syst. Appl.}, vol.~234, Art.~no.~121007, 2023, doi: 10.1016/j.eswa.2023.121007.
 
 \bibitem{ref_htc}
 K.~Chen, J.~Pang, J.~Wang, Y.~Xiong, X.~Li, S.~Sun, W.~Feng, Z.~Liu, J.~Shi, W.~Ouyang, C.~C. Loy, and D.~Lin, ``Hybrid task cascade for instance segmentation,'' in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2019, pp.~4974--4983.
@@ -710,6 +1122,12 @@ Y.~Ji, B.~He, Z.~Tan, and L.~Wu, ``Game4Loc: A UAV geo-localization benchmark fr
 \bibitem{ref_whu}
 X.~Xia, Z.~Sun, S.~Ji, P.~Dong, and W.~Li, ``WHU Building Dataset,'' 2018. [Online]. Available: \url{https://study.rsgis.whu.edu.cn/pages/download/}
 
+\bibitem{ref_nwpu}
+G.~Cheng, J.~Han, P.~Zhou, and L.~Guo, ``Multi-class geospatial object detection and geographic image classification based on collection of part detectors,'' \textit{ISPRS J. Photogramm. Remote Sens.}, vol.~98, pp.~119--132, 2014, doi: 10.1016/j.isprsjprs.2014.10.002.
+
+\bibitem{ref_nwpu_instance}
+H.~Su, S.~Wei, M.~Yan, C.~Wang, J.~Shi, and X.~Zhang, ``Object detection and instance segmentation in remote sensing imagery based on precise Mask R-CNN,'' in \textit{Proc. IEEE Int. Geosci. Remote Sens. Symp. (IGARSS)}, 2019, pp.~1454--1457, doi: 10.1109/IGARSS.2019.8898573.
+
 \bibitem{ref_unigeo}
 X.~Liang, H.~Tang, F.~Zhang, S.~Yuan, C.~Hu, D.~Zheng, and K.~Ma, ``UniGeoRS: A unified benchmark for tri-view geo-localization,'' in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2026, pp.~5399--5408.
 
@@ -718,6 +1136,9 @@ B.~Zhou and P.~Kr\"ahenb\"uhl, ``Cross-view transformers for real-time map-view 
 
 \bibitem{ref_sgbeyv}
 J.~Ye, Q.~Luo, J.~Yu, H.~Zhong, Z.~Zheng, C.~He, and W.~Li, ``SG-BEV: Satellite-guided BEV fusion for cross-view semantic segmentation,'' in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2024, pp.~27748--27757.
+
+\bibitem{ref_crffnet}
+J.~Yu, J.~Ye, Y.~Lin, and W.~Li, ``CRFFNet: A cross-view reprojection based feature fusion network for fine-grained building segmentation using satellite-view and street-view data,'' \textit{Inf. Fusion}, 2025, Art.~no.~103795, doi: 10.1016/j.inffus.2025.103795.
 
 \end{thebibliography}
 
