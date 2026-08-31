@@ -28,6 +28,22 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${PROJECT_ROOT}"
 
 # --- run-specific exports BEFORE the env loader (outer value wins) ---
+# Architecture contract (MUST match the WHU C5-v2 winning protocol — the
+# 2026-08-30 runs accidentally dropped these and trained the weaker C4
+# variant: no P2 boundary refiner (its loss share was 0.00%), SAM embedding
+# at 32x32 instead of 64x64, dense prompt input not detached).
+export NECK_TYPE=pafpn
+export PROMPT_ROUTE=coarse
+export EXPLICIT_PROMPT_MODE=points_box_dense
+export P2_BOUNDARY_REFINER_ENABLED=1
+export SAM_IMAGE_EMBED_STRIDE=16
+export SHAPE_DENSE_TRANSFORM=raw_logits
+export SHAPE_DENSE_DETACH=1
+export FINAL_MASK_COORDINATE_MODE=roi_local
+export P2_BOUNDARY_REFINER_PROJECTED_CHANNELS="${P2_BOUNDARY_REFINER_PROJECTED_CHANNELS:-64}"
+export P2_BOUNDARY_REFINER_MID_CHANNELS="${P2_BOUNDARY_REFINER_MID_CHANNELS:-64}"
+export P2_BOUNDARY_REFINER_LOSS_WEIGHT="${P2_BOUNDARY_REFINER_LOSS_WEIGHT:-0.05}"
+export SHAPE_PRIOR_LOSS_WEIGHT="${SHAPE_PRIOR_LOSS_WEIGHT:-0.10}"
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
 export NPROC_PER_NODE="${NPROC_PER_NODE:-4}"
 export AMP=1
@@ -48,7 +64,7 @@ export TRAIN_MULTI_SCALE_IMG_SCALE="896:896,960:960,1024:1024,1088:1088,1152:115
 
 source "${PROJECT_ROOT}/scripts/load_environment.sh"
 
-RUN_TAG="${RUN_TAG:-vhr10_fast400}"
+RUN_TAG="${RUN_TAG:-vhr10_c5v2_400}"
 SUBSET_TAG="tr1.0_va1.0"
 CHECKPOINT_DIR="${CHECKPOINT_DIR:-${PORTABLE_SAM2_CHECKPOINT_ROOT}/ablations/${RUN_TAG}_${SUBSET_TAG}}"
 LOG_DIR="${PORTABLE_SAM2_LOG_ROOT}/ablations"
