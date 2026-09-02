@@ -100,6 +100,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Override test_cfg max_per_img (e.g. 150 for the dense-image cap study).",
     )
+    parser.add_argument(
+        "--nms-thr",
+        type=float,
+        default=None,
+        help="Override test_cfg rcnn NMS iou_threshold (e.g. 0.6/0.7 for dense-adjacent buildings).",
+    )
     return parser.parse_args()
 
 
@@ -722,6 +728,18 @@ def main() -> None:
             if cfg_holder is not None and "max_per_img" in cfg_holder:
                 cfg_holder["max_per_img"] = int(args.max_per_img)
         logger.info("test_cfg max_per_img overridden to %d", int(args.max_per_img))
+    if args.nms_thr is not None:
+        _nms_cfg = getattr(getattr(model.roi_head, "test_cfg", None), "get", lambda *_: None)("nms")
+        if _nms_cfg is not None and "iou_threshold" in _nms_cfg:
+            _old_thr = float(_nms_cfg["iou_threshold"])
+            _nms_cfg["iou_threshold"] = float(args.nms_thr)
+            logger.info(
+                "test_cfg rcnn NMS iou_threshold overridden: %.2f -> %.2f",
+                _old_thr,
+                float(args.nms_thr),
+            )
+        else:
+            logger.warning("--nms-thr given but rcnn test_cfg has no nms.iou_threshold")
     if args.disable_p2 or args.p2_beta is not None:
         refiner = getattr(mask_head, "p2_boundary_refiner", None)
         if refiner is None:
