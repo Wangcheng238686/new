@@ -368,6 +368,8 @@ class ShapePointMiner(nn.Module):
         min_negative_distance_ratio: float = 0.15,
         outer_ring_radius: int = 1,
         safe_background_radius_ratio: float = 0.10,
+        point_jitter_prob: float = 0.0,
+        point_jitter_radius: int = 1,
         point_warmup_cfg: Optional[Dict] = None,
     ):
         super().__init__()
@@ -385,6 +387,8 @@ class ShapePointMiner(nn.Module):
         self.min_negative_distance_ratio = float(min_negative_distance_ratio)
         self.outer_ring_radius = max(1, int(outer_ring_radius))
         self.safe_background_radius_ratio = float(safe_background_radius_ratio)
+        self.point_jitter_prob = float(point_jitter_prob)
+        self.point_jitter_radius = max(1, int(point_jitter_radius))
         self.point_warmup_cfg = dict(point_warmup_cfg or {})
         self.point_warmup_cfg.setdefault("enabled", True)
         self.point_warmup_cfg.setdefault("no_point_epochs", 5)
@@ -561,6 +565,7 @@ class ShapePointMiner(nn.Module):
                 "point_pair_count": zero,
                 "point_overlap_count": zero,
                 "all_invalid_count": zero,
+                "pjitter_count": zero,
             }
 
         with torch.no_grad():
@@ -783,6 +788,38 @@ class ShapePointMiner(nn.Module):
                 labels[:, 1] = -1
                 labels[:, 3] = -1
 
+            # Training-only positive-point jitter (plan D: prompt-consumption
+            # robustification). Perturb P1/P2 by up to point_jitter_radius
+            # canvas cells: positive candidates are gated by
+            # min_inside_distance_ratio (>= ~3 cells inside the object at the
+            # 64x64 canvas), so a 1-cell offset cannot cross the boundary.
+            # Negatives are never jittered: N1 lives on a 1-cell outer ring
+            # and any offset would flip its foreground/background semantics.
+            pjitter_count = 0
+            if (
+                self.training
+                and stage == 2
+                and self.point_jitter_prob > 0.0
+            ):
+                radius = int(self.point_jitter_radius)
+                local_yx = local_yx.clone()
+                for slot in (0, 1):
+                    sel = (
+                        torch.rand(n, device=device) < self.point_jitter_prob
+                    ) & (labels[:, slot] >= 0)
+                    if bool(sel.any()):
+                        off = torch.randint(
+                            -radius, radius + 1, (int(sel.sum()), 2),
+                            device=device,
+                        )
+                        local_yx[sel, slot, 0] = (
+                            local_yx[sel, slot, 0] + off[:, 0]
+                        ).clamp(0, h - 1)
+                        local_yx[sel, slot, 1] = (
+                            local_yx[sel, slot, 1] + off[:, 1]
+                        ).clamp(0, w - 1)
+                        pjitter_count += int(sel.sum())
+
         boxes_f = boxes.detach().to(mask_logits.dtype)
         x1, y1, x2, y2 = boxes_f.unbind(dim=1)
         box_w = (x2 - x1).clamp_min(self.min_box_size)
@@ -870,6 +907,7 @@ class ShapePointMiner(nn.Module):
                 "point_overlap_count": overlap_count.detach(),
                 "all_invalid_count": (labels < 0).all(dim=1).sum().detach(),
                 "warmup_stage": mask_logits.new_tensor(float(stage)),
+                "pjitter_count": mask_logits.new_tensor(float(pjitter_count)),
             }
         return coords, labels, stats
 
