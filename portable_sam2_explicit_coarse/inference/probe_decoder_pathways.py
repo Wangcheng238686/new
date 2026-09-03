@@ -66,6 +66,11 @@ def parse_args() -> argparse.Namespace:
         choices=("none", "zero_high_res", "no_sparse", "zero_base_dense", "zero_image_pe"),
         required=True,
     )
+    parser.add_argument(
+        "--disable-p2",
+        action="store_true",
+        help="Additionally set P2BoundaryRefiner beta=0 (composable with --ablation).",
+    )
     parser.add_argument("--output-dir", required=True)
     return parser.parse_args()
 
@@ -90,6 +95,16 @@ def main() -> None:
     if args.ablation != "none":
         mask_head._diagnostic_forward_ablation = args.ablation
         logger.info("diagnostic ablation active: %s", args.ablation)
+    if args.disable_p2:
+        refiner = getattr(mask_head, "p2_boundary_refiner", None)
+        if refiner is None:
+            logger.warning("--disable-p2 given but this checkpoint has no P2BoundaryRefiner")
+        else:
+            logger.info(
+                "P2BoundaryRefiner beta overridden at inference: %.4f -> 0.0",
+                float(refiner.beta),
+            )
+            refiner.beta = 0.0
 
     contract = _resolve_dataset_contract(args, snapshot)
     loader = _build_loader(contract, args.num_workers)
