@@ -88,6 +88,16 @@ echo "  checkpoint_dir=${CHECKPOINT_DIR}"
 echo "  log_file=${LOG_FILE}"
 echo "============================================================"
 
+# Full-state crash resume: RESUME_FROM=<ckpt.pth> bash scripts/ablations/vhr10_large600.sh
+# restores weights+optimizer+cosine schedule+AMP scaler+EMA shadow+epoch counter
+# and continues the original schedule (at most the in-flight epoch is lost).
+RESUME_FROM="${RESUME_FROM:-}"
+EXTRA_ARGS=()
+if [[ -n "${RESUME_FROM}" ]]; then
+  EXTRA_ARGS+=(--resume-from "${RESUME_FROM}")
+  echo "  resume_from=${RESUME_FROM}"
+fi
+
 exec "${PYTHON}" -m torch.distributed.run \
   "--nproc_per_node=${NPROC_PER_NODE}" \
   "--master_port=${MASTER_PORT:-$((20000 + $$ % 20000))}" \
@@ -118,4 +128,5 @@ exec "${PYTHON}" -m torch.distributed.run \
   --ema-save-best 0 \
   --seed 44 \
   --prompt-debug-stats 1 \
-  --prompt-debug-stats-interval 50
+  --prompt-debug-stats-interval 50 \
+  "${EXTRA_ARGS[@]}"
