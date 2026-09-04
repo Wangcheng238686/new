@@ -1619,22 +1619,16 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
         else:
             self.shape_point_miner = None
 
-        # === dense ROI residual (可选) ===
-        # 在 no_mask 常量基底上叠加 per-ROI dense 残差, roi_dense_scale 零初始化 → 启动严格等价 B0
-        if self.dense_prompt_mode == "residual":
-            self.roi_dense_proj = nn.Sequential(
-                nn.Conv2d(in_channels, embed_dim, 1),
-                nn.GroupNorm(32, embed_dim),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(embed_dim, embed_dim, 3, padding=1),
-                nn.GroupNorm(32, embed_dim),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(embed_dim, embed_dim, 1),
+        # === dense ROI residual ===
+        # The legacy "residual" mode (per-ROI dense projection on top of the
+        # no_mask base) was removed: PROMPT_DENSE_MODE was never exported by
+        # any wrapper, so no checkpoint carries roi_dense_* keys. The dense
+        # prompt route lives in dense_prompt_cfg (shape-derived canvas).
+        if self.dense_prompt_mode not in ("none", ""):
+            raise ValueError(
+                f"Unsupported dense_prompt_mode={self.dense_prompt_mode!r}; "
+                "the legacy 'residual' branch was removed, use dense_prompt_cfg."
             )
-            self.roi_dense_scale = nn.Parameter(torch.zeros(1))
-        else:
-            self.roi_dense_proj = None
-            self.register_parameter("roi_dense_scale", None)
 
         # === ShapePriorInjector (阶段2, 可选) ===
         # visual 路径: image_embeddings → context tokens → cross-attn 调制 ROI feat → small mask decoder
@@ -2397,13 +2391,6 @@ class RSPrompterAnchorMaskHeadSAM2(FCNMaskHead, BaseModule):
             base_dense = self.no_mask_embed.reshape(1, -1, 1, 1).expand(
                 roi_bs, -1, image_embedding_size[0], image_embedding_size[1]
             )
-        if self.roi_dense_proj is not None:
-            roi_dense = self.roi_dense_proj(x)  # [N,256,14,14]
-            roi_dense = F.interpolate(
-                roi_dense, size=image_embedding_size,
-                mode='bilinear', align_corners=False,
-            )
-            base_dense = base_dense + self.roi_dense_scale * roi_dense
         if self._diagnostic_forward_ablation == "zero_base_dense":
             base_dense = torch.zeros_like(base_dense)
 
