@@ -25,6 +25,7 @@ from rsprompter.models_sam2 import (
 )
 from rsprompter.models import RSPrompterAnchor
 import rsprompter.models_sam2 as models_sam2
+import rsprompter.sam2_vision as sam2_vision
 from rsprompter.shape_prior import ShapePointMiner, ShapePriorInjector
 from inference.infer_from_checkpoint import (
     _restore_embedded_architecture_environment,
@@ -144,8 +145,11 @@ def main():
         raise AssertionError(
             "requested pretrained no-mask embedding must never fall back to zeros"
         )
-    with patch.object(models_sam2.os.path, "isfile", return_value=True), patch.object(
-        models_sam2, "_load_sam2_checkpoint", return_value={}
+    # The no-mask loader lives in rsprompter.sam2_vision since the 2026-09
+    # module split; patch its module globals there (a facade-level patch would
+    # not affect the function's own global lookups).
+    with patch.object(sam2_vision.os.path, "isfile", return_value=True), patch.object(
+        sam2_vision, "_load_sam2_checkpoint", return_value={}
     ):
         try:
             _load_pretrained_no_mask_embedding("missing-key.pt")
