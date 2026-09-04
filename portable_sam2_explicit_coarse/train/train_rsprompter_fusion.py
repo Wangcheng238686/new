@@ -124,6 +124,10 @@ def _extract_instances_numpy(
     instances, img_shape: Tuple[int, int], encode_masks: bool = False
 ) -> dict:
     """Extract InstanceData, optionally replacing dense masks with COCO RLE."""
+    # Lazy import: the project-root sys.path bootstrap runs inside main(); this
+    # module-level helper must not bind project packages at import time.
+    from utils.coco_eval_utils import _masks_to_rles
+
     bboxes = instances.bboxes
     if isinstance(bboxes, torch.Tensor):
         bboxes = bboxes.detach().cpu().numpy()
