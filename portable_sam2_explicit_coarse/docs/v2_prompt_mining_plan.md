@@ -1,4 +1,4 @@
-# V2 Prompt Mining 实施方案 v2.3（自包含终版）
+# V2 Prompt Mining 实施方案 v2.4（自包含可执行版）
 
 > 交接文档：实施助手执行、规划方审查。v2.0（git 962f5e0）/v2.1（c9815aa）/v2.2
 > （aad4b4a）仅存历史参考；**本文档自包含，实施只需本文 + 代码库**，唯一下列
@@ -97,18 +97,27 @@ GT 前景内的 matched ROI 数）、actually_replaced_count、每图替换率�
 2. gap(new) ≤ gap(C0)；
 3. oracle-N1 绝对指标单列（防"双指标同降导致 gap 收窄"的假阳性）。
 
-### S3 连续有界偏移头（双重前置门 A+B 均通过才启动）
+### S3 连续有界偏移头（启动条件 = A ∧ B ∧ S2 三者均通过）
 
-**前置门（v2.3 新增，缺一不可）**：
+**前置门（v2.4 更新：S3 还须依赖 S2 通过——若 decoder 消费端未被 S2 证明能
+处理训练得到的点语言，offset head 建立 在未证明的消费能力之上）**：
 - **门 A（点位效用）** = S1.5 通过：移动既有 N1 对冻结 decoder 有稳定效用
-  （paired bootstrap 95% CI）。**A 失败 → 整条 point-correction 分支停止**
-  （不转 S3，S3 的前提正是点位修正有效）；
-- **门 B（P2 增量信息）**：真实 P2 特征在相同 head、相同预算下，显著优于
-  coarse-only 与最佳 sham-P2 对照——实验协议遵循指南 Phase 1（缓存
-  coarse cue + base points + P2、同参数量轻量预测器、sham 对照；主指标为
-  冻结 decoder 的配对效用，image bootstrap 95% CI 下界 > 0）。
-  **A 通过但 B 失败 → 只允许非 P2 的 PromptRobustifier（coarse-only 偏移或
-  纯 corrective 混训），不实现 P2 offset head**。
+  （paired bootstrap 95% CI）。**A 失败 → 整条 point-correction 分支停止**；
+- **门 B（P2 增量信息）**：真实 P2 显著优于 coarse-only 与 sham-P2。
+  **方法论遵循指南 Phase 1，域实例化为 VHR-10**（指南本身固定 WHU 10%/10%，
+  不可照搬）：
+  * 数据：固定 VHR-10 train/val 的 image-id 子集（推荐全量 520/130；若用子集
+    则确定性抽取并冻结、全臂共用，不得按臂重抽样）；
+  * 固定 seed 44、固定 checkpoint（ft200 best raw）、固定 proposal/GT 匹配
+    规则（同 S1.5：IoU≥0.5 最近匹配）；
+  * 三臂：real-P2 / coarse-only / best-sham-P2（sham 取最优的一种置换对照）；
+  * 相同 head 结构、相同参数量、相同优化步数；输入 P2BR-off（避免旧 P2BR
+    向输入引入混杂）；
+  * 输出：image-bootstrap 95% CI（主指标=冻结 decoder 配对效用）+ 样本覆盖率；
+  * 判定：real-P2 vs coarse-only 与 real-P2 vs sham-P2 的 CI 下界均 > 0；
+  **A 通过但 B 失败 → 只允许非 P2 的 PromptRobustifier，不实现 P2 offset head**；
+- **门 S2（消费端训练）** = S2 三项验收通过。**S2 失败后仍想试 S3 → 只能标为
+  独立探索臂，其结果不得用于形成"P2 点位校准有效"的因果结论**。
 
 **互斥契约（强制）**：新变体默认
 ```
@@ -138,8 +147,18 @@ p2_refined_coords # 偏移后连续 image xy（float），仅供 PromptEncoder
 ```
 refined 点的语义统计新增**连续采样式**字段（grid_sample 在 GT 图上取值），
 不得把 float 点写回 `_last_shape_point_local_yx`。
-**验收**：N1 误落率（可训练口径）17%→<2%；新臂 vs C0（各自关闭旧 P2BR 的口径）
-配对 CI 为正。
+**验收（v2.4 口径修正）**：
+- N1 误落率 <2% 固定为 **validation、eval mode、预测驱动口径**：无 GT 输入；
+  base N1 与 refined N1 均由预测 miner/offset 产生；GT 仅在 forward 之后用于
+  计算误落率；报告 `base_invalid_n1_sum/count` 与 `refined_invalid_n1_sum/count`
+  的跨 rank 汇总比率。训练集同类统计仅作诊断，不作验收依据（corrective 训练
+  输入的 GT 替换会使低误落率成为预期结果，不能说明推理有效）；
+- 新臂 vs C0-off（各自关闭旧 P2BR 的口径）配对 CI 为正。
+
+**交付物补充（v2.4）**：C0-off 的"固定 checkpoint P2BR on/off paired 输出检查"
+需要**新增显式推理配置覆盖入口**（如 `--disable-p2-boundary-refiner`）——当前
+checkpoint 推理从其保存的 model config 重建，**该开关尚不存在**，属于 S3 交付物
+而非现成能力，列入实现清单。
 
 ### S4 128 residual coarse（最后，独立因素）
 `coarse128 = bilinear(raw64) + zero-init residual`，residual 读取更高频 RoI/P2
