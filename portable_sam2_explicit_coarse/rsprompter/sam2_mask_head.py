@@ -850,242 +850,21 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
                 pe = torch.sin(pe[..., ::2]) + pe[..., 1::2]
             point_embs = pe  # [N, 5, 256]
 
-        # === shape prior mask (阶段2, 必须在 PE 调用之前计算) ===
-        shape_prior_mask_logits = None
-        coarse_outputs = None
-        shape_prior_prompt_logits = None
-        shape_dense_valid = None
-        if self.shape_injector is not None and boxes is not None:
-            ctx_tokens = self.shape_injector.forward_context_visual(image_embeddings)
-            raw_shape_prior_logits, _, _, _ = self.shape_injector.forward_roi(
-                ctx_tokens, x, boxes, roi_img_ids,
-            )
-            debug_stats.update(self.shape_injector.get_debug_stats())
-            refined_shape_prior_logits = raw_shape_prior_logits
-            refiner_outputs = None
-            if self.p2_boundary_refiner is not None:
-                if p2_feature is None or prompt_rois is None:
-                    raise ValueError(
-                        "P2BoundaryRefiner requires full P2 and prompt_rois [N,5]"
-                    )
-                refiner_outputs = self.p2_boundary_refiner(
-                    p2_feature=p2_feature,
-                    prompt_rois=prompt_rois,
-                    raw_logits=raw_shape_prior_logits,
-                )
-                refined_shape_prior_logits = refiner_outputs["refined_logits"]
-                with torch.no_grad():
-                    delta = refiner_outputs["delta_logits"].detach().float()
-                    support_valid = refiner_outputs["support_valid"].detach()
-                    debug_stats.update({
-                        "P2BR/roi_count": delta.new_tensor(float(delta.shape[0])),
-                        "P2BR/valid_support_count": support_valid.float().sum(),
-                        "P2BR/rejected_support_count": (~support_valid).float().sum(),
-                        "P2BR/search_coverage_sum": refiner_outputs["search_coverage_sum"],
-                        "P2BR/delta_abs_sum": delta.abs().flatten(1).mean(1).sum(),
-                        "P2BR/delta_nonzero_sum": delta.ne(0).float().flatten(1).mean(1).sum(),
-                        "P2BR/delta_saturated_sum": delta.abs().ge(0.396).float().flatten(1).mean(1).sum(),
-                        "P2BR/projected_feature_norm_sum": refiner_outputs["projected_feature_norm_sum"],
-                        "P2BR/highpass_feature_norm_sum": refiner_outputs["highpass_feature_norm_sum"],
-                    })
-            shape_prior_mask_logits = refined_shape_prior_logits
-            coarse_outputs = {
-                "raw_logits": raw_shape_prior_logits,
-                "refined_logits": refined_shape_prior_logits,
-                "delta_logits": None if refiner_outputs is None else refiner_outputs["delta_logits"],
-                "raw_boundary_band": None if refiner_outputs is None else refiner_outputs["raw_boundary_band"],
-                "search_support": None if refiner_outputs is None else refiner_outputs["search_support"],
-                "support_valid": None if refiner_outputs is None else refiner_outputs["support_valid"],
-            }
-            # Refined coarse logits are the only downstream semantic source;
-            # raw logits remain independently supervised by the C4 objective.
-            if self.use_shape_dense:
-                (
-                    shape_prior_prompt_logits,
-                    shape_dense_valid,
-                    dense_excavation_stats,
-                ) = self._shape_prior_to_prompt_mask(shape_prior_mask_logits, boxes)
-                for stat_name, stat_value in dense_excavation_stats.items():
-                    debug_stats[f"GAUSSIAN/{stat_name}"] = stat_value
-            else:
-                # True sparse-only: keep the coarse mask for point mining and
-                # auxiliary supervision, but skip transform/paste/PE mask work.
-                shape_prior_prompt_logits = None
+        (
+            shape_prior_mask_logits,
+            coarse_outputs,
+            shape_prior_prompt_logits,
+            shape_dense_valid,
+        ) = self._forward_coarse_p2(
+            x, image_embeddings, boxes, roi_img_ids, p2_feature, prompt_rois,
+            debug_stats,
+        )
 
-        # === PE 单次调用: box → sparse_pe, mask → dense_pe ===
-        box_embs = None
-        dense_pe = None
-        if self.prompt_encoder is not None and boxes is not None:
-            # 批次2 子任务4：sparse-only(use_shape_dense=False)时不传 mask 给 PE（审查 2.3）
-            masks_for_pe = shape_prior_prompt_logits if self.use_shape_dense else None
-            # 批次2 子任务4：shape dense gate 三模式有效值（审查 2.1）
-            prompt_scale = self._effective_shape_dense_alpha()
-            if prompt_scale is not None:
-                _gate = prompt_scale.detach().float()
-                debug_stats["GATE/shape_dense_alpha_mean"] = _gate.mean()
-                debug_stats["GATE/shape_dense_alpha_min"] = _gate.min()
-                debug_stats["GATE/shape_dense_alpha_max"] = _gate.max()
-            if masks_for_pe is not None and masks_for_pe.numel() > 0:
-                _dense_dbg = masks_for_pe.detach().float()
-                debug_stats["DENSE/canvas_mean"] = _dense_dbg.mean()
-                debug_stats["DENSE/canvas_std"] = _dense_dbg.std()
-                debug_stats["DENSE/canvas_min"] = _dense_dbg.min()
-                debug_stats["DENSE/canvas_max"] = _dense_dbg.max()
-                debug_stats["DENSE/canvas_nonzero_ratio"] = (_dense_dbg != 0).float().mean()
-            frequency_mode = self._diagnostic_prompt_frequency_mode
-            if masks_for_pe is not None and frequency_mode != "none":
-                supported_frequency_modes = (
-                    "lowpass_16",
-                    "lowpass_8",
-                    "highboost_16_0p5",
-                    "highboost_16_1p0",
-                )
-                if frequency_mode not in supported_frequency_modes:
-                    raise ValueError(
-                        "Unsupported prompt frequency diagnostic mode="
-                        f"{frequency_mode!r}"
-                    )
-                target_size = 8 if frequency_mode == "lowpass_8" else 16
-                original_size = masks_for_pe.shape[-2:]
-                original_masks = masks_for_pe
-                low_frequency = F.interpolate(
-                    original_masks,
-                    size=(target_size, target_size),
-                    mode="area",
-                )
-                low_frequency = F.interpolate(
-                    low_frequency,
-                    size=original_size,
-                    mode="bilinear",
-                    align_corners=False,
-                )
-                if frequency_mode.startswith("lowpass"):
-                    masks_for_pe = low_frequency
-                else:
-                    boost = 0.5 if frequency_mode.endswith("0p5") else 1.0
-                    masks_for_pe = original_masks + boost * (
-                        original_masks - low_frequency
-                    )
-                    debug_stats["DIAG/prompt_highboost"] = float(boost)
-                debug_stats["DIAG/prompt_lowpass_target"] = float(target_size)
-            spatial_mode = self._diagnostic_prompt_spatial_perturbation
-            if masks_for_pe is not None and spatial_mode != "none":
-                try:
-                    side, direction, radius_text = spatial_mode.split("_")
-                    radius = int(radius_text)
-                except (TypeError, ValueError) as error:
-                    raise ValueError(
-                        "Prompt spatial perturbation must be SIDE_DIRECTION_RADIUS, "
-                        f"got {spatial_mode!r}"
-                    ) from error
-                if side not in ("top", "bottom", "left", "right"):
-                    raise ValueError(f"Unsupported prompt perturbation side={side!r}")
-                if direction not in ("out", "in") or radius <= 0:
-                    raise ValueError(
-                        f"Unsupported prompt perturbation={spatial_mode!r}"
-                    )
-                kernel_size = 2 * radius + 1
-                if direction == "out":
-                    perturbed = F.max_pool2d(
-                        masks_for_pe,
-                        kernel_size=kernel_size,
-                        stride=1,
-                        padding=radius,
-                    )
-                else:
-                    perturbed = -F.max_pool2d(
-                        -masks_for_pe,
-                        kernel_size=kernel_size,
-                        stride=1,
-                        padding=radius,
-                    )
-                height, width = masks_for_pe.shape[-2:]
-                scale_x = width / float(self.prompt_encoder_image_size)
-                scale_y = height / float(self.prompt_encoder_image_size)
-                center_x = 0.5 * (boxes[:, 0] + boxes[:, 2]) * scale_x
-                center_y = 0.5 * (boxes[:, 1] + boxes[:, 3]) * scale_y
-                yy = torch.arange(
-                    height, device=masks_for_pe.device, dtype=masks_for_pe.dtype
-                ).view(1, 1, height, 1)
-                xx = torch.arange(
-                    width, device=masks_for_pe.device, dtype=masks_for_pe.dtype
-                ).view(1, 1, 1, width)
-                if side == "top":
-                    side_mask = yy <= center_y[:, None, None, None]
-                elif side == "bottom":
-                    side_mask = yy >= center_y[:, None, None, None]
-                elif side == "left":
-                    side_mask = xx <= center_x[:, None, None, None]
-                else:
-                    side_mask = xx >= center_x[:, None, None, None]
-                masks_for_pe = torch.where(side_mask, perturbed, masks_for_pe)
-                debug_stats["DIAG/prompt_spatial_radius"] = float(radius)
-
-            # === shape_point 模式: 从 shape_prior_mask 挖点，一次 PE 调用编码点+box+mask ===
-            if self.prompt_sparse_mode == "shape_point":
-                if shape_prior_mask_logits is None:
-                    raise ValueError(
-                        "prompt_sparse_mode='shape_point' requires shape_prior enabled "
-                        "with non-None mask_logits. Got shape_prior_mask_logits=None."
-                    )
-                coords, labels, point_stats = self.shape_point_miner(
-                    shape_prior_mask_logits,
-                    prompt_geometry_boxes,
-                    self.prompt_encoder_image_size,
-                )
-                (self._last_shape_point_local_yx,
-                 self._last_shape_point_labels) = self.shape_point_miner.get_last_local_points()
-                # point_stats 是 prediction-based（不含 GT）；GT-based stats 由上层训练循环算
-                for _k, _v in point_stats.items():
-                    debug_stats[f"SP/{_k}"] = (
-                        _v.detach() if torch.is_tensor(_v) else _v
-                    )
-                points_for_pe, boxes_for_pe, masks_for_pe = (
-                    self._select_explicit_prompt_inputs(
-                        coords, labels, prompt_geometry_boxes, masks_for_pe
-                    )
-                )
-                if (
-                    points_for_pe is None
-                    and boxes_for_pe is None
-                    and masks_for_pe is None
-                ):
-                    # PromptEncoder cannot infer an ROI batch size when every
-                    # modality is absent. Construct the true empty sparse set
-                    # directly; the canonical base dense embedding is built
-                    # below for all ``roi_bs`` instances.
-                    sparse_pe = image_embeddings.new_empty((roi_bs, 0, 256))
-                    dense_pe_from_pe = None
-                else:
-                    sparse_pe, dense_pe_from_pe = self.prompt_encoder(
-                        points=points_for_pe,
-                        boxes=boxes_for_pe,
-                        masks=masks_for_pe,
-                    )
-                    if points_for_pe is not None:
-                        sparse_pe = self._neutralize_invalid_point_tokens(
-                            sparse_pe, labels
-                        )
-                debug_stats["PROMPT/use_box_token"] = float(
-                    self.explicit_use_box_prompt
-                )
-                debug_stats["PROMPT/use_point_token"] = float(
-                    self.explicit_use_point_prompt
-                )
-                debug_stats["PROMPT/use_dense_mask"] = float(
-                    self.explicit_use_dense_prompt
-                )
-                # points: [N,4,256]; points_box(_dense): [N,6,256].
-                box_embs = None  # explicit shape-point mode keeps PE output unified
-            else:
-                sparse_pe, dense_pe_from_pe = self.prompt_encoder(
-                    points=None, boxes=boxes, masks=masks_for_pe,
-                )
-                box_embs = sparse_pe  # [N, 2, 256]
-            if masks_for_pe is not None:
-                dense_pe = dense_pe_from_pe  # [N,256,Hemb,Wemb], 1024输入通常为32x32
-        else:
-            prompt_scale = None
+        sparse_pe, dense_pe, box_embs, prompt_scale = self._forward_prompt_encode(
+            image_embeddings, boxes, prompt_geometry_boxes,
+            shape_prior_mask_logits, shape_prior_prompt_logits,
+            roi_bs, debug_stats,
+        )
 
         if self.prompt_sparse_mode == "point":
             sparse_embeddings = point_embs                                    # [N,5,256]
@@ -1121,52 +900,11 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
             roi_img_ids.long(), minlength=img_bs,
         )[:img_bs]
 
-        # === dense_embeddings ===
-        if self.no_mask_embed is None:
-            base_dense = image_embeddings.new_zeros(
-                roi_bs, 256, image_embedding_size[0], image_embedding_size[1]
-            )
-        else:
-            base_dense = self.no_mask_embed.reshape(1, -1, 1, 1).expand(
-                roi_bs, -1, image_embedding_size[0], image_embedding_size[1]
-            )
-        if self._diagnostic_forward_ablation == "zero_base_dense":
-            base_dense = torch.zeros_like(base_dense)
+        dense_embeddings = self._forward_dense_embeddings(
+            image_embeddings, dense_pe, shape_dense_valid, boxes, prompt_scale,
+            image_embedding_size, roi_bs, debug_stats,
+        )
 
-        if dense_pe is not None:
-            if shape_dense_valid is not None:
-                from .dense_prompt_utils import replace_invalid_dense_with_base
-                dense_pe = replace_invalid_dense_with_base(
-                    dense_pe, base_dense, shape_dense_valid
-                )
-            if self.restrict_dense_prompt_to_box:
-                support = self._dense_embedding_box_support(
-                    boxes, image_embedding_size, dense_pe.dtype
-                )
-                dense_pe = base_dense + support * (dense_pe - base_dense)
-            # 所有模式统一走门控残差: base_dense + prompt_scale * (dense_pe - base_dense)
-            # points_box_dense: bounded global-sigmoid interpolation between
-            # pretrained no-mask and shape dense embedding.
-            # Legacy/fixed modes remain only for controlled ablations.
-            dense_delta = dense_pe - base_dense
-            dense_embeddings = base_dense + prompt_scale * dense_delta
-            if dense_embeddings.numel() > 0:
-                _base_norm = base_dense.detach().float().flatten(1).norm(dim=1)
-                _source_delta_norm = dense_delta.detach().float().flatten(1).norm(dim=1)
-                _applied_delta_norm = (
-                    dense_embeddings.detach().float() - base_dense.detach().float()
-                ).flatten(1).norm(dim=1)
-                _norm_denom = _base_norm.clamp_min(1e-6)
-                debug_stats["DENSE/residual_alpha"] = prompt_scale.detach().float().mean()
-                debug_stats["DENSE/base_norm"] = _base_norm.mean()
-                debug_stats["DENSE/shape_norm"] = dense_pe.detach().float().flatten(1).norm(dim=1).mean()
-                debug_stats["DENSE/final_norm"] = dense_embeddings.detach().float().flatten(1).norm(dim=1).mean()
-                debug_stats["DENSE/source_delta_norm"] = _source_delta_norm.mean()
-                debug_stats["DENSE/applied_delta_norm"] = _applied_delta_norm.mean()
-                debug_stats["DENSE/source_delta_ratio"] = (_source_delta_norm / _norm_denom).mean()
-                debug_stats["DENSE/applied_delta_ratio"] = (_applied_delta_norm / _norm_denom).mean()
-        else:
-            dense_embeddings = base_dense
 
         # P2BoundaryRefiner has already calibrated ROI-local coarse logits before the
         # frozen PromptEncoder.  No embedding-space residual is applied here.
@@ -1256,6 +994,355 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
             quality_predictions,
             mask_tokens_out,
         )
+    def _forward_coarse_p2(
+        self,
+        x,
+        image_embeddings,
+        boxes,
+        roi_img_ids,
+        p2_feature,
+        prompt_rois,
+        debug_stats,
+    ):
+        """(forward phase) shape injector + P2BoundaryRefiner + canvas prep.
+
+Verbatim-extracted from forward; operation order unchanged.
+"""
+        # === shape prior mask (阶段2, 必须在 PE 调用之前计算) ===
+        shape_prior_mask_logits = None
+        coarse_outputs = None
+        shape_prior_prompt_logits = None
+        shape_dense_valid = None
+        if self.shape_injector is not None and boxes is not None:
+            ctx_tokens = self.shape_injector.forward_context_visual(image_embeddings)
+            raw_shape_prior_logits, _, _, _ = self.shape_injector.forward_roi(
+                ctx_tokens, x, boxes, roi_img_ids,
+            )
+            debug_stats.update(self.shape_injector.get_debug_stats())
+            refined_shape_prior_logits = raw_shape_prior_logits
+            refiner_outputs = None
+            if self.p2_boundary_refiner is not None:
+                if p2_feature is None or prompt_rois is None:
+                    raise ValueError(
+                        "P2BoundaryRefiner requires full P2 and prompt_rois [N,5]"
+                    )
+                refiner_outputs = self.p2_boundary_refiner(
+                    p2_feature=p2_feature,
+                    prompt_rois=prompt_rois,
+                    raw_logits=raw_shape_prior_logits,
+                )
+                refined_shape_prior_logits = refiner_outputs["refined_logits"]
+                with torch.no_grad():
+                    delta = refiner_outputs["delta_logits"].detach().float()
+                    support_valid = refiner_outputs["support_valid"].detach()
+                    debug_stats.update({
+                        "P2BR/roi_count": delta.new_tensor(float(delta.shape[0])),
+                        "P2BR/valid_support_count": support_valid.float().sum(),
+                        "P2BR/rejected_support_count": (~support_valid).float().sum(),
+                        "P2BR/search_coverage_sum": refiner_outputs["search_coverage_sum"],
+                        "P2BR/delta_abs_sum": delta.abs().flatten(1).mean(1).sum(),
+                        "P2BR/delta_nonzero_sum": delta.ne(0).float().flatten(1).mean(1).sum(),
+                        "P2BR/delta_saturated_sum": delta.abs().ge(0.396).float().flatten(1).mean(1).sum(),
+                        "P2BR/projected_feature_norm_sum": refiner_outputs["projected_feature_norm_sum"],
+                        "P2BR/highpass_feature_norm_sum": refiner_outputs["highpass_feature_norm_sum"],
+                    })
+            shape_prior_mask_logits = refined_shape_prior_logits
+            coarse_outputs = {
+                "raw_logits": raw_shape_prior_logits,
+                "refined_logits": refined_shape_prior_logits,
+                "delta_logits": None if refiner_outputs is None else refiner_outputs["delta_logits"],
+                "raw_boundary_band": None if refiner_outputs is None else refiner_outputs["raw_boundary_band"],
+                "search_support": None if refiner_outputs is None else refiner_outputs["search_support"],
+                "support_valid": None if refiner_outputs is None else refiner_outputs["support_valid"],
+            }
+            # Refined coarse logits are the only downstream semantic source;
+            # raw logits remain independently supervised by the C4 objective.
+            if self.use_shape_dense:
+                (
+                    shape_prior_prompt_logits,
+                    shape_dense_valid,
+                    dense_excavation_stats,
+                ) = self._shape_prior_to_prompt_mask(shape_prior_mask_logits, boxes)
+                for stat_name, stat_value in dense_excavation_stats.items():
+                    debug_stats[f"GAUSSIAN/{stat_name}"] = stat_value
+            else:
+                # True sparse-only: keep the coarse mask for point mining and
+                # auxiliary supervision, but skip transform/paste/PE mask work.
+                shape_prior_prompt_logits = None
+        return (
+            shape_prior_mask_logits,
+            coarse_outputs,
+            shape_prior_prompt_logits,
+            shape_dense_valid,
+        )
+
+    def _forward_prompt_encode(
+        self,
+        image_embeddings,
+        boxes,
+        prompt_geometry_boxes,
+        shape_prior_mask_logits,
+        shape_prior_prompt_logits,
+        roi_bs,
+        debug_stats,
+    ):
+        """(forward phase) single frozen PromptEncoder call: diagnostics + mining.
+
+Verbatim-extracted from forward; operation order unchanged.
+"""
+        # === PE 单次调用: box → sparse_pe, mask → dense_pe ===
+        box_embs = None
+        dense_pe = None
+        if self.prompt_encoder is not None and boxes is not None:
+            # 批次2 子任务4：sparse-only(use_shape_dense=False)时不传 mask 给 PE（审查 2.3）
+            masks_for_pe = shape_prior_prompt_logits if self.use_shape_dense else None
+            # 批次2 子任务4：shape dense gate 三模式有效值（审查 2.1）
+            prompt_scale = self._effective_shape_dense_alpha()
+            if prompt_scale is not None:
+                _gate = prompt_scale.detach().float()
+                debug_stats["GATE/shape_dense_alpha_mean"] = _gate.mean()
+                debug_stats["GATE/shape_dense_alpha_min"] = _gate.min()
+                debug_stats["GATE/shape_dense_alpha_max"] = _gate.max()
+            if masks_for_pe is not None and masks_for_pe.numel() > 0:
+                _dense_dbg = masks_for_pe.detach().float()
+                debug_stats["DENSE/canvas_mean"] = _dense_dbg.mean()
+                debug_stats["DENSE/canvas_std"] = _dense_dbg.std()
+                debug_stats["DENSE/canvas_min"] = _dense_dbg.min()
+                debug_stats["DENSE/canvas_max"] = _dense_dbg.max()
+                debug_stats["DENSE/canvas_nonzero_ratio"] = (_dense_dbg != 0).float().mean()
+            masks_for_pe = self._apply_diagnostic_prompt_frequency(
+                masks_for_pe, debug_stats
+            )
+            masks_for_pe = self._apply_diagnostic_prompt_spatial(
+                masks_for_pe, boxes, debug_stats
+            )
+
+            # === shape_point 模式: 从 shape_prior_mask 挖点，一次 PE 调用编码点+box+mask ===
+            if self.prompt_sparse_mode == "shape_point":
+                if shape_prior_mask_logits is None:
+                    raise ValueError(
+                        "prompt_sparse_mode='shape_point' requires shape_prior enabled "
+                        "with non-None mask_logits. Got shape_prior_mask_logits=None."
+                    )
+                coords, labels, point_stats = self.shape_point_miner(
+                    shape_prior_mask_logits,
+                    prompt_geometry_boxes,
+                    self.prompt_encoder_image_size,
+                )
+                (self._last_shape_point_local_yx,
+                 self._last_shape_point_labels) = self.shape_point_miner.get_last_local_points()
+                # point_stats 是 prediction-based（不含 GT）；GT-based stats 由上层训练循环算
+                for _k, _v in point_stats.items():
+                    debug_stats[f"SP/{_k}"] = (
+                        _v.detach() if torch.is_tensor(_v) else _v
+                    )
+                points_for_pe, boxes_for_pe, masks_for_pe = (
+                    self._select_explicit_prompt_inputs(
+                        coords, labels, prompt_geometry_boxes, masks_for_pe
+                    )
+                )
+                if (
+                    points_for_pe is None
+                    and boxes_for_pe is None
+                    and masks_for_pe is None
+                ):
+                    # PromptEncoder cannot infer an ROI batch size when every
+                    # modality is absent. Construct the true empty sparse set
+                    # directly; the canonical base dense embedding is built
+                    # below for all ``roi_bs`` instances.
+                    sparse_pe = image_embeddings.new_empty((roi_bs, 0, 256))
+                    dense_pe_from_pe = None
+                else:
+                    sparse_pe, dense_pe_from_pe = self.prompt_encoder(
+                        points=points_for_pe,
+                        boxes=boxes_for_pe,
+                        masks=masks_for_pe,
+                    )
+                    if points_for_pe is not None:
+                        sparse_pe = self._neutralize_invalid_point_tokens(
+                            sparse_pe, labels
+                        )
+                debug_stats["PROMPT/use_box_token"] = float(
+                    self.explicit_use_box_prompt
+                )
+                debug_stats["PROMPT/use_point_token"] = float(
+                    self.explicit_use_point_prompt
+                )
+                debug_stats["PROMPT/use_dense_mask"] = float(
+                    self.explicit_use_dense_prompt
+                )
+                # points: [N,4,256]; points_box(_dense): [N,6,256].
+                box_embs = None  # explicit shape-point mode keeps PE output unified
+            else:
+                sparse_pe, dense_pe_from_pe = self.prompt_encoder(
+                    points=None, boxes=boxes, masks=masks_for_pe,
+                )
+                box_embs = sparse_pe  # [N, 2, 256]
+            if masks_for_pe is not None:
+                dense_pe = dense_pe_from_pe  # [N,256,Hemb,Wemb], 1024输入通常为32x32
+        else:
+            prompt_scale = None
+        return sparse_pe, dense_pe, box_embs, prompt_scale
+
+    def _apply_diagnostic_prompt_frequency(self, masks_for_pe, debug_stats):
+        """Diagnostic low-pass / high-boost filtering of the PE mask canvas."""
+        frequency_mode = self._diagnostic_prompt_frequency_mode
+        if masks_for_pe is not None and frequency_mode != "none":
+            supported_frequency_modes = (
+                "lowpass_16",
+                "lowpass_8",
+                "highboost_16_0p5",
+                "highboost_16_1p0",
+            )
+            if frequency_mode not in supported_frequency_modes:
+                raise ValueError(
+                    "Unsupported prompt frequency diagnostic mode="
+                    f"{frequency_mode!r}"
+                )
+            target_size = 8 if frequency_mode == "lowpass_8" else 16
+            original_size = masks_for_pe.shape[-2:]
+            original_masks = masks_for_pe
+            low_frequency = F.interpolate(
+                original_masks,
+                size=(target_size, target_size),
+                mode="area",
+            )
+            low_frequency = F.interpolate(
+                low_frequency,
+                size=original_size,
+                mode="bilinear",
+                align_corners=False,
+            )
+            if frequency_mode.startswith("lowpass"):
+                masks_for_pe = low_frequency
+            else:
+                boost = 0.5 if frequency_mode.endswith("0p5") else 1.0
+                masks_for_pe = original_masks + boost * (
+                    original_masks - low_frequency
+                )
+                debug_stats["DIAG/prompt_highboost"] = float(boost)
+            debug_stats["DIAG/prompt_lowpass_target"] = float(target_size)
+        return masks_for_pe
+
+    def _apply_diagnostic_prompt_spatial(self, masks_for_pe, boxes, debug_stats):
+        """Diagnostic edge side-perturbation of the PE mask canvas."""
+        spatial_mode = self._diagnostic_prompt_spatial_perturbation
+        if masks_for_pe is not None and spatial_mode != "none":
+            try:
+                side, direction, radius_text = spatial_mode.split("_")
+                radius = int(radius_text)
+            except (TypeError, ValueError) as error:
+                raise ValueError(
+                    "Prompt spatial perturbation must be SIDE_DIRECTION_RADIUS, "
+                    f"got {spatial_mode!r}"
+                ) from error
+            if side not in ("top", "bottom", "left", "right"):
+                raise ValueError(f"Unsupported prompt perturbation side={side!r}")
+            if direction not in ("out", "in") or radius <= 0:
+                raise ValueError(
+                    f"Unsupported prompt perturbation={spatial_mode!r}"
+                )
+            kernel_size = 2 * radius + 1
+            if direction == "out":
+                perturbed = F.max_pool2d(
+                    masks_for_pe,
+                    kernel_size=kernel_size,
+                    stride=1,
+                    padding=radius,
+                )
+            else:
+                perturbed = -F.max_pool2d(
+                    -masks_for_pe,
+                    kernel_size=kernel_size,
+                    stride=1,
+                    padding=radius,
+                )
+            height, width = masks_for_pe.shape[-2:]
+            scale_x = width / float(self.prompt_encoder_image_size)
+            scale_y = height / float(self.prompt_encoder_image_size)
+            center_x = 0.5 * (boxes[:, 0] + boxes[:, 2]) * scale_x
+            center_y = 0.5 * (boxes[:, 1] + boxes[:, 3]) * scale_y
+            yy = torch.arange(
+                height, device=masks_for_pe.device, dtype=masks_for_pe.dtype
+            ).view(1, 1, height, 1)
+            xx = torch.arange(
+                width, device=masks_for_pe.device, dtype=masks_for_pe.dtype
+            ).view(1, 1, 1, width)
+            if side == "top":
+                side_mask = yy <= center_y[:, None, None, None]
+            elif side == "bottom":
+                side_mask = yy >= center_y[:, None, None, None]
+            elif side == "left":
+                side_mask = xx <= center_x[:, None, None, None]
+            else:
+                side_mask = xx >= center_x[:, None, None, None]
+            masks_for_pe = torch.where(side_mask, perturbed, masks_for_pe)
+            debug_stats["DIAG/prompt_spatial_radius"] = float(radius)
+        return masks_for_pe
+
+    def _forward_dense_embeddings(
+        self,
+        image_embeddings,
+        dense_pe,
+        shape_dense_valid,
+        boxes,
+        prompt_scale,
+        image_embedding_size,
+        roi_bs,
+        debug_stats,
+    ):
+        """(forward phase) no-mask base + gated shape-dense residual + stats.
+
+Verbatim-extracted from forward; operation order unchanged.
+"""
+        # === dense_embeddings ===
+        if self.no_mask_embed is None:
+            base_dense = image_embeddings.new_zeros(
+                roi_bs, 256, image_embedding_size[0], image_embedding_size[1]
+            )
+        else:
+            base_dense = self.no_mask_embed.reshape(1, -1, 1, 1).expand(
+                roi_bs, -1, image_embedding_size[0], image_embedding_size[1]
+            )
+        if self._diagnostic_forward_ablation == "zero_base_dense":
+            base_dense = torch.zeros_like(base_dense)
+
+        if dense_pe is not None:
+            if shape_dense_valid is not None:
+                from .dense_prompt_utils import replace_invalid_dense_with_base
+                dense_pe = replace_invalid_dense_with_base(
+                    dense_pe, base_dense, shape_dense_valid
+                )
+            if self.restrict_dense_prompt_to_box:
+                support = self._dense_embedding_box_support(
+                    boxes, image_embedding_size, dense_pe.dtype
+                )
+                dense_pe = base_dense + support * (dense_pe - base_dense)
+            # 所有模式统一走门控残差: base_dense + prompt_scale * (dense_pe - base_dense)
+            # points_box_dense: bounded global-sigmoid interpolation between
+            # pretrained no-mask and shape dense embedding.
+            # Legacy/fixed modes remain only for controlled ablations.
+            dense_delta = dense_pe - base_dense
+            dense_embeddings = base_dense + prompt_scale * dense_delta
+            if dense_embeddings.numel() > 0:
+                _base_norm = base_dense.detach().float().flatten(1).norm(dim=1)
+                _source_delta_norm = dense_delta.detach().float().flatten(1).norm(dim=1)
+                _applied_delta_norm = (
+                    dense_embeddings.detach().float() - base_dense.detach().float()
+                ).flatten(1).norm(dim=1)
+                _norm_denom = _base_norm.clamp_min(1e-6)
+                debug_stats["DENSE/residual_alpha"] = prompt_scale.detach().float().mean()
+                debug_stats["DENSE/base_norm"] = _base_norm.mean()
+                debug_stats["DENSE/shape_norm"] = dense_pe.detach().float().flatten(1).norm(dim=1).mean()
+                debug_stats["DENSE/final_norm"] = dense_embeddings.detach().float().flatten(1).norm(dim=1).mean()
+                debug_stats["DENSE/source_delta_norm"] = _source_delta_norm.mean()
+                debug_stats["DENSE/applied_delta_norm"] = _applied_delta_norm.mean()
+                debug_stats["DENSE/source_delta_ratio"] = (_source_delta_norm / _norm_denom).mean()
+                debug_stats["DENSE/applied_delta_ratio"] = (_applied_delta_norm / _norm_denom).mean()
+        else:
+            dense_embeddings = base_dense
+        return dense_embeddings
+
 
     def _predict_by_feat_single(
         self,
