@@ -558,14 +558,12 @@ def _build_optimizer(
     sat_backbone_lr_mult: float,
     sat_other_lr_mult: float,
     bbox_head_lr_mult: float,
-    drone_lr_mult: float,
     mask_decoder_lr_mult: float = 0.05,
     no_mask_lr_mult: float = 0.1,
     prompt_encoder_lr_mult: float = 0.1,
     shape_prior_lr_mult: float = 1.0,
     p2_boundary_refiner_lr_mult: float = 1.0,
     quality_head_lr_mult: float = 1.0,
-    scene_align_lr_mult: float = 2.0,
     weight_decay: float = 0.05,
 ) -> optim.Optimizer:
     params_sat_backbone = []
@@ -586,29 +584,12 @@ def _build_optimizer(
     names_bbox_head = []
     params_sat_other = []
     names_sat_other = []
-    params_drone = []
-    names_drone = []
-    params_scene_align = []
-    names_scene_align = []
 
     for name, param in model.named_parameters():
         if not param.requires_grad:
             continue
         match_name = name.replace("_fsdp_wrapped_module.", "").replace("module.", "")
-        if "scene_alignment" in match_name:
-            params_scene_align.append(param)
-            names_scene_align.append(name)
-        elif (
-            match_name.startswith("drone_encoder.")
-            or match_name.startswith("guidance.")
-            or match_name.startswith("bottom_up.")
-            or "roi_head.mask_head.uav_roi_" in match_name
-            or "roi_head.mask_head.uav_dense_prompt_scale" in match_name
-            or "roi_head.mask_head.uav_prompt_adapter_" in match_name
-        ):
-            params_drone.append(param)
-            names_drone.append(name)
-        elif match_name.startswith("backbone.") or match_name.startswith("shared_image_embedding."):
+        if match_name.startswith("backbone.") or match_name.startswith("shared_image_embedding."):
             params_sat_backbone.append(param)
             names_sat_backbone.append(name)
         elif (
@@ -741,17 +722,6 @@ def _build_optimizer(
             }
         )
         audit_groups.append(("sat_other", params_sat_other, names_sat_other, lr * sat_other_lr_mult, weight_decay))
-    if params_drone:
-        param_groups.append(
-            {"params": params_drone, "lr": lr * drone_lr_mult, "name": "drone_guidance"}
-        )
-        audit_groups.append(("drone_guidance", params_drone, names_drone, lr * drone_lr_mult, weight_decay))
-    if params_scene_align:
-        param_groups.append(
-            {"params": params_scene_align, "lr": lr * drone_lr_mult * scene_align_lr_mult, "name": "scene_alignment"}
-        )
-        audit_groups.append(("scene_alignment", params_scene_align, names_scene_align, lr * drone_lr_mult * scene_align_lr_mult, weight_decay))
-
     if not param_groups:
         raise RuntimeError(
             "No trainable parameters found. Check freezing / requires_grad."
@@ -1718,14 +1688,12 @@ def main():
         default=0.0,
         help="Use >0 to place bbox_head in a separate optimizer group",
     )
-    parser.add_argument("--drone-lr-mult", type=float, default=0.5)
     parser.add_argument("--mask-decoder-lr-mult", type=float, default=1.0)
     parser.add_argument("--no-mask-lr-mult", type=float, default=1.0)
     parser.add_argument("--prompt-encoder-lr-mult", type=float, default=0.1)
     parser.add_argument("--shape-prior-lr-mult", type=float, default=1.0)
     parser.add_argument("--p2-boundary-refiner-lr-mult", type=float, default=1.0)
     parser.add_argument("--quality-head-lr-mult", type=float, default=1.0)
-    parser.add_argument("--scene-align-lr-mult", type=float, default=2.0, help="Learning rate multiplier for scene alignment parameters")
     parser.add_argument("--grad-accum-steps", type=int, default=2)
     parser.add_argument("--max-scenes", type=int, default=1000, help="Maximum number of scenes for scene-specific alignment")
     parser.add_argument("--warmup-epochs", type=int, default=0, help="Number of warmup epochs for learning rate scheduling")
@@ -1752,10 +1720,6 @@ def main():
                         help="Print shape-point/coarse-mask prompt diagnostics")
     parser.add_argument("--prompt-debug-stats-interval", type=int, default=50,
                         help="Training iteration interval for prompt diagnostics")
-    parser.add_argument("--depth-debug-stats", type=int, choices=[0, 1], default=0,
-                        help="Print depth module diagnostic stats during training")
-    parser.add_argument("--depth-debug-stats-interval", type=int, default=50,
-                        help="Training iteration interval for depth diagnostic stats")
     # UAV 双流 A/B/C/D 消融参数。默认 None 表示尊重 config/env 中的值；
     # shell 脚本传入后会在这里覆盖 cfg, 方便同一份 config 切实验。
     parser.add_argument("--uav-fpn-enabled", type=int, choices=[0, 1], default=None,
@@ -2012,15 +1976,6 @@ def main():
         )
         ignored_modules = None
         model_base = model.module if hasattr(model, "module") else model
-        if (
-            getattr(model_base, "freeze_drone", False)
-            and hasattr(model_base, "drone_encoder")
-            and model_base.drone_encoder is not None
-        ):
-            model_base.drone_encoder.requires_grad_(False)
-            model_base.drone_encoder.eval()
-            ignored_modules = [model_base.drone_encoder]
-
         model = FSDP(
             model,
             sharding_strategy=sharding,
@@ -2179,14 +2134,12 @@ def main():
         sat_backbone_lr_mult=args.sat_backbone_lr_mult,
         sat_other_lr_mult=args.sat_other_lr_mult,
         bbox_head_lr_mult=args.bbox_head_lr_mult,
-        drone_lr_mult=args.drone_lr_mult,
         mask_decoder_lr_mult=args.mask_decoder_lr_mult,
         no_mask_lr_mult=args.no_mask_lr_mult,
         prompt_encoder_lr_mult=args.prompt_encoder_lr_mult,
         shape_prior_lr_mult=args.shape_prior_lr_mult,
         p2_boundary_refiner_lr_mult=args.p2_boundary_refiner_lr_mult,
         quality_head_lr_mult=args.quality_head_lr_mult,
-        scene_align_lr_mult=args.scene_align_lr_mult,
         weight_decay=args.weight_decay,
     )
     if is_main:
@@ -2429,12 +2382,6 @@ def main():
         "uav_roi_dense_mid_channels": args.uav_roi_dense_mid_channels,
         "uav_debug_stats": args.uav_debug_stats,
         "uav_debug_stats_interval": args.uav_debug_stats_interval,
-        "depth_debug_stats": args.depth_debug_stats,
-        "depth_debug_stats_interval": args.depth_debug_stats_interval,
-        "depth_enabled": os.environ.get("DEPTH_ENABLED", ""),
-        "depth_encoder": os.environ.get("DEPTH_ENCODER", ""),
-        "depth_pretrained_path": os.environ.get("DEPTH_PRETRAINED_PATH", ""),
-        "depth_require_pretrained": os.environ.get("DEPTH_REQUIRE_PRETRAINED", ""),
         "seed": args.seed,
         "lr": args.lr,
         "batch_size": args.batch_size,
@@ -2455,8 +2402,6 @@ def main():
             "prompt_encoder": args.prompt_encoder_lr_mult,
             "shape_prior": args.shape_prior_lr_mult,
             "p2_boundary_refiner": args.p2_boundary_refiner_lr_mult,
-            "drone": args.drone_lr_mult,
-            "scene_align": args.scene_align_lr_mult,
         },
         "image_size": list(args.image_size),
         "mask_head_config": dict(cfg.model.roi_head.mask_head)
@@ -3090,11 +3035,6 @@ def main():
                         and args.prompt_debug_stats_interval > 0
                         and global_step % args.prompt_debug_stats_interval == 0
                     )
-                    or (
-                        args.depth_debug_stats
-                        and args.depth_debug_stats_interval > 0
-                        and global_step % args.depth_debug_stats_interval == 0
-                    )
                 )
             ):
                 enabled_prefixes = set()
@@ -3110,12 +3050,6 @@ def main():
                     and global_step % args.prompt_debug_stats_interval == 0
                 ):
                     enabled_prefixes.update({"SP", "COARSE", "JITTER", "GATE", "DENSE", "P2BR", "CONTEXT", "BOX"})
-                if (
-                    args.depth_debug_stats
-                    and args.depth_debug_stats_interval > 0
-                    and global_step % args.depth_debug_stats_interval == 0
-                ):
-                    enabled_prefixes.add("DEPTH")
                 _log_uav_debug_stats(model, epoch, global_step, enabled_prefixes)
             scaler.scale(loss_for_backward).backward()
 
