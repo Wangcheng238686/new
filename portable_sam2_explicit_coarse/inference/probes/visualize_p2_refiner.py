@@ -43,7 +43,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-MAINLINE_ROOT = Path(__file__).resolve().parents[1]
+MAINLINE_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(MAINLINE_ROOT))
 
 from inference.infer_from_checkpoint import (  # noqa: E402

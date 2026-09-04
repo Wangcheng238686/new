@@ -31,7 +31,7 @@ fi
 CHECKPOINT="$1"
 shift
 
-exec "${PYTHON}" inference/visualize_p2_refiner.py \
+exec "${PYTHON}" inference/probes/visualize_p2_refiner.py \
   --checkpoint "${CHECKPOINT}" \
   --config configs/whu1024_baseplus_explicit_coarse.py \
   "$@"

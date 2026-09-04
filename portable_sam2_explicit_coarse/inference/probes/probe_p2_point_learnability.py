@@ -29,7 +29,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-MAINLINE_ROOT = Path(__file__).resolve().parents[1]
+MAINLINE_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(MAINLINE_ROOT))
 
 from inference.infer_from_checkpoint import (  # noqa: E402
@@ -44,7 +44,7 @@ from inference.infer_from_checkpoint import (  # noqa: E402
     _select_state_dict,
     _snapshot,
 )
-from inference.oracle_p2_probe import _box_iou_one, _crop_to_coarse  # noqa: E402
+from inference.probes.oracle_p2_probe import _box_iou_one, _crop_to_coarse  # noqa: E402
 
 logger = logging.getLogger("learn_probe")
 
