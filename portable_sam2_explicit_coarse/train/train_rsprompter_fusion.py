@@ -16,6 +16,7 @@ import numpy as np
 import torch
 import torch.distributed as dist
 import torch.optim as optim
+from torch import Tensor
 from torch.utils.data.distributed import DistributedSampler
 
 from mmdet.structures import DetDataSample
@@ -1077,6 +1078,176 @@ _P2BR_EPOCH_FIELDS = (
     "boundary_loss_support_pixels",
     "boundary_loss_foreground_pixels",
 )
+
+
+_PROMPT_PATHWAY_BRANCHES = ("dense", "p2br")
+
+
+def _prompt_pathway_parameters(model: torch.nn.Module) -> Dict[str, List[torch.nn.Parameter]]:
+    """Return the trainable parameters whose final-mask gradient we audit.
+
+    ``dense`` intentionally includes the coarse injector and the dense gate:
+    ShapePointMiner is hard/stop-gradient, so ``loss_mask`` can reach the
+    injector only through the differentiable dense-prompt route.  ``p2br`` is
+    kept separate so its auxiliary boundary loss can never masquerade as a
+    final-mask gradient in the diagnostics below.
+    """
+    model_core = model.module if hasattr(model, "module") else model
+    mask_head = getattr(getattr(model_core, "roi_head", None), "mask_head", None)
+    if mask_head is None:
+        return {branch: [] for branch in _PROMPT_PATHWAY_BRANCHES}
+    dense_params: List[torch.nn.Parameter] = []
+    shape_injector = getattr(mask_head, "shape_injector", None)
+    if shape_injector is not None:
+        dense_params.extend(
+            parameter for parameter in shape_injector.parameters() if parameter.requires_grad
+        )
+    dense_gate = getattr(mask_head, "shape_dense_alpha_raw", None)
+    if isinstance(dense_gate, torch.nn.Parameter) and dense_gate.requires_grad:
+        dense_params.append(dense_gate)
+    p2br = getattr(mask_head, "p2_boundary_refiner", None)
+    p2br_params = (
+        [parameter for parameter in p2br.parameters() if parameter.requires_grad]
+        if p2br is not None
+        else []
+    )
+    return {"dense": dense_params, "p2br": p2br_params}
+
+
+def _new_prompt_pathway_monitor() -> Dict[str, float]:
+    fields = {}
+    for branch in _PROMPT_PATHWAY_BRANCHES:
+        fields.update({
+            f"{branch}_final_grad_sq_sum": 0.0,
+            f"{branch}_final_grad_nonzero_param_count": 0.0,
+            f"{branch}_final_grad_param_count": 0.0,
+            f"{branch}_final_grad_probe_count": 0.0,
+            f"{branch}_update_sq": 0.0,
+            f"{branch}_update_param_count": 0.0,
+        })
+    return fields
+
+
+def _accumulate_prompt_pathway_final_grad_probe(
+    model: torch.nn.Module,
+    final_mask_loss: Any,
+    monitor: Dict[str, float],
+) -> None:
+    """Probe only ``loss_mask`` before total-loss backward, once per epoch/rank."""
+    branch_params = _prompt_pathway_parameters(model)
+    if not isinstance(final_mask_loss, torch.Tensor) or not final_mask_loss.requires_grad:
+        return
+    flat_params = [
+        parameter for branch in _PROMPT_PATHWAY_BRANCHES
+        for parameter in branch_params[branch]
+    ]
+    if not flat_params:
+        return
+    gradients = torch.autograd.grad(
+        final_mask_loss,
+        flat_params,
+        retain_graph=True,
+        allow_unused=True,
+    )
+    offset = 0
+    for branch in _PROMPT_PATHWAY_BRANCHES:
+        params = branch_params[branch]
+        branch_grads = gradients[offset:offset + len(params)]
+        offset += len(params)
+        monitor[f"{branch}_final_grad_probe_count"] += 1.0
+        monitor[f"{branch}_final_grad_param_count"] += float(len(params))
+        for gradient in branch_grads:
+            if gradient is None:
+                continue
+            grad_sq = gradient.detach().float().square().sum()
+            if not torch.isfinite(grad_sq):
+                continue
+            monitor[f"{branch}_final_grad_sq_sum"] += float(grad_sq.item())
+            if float(grad_sq.item()) > 0.0:
+                monitor[f"{branch}_final_grad_nonzero_param_count"] += 1.0
+
+
+def _snapshot_prompt_pathway_parameters(model: torch.nn.Module) -> Dict[str, List[Tensor]]:
+    return {
+        branch: [parameter.detach().float().clone() for parameter in parameters]
+        for branch, parameters in _prompt_pathway_parameters(model).items()
+    }
+
+
+def _accumulate_prompt_pathway_updates(
+    model: torch.nn.Module,
+    snapshot: Dict[str, List[Tensor]],
+    monitor: Dict[str, float],
+) -> None:
+    for branch, parameters in _prompt_pathway_parameters(model).items():
+        before_values = snapshot.get(branch, [])
+        if len(before_values) != len(parameters):
+            raise RuntimeError(f"prompt pathway parameter set changed during epoch: {branch}")
+        monitor[f"{branch}_update_param_count"] += float(len(parameters))
+        for before, parameter in zip(before_values, parameters):
+            delta_sq = (parameter.detach().float() - before).square().sum()
+            if torch.isfinite(delta_sq):
+                monitor[f"{branch}_update_sq"] += float(delta_sq.item())
+
+
+def _reduce_prompt_pathway_monitor(
+    monitor: Dict[str, float], device: torch.device, distributed: bool
+) -> Dict[str, float]:
+    keys = tuple(monitor)
+    packed = torch.tensor([monitor[key] for key in keys], dtype=torch.float64, device=device)
+    world_size = 1
+    if distributed and dist.is_initialized():
+        dist.all_reduce(packed, op=dist.ReduceOp.SUM)
+        world_size = dist.get_world_size()
+    values = {key: float(packed[index].item()) for index, key in enumerate(keys)}
+    result = {}
+    for branch in _PROMPT_PATHWAY_BRANCHES:
+        probes = values[f"{branch}_final_grad_probe_count"]
+        grad_params = values[f"{branch}_final_grad_param_count"]
+        update_params = values[f"{branch}_update_param_count"]
+        result[f"{branch}_final_mask_grad_group_l2_rms"] = (
+            math.sqrt(values[f"{branch}_final_grad_sq_sum"] / probes)
+            if probes > 0
+            else 0.0
+        )
+        result[f"{branch}_final_mask_grad_nonzero_param_ratio"] = (
+            values[f"{branch}_final_grad_nonzero_param_count"] / grad_params
+            if grad_params > 0
+            else 0.0
+        )
+        result[f"{branch}_parameter_update_group_l2_rms"] = (
+            math.sqrt(values[f"{branch}_update_sq"] / float(world_size))
+            if update_params > 0
+            else 0.0
+        )
+        result[f"{branch}_parameter_count"] = update_params / float(world_size)
+        result[f"{branch}_final_mask_grad_probe_count"] = probes / float(world_size)
+    return result
+
+
+def _verify_ddp_parameter_sync_after_first_update(
+    model: torch.nn.Module, device: torch.device, distributed: bool
+) -> Optional[float]:
+    """Return the largest rank-to-mean parameter deviation after one update.
+
+    This is deliberately run once after the first nonzero-learning-rate optimizer step.  It is a
+    fail-fast audit for the DDP wrapper path, not an every-step reduction.
+    """
+    if not (distributed and dist.is_initialized()):
+        return None
+    world_size = float(dist.get_world_size())
+    local_max = torch.zeros((), dtype=torch.float32, device=device)
+    for parameter in model.parameters():
+        if not parameter.requires_grad:
+            continue
+        rank_mean = parameter.detach().float().clone()
+        dist.all_reduce(rank_mean, op=dist.ReduceOp.SUM)
+        rank_mean.div_(world_size)
+        local_max = torch.maximum(
+            local_max, (parameter.detach().float() - rank_mean).abs().max()
+        )
+    dist.all_reduce(local_max, op=dist.ReduceOp.MAX)
+    return float(local_max.item())
 
 
 def _stat_scalar(stats: Dict[str, Any], key: str) -> Optional[float]:
@@ -2430,6 +2601,7 @@ def main():
     # EMA shadow weights (eval/save-best only, never for backprop)
     ema = None
     ema_update_steps = 0
+    ddp_sync_audited = False
     ema_enabled = bool(args.ema_enabled) and (0.0 < float(args.ema_decay) < 1.0)
     if ema_enabled:
         ema = ExponentialMovingAverage(model, decay=float(args.ema_decay))
@@ -2861,6 +3033,9 @@ def main():
         dense_monitor_sums = {key: 0.0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
         dense_monitor_counts = {key: 0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
         p2br_monitor_sums = {key: 0.0 for key in _P2BR_EPOCH_FIELDS}
+        prompt_pathway_monitor = _new_prompt_pathway_monitor()
+        prompt_pathway_snapshot = _snapshot_prompt_pathway_parameters(model)
+        prompt_pathway_grad_probed = False
         num_batches = 0
         grad_accum = args.grad_accum_steps
         train_batches_limit = len(train_loader)
@@ -2936,10 +3111,10 @@ def main():
 
             model_inputs = imgs
 
-            model_for_loss = model.module if hasattr(model, "module") else model
-
             with torch.amp.autocast("cuda", enabled=amp_enabled):
-                loss_dict = model_for_loss.loss(model_inputs, data_samples)
+                # Invoke the DDP wrapper itself. Calling ``model.module.loss``
+                # bypasses DDP's reducer and makes each rank update independently.
+                loss_dict = model(model_inputs, data_samples, mode="loss")
                 loss_dict = _materialize_p2_boundary_refiner_loss(
                     loss_dict, model, distributed
                 )
@@ -3016,6 +3191,15 @@ def main():
                     )
                 continue
 
+            # Probe the first finite local batch only. This isolates final-mask
+            # supervision from auxiliary losses without making every batch pay
+            # for a second autograd traversal.
+            if not prompt_pathway_grad_probed:
+                _accumulate_prompt_pathway_final_grad_probe(
+                    model, loss_dict.get("loss_mask"), prompt_pathway_monitor
+                )
+                prompt_pathway_grad_probed = True
+
             global_step = epoch * max(1, train_batches_limit) + batch_idx + 1
             if (
                 is_main
@@ -3049,7 +3233,7 @@ def main():
                     and args.prompt_debug_stats_interval > 0
                     and global_step % args.prompt_debug_stats_interval == 0
                 ):
-                    enabled_prefixes.update({"SP", "COARSE", "JITTER", "GATE", "DENSE", "CONTEXT", "BOX"})
+                    enabled_prefixes.update({"SP", "COARSE", "JITTER", "GATE", "DENSE", "P2BR", "CONTEXT", "BOX"})
                 if (
                     args.depth_debug_stats
                     and args.depth_debug_stats_interval > 0
@@ -3066,6 +3250,21 @@ def main():
                 scaler.step(optimizer)
                 scaler.update()
                 ema_update_steps += 1
+                if (
+                    not ddp_sync_audited
+                    and any(float(group["lr"]) > 0.0 for group in optimizer.param_groups)
+                ):
+                    ddp_max_parameter_deviation = _verify_ddp_parameter_sync_after_first_update(
+                        model, device, distributed
+                    )
+                    if ddp_max_parameter_deviation is not None:
+                        ddp_sync_audited = True
+                    if is_main and ddp_max_parameter_deviation is not None:
+                        logger.info(
+                            "DDP parameter-sync audit after first nonzero-LR update: "
+                            "max_abs_deviation=%.3e",
+                            ddp_max_parameter_deviation,
+                        )
                 if ema is not None and (ema_update_steps % max(1, int(args.ema_update_every)) == 0):
                     ema.update(model)
                 optimizer.zero_grad(set_to_none=True)
@@ -3097,6 +3296,12 @@ def main():
         )
         p2br_monitor_epoch = _reduce_p2br_epoch_monitor(
             p2br_monitor_sums, device=device, distributed=distributed
+        )
+        _accumulate_prompt_pathway_updates(
+            model, prompt_pathway_snapshot, prompt_pathway_monitor
+        )
+        prompt_pathway_epoch = _reduce_prompt_pathway_monitor(
+            prompt_pathway_monitor, device=device, distributed=distributed
         )
 
         if is_main:
@@ -3169,6 +3374,32 @@ def main():
                     p2br_monitor_epoch["highpass_feature_norm"],
                     100.0 * p2br_monitor_epoch["boundary_support_fg_ratio"],
                 )
+                logger.info(
+                    "Epoch %d P2 refinement gain: dice=%+.6f iou=%+.6f "
+                    "boundary_f1=%+.6f",
+                    epoch_number,
+                    p2br_monitor_epoch["refined_dice"] - p2br_monitor_epoch["raw_dice"],
+                    p2br_monitor_epoch["refined_iou"] - p2br_monitor_epoch["raw_iou"],
+                    p2br_monitor_epoch["refined_boundary_f1"]
+                    - p2br_monitor_epoch["raw_boundary_f1"],
+                )
+            logger.info(
+                "Epoch %d prompt pathway: dense final_mask_grad_group_l2_rms=%.3e "
+                "active=%.2f%% update_group_l2_rms=%.3e params=%.0f probes=%.0f | "
+                "p2br final_mask_grad_group_l2_rms=%.3e active=%.2f%% update_group_l2_rms=%.3e "
+                "params=%.0f probes=%.0f",
+                epoch_number,
+                prompt_pathway_epoch["dense_final_mask_grad_group_l2_rms"],
+                100.0 * prompt_pathway_epoch["dense_final_mask_grad_nonzero_param_ratio"],
+                prompt_pathway_epoch["dense_parameter_update_group_l2_rms"],
+                prompt_pathway_epoch["dense_parameter_count"],
+                prompt_pathway_epoch["dense_final_mask_grad_probe_count"],
+                prompt_pathway_epoch["p2br_final_mask_grad_group_l2_rms"],
+                100.0 * prompt_pathway_epoch["p2br_final_mask_grad_nonzero_param_ratio"],
+                prompt_pathway_epoch["p2br_parameter_update_group_l2_rms"],
+                prompt_pathway_epoch["p2br_parameter_count"],
+                prompt_pathway_epoch["p2br_final_mask_grad_probe_count"],
+            )
             averaged_components = {
                 key: value / max(1, num_batches) for key, value in loss_meter.items()
             }

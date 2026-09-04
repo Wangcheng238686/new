@@ -260,7 +260,9 @@ model = dict(
                 spatial_scale=0.25,
                 sampling_ratio=0,
                 aligned=True,
-                beta=0.20,
+                beta=float(os.environ.get(
+                    "P2_BOUNDARY_REFINER_BETA", "0.20"
+                )),
                 delta_logit_max=float(os.environ.get(
                     "P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX", "2.0"
                 )),

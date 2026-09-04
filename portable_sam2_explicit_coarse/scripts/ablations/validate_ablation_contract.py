@@ -277,7 +277,9 @@ def main():
             "P2BoundaryRefiner config mismatch",
         )
         refiner_expected = {
-            "beta": 0.20,
+            "beta": float(
+                os.environ.get("P2_BOUNDARY_REFINER_BETA", "0.20")
+            ),
             "delta_logit_max": float(
                 os.environ.get("P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX", "2.0")
             ),

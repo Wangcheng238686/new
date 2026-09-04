@@ -176,7 +176,10 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 |---|---|
 | `README.md` | 项目概览、基线复现和新主线快速入口。 |
 | `PROJECT_ARCHITECTURE.md` | 本文档；架构、逐文件说明和维护契约的事实来源。 |
+| `DEBUG_FIELDS.md` | 训练机制日志字段字典；定义 latest-forward、DDP epoch 统计和 pathway gradient/update probe 的分母与判读。 |
 | `C5_V2_METHOD.md` | C5-v2 论文方法设计文档；整理完整架构、张量数据流、ECPG/P2-BRR、损失与制图说明。 |
+| `portable_sam2_explicit_coarse/docs/prompt_consumption_and_p2_refinement_implementation_guide.md` | Prompt 消费鲁棒化与 P2 边界提示的实施前指导；本轮在固定 WHU 10% train / 10% validation 上快速验证，P2 点细化须通过 real-P2 对 sham-P2 的信息门。 |
+| `portable_sam2_explicit_coarse/docs/p2_point_refiner_design.md` | P2 点细化的历史候选设计；已降级，不能作为当前实施依据。 |
 | `MIGRATION_MANIFEST.md` | 记录两个参考项目、选取内容、排除内容和复现规则。 |
 | `.gitignore` | 顶层 Git 忽略规则。 |
 | `scripts/verify_legacy_baseline.sh` | 校验冻结基线文件和 SHA256 完整性。 |
@@ -298,6 +301,13 @@ loss，不做 rank-local 跳过。不同 DDP rank 的 `DistributedSampler` shard
 |---|---|
 | `__init__.py` | 训练包标记。 |
 | `train_rsprompter_fusion.py` | DDP 训练主入口；负责配置构建、参数组、EMA、checkpoint、断点恢复、COCO bbox/segm 验证和子集参数。 |
+
+训练器的 loss 前向必须经 DDP 包装模型而非直接调用 `.module`，使 reducer 参与反向同步；首次
+optimizer update 后还会输出一次全参数跨-rank 同步审计。训练器并在每个 epoch 记录三类 prompt 机制诊断：dense residual 的 DDP forward 均值、P2BR 的
+ROI/像素汇总与 raw→refined gain，以及每 rank 首个训练 batch 上仅由 `loss_mask` 产生的 dense/P2BR
+gradient probe 与整 epoch 参数 update norm。字段、分母和 D1/D2 判读标准以根目录
+`DEBUG_FIELDS.md` 为准；这些 probe 不含 coarse/P2 auxiliary loss，避免将辅助监督误判为最终
+MaskDecoder 的有效消费。
 
 常用 CLI：
 
@@ -426,31 +436,22 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `README.md` | 消融矩阵、子集和 dry-run 用法。 |
 | `_run_ablation.sh` | 所有消融共享的受控运行器；固定架构变量、校验契约、记录超参、组装 torchrun；训练默认以 `nohup setsid` 脱离终端并生成日志，不创建 PID 文件。 |
 | `validate_ablation_contract.py` | 校验解析后配置、真实数据子集和可选完整模型实例是否与脚本声明一致。 |
-| `smoke_all.sh` | 检查全部消融，并对 B0、B1、M0、M1、C1、C2-L、C2-R、C5、R0、R1 做代表性完整模型构建。 |
-| `monitor_b0_then_serial.sh` | 持续监控当前 B0，结束后串行运行主消融矩阵；单项失败、被杀或脚本缺失时记录并跳过，不阻断后续任务，不创建 PID 文件。 |
 | `b0_aggregator_mlp.sh` | Aggregator + 旧 MLP 基线桥接；默认run tag为`b0_aggregator_mlp_aligned`，与修复前无效权重隔离。 |
 | `b1_pafpn_mlp.sh` | 只将 neck 切到 PAFPN。 |
 | `m0_aggregator_mlp_full_image.sh` | B0 的 full-image final-mask 对照；只切 target/后处理坐标契约。 |
 | `m1_pafpn_mlp_full_image.sh` | B1 的 full-image final-mask 对照；只切 target/后处理坐标契约。 |
 | `c1_aggregator_coarse_points.sh` | Aggregator + coarse 2P2N。 |
-| `c2_pafpn_coarse_points.sh` | PAFPN + coarse 2P2N。 |
 | `c2l_pafpn_coarse_points_roi_loss.sh` | C2-L；保持 full-image points-only 推理，只将 final-mask 监督换为 ROI-balanced BCE + Dice + 弱 ROI 外 BCE。 |
 | `c2r_pafpn_coarse_points_roi_sam.sh` | C2-R；裁剪并归一化三层 SAM2 proposal 特征，使用 ROI-local 2P2N、原生128×128 ROI target和 bbox paste。 |
-| `c3_pafpn_coarse_points_box.sh` | C2 + box prompt。 |
-| `c4_pafpn_coarse_points_box_dense.sh` | C3 + dense mask prompt。 |
-| `c4_pafpn_coarse_points_box_dense_densefix.sh` | C4 的固定 dense 系数 `alpha=0.5` 单变量消融；固定-only 既有运行提前终止。 |
-| `c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh` | 固定 `alpha=0.5` 并仅训练 PromptEncoder `mask_downscaling` 的联合消融。 |
-| `r1_c3_pafpn_coarse_points_box_emb64.sh` | 官方 stride-16/64×64 的 PAFPN + coarse + points+box；关闭 dense 与 P2，作为 dense 贡献的严格控制。 |
-| `r1_c4_pafpn_coarse_points_box_dense_emb64.sh` | 官方 stride-16/64×64 的 PAFPN + coarse + points+box+dense 严格对照。 |
-| `r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh` | R1-C4 的 raw dense detach 梯度控制。 |
-| `r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh` | 在 R1-C4-RD 上只将 raw dense 替换为 hard-EDT Gaussian。 |
 | `test_dense_prompt_utils.py` | 检查 raw detach、Gaussian 中心/面积映射、各向同性、空 coarse 和不可导契约。 |
 | `r0_b0_aggregator_mlp_emb64.sh` | B0控制的官方stride-16/64×64 image embedding变体。 |
-| `c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh` | R1-C4 仅增加 P2BoundaryRefiner 的严格实验。 |
-| `coarse_strategy/README.md` | C2 coarse 策略筛选说明。 |
-| `coarse_strategy/s0_c2_fixed_w010.sh` | adaptive 2P2N + 固定 coarse loss 0.10。 |
-| `coarse_strategy/s1_c2_fixed_w020.sh` | adaptive 2P2N + 固定 coarse loss 0.20。 |
-| `coarse_strategy/s2_c2_two_stage_w020_w010.sh` | adaptive 2P2N + epoch 1–5 为 0.20、之后为 0.10。 |
+| `whu_p2_matrix_common.sh` | 四行矩阵共享的近期 WHU fast 协议：4 GPU、AMP、150 epoch、全量 WHU、ROI-local、stride-16 和相同增强。 |
+| `whu_p2_matrix_point.sh` | 仅 2P2N points 的矩阵首行。 |
+| `whu_p2_matrix_point_box.sh` | points + box 的矩阵第二行。 |
+| `whu_p2_matrix_point_box_mask.sh` | points + box + raw-logit dense mask 的矩阵第三行。 |
+| `whu_p2_matrix_full.sh` | 仅在第三行基础上启用 P2BoundaryRefiner 的完整矩阵行。 |
+| `whu_d1_dense_dev_10p_2gpu.sh` | D1 两臂短程开发：points+box 对 points+box+dense；固定两卡、有效全局 batch 8、WHU 10%/10%、15 epoch。 |
+| `whu_d2_p2_dev_10p_2gpu.sh` | D2 两臂短程开发：冻结 dense 后比较 Mask 对 Full；固定两卡、有效全局 batch 8、WHU 10%/10%、15 epoch。 |
 
 ### 4.7 工具与通用函数
 
@@ -529,43 +530,32 @@ bash scripts/ablations/b0_aggregator_mlp.sh
 bash scripts/smoke_test_components.sh
 ```
 
-消融 smoke，不启动训练：
+当前 P2 路径矩阵默认使用最近的完整 WHU fast 协议。四行固定 PAFPN、stride-16、
+ROI-local、AMP、4 GPU、有效全局 batch 8、全量 WHU、相同增强、seed 44 和 150 epoch；
+唯一递增变量是 points、box、dense mask、P2BoundaryRefiner。dense 行默认
+`SHAPE_DENSE_DETACH=0`，让 final-mask loss 训练现有 coarse/P2 路径。正式运行应串行：
 
 ```bash
-# 配置、命令、真实子集和代表性完整模型构建
-bash scripts/ablations/smoke_all.sh
-
-# 跳过完整模型构建的快速检查
-FULL_MODEL_SMOKE=0 bash scripts/ablations/smoke_all.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/whu_p2_matrix_point.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/whu_p2_matrix_point_box.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/whu_p2_matrix_point_box_mask.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/whu_p2_matrix_full.sh
 ```
 
-按消融当前默认口径启动 20% train / 100% validation：
+正式四行矩阵前必须先完成两段开发门：D1 仅比较 points+box 与 points+box+dense，使 dense
+在 `SHAPE_DENSE_DETACH=0` 下形成正向最终分割趋势；D2 在 D1 参数冻结后仅比较 dense 与
+Full，使 P2BR 的 refined coarse 不系统性差于 raw coarse 且 Full 呈正向最终分割趋势。两段均使用
+固定 WHU 10% train / 10% validation、seed 44、GPU 1,2 两卡 AMP、每卡 batch 1 / accum 4（有效
+全局 batch 8）、15 epoch、每 3 epoch validation 与 EMA-off；只允许调整当前已有的 dense/P2BR
+控制参数，不新增模块。未通过门的组件不得写入论文
+主矩阵；通过后才以冻结参数运行上述全量 150 epoch 四行消融。
 
-```bash
-bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
-bash scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix.sh
-bash scripts/ablations/c4_pafpn_coarse_points_box_dense_densefix_unfreeze.sh
-```
-
-官方 64×64 的 dense/P2 归因矩阵应在同一机器上依次运行，避免并发争抢
-显存；wrapper 默认共享 20% train、100% validation、seed 44 和 EMA-off。
-以下显式前台模式会让每条命令等待实验结束，因此整段保持严格串行：
-
-```bash
-RUN_IN_BACKGROUND=0 bash scripts/ablations/r1_c3_pafpn_coarse_points_box_emb64.sh
-RUN_IN_BACKGROUND=0 bash scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh
-RUN_IN_BACKGROUND=0 bash scripts/ablations/r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64.sh
-RUN_IN_BACKGROUND=0 bash scripts/ablations/r1_c4_g_pafpn_coarse_points_box_gaussian_emb64.sh
-RUN_IN_BACKGROUND=0 bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
-```
-
-R1-C4→R1-C4-RD 只测 raw dense 的 final-mask 反向梯度；
-R1-C4-RD→R1-C4-G 在相同 detach 条件下只测 dense 表示。G 不改变既有2P2N、
-proposal box、alpha初值0.25、冻结PromptEncoder、coarse/final loss或训练调度，
-也不新增Gaussian loss。正式点筛从相同SAM2权重独立初始化。晋级全量要求：G的
-best smoothed segm/mAP 至少高于RD 0.005，增益持续至少3次验证且末5次均值不低，
-同时优于R1-C3、bbox/mAP下降不超过0.01，并由Gaussian有效率、alpha和
-applied-delta ratio确认模块实际生效。
+两个开发脚本默认使用物理 GPU `1,2`，`NPROC_PER_NODE=2`、每卡 batch 1 与
+`GRAD_ACCUM_STEPS=4`，故有效全局 batch 保持正式四卡矩阵的 8，不改变 LR、warm-up、优化器
+或数据增强。D1 固定第一候选为 raw-logit、`detach=0`、dense alpha 初值 0.10、temperature 1.0；
+D2 复用 D1 的 dense 值，并用既有 P2BR 的 `beta=0.10`、`delta_logit_max=0.50`、boundary loss
+weight 0.05 作为保守第一候选。`P2_BOUNDARY_REFINER_BETA`、dense alpha 初值与 dense temperature
+均由公共 runner 记录到启动快照，保证筛选可追溯。
 
 C2-L 的 points-only final-mask 信号消融：
 
@@ -589,7 +579,7 @@ bash scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh
 
 ```bash
 bash scripts/ablations/b0_aggregator_mlp.sh --master-port 29601
-bash scripts/ablations/c2_pafpn_coarse_points.sh --master-port=29602
+bash scripts/ablations/whu_p2_matrix_point.sh --master-port=29602
 bash scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh --master-port=29603
 bash scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh --master-port=29604
 ```
@@ -600,34 +590,18 @@ bash scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh --master-port=29604
 RUN_IN_BACKGROUND=0 bash scripts/ablations/b0_aggregator_mlp.sh
 ```
 
-后台持续等待当前 B0，随后串行执行 B1、M0、M1、C1、C2、C2-L、C2-R、C3-C5、R0、R1：
-
-```bash
-B0_LOG=/absolute/path/to/current_b0.log \
-nohup setsid bash scripts/ablations/monitor_b0_then_serial.sh \
-  >/dev/null 2>&1 &
-```
-
-监视器自身不保存 PID 文件，使用非阻塞锁防止重复队列；启动训练子进程前关闭
-其继承的锁 FD，避免监视器异常退出后由 torchrun 长时间占住旧锁。事件默认写到
-`logs/ablations/serial_after_b0_<timestamp>.log`。每个子实验仍写各自的完整训练日志。
-子实验退出码非零、被杀或脚本缺失时会被记为 failed/skipped，并继续下一项。
-`POLL_SECONDS` 可覆盖轮询间隔，`ABLATION_QUEUE` 可替换默认脚本序列；
-前台启动的任务可用 `WATCH_PID` 显式传入 torchrun PID，仍不创建 PID 文件；
-`--print-plan` 只打印解析后的队列，不等待或启动实验。
-
 显式启动完整数据实验：
 
 ```bash
 TRAIN_SUBSET_RATIO=1.0 VAL_SUBSET_RATIO=1.0 \
-bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
+  bash scripts/ablations/whu_p2_matrix_full.sh
 ```
 
 只解析和核验，不训练：
 
 ```bash
 DRY_RUN=1 CHECK_DATA=1 PREFLIGHT_MODEL=1 \
-bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
+  bash scripts/ablations/whu_p2_matrix_full.sh
 ```
 
 从 checkpoint 在完整 validation 上推理：
@@ -778,6 +752,53 @@ bash scripts/reproduce_legacy_segm.sh
 
 ## 8. 文档同步记录
 
+- 2026-09-04：新增 `DEBUG_FIELDS.md` 并在训练器补充 D1/D2 机制字段：最终 `loss_mask` 对
+  dense/coarse 与 P2BR 的首个有限 batch/rank gradient group-L2 RMS、非零 parameter-tensor 比例、整 epoch
+  parameter update group-L2 RMS，以及 P2 raw→refined Dice/IoU/boundary-F1 gain。现有 dense residual、
+  P2 support/delta 与新 probe 均明确其 DDP 分母和用途；周期性 prompt debug 同步输出 P2BR 前向快照。
+
+- 2026-09-04：debug 审查发现训练 loss 曾绕过 DDP wrapper、直接调用 `.module.loss(...)`，因此多卡
+  reducer 不会在 backward 时同步梯度。现改为 DDP model 的标准 `mode="loss"` 前向，并在首次计划学习率
+  非零的 update 后记录全可训练参数的跨-rank 最大偏差。两卡一 batch smoke 已确认 forward、gradient probe
+  与审计代码可执行；该单步仍处 warm-up，参数不变的 `0.000e+00` 不能单独证明同步。此前多卡结果不应用作
+  新的 D1/D2 成对比较基准，正式短程实验须保留非零学习率审计日志。
+
+- 2026-09-04：新增 D1/D2 两卡短程开发系列。两组均固定 GPU 1,2、每卡 batch 1、accum 4，
+  因而保持正式矩阵的有效全局 batch 8；固定 WHU 10%/10%、seed 44、15 epoch、三 epoch 一验与
+  EMA-off。D1 写死 points+box→dense 的 alpha=0.10、temperature=1.0 第一候选；D2 在该 dense
+  设置上比较 Mask→Full，并以既有 P2BR beta=0.10、delta max=0.50、boundary weight=0.05 作为
+  保守第一候选。主配置新增 beta 环境解析，公共 runner 同步记录 beta、dense alpha/temperature。
+
+- 2026-09-04：将当前实验目标明确为“先使既有四行 Point→Box→dense→P2 设计产生逐步净收益，
+  再冻结并正式消融”。新增 D1 dense 与 D2 P2BR 两段 10%/10%、15 epoch 的短程开发门；旧
+  C5-v2 `SHAPE_DENSE_DETACH=1` 结果只作问题证据，新 Full 使用既有 `detach=0` 接线。近期
+  不新增 PromptRobustifier、P2PointRefiner 或其他主模块；开发阶段仅调已有 dense/P2BR 参数。
+
+- 2026-09-04：以最近 WHU C5-v2 fast 全量训练协议重建唯一的四行 P2 消融矩阵。新增
+  `whu_p2_matrix_{point,point_box,point_box_mask,full}.sh` 与共享协议文件；四行固定
+  stride-16、ROI-local、4 GPU AMP、相同增强、全量 WHU、150 epoch，仅逐行增加 box、dense
+  mask 和 P2BoundaryRefiner。dense/P2 行默认 `SHAPE_DENSE_DETACH=0`，使 final-mask loss
+  经既有 dense PromptEncoder 路径训练 coarse/P2；清理被该矩阵替代的旧 stride-32、旧 R1、
+  densefix/Gaussian 和串行监视 wrapper，并同步通用 WHU launcher、README 与消融说明。
+
+- 2026-09-03：用户将本轮机制验证目标固定为 WHU，并指定确定性 10% train / 10% validation
+  快速子集（`TRAIN_SUBSET_RATIO=0.1`、`VAL_SUBSET_RATIO=0.1`、`SUBSET_SEED=44`）。实施
+  指南据此移除 VHR-10/130-val 假设：快速子集只作机制 dev，所有对照必须共享子集、初始化和
+  optimizer-update 预算；全量 WHU 确认不自动启动，须在快速筛选通过后另行批准。本次仅更新规划
+  文档，未改变公共 runner 当前 20% train / 100% validation 的默认行为。
+
+- 2026-09-03：为保证 WHU 10%/10% 快速实验可追溯，实施指南规定训练、oracle/probe 与 checkpoint
+  验证必须分别由受控 `.sh` wrapper 启动，不能直接运行 Python/torchrun；未来 wrapper 必须固化实验臂
+  与子集/seed/update 预算，并记录命令、脚本、image-id 子集摘要、checkpoint SHA256、P2 mode 和输出
+  run-id。当前推理/探针 CLI 尚不支持确定性子集参数，实施时须先补齐，禁止用 `--max-batches` 伪造
+  10% validation。本次仅更新规划文档，未改变现有启动入口。
+
+- 2026-09-03：新增 Prompt 消费鲁棒化与 P2 边界提示联合改造实施指南，并将旧 P2 点细化文档
+  降级为历史候选。现有离线 P2 probe 的 3.125% 单点误差改善不足以证明 P2 增量信息；因此预注册
+  目标域 oracle、real-P2/coarse-only/sham-P2 信息门、冻结 decoder 效用指标、训练内部 dev 与
+  锁定 130 val 的分离，以及带 bootstrap CI 的独立训练对照。PromptRobustifier 可独立推进；
+  P2PointRefiner 只在信息门通过后实现。本次仅改变规划文档，未改变当前模型、配置、日志字段或训练行为。
+
 - 2026-07-30：新增 R1-C4-RD/G 表示消融。RD 对 raw-logit dense 显式 detach；G
   在同一梯度边界下使用 ROI exact-EDT 中心/面积映射得到 full-image 正值 Gaussian，
   空 coarse 逐 ROI 回退预训练 no-mask。两者获得独立架构 ID、cfg.model 指纹、
@@ -839,7 +860,7 @@ bash scripts/reproduce_legacy_segm.sh
 
 - 2026-07-29：消融公共运行器将日志创建延后到 dry-run 判定之后；所有
   `DRY_RUN=1` 参数穿透、数据检查和模型构建 smoke 仅输出终端，不再在
-  `logs/ablations/` 生成只有超参快照的伪实验日志；`smoke_all.sh` 使用不可创建的
+  `logs/ablations/` 生成只有超参快照的伪实验日志；已移除的历史全矩阵 smoke 使用不可创建的
   sentinel 路径回归检查该契约。真实训练的完整日志和超参快照行为保持不变。
 
 - 2026-07-29：删除未验证的旧 DenseBR 主线，新增 `P2BoundaryRefiner` 与严格的

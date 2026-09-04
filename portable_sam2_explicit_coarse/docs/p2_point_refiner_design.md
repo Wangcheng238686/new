@@ -1,4 +1,9 @@
-# P2 Point Refiner — 最终设计（基于 2026-08-23/24 全部测量）
+# P2 Point Refiner — 历史候选设计（基于 2026-08-23/24 测量）
+
+> 状态（2026-09-03）：本文件不再是“最终设计”或获批实施路线。后续发现的离线 probe 在
+> 76,257 个样本上仅把 GT-miner 单点误差降低 3.125%，而该单点本身也不保证唯一有效。执行优先级与
+> 可证伪门见 `prompt_consumption_and_p2_refinement_implementation_guide.md`：必须先在目标域证明 real P2
+> 相对 coarse-only/sham P2 的冻结 decoder 效用增量，才可恢复本设计的实现讨论。
 
 ## 一句话定义
 

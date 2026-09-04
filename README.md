@@ -41,16 +41,14 @@ cd portable_sam2_explicit_coarse
 # 组件与接线 smoke test
 bash scripts/smoke_test_components.sh
 
-# 默认：PAFPN + points+box+dense，P2BoundaryRefiner 关闭
+# 默认：近期 WHU fast 协议下的完整 points+box+dense+P2 矩阵行
 bash scripts/run_whu1024_explicit_coarse_4gpu.sh
 
-# 官方 64×64 严格对照与唯一增量 C5-v2
-bash scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh
-bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
-
-# 消融
+# 四行严格消融：同一 stride-16/ROI-local/AMP/增强/WHU 协议
 EXPLICIT_PROMPT_MODE=points bash scripts/run_whu1024_explicit_coarse_4gpu.sh
 EXPLICIT_PROMPT_MODE=points_box bash scripts/run_whu1024_explicit_coarse_4gpu.sh
+EXPLICIT_PROMPT_MODE=points_box_dense P2_BOUNDARY_REFINER_ENABLED=0 \
+  bash scripts/run_whu1024_explicit_coarse_4gpu.sh
 ```
 
 默认数据与预训练权重路径保持旧基线口径，并可通过 `WHU1024_DATA_ROOT`、
@@ -103,27 +101,22 @@ B0/B1保留旧基线的零初始化可训练MLP image PE；公共矩阵的detect
 ```bash
 cd portable_sam2_explicit_coarse
 
-# 全矩阵 smoke；不会开始训练
-bash scripts/ablations/smoke_all.sh
-
-# 消融当前默认使用 20% train / 100% validation
-bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
+# 四行严格矩阵；默认使用近期完整 WHU fast 协议
+bash scripts/ablations/whu_p2_matrix_point.sh
+bash scripts/ablations/whu_p2_matrix_point_box.sh
+bash scripts/ablations/whu_p2_matrix_point_box_mask.sh
+bash scripts/ablations/whu_p2_matrix_full.sh
 
 # MLP final-mask 坐标契约消融：B0/B1 的 full-image 对照
 bash scripts/ablations/m0_aggregator_mlp_full_image.sh
 bash scripts/ablations/m1_pafpn_mlp_full_image.sh
 
-# SAM2 image embedding 分辨率与 P2 边界细化严格对照
-bash scripts/ablations/r0_b0_aggregator_mlp_emb64.sh
-bash scripts/ablations/r1_c4_pafpn_coarse_points_box_dense_emb64.sh
-bash scripts/ablations/c5v2_pafpn_coarse_p2_boundary_refiner_emb64.sh
-
 # 默认 nohup + setsid 后台运行；前台调试时显式关闭
-RUN_IN_BACKGROUND=0 bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/whu_p2_matrix_full.sh
 
 # 比例仍可独立覆盖；全量训练需显式设置 TRAIN_SUBSET_RATIO=1.0
 TRAIN_SUBSET_RATIO=1.0 VAL_SUBSET_RATIO=1.0 \
-  bash scripts/ablations/c4_pafpn_coarse_points_box_dense.sh
+  bash scripts/ablations/whu_p2_matrix_full.sh
 ```
 
 矩阵定义、参数覆盖和 dry-run 用法见
