@@ -62,9 +62,6 @@ def _masks_to_rles(binary_masks: np.ndarray) -> List[dict]:
     return rles
 
 
-from utils.coco_eval_utils import _xyxy_to_xywh
-
-
 # NOTE: the trainer keeps its own build_coco_gt_and_dt/run_coco_eval instead of
 # the utils/coco_eval_utils versions on purpose. The training-side run_coco_eval
 # recomputes the primary AP at a custom maxDets cap (the unified maxDet=100/150
@@ -82,9 +79,13 @@ def build_coco_gt_and_dt(
 
     category_id is derived as ``label + 1``.  For single-class runs (WHU)
     labels are all 0 so this keeps the historical ``category_id=1`` behavior;
-    for multi-class runs (iSAID 15 classes) labels 0..14 map to the official
-    category ids 1..15 via ``categories``.
+    for multi-class runs (e.g. VHR-10 10 classes) labels 0..9 map to the
+    official category ids 1..10 via ``categories``.
     """
+    # Lazy import: the sys.path bootstrap for the project root runs inside
+    # main(), so module-level imports of project packages would fail under
+    # torchrun.
+    from utils.coco_eval_utils import _xyxy_to_xywh
     from pycocotools.coco import COCO
 
     if categories is None:

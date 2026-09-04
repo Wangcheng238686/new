@@ -145,6 +145,13 @@ if [[ -n "${RESUME_FROM}" ]]; then
   EXTRA_ARGS+=(--resume-from "${RESUME_FROM}")
 fi
 
+# Dry run: verify env/protocol resolution and print the launch plan, but do
+# not start torchrun (same semantics as DRY_RUN=1 in _run_ablation.sh).
+if [ "${DRY_RUN:-0}" = "1" ]; then
+  echo "dry_run=1 — launch skipped; would run: ${CONFIG_PATH} epochs=${MAX_EPOCHS} lr=${DEFAULT_LR}"
+  exit 0
+fi
+
 GIT_COMMIT="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 GIT_DIRTY="$( [[ -n "$(git status --porcelain 2>/dev/null)" ]] && echo 1 || echo 0 )"
 echo "============================================================"
