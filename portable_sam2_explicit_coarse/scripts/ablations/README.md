@@ -47,3 +47,34 @@ bash scripts/ablations/whu_d2_p2_dev_10p_2gpu.sh
 
 所有入口经 `_run_ablation.sh` 校验解析后的 architecture ID、数据集与模型契约。
 `DRY_RUN=1 CHECK_DATA=1 PREFLIGHT_MODEL=1` 可完成不训练的预检。
+
+## VHR-10 入口（共享 runner：`scripts/_run_vhr10.sh`）
+
+5 个薄入口只声明变体名；协议与架构 exports 块（C4 事故教训）单一存在于
+`scripts/_run_vhr10.sh`。变体：`fast400`（RUN_TAG vhr10_c5v2_400）、`jitter400`
+（预注册未跑）、`large400`/`large600`（hiera-large 全链路，600 支持
+`RESUME_FROM` 断点续训）、`ft200`（c5v2-400 获胜者 lr 1e-4 续训 200）。
+
+```bash
+RUN_IN_BACKGROUND=1 bash scripts/ablations/vhr10_large600.sh
+```
+
+## 目录地图（2026-09 重构后）
+
+```text
+scripts/
+├── load_environment.sh            # 环境加载（19+ 脚本 source）
+├── _run_ablation.sh               # WHU 共享 runner（仅 coarse 路由）
+├── _run_vhr10.sh                  # VHR-10 共享 runner（5 变体）
+├── infer_whu_checkpoint.sh / visualize_p2_checkpoint.sh
+├── ablations/                     # 薄入口与 eval wrapper（本目录）
+└── smoke/                         # 组件自检、DDP 控制面单测、契约校验
+tools/                             # eval_boundary_ap / eval_vhr10_original_scale /
+                                   # mask_to_coco_whu512 / visualize_instances /
+                                   # smoke_test_components
+inference/probes/                  # 审计探针（手动调用）
+```
+
+历史代际（b0/b1/c1/c2/m0/m1/r0、coarse_strategy、prompt_content_p2_matrix、
+ablations_uecoco 等 31 文件）已删除，结论固化在 `logs/test_eval/*/REPORT.md`
+与 git 历史（commit 9f5af76 之前）。

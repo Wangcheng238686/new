@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${PROJECT_ROOT}"
 # shellcheck source=../load_environment.sh
 source "${PROJECT_ROOT}/scripts/load_environment.sh"
@@ -57,58 +57,42 @@ case "${ROI_SAM_SAMPLING_RATIO}" in
   ''|*[!0-9]*) echo "ROI_SAM_SAMPLING_RATIO must be >= 0" >&2; exit 2 ;;
 esac
 
-case "${PROMPT_ROUTE}" in
-  mlp)
-    if [[ "${ROI_SAM_ENABLED}" != "0" ]]; then
-      echo "ROI-SAM is only supported by the explicit coarse route" >&2
-      exit 2
-    fi
-    CONFIG_PATH="configs/whu1024_baseplus_clean.py"
-    EXPECTED_EXPLICIT_MODE="none"
-    export PROMPT_GENERATOR_MODE="rsprompter_mlp"
-    export PROMPT_SPARSE_MODE="point"
-    export PROMPT_ENCODER_ENABLED=0
-    export SHAPE_PRIOR_ENABLED=0
-    export EXPLICIT_PROMPT_MODE="none"
-    export P2_BOUNDARY_REFINER_ENABLED=0
-    FINAL_MASK_COORDINATE_MODE="${FINAL_MASK_COORDINATE_MODE:-roi_local}"
-    case "${FINAL_MASK_COORDINATE_MODE}" in
-      roi_local|full_image) ;;
-      *) echo "invalid FINAL_MASK_COORDINATE_MODE=${FINAL_MASK_COORDINATE_MODE}" >&2; exit 2 ;;
-    esac
-    DEFAULT_PROMPT_DEBUG_STATS=0
-    ;;
-  coarse)
-    CONFIG_PATH="configs/whu1024_baseplus_explicit_coarse.py"
-    # A wrapper may swap in a config variant (e.g. densefix) that differs only
-    # in frozen model-architecture knobs. Unset by default, so every existing
-    # coarse experiment keeps its committed config path unchanged.
-    if [[ -n "${CONFIG_OVERRIDE:-}" ]]; then
-      CONFIG_PATH="${CONFIG_OVERRIDE}"
-    fi
-    : "${EXPLICIT_PROMPT_MODE:?coarse wrapper must set EXPLICIT_PROMPT_MODE}"
-    case "${EXPLICIT_PROMPT_MODE}" in
-      points|box|mask|points_box|points_box_dense) ;;
-      *) echo "invalid EXPLICIT_PROMPT_MODE=${EXPLICIT_PROMPT_MODE}" >&2; exit 2 ;;
-    esac
-    EXPECTED_EXPLICIT_MODE="${EXPLICIT_PROMPT_MODE}"
-    export PROMPT_GENERATOR_MODE="explicit_mask"
-    export PROMPT_SPARSE_MODE="shape_point"
-    export PROMPT_ENCODER_ENABLED=1
-    export SHAPE_PRIOR_ENABLED=1
-    if [[ "${ROI_SAM_ENABLED}" == "1" ]]; then
-      if [[ "${EXPLICIT_PROMPT_MODE}" != "points" ]]; then
-        echo "ROI-SAM is a strict points-only C2 variant" >&2
-        exit 2
-      fi
-      FINAL_MASK_COORDINATE_MODE="roi_local"
-    else
-      FINAL_MASK_COORDINATE_MODE="${FINAL_MASK_COORDINATE_MODE:-roi_local}"
-    fi
-    DEFAULT_PROMPT_DEBUG_STATS=1
-    ;;
-  *) echo "PROMPT_ROUTE must be mlp or coarse, got ${PROMPT_ROUTE}" >&2; exit 2 ;;
+# The legacy PROMPT_ROUTE=mlp branch (b0/b1/m0/m1/r0 generation, config
+# configs/whu1024_baseplus_clean.py as a standalone route) was removed with
+# that experiment generation; the file stays only as a _base_ inheritance root
+# of the coarse config chain. Only the explicit coarse route remains.
+if [[ "${PROMPT_ROUTE}" != "coarse" ]]; then
+  echo "PROMPT_ROUTE must be coarse (the legacy mlp route was removed), got ${PROMPT_ROUTE}" >&2
+  exit 2
+fi
+
+CONFIG_PATH="configs/whu1024_baseplus_explicit_coarse.py"
+# A wrapper may swap in a config variant (e.g. densefix) that differs only
+# in frozen model-architecture knobs. Unset by default, so every existing
+# coarse experiment keeps its committed config path unchanged.
+if [[ -n "${CONFIG_OVERRIDE:-}" ]]; then
+  CONFIG_PATH="${CONFIG_OVERRIDE}"
+fi
+: "${EXPLICIT_PROMPT_MODE:?coarse wrapper must set EXPLICIT_PROMPT_MODE}"
+case "${EXPLICIT_PROMPT_MODE}" in
+  points|box|mask|points_box|points_box_dense) ;;
+  *) echo "invalid EXPLICIT_PROMPT_MODE=${EXPLICIT_PROMPT_MODE}" >&2; exit 2 ;;
 esac
+EXPECTED_EXPLICIT_MODE="${EXPLICIT_PROMPT_MODE}"
+export PROMPT_GENERATOR_MODE="explicit_mask"
+export PROMPT_SPARSE_MODE="shape_point"
+export PROMPT_ENCODER_ENABLED=1
+export SHAPE_PRIOR_ENABLED=1
+if [[ "${ROI_SAM_ENABLED}" == "1" ]]; then
+  if [[ "${EXPLICIT_PROMPT_MODE}" != "points" ]]; then
+    echo "ROI-SAM is a strict points-only C2 variant" >&2
+    exit 2
+  fi
+  FINAL_MASK_COORDINATE_MODE="roi_local"
+else
+  FINAL_MASK_COORDINATE_MODE="${FINAL_MASK_COORDINATE_MODE:-roi_local}"
+fi
+DEFAULT_PROMPT_DEBUG_STATS=1
 
 export NECK_TYPE
 export FINAL_MASK_COORDINATE_MODE
@@ -375,7 +359,7 @@ fi
 if [ "${PREFLIGHT_MODEL:-0}" = "1" ]; then
   VALIDATE_ARGS+=(--build-model)
 fi
-"${PYTHON}" "${SCRIPT_DIR}/validate_ablation_contract.py" "${VALIDATE_ARGS[@]}"
+"${PYTHON}" "${SCRIPT_DIR}/smoke/validate_ablation_contract.py" "${VALIDATE_ARGS[@]}"
 
 CMD=(
   "${PYTHON}" -m torch.distributed.run

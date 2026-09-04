@@ -2802,7 +2802,7 @@ def main():
                 # Optional prediction visualization (TEST_VIS_OUT=<dir>).
                 # Records reuse the infer_from_checkpoint predictions.json
                 # contract (model-frame RLE + absolute file_name), which
-                # scripts/visualize_instances.py pred mode rescales onto the
+                # tools/visualize_instances.py pred mode rescales onto the
                 # stored images automatically.
                 _vis_out = os.environ.get("TEST_VIS_OUT", "").strip()
                 if _vis_out:
@@ -2863,7 +2863,7 @@ def main():
                     _project_root = Path(__file__).resolve().parents[1]
                     _vis_cmd = [
                         _sys.executable,
-                        "scripts/visualize_instances.py",
+                        "tools/visualize_instances.py",
                         "pred",
                         "--pred-json",
                         str(_pred_json),

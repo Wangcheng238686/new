@@ -119,4 +119,4 @@ export P2_BOUNDARY_REFINER_MID_CHANNELS="${P2_BOUNDARY_REFINER_MID_CHANNELS:-64}
 export P2_BOUNDARY_REFINER_LOSS_WEIGHT="${P2_BOUNDARY_REFINER_LOSS_WEIGHT:-0.05}"
 export POINT_WARMUP_ENABLED="${POINT_WARMUP_ENABLED:-0}"
 
-exec bash "$(cd "$(dirname "$0")" && pwd)/_run_ablation.sh" "$@"
+exec bash "$(dirname "$0")/../_run_ablation.sh" "$@"

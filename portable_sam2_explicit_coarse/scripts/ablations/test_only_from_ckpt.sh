@@ -30,7 +30,7 @@
 #                          unset = COCO default maxDets=100
 #   TEST_VIS_OUT           e.g. logs/viz/e98: dump predictions.json and render
 #                          mask overlays onto the test images via
-#                          scripts/visualize_instances.py
+#                          tools/visualize_instances.py
 #   TEST_VIS_SCORE_THR     visualization score threshold, default 0.3
 #   TEST_VIS_LIMIT         max overlay images rendered, default 50
 #   RUN_TAG                default testonly_<ckpt_basename>
@@ -152,4 +152,4 @@ export RUN_IN_BACKGROUND="${RUN_IN_BACKGROUND:-1}"
 echo "[env] CUDA=${CUDA_VISIBLE_DEVICES} nproc=${NPROC_PER_NODE} run_tag=${RUN_TAG}"
 [[ -n "${TEST_MAX_PER_IMG:-}" ]] && echo "[env] TEST_MAX_PER_IMG=${TEST_MAX_PER_IMG}"
 
-exec bash "${SCRIPT_DIR}/_run_ablation.sh" -- --resume-from "${CKPT}" --test-only "$@"
+exec bash "${SCRIPT_DIR}/../_run_ablation.sh" -- --resume-from "${CKPT}" --test-only "$@"
