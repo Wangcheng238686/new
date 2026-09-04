@@ -18,3 +18,9 @@
 /main.synctex.gz
 
 portable_sam2_explicit_coarse/configs/environment.local.sh
+
+# Raw run logs and regenerable visualizations stay local; evidence files
+# (metrics/run_manifest/REPORT.md) under portable_sam2_explicit_coarse/logs
+# remain explicitly tracked.
+*.log
+portable_sam2_explicit_coarse/logs/**/*.png
