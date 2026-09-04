@@ -95,51 +95,6 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         bbox_results.update(loss_bbox=bbox_loss_and_target["loss_bbox"])
         return bbox_results
 
-    @staticmethod
-    def _aligned_box_iou(boxes1: Tensor, boxes2: Tensor) -> Tensor:
-        if boxes1.shape != boxes2.shape or boxes1.ndim != 2 or boxes1.shape[1] != 4:
-            raise ValueError("aligned IoU requires matching [N,4] tensors")
-        lt = torch.maximum(boxes1[:, :2], boxes2[:, :2])
-        rb = torch.minimum(boxes1[:, 2:], boxes2[:, 2:])
-        wh = (rb - lt).clamp_min(0)
-        inter = wh[:, 0] * wh[:, 1]
-        area1 = (boxes1[:, 2] - boxes1[:, 0]).clamp_min(0) * (boxes1[:, 3] - boxes1[:, 1]).clamp_min(0)
-        area2 = (boxes2[:, 2] - boxes2[:, 0]).clamp_min(0) * (boxes2[:, 3] - boxes2[:, 1]).clamp_min(0)
-        return inter / (area1 + area2 - inter).clamp_min(1e-6)
-
-    def _decode_positive_refined_boxes(
-        self,
-        bbox_results: dict,
-        sampling_results: List[SamplingResult],
-        image_size: int,
-    ) -> Tensor:
-        """Decode SABL positive boxes in bbox-forward order and detach them."""
-        bbox_pred = bbox_results.get("bbox_pred") if bbox_results is not None else None
-        if not isinstance(bbox_pred, (tuple, list)) or len(bbox_pred) != 2:
-            raise RuntimeError(
-                "sabl_refined_detach requires SABL tuple bbox predictions"
-            )
-        positive_indices = []
-        offset = 0
-        for result in sampling_results:
-            count = result.pos_priors.shape[0]
-            positive_indices.append(
-                torch.arange(offset, offset + count, device=bbox_pred[0].device)
-            )
-            offset += result.priors.shape[0]
-        if not positive_indices:
-            return bbox_pred[0].new_zeros((0, 4))
-        positive_indices = torch.cat(positive_indices, dim=0)
-        pos_rois = bbox2roi([result.pos_priors for result in sampling_results])
-        positive_pred = tuple(pred[positive_indices].float() for pred in bbox_pred)
-        with torch.autocast(device_type=pos_rois.device.type, enabled=False):
-            decoded_boxes, _ = self.bbox_head.bbox_coder.decode(
-                pos_rois[:, 1:].float(),
-                positive_pred,
-                max_shape=(int(image_size), int(image_size)),
-            )
-        return decoded_boxes.detach()
-
     def _mask_forward(
         self,
         x: Tuple[Tensor],
@@ -256,67 +211,21 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         train_box_source = str(
             prompt_box_cfg.get("train_box_source", "proposal")
         )
-        # mask_loss can be invoked in eval mode (e.g. EMA/loss-monitor paths).
-        # sabl_refined_detach is a training-only box source; in eval mode fall
-        # back to the proposal box so the sabl_refined branch is not entered.
-        if not self.training and train_box_source == "sabl_refined_detach":
-            train_box_source = "proposal"
-        if self.training and train_box_source == "sabl_refined_detach":
-            if self.share_roi_extractor:
-                raise RuntimeError(
-                    "sabl_refined_detach requires a dedicated mask_roi_extractor "
-                    "so Mask RoIAlign and all prompts share the same prompt_rois"
-                )
-            if bbox_results is None:
-                raise RuntimeError(
-                    "sabl_refined_detach requires bbox_results from the SABL branch"
-                )
-            image_size = int(getattr(self.mask_head, "prompt_encoder_image_size", 1024))
-            decoded = self._decode_positive_refined_boxes(
-                bbox_results, sampling_results, image_size=image_size
-            )
-            proposals = original_pos_rois[:, 1:].detach().float()
-            decoded = decoded.to(proposals.device, dtype=proposals.dtype)
-            if bool(prompt_box_cfg.get("clamp_to_image", True)):
-                decoded[:, 0::2].clamp_(0.0, float(image_size))
-                decoded[:, 1::2].clamp_(0.0, float(image_size))
-            widths = decoded[:, 2] - decoded[:, 0]
-            heights = decoded[:, 3] - decoded[:, 1]
-            aligned_iou = self._aligned_box_iou(decoded, proposals)
-            valid = (
-                torch.isfinite(decoded).all(dim=1)
-                & (widths >= float(prompt_box_cfg.get("min_box_size", 2.0)))
-                & (heights >= float(prompt_box_cfg.get("min_box_size", 2.0)))
-                & (aligned_iou >= float(
-                    prompt_box_cfg.get("min_refined_proposal_iou", 0.30)
-                ))
-            )
-            fallback = ~valid
-            if not bool(prompt_box_cfg.get("fallback_to_proposal", True)) and fallback.any():
-                raise RuntimeError(
-                    "Invalid SABL refined prompt boxes and fallback_to_proposal=False"
-                )
-            selected = torch.where(valid[:, None], decoded, proposals)
-            prompt_rois = torch.cat([original_pos_rois[:, :1], selected], dim=1)
-            self._last_prompt_box_stats = {
-                "BOX/num_rois": proposals.new_tensor(float(proposals.shape[0])),
-                "BOX/fallback_count": fallback.sum().detach(),
-                "BOX/refined_proposal_iou_sum": (aligned_iou * valid.float()).sum().detach(),
-                "BOX/refined_valid_count": valid.sum().detach(),
-            }
-        elif train_box_source == "proposal":
-            zero = original_pos_rois.new_zeros(())
-            self._last_prompt_box_stats = {
-                "BOX/num_rois": original_pos_rois.new_tensor(float(len(original_pos_rois))),
-                "BOX/fallback_count": zero,
-                "BOX/refined_proposal_iou_sum": zero,
-                "BOX/refined_valid_count": zero,
-            }
-        else:
+        # The legacy SABL-refined box source was removed: no canonical config
+        # uses a SABL bbox head, so proposal boxes are the only supported
+        # prompt box source.
+        if train_box_source != "proposal":
             raise ValueError(
                 f"Unsupported train_box_source={train_box_source!r}; "
-                "expected proposal or sabl_refined_detach"
+                "only 'proposal' is supported"
             )
+        zero = original_pos_rois.new_zeros(())
+        self._last_prompt_box_stats = {
+            "BOX/num_rois": original_pos_rois.new_tensor(float(len(original_pos_rois))),
+            "BOX/fallback_count": zero,
+            "BOX/refined_proposal_iou_sum": zero,
+            "BOX/refined_valid_count": zero,
+        }
 
         jitter_cfg = dict(getattr(self.mask_head, "box_prompt_cfg", {}) or {})
         jitter_prob = float(jitter_cfg.get("jitter_prob", 0.0))
@@ -508,94 +417,10 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                         **{k: v.detach() for k, v in boundary_stats.items()},
                     })
 
-        uav_aux_losses = mask_results.get("uav_aux_losses") or {}
-        for loss_name, loss_value in uav_aux_losses.items():
-            if loss_value is not None:
-                mask_results[loss_name] = {loss_name: loss_value}
+        # uav_aux_losses stays a slot of the 6-value mask-head contract but is
+        # always empty since the UAV branch was removed.
 
         return mask_results
-
-    def _shape_prior_aux_loss(
-        self,
-        shape_prior_mask_logits: Tensor,
-        sampling_results: List[SamplingResult],
-        batch_gt_instances: InstanceList,
-    ) -> Optional[Tensor]:
-        """Auxiliary loss for ROI-local shape prior logits.
-
-        The shape-prior branch predicts a mask in ROI coordinates, so supervise it
-        with the assigned GT mask cropped by the same positive proposal box.
-        """
-        pred = shape_prior_mask_logits  # [N,1,64,64]
-        if pred.dim() == 4 and pred.shape[1] == 1:
-            pred = pred.squeeze(1)  # [N,64,64]
-
-        tgt = self._shape_prior_targets(
-            shape_prior_mask_logits.shape[-2:],
-            sampling_results,
-            batch_gt_instances,
-            pred.device,
-        )
-        if tgt is None:
-            return None
-        if tgt.shape[0] != pred.shape[0]:
-            n = min(tgt.shape[0], pred.shape[0])
-            pred = pred[:n]
-            tgt = tgt[:n]
-
-        pred_prob = torch.sigmoid(pred)
-        # dice
-        inter = (pred_prob * tgt).flatten(1).sum(dim=1)
-        union = pred_prob.flatten(1).sum(dim=1) + tgt.flatten(1).sum(dim=1) + 1e-6
-        dice_loss = 1.0 - 2.0 * inter / union
-        # bce
-        bce_loss = F.binary_cross_entropy_with_logits(pred, tgt, reduction="none").flatten(1).mean(dim=1)
-        return (dice_loss + bce_loss).mean()
-
-    def _shape_prior_targets(
-        self,
-        target_size,
-        sampling_results: List[SamplingResult],
-        batch_gt_instances: InstanceList,
-        device,
-    ) -> Optional[Tensor]:
-        targets_64 = []
-        for res, gt in zip(sampling_results, batch_gt_instances):
-            pos_gt_inds = res.pos_assigned_gt_inds
-            if len(pos_gt_inds) == 0:
-                continue
-            pos_priors = res.pos_priors
-            gt_masks = gt.masks
-            if hasattr(gt_masks, "to_tensor"):
-                mask_tensor = gt_masks.to_tensor(
-                    dtype=torch.float32, device=device,
-                )  # [num_gt, H, W]
-            else:
-                mask_tensor = torch.as_tensor(
-                    gt_masks, dtype=torch.float32, device=device,
-                )
-            for box, idx in zip(pos_priors, pos_gt_inds):
-                if idx < mask_tensor.shape[0]:
-                    gt_mask = mask_tensor[int(idx)].unsqueeze(0).unsqueeze(0)
-                    h, w = gt_mask.shape[-2:]
-                    x1, y1, x2, y2 = box.detach()
-                    x1i = int(torch.floor(x1).clamp(0, w - 1).item())
-                    y1i = int(torch.floor(y1).clamp(0, h - 1).item())
-                    x2i = int(torch.ceil(x2).clamp(x1i + 1, w).item())
-                    y2i = int(torch.ceil(y2).clamp(y1i + 1, h).item())
-                    m = gt_mask[:, :, y1i:y2i, x1i:x2i]
-                    m = F.interpolate(
-                        m,
-                        size=target_size,
-                        mode="bilinear",
-                        align_corners=False,
-                    )
-                    m = m.squeeze(0).squeeze(0).clamp(0, 1)  # [64,64]
-                    targets_64.append(m)
-
-        if not targets_64:
-            return None
-        return torch.stack(targets_64, dim=0)
 
     def loss(
         self,
