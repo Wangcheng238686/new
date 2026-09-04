@@ -39,7 +39,7 @@ bash scripts/reproduce_legacy_segm.sh
 cd portable_sam2_explicit_coarse
 
 # 组件与接线 smoke test
-bash scripts/smoke_test_components.sh
+bash scripts/smoke/smoke_test_components.sh
 
 # 默认：近期 WHU fast 协议下的完整 points+box+dense+P2 矩阵行
 bash scripts/run_whu1024_explicit_coarse_4gpu.sh
@@ -93,9 +93,10 @@ B0/B1保留旧基线的零初始化可训练MLP image PE；公共矩阵的detect
 全部epoch保持权重1.0。训练日志会同步打印最终mask的ROI target填充率和logit/
 概率统计，用于快速排除全空mask回归。
 
-消融入口统一放在
-`portable_sam2_explicit_coarse/scripts/ablations/`，覆盖 aggregator/PAFPN、
-旧 MLP/coarse、box、dense prompt 和 P2BoundaryRefiner。每次启动前都会检查解析后的配置
+WHU 消融入口统一放在
+`portable_sam2_explicit_coarse/scripts/ablations/`（四行 Prompt/P2 矩阵与 D1/D2 开发门），
+VHR-10 入口为 `scripts/_run_vhr10.sh` + 5 个薄入口。历史代际（旧 MLP/aggregator 等）
+已删除，结论固化在 `logs/test_eval/*/REPORT.md` 与 git 历史。每次启动前都会检查解析后的配置
 是否与脚本声明一致。
 
 ```bash
@@ -107,9 +108,8 @@ bash scripts/ablations/whu_p2_matrix_point_box.sh
 bash scripts/ablations/whu_p2_matrix_point_box_mask.sh
 bash scripts/ablations/whu_p2_matrix_full.sh
 
-# MLP final-mask 坐标契约消融：B0/B1 的 full-image 对照
-bash scripts/ablations/m0_aggregator_mlp_full_image.sh
-bash scripts/ablations/m1_pafpn_mlp_full_image.sh
+# VHR-10 实验（共享 runner；large600 支持 RESUME_FROM 断点续训）
+bash scripts/ablations/vhr10_fast400.sh
 
 # 默认 nohup + setsid 后台运行；前台调试时显式关闭
 RUN_IN_BACKGROUND=0 bash scripts/ablations/whu_p2_matrix_full.sh

@@ -9,7 +9,7 @@
 项目根目录：
 
 ```text
-/home/wangcheng2021/project/portable_sam2_explicit_coarse_new
+/home/wangcheng2021/project/new
 ```
 
 项目包含三个明确隔离的区域：
@@ -217,7 +217,7 @@ rsprompter_anchor_satS_v11_sam2_large_full.py
 | 文件 | 用途 |
 |---|---|
 | `__init__.py` | 注册 MMDetection 模型组件；`RSPROMPTER_LIGHT_IMPORT=1` 用于轻量张量测试。 |
-| `models.py` | detector、RoI head、bbox head 和旧 SAM/RSPrompter 兼容组件；新主线 proposal prompt 接线也在这里。 |
+| `models.py` | detector（`RSPrompterAnchor`）与 RoI head（`RSPrompterAnchorRoIPromptHead`）；SAM1 世代兼容组件已于 2026-09 重构删除（commit 6f1d900）。 |
 | `models_sam2.py` | SAM2 主实现：vision encoder、基线 aggregator、PAFPN、MaskDecoder wrapper、MLP/coarse 双路线 MaskHead。 |
 | `shape_prior.py` | `ShapePriorInjector`、小型 coarse mask decoder、RoI box encoding 和 `ShapePointMiner`。 |
 | `coarse_mask_loss.py` | coarse mask 的 BCE、Dice、boundary、distance 组合损失及权重调度。 |
@@ -240,11 +240,11 @@ rsprompter_anchor_satS_v11_sam2_large_full.py
 
 | 文件 | 用途 |
 |---|---|
-| `__init__.py` | 导出 `create_train_loader` 并注册 `AdaptiveResize`。 |
-| `loader.py` | 统一构造 train/validation DataLoader；实现独立、确定性的 train/val 子集抽样。 |
-| `whu_instance_dataset.py` | 当前 WHU COCO 实例分割数据集实现。 |
-| `satellite_dataset.py` | 旧 LabelMe 卫星数据兼容数据集。 |
-| `satellite_drone_dataset.py` | 旧卫星/UAV 双流兼容数据集；当前 WHU 主线不使用。 |
+| `__init__.py` | 导出 `create_train_loader`、`create_test_loader`。 |
+| `loader.py` | 统一构造 train/validation DataLoader；实现独立、确定性的 train/val 子集抽样；仅支持 `whu_coco`/`vhr10_coco`。 |
+| `whu_instance_dataset.py` | WHU 与 NWPU VHR-10 共用的 COCO 实例分割数据集实现。 |
+
+旧 LabelMe 卫星数据集、UAV 双流数据集与 iSAID 支持面已于 2026-09 重构删除（commit 0fddc0a）。
 
 WHU 默认路径：
 
@@ -426,25 +426,15 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `run_whu1024_explicit_coarse_4gpu.sh` | 保留的历史文件名；当前实际复用公共 runner 的两卡 GPU 1/2 默认值，并按 prompt/refiner/stride 映射路线；可显式覆盖回四卡。 |
 | `load_environment.sh` | shell 环境统一加载器；优先读取被忽略的 `configs/environment.local.sh`，否则读取 `configs/environment.sh`，并支持 `PORTABLE_SAM2_ENV_FILE` 显式指定。 |
 | `infer_whu_checkpoint.sh` | 指定 checkpoint 的单卡推理 shell 入口；其余参数透传给 Python 推理器。 |
-| `smoke_test_components.sh` | 启动轻量组件测试。 |
-| `smoke_test_components.py` | 检查 PAFPN、shape prior、2P2N、dense canvas、P2BoundaryRefiner 恒等/边界/梯度契约。 |
+| `infer_whu_checkpoint.sh` | 指定 checkpoint 的单卡推理 shell 入口；其余参数透传给 Python 推理器。 |
+| `_run_ablation.sh` | WHU 消融共享受控运行器（仅 coarse 路由；历史 mlp 路由已删）；固定架构变量、校验契约、记录超参、组装 torchrun，默认 `nohup setsid` 后台运行。 |
+| `_run_vhr10.sh` | VHR-10 共享运行器：5 个变体（fast400/jitter400/large400/large600/ft200）薄入口共用；架构 exports 单一事实源（C4 事故教训）。 |
 
-`scripts/ablations/`：
+`scripts/ablations/`（薄入口与 eval wrapper）：
 
 | 文件 | 用途 |
 |---|---|
-| `README.md` | 消融矩阵、子集和 dry-run 用法。 |
-| `_run_ablation.sh` | 所有消融共享的受控运行器；固定架构变量、校验契约、记录超参、组装 torchrun；训练默认以 `nohup setsid` 脱离终端并生成日志，不创建 PID 文件。 |
-| `validate_ablation_contract.py` | 校验解析后配置、真实数据子集和可选完整模型实例是否与脚本声明一致。 |
-| `b0_aggregator_mlp.sh` | Aggregator + 旧 MLP 基线桥接；默认run tag为`b0_aggregator_mlp_aligned`，与修复前无效权重隔离。 |
-| `b1_pafpn_mlp.sh` | 只将 neck 切到 PAFPN。 |
-| `m0_aggregator_mlp_full_image.sh` | B0 的 full-image final-mask 对照；只切 target/后处理坐标契约。 |
-| `m1_pafpn_mlp_full_image.sh` | B1 的 full-image final-mask 对照；只切 target/后处理坐标契约。 |
-| `c1_aggregator_coarse_points.sh` | Aggregator + coarse 2P2N。 |
-| `c2l_pafpn_coarse_points_roi_loss.sh` | C2-L；保持 full-image points-only 推理，只将 final-mask 监督换为 ROI-balanced BCE + Dice + 弱 ROI 外 BCE。 |
-| `c2r_pafpn_coarse_points_roi_sam.sh` | C2-R；裁剪并归一化三层 SAM2 proposal 特征，使用 ROI-local 2P2N、原生128×128 ROI target和 bbox paste。 |
-| `test_dense_prompt_utils.py` | 检查 raw detach、Gaussian 中心/面积映射、各向同性、空 coarse 和不可导契约。 |
-| `r0_b0_aggregator_mlp_emb64.sh` | B0控制的官方stride-16/64×64 image embedding变体。 |
+| `README.md` | 消融矩阵、子集、dry-run、VHR-10 入口与目录地图。 |
 | `whu_p2_matrix_common.sh` | 四行矩阵共享的近期 WHU fast 协议：4 GPU、AMP、150 epoch、全量 WHU、ROI-local、stride-16 和相同增强。 |
 | `whu_p2_matrix_point.sh` | 仅 2P2N points 的矩阵首行。 |
 | `whu_p2_matrix_point_box.sh` | points + box 的矩阵第二行。 |
@@ -452,15 +442,30 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `whu_p2_matrix_full.sh` | 仅在第三行基础上启用 P2BoundaryRefiner 的完整矩阵行。 |
 | `whu_d1_dense_dev_10p_2gpu.sh` | D1 两臂短程开发：points+box 对 points+box+dense；固定两卡、有效全局 batch 8、WHU 10%/10%、15 epoch。 |
 | `whu_d2_p2_dev_10p_2gpu.sh` | D2 两臂短程开发：冻结 dense 后比较 Mask 对 Full；固定两卡、有效全局 batch 8、WHU 10%/10%、15 epoch。 |
+| `paper_promptminer_rd_p2_whu_full_fast.sh` | WHU fast-150 论文运行入口（test segm/mAP 0.7342）。 |
+| `test_only_from_ckpt.sh` | 给定 checkpoint 仅做 test 评估。 |
+| `vhr10_fast400.sh` 等 5 个 | VHR-10 薄入口，见 `scripts/_run_vhr10.sh`。 |
+| `eval_test_raw.sh` / `eval_test_winner.sh` / `eval_vhr10_final.sh` | checkpoint 的 raw/EMA 评估 wrapper。 |
+
+`scripts/smoke/`：
+
+| 文件 | 用途 |
+|---|---|
+| `smoke_test_components.sh` | 启动轻量组件测试（实现在 `tools/smoke_test_components.py`）。 |
+| `validate_ablation_contract.py` | 校验解析后配置、真实数据子集和可选完整模型实例是否与脚本声明一致。 |
+| `smoke_ddp_control_plane.py` | DDP 控制面广播单测。 |
+| `test_dense_prompt_utils.py` | 检查 raw detach、Gaussian 中心/面积映射、各向同性、空 coarse 和不可导契约。 |
+| `check_forward_equivalence.py` | 黄金前向等价校验：从 checkpoint `model` 权重（非 EMA）重建模型，逐位比对 state_dict 与固定输入前向输出（2026-09 重构回归门）。 |
 
 ### 4.7 工具与通用函数
 
 | 文件 | 用途 |
 |---|---|
 | `tools/mask_to_coco_whu512.py` | 将 WHU 二值 mask 转为 COCO polygon 标注；属于数据准备工具，不是训练必需步骤。 |
+| `tools/eval_boundary_ap.py` / `tools/eval_vhr10_original_scale.py` / `tools/visualize_instances.py` / `tools/smoke_test_components.py` | 评估与可视化工具。 |
+| `inference/probes/` | 审计探针（通路审计、oracle、E0、点可学性、P2 可视化），手动调用；P2 通路审计结论见 `docs/p2_decoder_side_findings.md`。 |
 | `utils/__init__.py` | 通用工具包标记。 |
 | `utils/coco_eval_utils.py` | 构造 COCO GT/DT 并执行 bbox/segm COCOeval；支持 bbox score 和 mask score 两种评估分数。 |
-| `utils/transforms.py` | `AdaptiveResize` MMDetection transform。 |
 | `.gitignore` | 忽略本地缓存、运行产物等。 |
 
 ### 4.8 运行产物
@@ -505,7 +510,7 @@ checkpoint、临时日志、`__pycache__` 或数据集；项目内 `logs/` 已�
 所有新主线命令从以下目录执行：
 
 ```bash
-cd /home/wangcheng2021/project/portable_sam2_explicit_coarse_new/portable_sam2_explicit_coarse
+cd /home/wangcheng2021/project/new/portable_sam2_explicit_coarse
 ```
 
 迁移到另一台机器时，复制默认配置为被 Git 忽略的本机配置后修改：
@@ -519,7 +524,7 @@ vim configs/environment.local.sh
 
 ```bash
 PORTABLE_SAM2_ENV_FILE=/absolute/path/to/environment.sh \
-bash scripts/ablations/b0_aggregator_mlp.sh
+bash scripts/ablations/whu_p2_matrix_point.sh
 ```
 
 外层已经导出的同名变量优先于配置文件中的默认值，仍支持单次实验覆盖。
@@ -527,7 +532,7 @@ bash scripts/ablations/b0_aggregator_mlp.sh
 组件 smoke：
 
 ```bash
-bash scripts/smoke_test_components.sh
+bash scripts/smoke/smoke_test_components.sh
 ```
 
 当前 P2 路径矩阵默认使用最近的完整 WHU fast 协议。四行固定 PAFPN、stride-16、
@@ -557,20 +562,15 @@ D2 复用 D1 的 dense 值，并用既有 P2BR 的 `beta=0.10`、`delta_logit_ma
 weight 0.05 作为保守第一候选。`P2_BOUNDARY_REFINER_BETA`、dense alpha 初值与 dense temperature
 均由公共 runner 记录到启动快照，保证筛选可追溯。
 
-C2-L 的 points-only final-mask 信号消融：
+VHR-10 实验（共享 runner，5 变体薄入口）：
 
 ```bash
-bash scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh
-```
-
-C2-R 的 ROI-SAM2 特征/坐标/监督协议消融：
-
-```bash
-bash scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh
+bash scripts/ablations/vhr10_fast400.sh
+RESUME_FROM=/data/.../last_checkpoint.pth bash scripts/ablations/vhr10_large600.sh
 ```
 
 该命令会在终端打印实际日志文件路径，并默认写入
-`logs/ablations/<run_tag>_tr0.2_va1.0_<timestamp>_pid<pid>.log`。训练默认在后台
+`logs/ablations/<run_tag>_<subset_tag>_<timestamp>_pid<pid>.log`。训练默认在后台
 运行，命令返回不代表训练结束；使用启动时打印的日志路径和 `background_pid` 跟踪，
 运行器不保存 PID 文件。需要外置日志时
 可设置 `LOG_DIR`，需要固定文件名时可设置 `LOG_FILE`。
@@ -578,16 +578,14 @@ bash scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh
 并行实验从最外层脚本指定不同端口：
 
 ```bash
-bash scripts/ablations/b0_aggregator_mlp.sh --master-port 29601
 bash scripts/ablations/whu_p2_matrix_point.sh --master-port=29602
-bash scripts/ablations/c2l_pafpn_coarse_points_roi_loss.sh --master-port=29603
-bash scripts/ablations/c2r_pafpn_coarse_points_roi_sam.sh --master-port=29604
+bash scripts/ablations/whu_p2_matrix_point_box.sh --master-port=29603
 ```
 
 前台调试：
 
 ```bash
-RUN_IN_BACKGROUND=0 bash scripts/ablations/b0_aggregator_mlp.sh
+RUN_IN_BACKGROUND=0 bash scripts/ablations/whu_p2_matrix_point.sh
 ```
 
 显式启动完整数据实验：
@@ -636,7 +634,7 @@ bash scripts/infer_whu_checkpoint.sh /path/to/model.pth --build-only --device cp
 复现冻结历史基线：
 
 ```bash
-cd /home/wangcheng2021/project/portable_sam2_explicit_coarse_new
+cd /home/wangcheng2021/project/new
 bash scripts/verify_legacy_baseline.sh
 bash scripts/reproduce_legacy_segm.sh
 ```
