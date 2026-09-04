@@ -1,21 +1,16 @@
 """WHU/VHR-10 single-stream detector: SAM2 features + two-stage RPN/ROI."""
 
 import copy
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Tuple
 
 import torch
-import torch.nn.functional as F
 
 from torch import Tensor, nn
 from transformers.models.sam.modeling_sam import SamVisionEncoderOutput
 
-from mmdet.models import MaskRCNN, StandardRoIHead
-from mmdet.models.task_modules import SamplingResult
-from mmdet.models.utils import empty_instances, unpack_gt_instances
+from mmdet.models import MaskRCNN
 from mmdet.registry import MODELS
-from mmdet.structures import DetDataSample, SampleList
-from mmdet.structures.bbox import bbox2roi
-from mmdet.utils import InstanceList
+from mmdet.structures import SampleList
 
 @MODELS.register_module()
 class RSPrompterAnchor(MaskRCNN):

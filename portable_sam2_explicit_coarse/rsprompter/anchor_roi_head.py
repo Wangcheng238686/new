@@ -1,15 +1,13 @@
 """RoI head wiring prompt construction, box jitter and the mask-forward path."""
 
-import copy
 from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
 
-from torch import Tensor, nn
-from transformers.models.sam.modeling_sam import SamVisionEncoderOutput
+from torch import Tensor
 
-from mmdet.models import MaskRCNN, StandardRoIHead
+from mmdet.models import StandardRoIHead
 from mmdet.models.task_modules import SamplingResult
 from mmdet.models.utils import empty_instances, unpack_gt_instances
 from mmdet.registry import MODELS

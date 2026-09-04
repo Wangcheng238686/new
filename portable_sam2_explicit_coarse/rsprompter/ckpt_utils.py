@@ -14,7 +14,7 @@ load_state_dict(strict=False) 且只打印 warning，导致：
 """
 import fnmatch
 import logging
-from typing import Dict, Iterable, Optional, Tuple
+from typing import Dict, Iterable, Tuple
 
 import torch
 from torch.nn import Module

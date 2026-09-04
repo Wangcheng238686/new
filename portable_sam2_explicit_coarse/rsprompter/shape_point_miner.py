@@ -13,7 +13,6 @@ Canonical shape-point route:
 Only PyTorch is required.
 """
 import logging
-import math
 from typing import Dict, Optional, Tuple
 
 import torch

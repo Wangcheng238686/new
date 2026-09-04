@@ -5,30 +5,16 @@ SAM2 Adapter for Portable SAM Fusion - Simplified Version
 直接使用SAM2的build_sam2函数加载模型
 """
 
-import math
 import os
 import sys
 from typing import Dict, List, Optional, Tuple
 
-import einops
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from mmengine import ConfigDict
 from mmengine.dist import is_main_process
 from mmengine.model import BaseModule
 from torch import Tensor
 
-from mmcv.ops import RoIAlign
-from mmdet.models import MaskRCNN, StandardRoIHead
-from mmdet.models.roi_heads.mask_heads import FCNMaskHead
-from mmdet.models.task_modules import SamplingResult
-from mmdet.models.utils import empty_instances, unpack_gt_instances
-from mmdet.registry import MODELS
-from mmdet.structures import DetDataSample, SampleList
-from mmdet.structures.bbox import bbox2roi
-from mmdet.structures.mask.mask_target import mask_target
-from mmdet.utils import ConfigType, InstanceList, OptConfigType
 
 from .ckpt_utils import load_module_state_dict_strict
 from .sam2_vision import SAM2_REPO, MaskDecoder, _load_sam2_checkpoint

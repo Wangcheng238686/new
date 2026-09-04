@@ -6,31 +6,17 @@ SAM2 Adapter for Portable SAM Fusion - Simplified Version
 """
 
 import math
-import os
-import sys
 from typing import Dict, List, Optional, Tuple
 
-import einops
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from mmengine import ConfigDict
-from mmengine.dist import is_main_process
-from mmengine.model import BaseModule
 from torch import Tensor
 
-from mmcv.ops import RoIAlign
-from mmdet.models import MaskRCNN, StandardRoIHead
-from mmdet.models.roi_heads.mask_heads import FCNMaskHead
 from mmdet.models.task_modules import SamplingResult
-from mmdet.models.utils import empty_instances, unpack_gt_instances
-from mmdet.registry import MODELS
-from mmdet.structures import DetDataSample, SampleList
-from mmdet.structures.bbox import bbox2roi
 from mmdet.structures.mask.mask_target import mask_target
-from mmdet.utils import ConfigType, InstanceList, OptConfigType
+from mmdet.utils import InstanceList
 
-from .ckpt_utils import load_module_state_dict_strict
 
 
 
