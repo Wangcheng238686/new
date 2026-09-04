@@ -33,16 +33,6 @@ logger = logging.getLogger("portable_sam_fusion")
 # ---------------------------------------------------------------------------
 # COCO-style evaluation helpers (from inference_rsprompter_fusion.py)
 # ---------------------------------------------------------------------------
-def _mask_to_rle(binary_mask: np.ndarray) -> dict:
-    """Convert binary mask (H, W) to COCO RLE format."""
-    from pycocotools import mask as mask_util
-
-    mask_fortran = np.asfortranarray(binary_mask.astype(np.uint8))
-    rle = mask_util.encode(mask_fortran)
-    rle["counts"] = rle["counts"].decode("utf-8")
-    return rle
-
-
 def _masks_to_rles(binary_masks: np.ndarray) -> List[dict]:
     """Batch-encode N binary masks as JSON-safe COCO RLE records."""
     from pycocotools import mask as mask_util
@@ -72,14 +62,15 @@ def _masks_to_rles(binary_masks: np.ndarray) -> List[dict]:
     return rles
 
 
-def _xyxy_to_xywh(bbox: np.ndarray) -> np.ndarray:
-    """Convert [x1, y1, x2, y2] to [x, y, w, h]."""
-    out = bbox.copy()
-    out[..., 2] = bbox[..., 2] - bbox[..., 0]
-    out[..., 3] = bbox[..., 3] - bbox[..., 1]
-    return out
+from utils.coco_eval_utils import _xyxy_to_xywh
 
 
+# NOTE: the trainer keeps its own build_coco_gt_and_dt/run_coco_eval instead of
+# the utils/coco_eval_utils versions on purpose. The training-side run_coco_eval
+# recomputes the primary AP at a custom maxDets cap (the unified maxDet=100/150
+# protocol that best-model selection depends on), and the trainer-side
+# build_coco_gt_and_dt supports pre-computed "rles" fast paths that release
+# dense 1024x1024 masks during validation. The utils variants lack both.
 def build_coco_gt_and_dt(
     all_gt: List[dict],
     all_dt: List[dict],
