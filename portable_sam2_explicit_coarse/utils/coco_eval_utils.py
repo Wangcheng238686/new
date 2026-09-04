@@ -4,26 +4,6 @@ from typing import List, Tuple
 import numpy as np
 
 
-# iSAID official 15 categories; train labels 0..14 map to ids 1..15 (label+1).
-# Order is the canonical train-id order the dataset build remapped BY NAME.
-ISAID_CATEGORIES = [
-    {"id": 1, "name": "storage_tank"},
-    {"id": 2, "name": "Large_Vehicle"},
-    {"id": 3, "name": "Small_Vehicle"},
-    {"id": 4, "name": "plane"},
-    {"id": 5, "name": "ship"},
-    {"id": 6, "name": "Swimming_pool"},
-    {"id": 7, "name": "Harbor"},
-    {"id": 8, "name": "tennis_court"},
-    {"id": 9, "name": "Ground_Track_Field"},
-    {"id": 10, "name": "Soccer_ball_field"},
-    {"id": 11, "name": "baseball_diamond"},
-    {"id": 12, "name": "Bridge"},
-    {"id": 13, "name": "basketball_court"},
-    {"id": 14, "name": "Roundabout"},
-    {"id": 15, "name": "Helicopter"},
-]
-
 # NWPU VHR-10 10 categories (COCO instance-mask conversion); train labels
 # 0..9 map to ids 1..10 (label+1). Order matches the release annotations.json.
 VHR10_CATEGORIES = [

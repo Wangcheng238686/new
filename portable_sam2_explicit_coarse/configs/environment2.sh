@@ -33,15 +33,6 @@ export SAM2_REPO="${SAM2_REPO:-${PORTABLE_SAM2_REPOSITORY_ROOT}/sam2}"
 export SAM2_CKPT="${SAM2_CKPT:-/data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt}"
 export WHU1024_DATA_ROOT="${WHU1024_DATA_ROOT:-/data/wangcheng/dataset/WHU}"
 
-# iSAID 15-class route (local layout; the committed defaults describe the
-# machine2 build under $data_root/isaid_patches_800). Verified 2026-08-29:
-# train 18,716 patches / 669,667 anns, val 6,048 / 230,592, json == files.
-export ISAID_DATA_ROOT="${ISAID_DATA_ROOT:-/data/wangcheng/dataset/iSAID_patches_coco}"
-export ISAID_TRAIN_ANN_FILE="${ISAID_TRAIN_ANN_FILE:-train/Annotations/iSAID_train_patches_800.json}"
-export ISAID_VAL_ANN_FILE="${ISAID_VAL_ANN_FILE:-val/Annotations/iSAID_val_patches_800.json}"
-export ISAID_TRAIN_IMG_SUBDIR="${ISAID_TRAIN_IMG_SUBDIR:-train/images}"
-export ISAID_VAL_IMG_SUBDIR="${ISAID_VAL_IMG_SUBDIR:-val/images}"
-
 # NWPU VHR-10 10-class route (instance-mask COCO conversion). SPLIT: the
 # RSPrompter-release 80/20 split (train 520 imgs / 3,178 anns, val 130 /
 # 743), copied verbatim into coco_split/ for direct comparability with the

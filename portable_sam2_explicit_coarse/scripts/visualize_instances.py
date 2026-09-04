@@ -17,12 +17,6 @@ UE-COCO, ...). Coordinates are handled per source:
              per-image overlays (so WHU works here too).
 
 Examples:
-    # GT overlay (iSAID val patches)
-    python scripts/visualize_instances.py gt \
-        --ann-json /data1/wangcheng/dataset/iSAID/isaid_patches_800/val/instances_isaid_val.json \
-        --images-dir /data1/wangcheng/dataset/iSAID/isaid_patches_800/val/images \
-        --out-dir logs/viz/isaid_gt --limit 8
-
     # GT overlay (WHU validation)
     python scripts/visualize_instances.py gt \
         --ann-json "/data1/wangcheng/dataset/WHU/2.4 annotation/annotation/validation.json" \
@@ -32,8 +26,8 @@ Examples:
     # Prediction overlay (optionally with GT outlines behind)
     python scripts/visualize_instances.py pred \
         --pred-json runs/inference_val/predictions.json \
-        --out-dir logs/viz/isaid_pred --score-thr 0.3 --limit 20 \
-        --gt-ann-json .../instances_isaid_val.json
+        --out-dir logs/viz/whu_pred --score-thr 0.3 --limit 20 \
+        --gt-ann-json .../validation.json
 
     # Merge tiled patch predictions back onto original images
     python scripts/visualize_instances.py merge \
@@ -68,14 +62,9 @@ PALETTE = [
     (255, 250, 200), (128, 0, 0), (170, 255, 195), (128, 128, 0),
 ]
 
-# Canonical iSAID category names (id -> name); used when no categories source
+# Fallback single-class name (id -> name); used when no categories source
 # is available. WHU single-class maps id 1 -> building either way.
-ISAID_CATEGORY_NAMES = {
-    1: "storage_tank", 2: "Large_Vehicle", 3: "Small_Vehicle", 4: "plane",
-    5: "ship", 6: "Swimming_pool", 7: "Harbor", 8: "tennis_court",
-    9: "Ground_Track_Field", 10: "Soccer_ball_field", 11: "baseball_diamond",
-    12: "Bridge", 13: "basketball_court", 14: "Roundabout", 15: "Helicopter",
-}
+WHU_SINGLE_CLASS_NAMES = {1: "building"}
 
 PATCH_NAME_RE = re.compile(r"^(?P<stem>.+)_(?P<y0>\d+)_(?P<y1>\d+)_(?P<x0>\d+)_(?P<x1>\d+)\.png$")
 
@@ -180,15 +169,11 @@ def load_categories(args, ann: Optional[dict] = None,
             names[int(cat["id"])] = cat["name"]
     if not names and observed_ids is not None:
         if observed_ids and observed_ids <= {1}:
-            names = {1: "building"}  # WHU / UE-COCO single-class contract
-        else:
-            names = dict(ISAID_CATEGORY_NAMES)
+            names = dict(WHU_SINGLE_CLASS_NAMES)
 
     def lookup(cat_id: int) -> str:
         if cat_id in names:
             return names[cat_id]
-        if not names and cat_id in ISAID_CATEGORY_NAMES:
-            return ISAID_CATEGORY_NAMES[cat_id]
         return f"class{cat_id}"
     return {cid: lookup(cid) for cid in sorted(set(names) | set(observed_ids or set()))}
 

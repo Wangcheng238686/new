@@ -1637,18 +1637,11 @@ def main():
     )
     parser.add_argument("--gpu-id", type=int, default=0)
 
-    parser.add_argument("--use-drone", action="store_true", default=False)
     parser.add_argument(
         "--use-whu-coco",
         action="store_true",
         default=False,
         help="使用 WHU 公开数据集（COCO 格式，自带 train/validation 划分）",
-    )
-    parser.add_argument(
-        "--use-isaid-coco",
-        action="store_true",
-        default=False,
-        help="使用 iSAID 数据集（800x800 patch，COCO 格式，15 类）",
     )
     parser.add_argument(
         "--use-vhr10-coco",
@@ -1674,32 +1667,6 @@ def main():
         default=1.0,
         help="Deterministic fraction of WHU validation images to load; default 1.0.",
     )
-    parser.add_argument(
-        "--drone-data-root",
-        type=str,
-        default="/data/wangcheng/dataset/university-test/D",
-    )
-    parser.add_argument("--num-views", type=int, default=15)
-    parser.add_argument("--image-size", type=int, nargs=2, default=[512, 512])
-    parser.add_argument("--drone-image-size", type=int, nargs=2, default=[512, 512])
-    parser.add_argument(
-        "--random-sample", action="store_true", help="Randomly sample drone images"
-    )
-    parser.add_argument(
-        "--normalize-drone",
-        dest="normalize_drone",
-        action="store_true",
-        help="Apply dataset-side normalization to drone images (WARNING: causes double "
-             "normalization because the UAV encoder also normalizes internally).",
-    )
-    parser.add_argument(
-        "--no-normalize-drone",
-        dest="normalize_drone",
-        action="store_false",
-        help="Disable dataset-side normalization (default). The UAV encoder's internal "
-             "self.norm handles normalization, so dataset-side normalization is redundant.",
-    )
-    parser.set_defaults(normalize_drone=False)
 
     parser.add_argument("--use-fsdp", action="store_true")
     parser.add_argument("--fsdp-sharding", type=str, default="FULL_SHARD")
@@ -1712,7 +1679,7 @@ def main():
         help="Freeze C2 and optimize only the native SAM2 IoU quality head.",
     )
 
-    parser.add_argument("--val-ratio", type=float, default=0.0)
+    parser.add_argument("--image-size", type=int, nargs=2, default=[512, 512])
     parser.add_argument(
         "--val-batch-size",
         type=int,
@@ -1896,7 +1863,7 @@ def main():
 
     # Canonical multi-class category tables live in utils.coco_eval_utils so
     # the trainer and checkpoint inference share one definition.
-    from utils.coco_eval_utils import ISAID_CATEGORIES, VHR10_CATEGORIES
+    from utils.coco_eval_utils import VHR10_CATEGORIES
 
     import mmdet.models
     from mmengine.config import Config
@@ -2028,19 +1995,6 @@ def main():
             segm_score_mode,
         )
 
-    enable_drone_branch = getattr(model_for_preproc, "enable_drone_branch", False)
-    if args.use_drone and not enable_drone_branch:
-        logger.warning(
-            "--use-drone is set but model has enable_drone_branch=False. "
-            "Disabling drone data loading."
-        )
-        args.use_drone = False
-    if enable_drone_branch and not args.use_drone:
-        logger.info(
-            "Model has enable_drone_branch=True but --use-drone not set. "
-            "Will use drone branch if drone data is available."
-        )
-
     if args.freeze_bn:
         _set_norm_eval(model)
 
@@ -2157,40 +2111,11 @@ def main():
             multi_scale_mode=train_ms_mode,
             multi_scale_img_scale=train_ms_img_scale,
             image_size=tuple(args.image_size),
-            use_drone=args.use_drone,
-            drone_data_root=args.drone_data_root,
-            num_views=args.num_views,
-            drone_image_size=tuple(args.drone_image_size),
             distributed=distributed,
             rank=rank,
             world_size=int(dist_info.get("world_size", 1)),
-            val_ratio=args.val_ratio,
             val_batch_size=args.val_batch_size,
-            random_sample=args.random_sample,
-            normalize_drone=args.normalize_drone,
-            dataset_format=(
-                "vhr10_coco"
-                if args.use_vhr10_coco
-                else (
-                    "isaid_coco"
-                    if args.use_isaid_coco
-                    else ("whu_coco" if args.use_whu_coco else "labelme")
-                )
-            ),
-            isaid_train_ann_file=os.environ.get(
-                "ISAID_TRAIN_ANN_FILE",
-                "isaid_patches_800/train/instances_isaid_train.json",
-            ),
-            isaid_val_ann_file=os.environ.get(
-                "ISAID_VAL_ANN_FILE",
-                "isaid_patches_800/val/instances_isaid_val.json",
-            ),
-            isaid_train_img_subdir=os.environ.get(
-                "ISAID_TRAIN_IMG_SUBDIR", "isaid_patches_800/train/images"
-            ),
-            isaid_val_img_subdir=os.environ.get(
-                "ISAID_VAL_IMG_SUBDIR", "isaid_patches_800/val/images"
-            ),
+            dataset_format=("vhr10_coco" if args.use_vhr10_coco else "whu_coco"),
             vhr10_train_ann_file=os.environ.get(
                 "VHR10_TRAIN_ANN_FILE", "coco_split/instances_train.json"
             ),
@@ -2355,76 +2280,40 @@ def main():
         # resolved_hyperparameters git_* lines).
         "git_state": _capture_git_state(),
         "data_config": {
-            "dataset_format": (
-                "vhr10_coco"
-                if args.use_vhr10_coco
-                else (
-                    "isaid_coco"
-                    if args.use_isaid_coco
-                    else ("whu_coco" if args.use_whu_coco else "labelme")
-                )
-            ),
+            "dataset_format": ("vhr10_coco" if args.use_vhr10_coco else "whu_coco"),
             "data_root": str(args.data_root),
             "image_size": list(args.image_size),
-            "single_class": not (args.use_isaid_coco or args.use_vhr10_coco),
-            "num_classes": (
-                15
-                if args.use_isaid_coco
-                else (10 if args.use_vhr10_coco else 1)
-            ),
+            "single_class": not args.use_vhr10_coco,
+            "num_classes": 10 if args.use_vhr10_coco else 1,
             "validation": (
                 {
                     "ann_file": os.environ.get(
-                        "ISAID_VAL_ANN_FILE",
-                        "isaid_patches_800/val/instances_isaid_val.json",
+                        "VHR10_VAL_ANN_FILE", "coco_split/instances_val.json"
                     ),
                     "image_subdir": os.environ.get(
-                        "ISAID_VAL_IMG_SUBDIR", "isaid_patches_800/val/images"
+                        "VHR10_VAL_IMG_SUBDIR", "positive image set"
                     ),
                 }
-                if args.use_isaid_coco
-                else (
-                    {
-                        "ann_file": os.environ.get(
-                            "VHR10_VAL_ANN_FILE", "coco_split/instances_val.json"
-                        ),
-                        "image_subdir": os.environ.get(
-                            "VHR10_VAL_IMG_SUBDIR", "positive image set"
-                        ),
-                    }
-                    if args.use_vhr10_coco
-                    else {
-                        "ann_file": "2.4 annotation/annotation/validation.json",
-                        "image_subdir": "2.3 valid/validation",
-                    }
-                )
+                if args.use_vhr10_coco
+                else {
+                    "ann_file": "2.4 annotation/annotation/validation.json",
+                    "image_subdir": "2.3 valid/validation",
+                }
             ),
             "test": (
                 {
                     "ann_file": os.environ.get(
-                        "ISAID_VAL_ANN_FILE",
-                        "isaid_patches_800/val/instances_isaid_val.json",
+                        "VHR10_VAL_ANN_FILE", "coco_split/instances_val.json"
                     ),
                     "image_subdir": os.environ.get(
-                        "ISAID_VAL_IMG_SUBDIR", "isaid_patches_800/val/images"
+                        "VHR10_VAL_IMG_SUBDIR", "positive image set"
                     ),
                 }
-                if args.use_isaid_coco
-                else (
-                    {
-                        "ann_file": os.environ.get(
-                            "VHR10_VAL_ANN_FILE", "coco_split/instances_val.json"
-                        ),
-                        "image_subdir": os.environ.get(
-                            "VHR10_VAL_IMG_SUBDIR", "positive image set"
-                        ),
-                    }
-                    if args.use_vhr10_coco
-                    else {
-                        "ann_file": "2.4 annotation/annotation/test.json",
-                        "image_subdir": "2.2 test/test",
-                    }
-                )
+                if args.use_vhr10_coco
+                else {
+                    "ann_file": "2.4 annotation/annotation/test.json",
+                    "image_subdir": "2.2 test/test",
+                }
             ),
         },
         "runtime_config": {
@@ -2554,7 +2443,6 @@ def main():
         "depth_encoder": os.environ.get("DEPTH_ENCODER", ""),
         "depth_pretrained_path": os.environ.get("DEPTH_PRETRAINED_PATH", ""),
         "depth_require_pretrained": os.environ.get("DEPTH_REQUIRE_PRETRAINED", ""),
-        "use_drone": args.use_drone,
         "seed": args.seed,
         "lr": args.lr,
         "batch_size": args.batch_size,
@@ -2856,11 +2744,7 @@ def main():
                 avg_mask_fill,
             )
             if total_gt > 0:
-                eval_categories = (
-                    ISAID_CATEGORIES
-                    if args.use_isaid_coco
-                    else (VHR10_CATEGORIES if args.use_vhr10_coco else None)
-                )
+                eval_categories = VHR10_CATEGORIES if args.use_vhr10_coco else None
                 coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
                     all_gt, all_dt, all_img_metas, score_key="scores",
                     categories=eval_categories,
@@ -3683,11 +3567,7 @@ def main():
                 # The segmentation score contract is stored in cfg.model and
                 # consumed identically by validation and checkpoint inference.
                 # Bbox candidate selection/ranking always remains detector-score based.
-                eval_categories = (
-                    ISAID_CATEGORIES
-                    if args.use_isaid_coco
-                    else (VHR10_CATEGORIES if args.use_vhr10_coco else None)
-                )
+                eval_categories = VHR10_CATEGORIES if args.use_vhr10_coco else None
                 coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
                     all_gt, all_dt, all_img_metas, score_key="scores",
                     categories=eval_categories,

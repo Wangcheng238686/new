@@ -484,16 +484,18 @@ def _build_loader(contract: Mapping[str, Any], num_workers: int) -> DataLoader:
 
     single_class = bool(contract["single_class"])
     # Multi-class runs train with canonical ids 1..N -> labels 0..N-1; the
-    # loader must apply the same mapping so GT labels match the head. The
-    # num_classes key was added with the VHR-10 route; older iSAID
-    # checkpoints predate it and fall back to 15.
+    # loader must apply the same mapping so GT labels match the head.
     num_classes = int(contract.get("num_classes", 0) or 0)
     if single_class:
         category_mapping = None
     elif num_classes > 0:
         category_mapping = {i: i - 1 for i in range(1, num_classes + 1)}
     else:
-        category_mapping = {i: i - 1 for i in range(1, 16)}
+        raise RuntimeError(
+            "Multi-class checkpoint without a stored num_classes cannot be "
+            "resolved (the legacy iSAID 15-class fallback was removed); use a "
+            "schema-v2 checkpoint that embeds data_config.num_classes."
+        )
     dataset = WHUCocoInstanceDataset(
         data_root=contract["data_root"],
         ann_file=contract["ann_file"],
@@ -835,18 +837,13 @@ def main() -> None:
     total_gt = sum(len(item["labels"]) for item in all_gt)
     if not args.no_eval and total_gt > 0:
         from utils.coco_eval_utils import (
-            ISAID_CATEGORIES,
             VHR10_CATEGORIES,
             build_coco_gt_and_dt,
             run_coco_eval,
         )
 
         _num_classes = int(contract.get("num_classes", 0) or 0)
-        _eval_categories = (
-            ISAID_CATEGORIES
-            if _num_classes == 15
-            else (VHR10_CATEGORIES if _num_classes == 10 else None)
-        )
+        _eval_categories = VHR10_CATEGORIES if _num_classes == 10 else None
         coco_gt, coco_segm_dt = build_coco_gt_and_dt(
             all_gt,
             all_dt,
