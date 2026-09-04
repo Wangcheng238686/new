@@ -61,3 +61,10 @@ D2 通过前至少应同时观察到：P2 support/delta 非零、`p2br_final_mas
 应结合启动日志中的学习率与后续 epoch 判断，不能把这一项单独判成死通路。
 
 这些字段只用于机制筛选；最终模块效用仍由相同训练协议下独立训练的 paired validation 指标确认。
+
+
+## COCO-eval 单一实现说明
+
+2026-09 起合并为单轨：训练侧强版（自定义 maxDets 主 AP 重算 + rles 快速通路）上收至
+portable_sam2_explicit_coarse/utils/coco_eval_utils.py，trainer、checkpoint 推理与探针共用。
+checkpoint 推理/探针只走默认 maxDets 路径，行为与其历史输出一致；自定义 maxDets 行为仅训练侧调用。
