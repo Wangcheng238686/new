@@ -217,9 +217,17 @@ rsprompter_anchor_satS_v11_sam2_large_full.py
 | 文件 | 用途 |
 |---|---|
 | `__init__.py` | 注册 MMDetection 模型组件；`RSPROMPTER_LIGHT_IMPORT=1` 用于轻量张量测试。 |
-| `models.py` | detector（`RSPrompterAnchor`）与 RoI head（`RSPrompterAnchorRoIPromptHead`）；SAM1 世代兼容组件已于 2026-09 重构删除（commit 6f1d900）。 |
-| `models_sam2.py` | SAM2 主实现：vision encoder、基线 aggregator、PAFPN、MaskDecoder wrapper、MLP/coarse 双路线 MaskHead。 |
-| `shape_prior.py` | `ShapePriorInjector`、小型 coarse mask decoder、RoI box encoding 和 `ShapePointMiner`。 |
+| `anchor_detector.py` | `RSPrompterAnchor`：SAM2 特征抽取与 RPN/ROI 两阶段 loss/predict。 |
+| `anchor_roi_head.py` | `RSPrompterAnchorRoIPromptHead`：prompt 构造、box jitter、ROI-local coarse/P2 监督接线、chunked mask forward。 |
+| `sam2_vision.py` | SAM2 checkpoint 加载 helper、`RSSAM2PositionalEmbedding`、LoRA `RSSAM2VisionEncoder`、`_load_pretrained_no_mask_embedding`。 |
+| `sam2_decoder.py` | `RSSAM2MaskDecoderWrapper`（SAM2 MaskDecoder 严格加载与前向）。 |
+| `sam2_neck.py` | `RSFeatureAggregatorSAM2`（基线 aggregator）与 `RSSAM2PAFPN`。 |
+| `sam2_mask_head.py` | `RSPrompterAnchorMaskHeadSAM2` 主体：配置布线（__init__）、因果链 forward、predict 与 no-mask 契约。 |
+| `sam2_mask_head_helpers.py` | mask head 的 prompt canvas / ROI-SAM / debug 方法 mixin。 |
+| `sam2_mask_head_targets.py` | mask head 的 GT targets 与 coarse/final-mask loss 方法 mixin。 |
+| `models.py` / `models_sam2.py` / `shape_prior.py` | 兼容门面：纯再导出，外部 import 路径与注册表名不变（2026-09 拆分）。 |
+| `shape_prior_injector.py` | `ShapePriorInjector` + SmallMaskDecoder + RoIBoxEncoding：coarse mask 生成。 |
+| `shape_point_miner.py` | `ShapePointMiner`：自适应硬 2P2N 点挖掘（stop-gradient）。 |
 | `coarse_mask_loss.py` | coarse mask 的 BCE、Dice、boundary、distance 组合损失及权重调度。 |
 | `dense_prompt_utils.py` | raw/confidence coarse 变换、ROI-local mask 粘贴，以及 R1-C4-G 的 detached exact-EDT Gaussian 挖掘与图像空间映射。 |
 | `p2_boundary_refiner.py` | C5-v2 的 P2 高频边界残差模块；实现 raw-only forward support、受限残差和 boundary auxiliary loss。 |
