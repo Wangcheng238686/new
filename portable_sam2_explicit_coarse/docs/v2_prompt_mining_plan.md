@@ -1,7 +1,9 @@
-# V2 Prompt Mining 实施方案 v2.2（自包含终版）
+# V2 Prompt Mining 实施方案 v2.3（自包含终版）
 
-> 交接文档：实施助手执行、规划方审查。v2.0（git 962f5e0）/v2.1（c9815aa）仅存
-> 历史参考；**本文档自包含，实施只需本文 + 代码库**。
+> 交接文档：实施助手执行、规划方审查。v2.0（git 962f5e0）/v2.1（c9815aa）/v2.2
+> （aad4b4a）仅存历史参考；**本文档自包含，实施只需本文 + 代码库**，唯一下列
+> 例外：S3 前置门 B 的实验协议遵循
+> `docs/prompt_consumption_and_p2_refinement_implementation_guide.md`（下称"指南"）。
 > 分支 `machine2/fast-whu150`，主机 lthpc（4×RTX 3090 24GB，/data 大盘）。
 
 ## 0. 背景证据（已完成审计，勿重复验证）
@@ -95,15 +97,39 @@ GT 前景内的 matched ROI 数）、actually_replaced_count、每图替换率�
 2. gap(new) ≤ gap(C0)；
 3. oracle-N1 绝对指标单列（防"双指标同降导致 gap 收窄"的假阳性）。
 
-### S3 连续有界偏移头（仅当 S1.5/S2 链条为正）
+### S3 连续有界偏移头（双重前置门 A+B 均通过才启动）
+
+**前置门（v2.3 新增，缺一不可）**：
+- **门 A（点位效用）** = S1.5 通过：移动既有 N1 对冻结 decoder 有稳定效用
+  （paired bootstrap 95% CI）。**A 失败 → 整条 point-correction 分支停止**
+  （不转 S3，S3 的前提正是点位修正有效）；
+- **门 B（P2 增量信息）**：真实 P2 特征在相同 head、相同预算下，显著优于
+  coarse-only 与最佳 sham-P2 对照——实验协议遵循指南 Phase 1（缓存
+  coarse cue + base points + P2、同参数量轻量预测器、sham 对照；主指标为
+  冻结 decoder 的配对效用，image bootstrap 95% CI 下界 > 0）。
+  **A 通过但 B 失败 → 只允许非 P2 的 PromptRobustifier（coarse-only 偏移或
+  纯 corrective 混训），不实现 P2 offset head**。
+
 **互斥契约（强制）**：新变体默认
 ```
-P2_BOUNDARY_REFINER_ENABLED=0   # 旧 P2BR 关闭，避免 coarse/dense/points 三处同时变化
+P2_BOUNDARY_REFINER_ENABLED=0   # 旧 P2BR 关闭（见下方 C0-off 定义）
 P2_POINT_REFINER_ENABLED=1      # 新偏移头（新注册架构契约变体 id，如 c6_point_offset）
 ```
 dual-P2（两者同开）仅作为后续显式消融。
-**梯度契约**：coarse cue 与 P2 特征对偏移头输入 detach；final-mask 梯度仅经
-连续 coords+offset 回流新头（SAM2 对浮点坐标可微，无需 STE）；锚点 stop-grad。
+
+**初始化与对照（v2.3 定义，保证单变量比较）**：ft200 属 P2BR-on 架构，关闭
+P2BR 会改变 architecture id/fingerprint，训练器默认拒绝跨架构 `--init-from`：
+- **C0-off 臂**：ft200 → P2BR-off，经 `--allow-cross-arch-init` 初始化，
+  记录 missing/unexpected/excluded keys；先做**固定 checkpoint 的 P2BR on/off
+  paired 输出检查**（顺带测得旧 P2BR 的真实推理贡献）；再按标准 80ep 预算训练；
+- **S3 臂**：从同一 P2BR-off 初始化出发，**仅额外引入 zero-init point refiner**；
+  S3 vs C0-off 即单变量比较，不混入"移除旧 P2BR"的效应。
+
+**梯度契约（v2.3 精确化）**：对 offset head 而言，来自最终 mask 的唯一可微输入
+路径为 coords+offset；P2/coarse cue 对偏移头输入 detach、不向上游回传。
+**其余模块（MaskDecoder、shape prior 等）维持现有训练策略不变**，由同预算
+C0-off 控制其影响；如需验证 refiner-only，显式冻结其余参数并新增 module-only
+训练 scope 标志，作为独立臂。
 **缓存契约（不得覆写现有整数缓存）**：
 ```
 base_local_yx     # miner 整数索引，保留供现有 GT 诊断
@@ -125,8 +151,10 @@ refined 点的语义统计新增**连续采样式**字段（grid_sample 在 GT �
 - 恒等起点：任何新模块加载后续训首 epoch 指标 ≈ 基线（ft200 先例 0.6399/0.6417）；
 - val mAP 单边下行 >2pt 不回 → 冻结该新自由度、只收已验证收益；
 - S1 零差异验收失败 → 不得进入任何训练步骤，先修前移实现；
-- S1.5 CI 含 0 且 airplane 无增益 → 负点链条整体降级，S2 跳过，主线 S3 起步
-  （S3 的偏移头仍以降误落率为目标但价值预期下调，重估后再投入）。
+- S1.5 CI 含 0 且 airplane 无增益 → 门 A 失败：**整条 point-correction 分支停止**
+  （S2 与 S3 一并跳过），只剩 S1 的工程收益；后续方向重议（不自动转 S3）；
+- 门 B 失败（真实 P2 无增量信息）→ 停 P2 offset head，只保留非 P2 的
+  PromptRobustifier 路线（coarse-only 偏移或纯 corrective 混训）。
 
 ## 4. 审查节点（实施方暂停并交材料）
 A. S1 零差异全套证据后；B. S1.5 manifest+CI 后（S2 go/no-go 裁定）；
