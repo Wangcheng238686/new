@@ -19,10 +19,13 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import sys
 from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 def parse_args():
@@ -63,17 +66,29 @@ def _evaluate(resample, gt_by_img, base_by_img, treat_by_img, score_key, max_det
         gt = gt_by_img.get(image_id)
         if gt is None:
             gt = {"bboxes": [], "labels": [], "rles": []}
+        gt = {
+            "bboxes": np.asarray(gt["bboxes"], dtype=np.float32).reshape(-1, 4),
+            "labels": np.asarray(gt["labels"], dtype=np.int64),
+            "rles": list(gt["rles"]),
+        }
         all_gt.append(gt)
-        base = base_by_img.get(image_id, {"bboxes": [], "labels": [], "rles": [], "scores": [], "mask_scores": []})
-        treat = treat_by_img.get(image_id, {"bboxes": [], "labels": [], "rles": [], "scores": [], "mask_scores": []})
-        all_dt_b.append(base)
-        all_dt_t.append(treat)
-        metas.append({"img_shape": (image_id, 0)})  # placeholder; shapes unused via rles path
+        base = base_by_img.get(image_id)
+        treat = treat_by_img.get(image_id)
 
-    # build_coco_gt_and_dt reads meta["img_shape"][:2] as (h, w) only for
-    # mask fallback; with precomputed "rles" the values are unused.  Give the
-    # resample a canonical 1024 shape to keep the contract explicit.
-    metas = [{"img_shape": (1024, 1024)} for _ in resample]
+        def _as_dt(rec):
+            if rec is None:
+                rec = {"bboxes": [], "labels": [], "rles": [], "scores": [], "mask_scores": []}
+            return {
+                "bboxes": np.asarray(rec["bboxes"], dtype=np.float32).reshape(-1, 4),
+                "labels": np.asarray(rec["labels"], dtype=np.int64),
+                "rles": list(rec["rles"]),
+                "scores": np.asarray(rec["scores"], dtype=np.float32),
+                "mask_scores": np.asarray(rec["mask_scores"], dtype=np.float32),
+            }
+
+        all_dt_b.append(_as_dt(base))
+        all_dt_t.append(_as_dt(treat))
+        metas.append({"img_shape": (1024, 1024)})
     coco_gt, dt_b = build_coco_gt_and_dt(all_gt, all_dt_b, metas, score_key=score_key)
     metrics_b = run_coco_eval(coco_gt, dt_b, iou_type="segm", max_dets=max_dets)
     _, dt_t = build_coco_gt_and_dt(all_gt, all_dt_t, metas, score_key=score_key)
@@ -122,6 +137,9 @@ def main():
         "delta_bootstrap_mean": float(deltas.mean()),
         "delta_ci95": [float(np.percentile(deltas, 2.5)), float(np.percentile(deltas, 97.5))],
         "p_delta_gt_0": float((deltas > 0).mean()),
+        # Raw per-resample deltas: parallel shards merge by concatenating
+        # these lists before the pooled percentile CI is computed.
+        "deltas": [float(v) for v in deltas],
     }
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
