@@ -383,12 +383,64 @@ def main() -> None:
             point_oracle.close()
         oracle.close()
 
-    from utils.coco_eval_utils import build_coco_gt_and_dt, run_coco_eval
+    from utils.coco_eval_utils import (
+        _mask_to_rle,
+        _xyxy_to_xywh,
+        build_coco_gt_and_dt,
+        run_coco_eval,
+    )
 
     coco_gt, coco_segm_dt = build_coco_gt_and_dt(all_gt, all_dt, all_metas, score_key=segm_score_key)
     metrics = run_coco_eval(coco_gt, coco_segm_dt, iou_type="segm")
     output_dir = Path(args.output_dir).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Per-image GT/detection records: image-level paired bootstrap CIs require
+    # resampling images and recomputing COCO mAP offline.
+    gt_records = []
+    dt_records = []
+    for gt, prediction, meta in zip(all_gt, all_dt, all_metas):
+        image_id = int(meta.get("image_id", meta.get("scene_id", 0)))
+        labels = np.asarray(gt["labels"])
+        bboxes = np.asarray(gt["bboxes"])
+        masks = np.asarray(gt["masks"])
+        for i in range(len(labels)):
+            gt_records.append({
+                "image_id": image_id,
+                "category_id": int(labels[i]) + 1,
+                "bbox": [float(v) for v in _xyxy_to_xywh(bboxes[i])],
+                "segmentation": _mask_to_rle(masks[i]),
+                "iscrowd": 0,
+            })
+        scores = prediction.get("scores", np.ones(len(prediction["bboxes"]), dtype=np.float32))
+        mask_scores = prediction.get("mask_scores", scores)
+        for i in range(len(prediction["bboxes"])):
+            x1, y1, x2, y2 = [float(v) for v in prediction["bboxes"][i]]
+            dt_records.append({
+                "image_id": image_id,
+                "category_id": int(prediction["labels"][i]) + 1,
+                "bbox": [x1, y1, x2 - x1, y2 - y1],
+                "score": float(scores[i]),
+                "mask_score": float(mask_scores[i]),
+                "segmentation": _mask_to_rle(prediction["masks"][i]),
+            })
+    with (output_dir / "gt_records.json").open("w", encoding="utf-8") as handle:
+        json.dump(gt_records, handle)
+        handle.write("\n")
+    with (output_dir / "dt_records.json").open("w", encoding="utf-8") as handle:
+        json.dump(dt_records, handle)
+        handle.write("\n")
+    images = [
+        {
+            "image_id": int(meta.get("image_id", meta.get("scene_id", 0))),
+            "height": int(meta["img_shape"][0]),
+            "width": int(meta["img_shape"][1]),
+        }
+        for meta in all_metas
+    ]
+    with (output_dir / "images.json").open("w", encoding="utf-8") as handle:
+        json.dump(images, handle)
+        handle.write("\n")
     payload = {
         "checkpoint": str(checkpoint_path),
         "oracle_cap": args.oracle_cap,
