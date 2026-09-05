@@ -825,6 +825,8 @@ _P2BR_EPOCH_FIELDS = (
     "delta_abs_sum",
     "delta_nonzero_sum",
     "delta_saturated_sum",
+    "delta_saturated_support_ratio_sum",
+    "saturation_threshold",
     "projected_feature_norm_sum",
     "highpass_feature_norm_sum",
     "raw_dice_sum",
@@ -1044,6 +1046,7 @@ def _accumulate_p2br_epoch_monitor(
         "delta_abs_sum": "P2BR/delta_abs_sum",
         "delta_nonzero_sum": "P2BR/delta_nonzero_sum",
         "delta_saturated_sum": "P2BR/delta_saturated_sum",
+        "delta_saturated_support_ratio_sum": "P2BR/delta_saturated_support_ratio_sum",
         "projected_feature_norm_sum": "P2BR/projected_feature_norm_sum",
         "highpass_feature_norm_sum": "P2BR/highpass_feature_norm_sum",
         "raw_boundary_tp": "COARSE/raw_boundary_tp",
@@ -1066,6 +1069,8 @@ def _accumulate_p2br_epoch_monitor(
         ("raw_iou_sum", "COARSE/raw_iou"),
         ("refined_dice_sum", "COARSE/refined_dice_score"),
         ("refined_iou_sum", "COARSE/refined_iou"),
+        # 阈值是每次前向的常数，乘 roi_count 累加、归约时除回，避免跨 step 求和放大
+        ("saturation_threshold", "P2BR/saturation_threshold"),
     ):
         value = _stat_scalar(stats, stat_key)
         if value is not None:
@@ -1106,6 +1111,9 @@ def _reduce_p2br_epoch_monitor(
         "delta_abs": values["delta_abs_sum"] / roi_count,
         "delta_nonzero_ratio": values["delta_nonzero_sum"] / roi_count,
         "delta_saturated_ratio": values["delta_saturated_sum"] / roi_count,
+        "delta_saturated_support_ratio": values["delta_saturated_support_ratio_sum"]
+        / roi_count,
+        "saturation_threshold": values["saturation_threshold"] / roi_count,
         "projected_feature_norm": values["projected_feature_norm_sum"] / roi_count,
         "highpass_feature_norm": values["highpass_feature_norm_sum"] / roi_count,
         "raw_dice": values["raw_dice_sum"] / roi_count,
@@ -2981,6 +2989,7 @@ def main():
                 logger.info(
                     "Epoch %d P2 boundary support: valid=%.2f%% rejected=%.2f%% "
                     "coverage=%.4f delta_abs=%.6f nonzero=%.2f%% saturated=%.2f%% "
+                    "sat_thr=%.4f saturated_in_support=%.2f%% "
                     "p2_norm=%.4f highpass_norm=%.4f support_fg=%.2f%%",
                     epoch_number,
                     100.0 * p2br_monitor_epoch["valid_support_ratio"],
@@ -2989,6 +2998,8 @@ def main():
                     p2br_monitor_epoch["delta_abs"],
                     100.0 * p2br_monitor_epoch["delta_nonzero_ratio"],
                     100.0 * p2br_monitor_epoch["delta_saturated_ratio"],
+                    p2br_monitor_epoch["saturation_threshold"],
+                    100.0 * p2br_monitor_epoch["delta_saturated_support_ratio"],
                     p2br_monitor_epoch["projected_feature_norm"],
                     p2br_monitor_epoch["highpass_feature_norm"],
                     100.0 * p2br_monitor_epoch["boundary_support_fg_ratio"],
