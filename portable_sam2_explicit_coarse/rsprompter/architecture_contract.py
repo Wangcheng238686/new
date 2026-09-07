@@ -61,6 +61,7 @@ def architecture_id(model_config: Mapping[str, Any]) -> str:
     final_mode = str(head.get("final_mask_coordinate_mode", "roi_local"))
     coarse = bool(head.get("shape_prior_cfg", {}).get("enabled", False))
     refiner = bool(head.get("p2_boundary_refiner_cfg", {}).get("enabled", False))
+    tail = bool(head.get("decoder_tail_refiner_cfg", {}).get("enabled", False))
     if not coarse:
         known = {
             ("aggregator", "roi_local", 32): "b0_aggregator_mlp",
@@ -124,10 +125,13 @@ def architecture_id(model_config: Mapping[str, Any]) -> str:
         ("pafpn", "points_box_dense", 16, False): "r1_c4_pafpn_coarse_points_box_dense_emb64",
         ("pafpn", "points_box_dense", 16, True): "c5v2_pafpn_coarse_p2_boundary_refiner_emb64",
     }
-    return known.get(
+    base = known.get(
         (neck_name, mode, stride, refiner),
         f"{neck_name}_coarse_{mode}_emb{1024 // stride}_p2br{int(refiner)}",
     )
+    if tail:
+        return f"{base}_udprk{int(head['decoder_tail_refiner_cfg'].get('num_points', 0))}"
+    return base
 
 
 def architecture_contract(model_config: Mapping[str, Any]) -> Dict[str, Any]:

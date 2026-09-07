@@ -28,12 +28,15 @@ class RSSAM2MaskDecoderWrapper(BaseModule):
         self,
         checkpoint_path: Optional[str] = None,
         use_high_res_features: bool = False,
+        capture_upscaled_embedding: bool = False,
         init_cfg: Optional[Dict] = None,
         checkpoint_load_cfg: Optional[Dict] = None,
     ):
         super().__init__(init_cfg=init_cfg)
         self.decoder = None
         self.use_high_res_features = use_high_res_features
+        self.capture_upscaled_embedding = bool(capture_upscaled_embedding)
+        self._captured_upscaled_embedding = None
         self.allow_decoder_fallback = os.environ.get("ALLOW_DECODER_FALLBACK", "0") == "1"
         # 问题 13：MaskDecoder 严格加载配置
         self.checkpoint_load_cfg = dict(checkpoint_load_cfg or {})
@@ -105,6 +108,15 @@ class RSSAM2MaskDecoderWrapper(BaseModule):
                 print(f"  Has conv_s1: {hasattr(mask_decoder, 'conv_s1')}")
 
             self.decoder = mask_decoder
+            if self.capture_upscaled_embedding:
+                # SAM2's public forward discards this tensor.  Keep the vendor
+                # API untouched; the optional wrapper route owns this capture.
+                # High-res SAM2 manually unpacks the Sequential, so a hook on
+                # the container never fires.  Its final activation is the
+                # exact upscaled_embedding in both high-res and plain paths.
+                self.decoder.output_upscaling[-1].register_forward_hook(
+                    self._capture_upscaled_embedding
+                )
         except Exception as e:
             if is_main_process():
                 print(f"Failed to load SAM2 decoder: {e}")
@@ -112,6 +124,9 @@ class RSSAM2MaskDecoderWrapper(BaseModule):
                 self.decoder = None
             else:
                 raise
+
+    def _capture_upscaled_embedding(self, _module, _inputs, output):
+        self._captured_upscaled_embedding = output
 
     def forward(
         self,
@@ -137,6 +152,8 @@ class RSSAM2MaskDecoderWrapper(BaseModule):
             h = w = image_embeddings.shape[2]
             low_res_masks = torch.zeros(batch_size, 1, h, w, device=image_embeddings.device)
             iou_predictions = torch.ones(batch_size, 1, device=image_embeddings.device)
+            if self.capture_upscaled_embedding:
+                return low_res_masks, iou_predictions, None, None
             return low_res_masks, iou_predictions, None
 
         batch_size = image_embeddings.shape[0]
@@ -186,6 +203,7 @@ class RSSAM2MaskDecoderWrapper(BaseModule):
                 self.decoder.conv_s1(feat_s1),  # [B, 64, H, W]
             ]
 
+        self._captured_upscaled_embedding = None
         try:
             low_res_masks, iou_predictions, mask_tokens_out, _ = self.decoder(
                     image_embeddings,
@@ -215,4 +233,11 @@ class RSSAM2MaskDecoderWrapper(BaseModule):
             mask_tokens_out = None
         attn_weights = None
 
+        if self.capture_upscaled_embedding:
+            upscaled = self._captured_upscaled_embedding
+            if upscaled is None:
+                raise RuntimeError("SAM2 output_upscaling hook did not capture an embedding")
+            if upscaled.shape[0] != low_res_masks.shape[0] or upscaled.shape[-2:] != low_res_masks.shape[-2:]:
+                raise RuntimeError("Captured SAM2 upscaled embedding does not match native mask logits")
+            return low_res_masks, iou_predictions, mask_tokens_out, upscaled
         return low_res_masks, iou_predictions, mask_tokens_out

@@ -159,6 +159,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             mask_tokens=mask_tokens,
             coarse_outputs=coarse_outputs,
             uav_aux_losses=uav_aux_losses,
+            tail_outputs=getattr(self.mask_head, "_last_tail_outputs", None),
         )
 
     def mask_loss(
@@ -199,7 +200,16 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                 "JITTER/area_ratio_sum": zero,
                 "JITTER/area_ratio_count": zero,
             }
-            return dict(loss_mask=dict(loss_mask=0 * x[0].sum()))
+            losses = dict(loss_mask=0 * x[0].sum())
+            if getattr(self.mask_head, "decoder_tail_enabled", False):
+                # Match the two UDPR DDP collectives taken on non-empty ranks.
+                # Without this, a sparse rank could deadlock its peers while
+                # they normalize selected-point BCE across the world.
+                tail_loss, tail_stats = self.mask_head.decoder_tail_refiner.empty_point_loss(zero)
+                losses["loss_decoder_tail"] = tail_loss
+                losses.update(tail_stats)
+                self.mask_head._last_uav_debug_stats = dict(tail_stats)
+            return dict(loss_mask=losses)
 
         prompt_rois = original_pos_rois
         prompt_pos_priors = None
@@ -298,6 +308,22 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         mask_results["loss_mask"].update(
             mask_loss_and_target.get("debug_stats", {})
         )
+        tail_outputs = mask_results.get("tail_outputs")
+        if tail_outputs is not None:
+            tail_loss, tail_stats = self.mask_head.decoder_tail_refiner.point_loss(
+                tail_outputs, mask_loss_and_target["mask_targets"]
+            )
+            mask_results["loss_mask"]["loss_decoder_tail"] = tail_loss
+            mask_results["loss_mask"].update(tail_stats)
+            # The forward snapshot is logged later in this same iteration.
+            # Append target-aware Tail telemetry here, after the standard
+            # assigned-GT full-image target is available.
+            current_debug = getattr(self.mask_head, "_last_uav_debug_stats", {}) or {}
+            current_debug.update({
+                key: value.detach() if torch.is_tensor(value) else value
+                for key, value in tail_stats.items()
+            })
+            self.mask_head._last_uav_debug_stats = current_debug
         if getattr(self.mask_head, "quality_head_enabled", False):
             mask_targets = mask_loss_and_target["mask_targets"]
             quality_preds = mask_results["quality_predictions"]
@@ -634,4 +660,3 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                 high_res_features=high_res_features,
             )
         return results_list
-

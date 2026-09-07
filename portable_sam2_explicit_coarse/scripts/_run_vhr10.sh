@@ -82,6 +82,12 @@ case "${VARIANT}" in
     ;;
 esac
 
+# Development arms may explicitly heat-start a different architecture (A0 ->
+# UDPR).  The historical ft200 case above owns its existing init contract.
+if [[ -n "${INIT_FROM:-}" && "${VARIANT}" != "ft200" ]]; then
+  INIT_ARGS=(--init-from "${INIT_FROM}" --allow-cross-arch-init)
+fi
+
 # --- architecture contract exports (single source of truth; see header) ---
 # Overridable (2026-09-06, NWPU fi-matrix prep): defaults preserve every
 # legacy VHR-10 run byte-for-byte; the vhr10_fi_matrix_* row wrappers preset
@@ -152,7 +158,7 @@ LOG_FILE="${LOG_DIR}/${RUN_TAG}_${SUBSET_TAG}_${TS}_pid$$.log"
 if [ "${DRY_RUN:-0}" = "1" ]; then
   RESUME_FROM="${RESUME_FROM:-}"
   echo "dry_run=1 — launch skipped; would run: ${CONFIG_PATH} epochs=${MAX_EPOCHS} lr=${DEFAULT_LR}"
-  echo "contract: mode=${EXPLICIT_PROMPT_MODE} p2=${P2_BOUNDARY_REFINER_ENABLED} coord=${FINAL_MASK_COORDINATE_MODE} loss=${FINAL_MASK_LOSS_MODE} detach=${SHAPE_DENSE_DETACH} alpha=${SHAPE_DENSE_ALPHA_INIT} md=${PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING} pe_lr_mult=${PROMPT_ENCODER_LR_MULT} p2_beta=${P2_BOUNDARY_REFINER_BETA:-0.20} p2_delta=${P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX:-2.0} p2_channels=${P2_BOUNDARY_REFINER_PROJECTED_CHANNELS}/${P2_BOUNDARY_REFINER_MID_CHANNELS} p2_aux=${P2_BOUNDARY_REFINER_LOSS_WEIGHT} p2_loss=${P2_BOUNDARY_REFINER_LOSS_MODE:-boundary} p2_margin=${P2_BOUNDARY_REFINER_CORRECTION_MARGIN:-1.0} p2_keep_w=${P2_BOUNDARY_REFINER_KEEP_LOSS_WEIGHT:-0.1} shape_aux=${SHAPE_PRIOR_LOSS_WEIGHT} checkpoint_dir=${CHECKPOINT_DIR} resume=${RESUME_FROM:-none} save_last_model=${SAVE_LAST_MODEL} run_tag=${RUN_TAG}"
+  echo "contract: mode=${EXPLICIT_PROMPT_MODE} p2=${P2_BOUNDARY_REFINER_ENABLED} udpr=${DECODER_TAIL_REFINER_ENABLED:-0}/K${DECODER_TAIL_NUM_POINTS:-0}/tail_only=${DECODER_TAIL_TRAIN_ONLY:-0}/lr_mult=${DECODER_TAIL_LR_MULT:-1.0} coord=${FINAL_MASK_COORDINATE_MODE} loss=${FINAL_MASK_LOSS_MODE} detach=${SHAPE_DENSE_DETACH} alpha=${SHAPE_DENSE_ALPHA_INIT} md=${PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING} pe_lr_mult=${PROMPT_ENCODER_LR_MULT} p2_beta=${P2_BOUNDARY_REFINER_BETA:-0.20} p2_delta=${P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX:-2.0} p2_channels=${P2_BOUNDARY_REFINER_PROJECTED_CHANNELS}/${P2_BOUNDARY_REFINER_MID_CHANNELS} p2_aux=${P2_BOUNDARY_REFINER_LOSS_WEIGHT} p2_loss=${P2_BOUNDARY_REFINER_LOSS_MODE:-boundary} p2_margin=${P2_BOUNDARY_REFINER_CORRECTION_MARGIN:-1.0} p2_keep_w=${P2_BOUNDARY_REFINER_KEEP_LOSS_WEIGHT:-0.1} shape_aux=${SHAPE_PRIOR_LOSS_WEIGHT} init=${INIT_FROM:-none} checkpoint_dir=${CHECKPOINT_DIR} resume=${RESUME_FROM:-none} save_last_model=${SAVE_LAST_MODEL} run_tag=${RUN_TAG}"
   exit 0
 fi
 
@@ -167,6 +173,14 @@ RESUME_FROM="${RESUME_FROM:-}"
 EXTRA_ARGS=()
 if [[ -n "${RESUME_FROM}" ]]; then
   EXTRA_ARGS+=(--resume-from "${RESUME_FROM}")
+fi
+TAIL_ARGS=()
+if [[ "${DECODER_TAIL_TRAIN_ONLY:-0}" = "1" ]]; then
+  if [[ "${DECODER_TAIL_REFINER_ENABLED:-0}" != "1" ]]; then
+    echo "DECODER_TAIL_TRAIN_ONLY=1 requires DECODER_TAIL_REFINER_ENABLED=1" >&2
+    exit 2
+  fi
+  TAIL_ARGS=(--train-decoder-tail-only)
 fi
 
 GIT_COMMIT="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
@@ -204,6 +218,7 @@ exec "${PYTHON}" -m torch.distributed.run \
   --warmup-iters 100 \
   --weight-decay 0.05 \
   --prompt-encoder-lr-mult "${PROMPT_ENCODER_LR_MULT}" \
+  --decoder-tail-lr-mult "${DECODER_TAIL_LR_MULT:-1.0}" \
   --checkpoint-dir "${CHECKPOINT_DIR}" \
   --train-subset-ratio 1.0 \
   --val-subset-ratio 1.0 \
@@ -220,5 +235,6 @@ exec "${PYTHON}" -m torch.distributed.run \
   --seed 44 \
   --prompt-debug-stats 1 \
   --prompt-debug-stats-interval 50 \
+  "${TAIL_ARGS[@]}" \
   "${INIT_ARGS[@]}" \
   "${EXTRA_ARGS[@]}"

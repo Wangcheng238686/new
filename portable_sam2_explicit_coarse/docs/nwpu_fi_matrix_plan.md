@@ -27,9 +27,14 @@ epoch 才追平，且仍输给 base_plus 的两段式；(2) **400ep 未收敛**�
 ## 1. 就位状态（已实现并 DRY_RUN 核验）
 
 - `scripts/_run_vhr10.sh` 现透传 PE 学习率倍率（不再硬编码为 0）；裸
-  fast400 默认仍冻结 PE。`vhr10_p2v2_dev.sh <a0|a1|a2>` 固定三臂的
-  100ep、四卡、fi、末轮保存和 D5-B/R1 契约；它会清除 resume/init/path
+  fast400 默认仍冻结 PE。`vhr10_p2v2_dev.sh <a0|a1|a2|a3>` 固定 A 系列的
+  100ep、四卡、fi、末轮保存和 D5-B 契约；它会清除 resume/init/path
   污染变量并锁住共同 P2/coarse 参数。DRY_RUN 已核验，未启动训练。
+- A3 是 A0/PBM 的单阶段端到端 UDPR-K64 对照：仅增加 decoder-tail，P2 保持 off；
+  不使用 A0 热启动，也不使用 tail-only 冻结。热启动 `udpr64` 只承担机制筛选，不进入
+  A 系列同口径比较。A 系列 wrapper 显式封闭 dense/context/coarse schedule/ROI-SAM/
+  point warmup/final-loss 与 Tail LR 环境面；污染环境回归已要求 A0/A3 config 恒等、
+  A3 dry-run 为 `init=none, tail_only=0, lr_mult=1.0`。
 - VHR-10 full-eval/manifest/bootstrap 已实际以历史 best checkpoint 在完整
   130 图上验收：10 类 category IDs=1..10、130 processed_image_ids、模型空间
   records 导出，且 `--resamples 0` mAP 与 inference 逐位一致。

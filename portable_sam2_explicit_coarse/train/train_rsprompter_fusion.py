@@ -366,6 +366,7 @@ def _build_optimizer(
     shape_prior_lr_mult: float = 1.0,
     p2_boundary_refiner_lr_mult: float = 1.0,
     quality_head_lr_mult: float = 1.0,
+    decoder_tail_lr_mult: float = 1.0,
     weight_decay: float = 0.05,
 ) -> optim.Optimizer:
     params_sat_backbone = []
@@ -382,6 +383,8 @@ def _build_optimizer(
     names_p2_boundary_refiner = []
     params_quality_head = []
     names_quality_head = []
+    params_decoder_tail = []
+    names_decoder_tail = []
     params_bbox_head = []
     names_bbox_head = []
     params_sat_other = []
@@ -391,7 +394,10 @@ def _build_optimizer(
         if not param.requires_grad:
             continue
         match_name = name.replace("_fsdp_wrapped_module.", "").replace("module.", "")
-        if match_name.startswith("backbone.") or match_name.startswith("shared_image_embedding."):
+        if "roi_head.mask_head.decoder_tail_refiner" in match_name:
+            params_decoder_tail.append(param)
+            names_decoder_tail.append(name)
+        elif match_name.startswith("backbone.") or match_name.startswith("shared_image_embedding."):
             params_sat_backbone.append(param)
             names_sat_backbone.append(name)
         elif (
@@ -506,6 +512,11 @@ def _build_optimizer(
             }
         )
         audit_groups.append(("quality_head", params_quality_head, names_quality_head, lr * quality_head_lr_mult, weight_decay))
+    if params_decoder_tail:
+        param_groups.append({"params": params_decoder_tail, "lr": lr * decoder_tail_lr_mult,
+                             "weight_decay": weight_decay, "name": "decoder_tail"})
+        audit_groups.append(("decoder_tail", params_decoder_tail, names_decoder_tail,
+                             lr * decoder_tail_lr_mult, weight_decay))
     if params_bbox_head:
         param_groups.append(
             {
@@ -1434,6 +1445,7 @@ def _load_init_checkpoint(
         "shape_mismatch": shape_mismatch,
         "unexpected": unexpected,
         "missing": len(load_result.missing_keys),
+        "missing_keys": tuple(load_result.missing_keys),
         "migrated": len(migrations),
         "migration_pairs": migrations,
     }
@@ -1684,6 +1696,9 @@ def main():
     parser.add_argument("--shape-prior-lr-mult", type=float, default=1.0)
     parser.add_argument("--p2-boundary-refiner-lr-mult", type=float, default=1.0)
     parser.add_argument("--quality-head-lr-mult", type=float, default=1.0)
+    parser.add_argument("--decoder-tail-lr-mult", type=float, default=1.0)
+    parser.add_argument("--train-decoder-tail-only", action="store_true",
+                        help="Freeze the A0 base and optimize only UDPR decoder_tail_refiner.")
     parser.add_argument("--grad-accum-steps", type=int, default=2)
     parser.add_argument("--max-scenes", type=int, default=1000, help="Maximum number of scenes for scene-specific alignment")
     parser.add_argument("--warmup-epochs", type=int, default=0, help="Number of warmup epochs for learning rate scheduling")
@@ -1908,6 +1923,7 @@ def main():
         int(flag)
         for flag in (
             args.train_quality_head_only,
+            args.train_decoder_tail_only,
         )
     )
     if exclusive_scopes > 1:
@@ -1931,6 +1947,18 @@ def main():
                 "Training scope: quality head only (%s); loaded C2 baseline is frozen in eval mode",
                 quality_type,
             )
+    if args.train_decoder_tail_only:
+        model.requires_grad_(False)
+        mask_head = model.roi_head.mask_head
+        tail = getattr(mask_head, "decoder_tail_refiner", None)
+        if tail is None or not getattr(mask_head, "decoder_tail_enabled", False):
+            raise RuntimeError("--train-decoder-tail-only requires decoder_tail_refiner_cfg.enabled=True")
+        tail.requires_grad_(True)
+        trainable = [name for name, param in model.named_parameters() if param.requires_grad]
+        if not trainable or any("roi_head.mask_head.decoder_tail_refiner" not in name for name in trainable):
+            raise RuntimeError(f"UDPR freeze contract violated: trainable={trainable}")
+        if is_main:
+            logger.info("Training scope: UDPR only; A0 base frozen (%d trainable tensors)", len(trainable))
 
     model_for_preproc = model.module if hasattr(model, "module") else model
     data_preprocessor = model_for_preproc.data_preprocessor
@@ -2137,6 +2165,7 @@ def main():
         shape_prior_lr_mult=args.shape_prior_lr_mult,
         p2_boundary_refiner_lr_mult=args.p2_boundary_refiner_lr_mult,
         quality_head_lr_mult=args.quality_head_lr_mult,
+        decoder_tail_lr_mult=args.decoder_tail_lr_mult,
         weight_decay=args.weight_decay,
     )
     if is_main:
@@ -2466,6 +2495,21 @@ def main():
                 logger.info(
                     "Checkpoint key migration (INIT_FROM): %s",
                     init_stats["migration_pairs"],
+                )
+        if args.train_decoder_tail_only:
+            missing_keys = tuple(init_stats.get("missing_keys", ()))
+            invalid_transfer = {
+                name: int(init_stats.get(name, 0))
+                for name in ("shape_mismatch", "unexpected", "migrated")
+                if int(init_stats.get(name, 0)) != 0
+            }
+            if not missing_keys or any(
+                not key.startswith("roi_head.mask_head.decoder_tail_refiner.")
+                for key in missing_keys
+            ) or invalid_transfer:
+                raise RuntimeError(
+                    "UDPR A0 heat-start must load an exact base and miss only newly "
+                    f"introduced tail keys, missing={missing_keys} invalid={invalid_transfer}"
                 )
 
     if args.resume_from:
@@ -2841,6 +2885,11 @@ def main():
                 sampler.set_epoch(epoch)
 
         model.train()
+        if args.train_decoder_tail_only:
+            # Keep frozen A0 stochastic/buffer behaviour fixed while the small
+            # residual classifier itself remains in train mode.
+            model.eval()
+            _get_model_core(model).roi_head.mask_head.decoder_tail_refiner.train()
         if args.train_quality_head_only:
             _set_quality_head_only_train_mode(model)
         elif args.freeze_bn:
@@ -3055,7 +3104,7 @@ def main():
                     and args.prompt_debug_stats_interval > 0
                     and global_step % args.prompt_debug_stats_interval == 0
                 ):
-                    enabled_prefixes.update({"SP", "COARSE", "JITTER", "GATE", "DENSE", "P2BR", "CONTEXT", "BOX"})
+                    enabled_prefixes.update({"SP", "COARSE", "JITTER", "GATE", "DENSE", "P2BR", "TAIL", "CONTEXT", "BOX"})
                 _log_uav_debug_stats(model, epoch, global_step, enabled_prefixes)
             scaler.scale(loss_for_backward).backward()
 

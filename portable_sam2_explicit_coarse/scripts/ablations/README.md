@@ -108,22 +108,40 @@ RUN_IN_BACKGROUND=1 bash scripts/ablations/vhr10_large600.sh
 
 ### NWPU P2-v2 dev（已实现，未授权启动）
 
-三臂使用同一 100ep / 520 train + 130 validation / 4 GPU / fi / raw-selection
+四臂使用同一 100ep / 520 train + 130 validation / 4 GPU / fi / raw-selection
 协议，前台串行运行并保存真正的 E100 末轮权重。A0 是严格的 D5-B PBM 底座
 （alpha=0.5、dense 不 detach、解冻 mask_downscaling、PE LR multiplier=0.1）；
-A1 只加原 P2，A2 只将 P2 auxiliary loss 改为 correction-keep R1。
+A1 只加原 P2，A2 只将 P2 auxiliary loss 改为 correction-keep R1，A3 则仅加
+零初始化 UDPR-K64，并保持 P2 off、完整网络单阶段训练。
+
+该入口显式锁定 D5-B 的 dense/context/coarse-loss/ROI-SAM/point-warmup/final-loss
+配置，以及 UDPR 的 LR multiplier=1.0；不要依赖调用终端中的同名环境变量。DRY_RUN
+会打印 `init`、`tail_only` 和 `lr_mult`，A3 必须分别为 `none`、`0`、`1.0`。
 
 ```bash
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_dev.sh a0
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_dev.sh a1
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_dev.sh a2
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_dev.sh a3
 ```
 
-三臂须严格串行（每臂占满四卡，任一失败即停止），可用统一入口：
+完整 A0→A1→A2→A3 系列须严格串行（每臂占满四卡，任一失败即停止），可用统一入口：
 
 ```bash
 bash scripts/ablations/vhr10_p2v2_dev_series.sh
+# 已有 A0/A1/A2 工件时，仅追加同协议 A3：
+bash scripts/ablations/vhr10_p2v2_dev_series.sh a3
 ```
+
+在四卡被其他训练占用时，可使用持久本地队列排 A2→A3（A2 是默认 R1，**不是** A2e）：
+
+```bash
+nohup bash scripts/ablations/queue_vhr10_a2_a3.sh >/dev/null 2>&1 &
+tail -f /data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10_a2_a3_queue.log
+```
+
+队列以 `flock` 拒绝重复启动；每 60 秒检查 GPU 0–3，全部空闲后先 DRY_RUN 两臂、再以
+前台串行方式执行。可用 `QUEUE_POLL_SECONDS=120` 调整轮询频率。
 
 正式训练必须在 VHR-10 推理/manifest/bootstrap/p2_off smoke 均通过、并得到用户
 启动授权后执行；100ep 是机制筛选，不是对 600ep 最终协议的否定性结论。

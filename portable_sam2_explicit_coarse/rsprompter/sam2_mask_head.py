@@ -24,6 +24,7 @@ from mmdet.utils import ConfigType
 
 from .ckpt_utils import load_module_state_dict_strict
 from .sam2_decoder import RSSAM2MaskDecoderWrapper
+from .decoder_tail_refiner import DecoderTailPointRefiner
 from .sam2_vision import (
     SAM2_REPO,
     _DiscardedIoUPredictionHead,
@@ -101,6 +102,7 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         shape_prior_cfg: Optional[Dict] = None,    # dict(enabled=True, context_source="visual", ...) 或 None
         shape_prior_loss_weight: float = 0.5,       # 辅助 dice_bce loss 权重
         p2_boundary_refiner_cfg: Optional[Dict] = None,
+        decoder_tail_refiner_cfg: Optional[Dict] = None,
         quality_head_cfg: Optional[Dict] = None,
         segm_score_mode: str = "detector",
         loss_mask: ConfigType = dict(type="CrossEntropyLoss", use_mask=True, loss_weight=1.0),
@@ -117,6 +119,11 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         self.attention_similarity = attention_similarity
         self.target_embedding = target_embedding
         self.output_attentions = output_attentions
+        self._decoder_tail_cfg = dict(decoder_tail_refiner_cfg or {})
+        self._decoder_tail_cfg.setdefault("enabled", False)
+        self.decoder_tail_enabled = bool(self._decoder_tail_cfg.pop("enabled"))
+        self.decoder_tail_refiner = None
+        self._last_tail_outputs = None
 
         # Prompt 编码开关
         self.prompt_sparse_mode = str(prompt_sparse_mode)
@@ -358,6 +365,8 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         self._diagnostic_prompt_spatial_perturbation = "none"
         self._diagnostic_directional_candidate_action = -1
 
+        sam2_mask_decoder = dict(sam2_mask_decoder)
+        sam2_mask_decoder["capture_upscaled_embedding"] = self.decoder_tail_enabled
         self.mask_decoder = RSSAM2MaskDecoderWrapper(**sam2_mask_decoder)
         if self.prune_unused_prompt_components and not self.quality_head_enabled:
             decoder = self.mask_decoder.decoder
@@ -773,6 +782,16 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         # random initialization order remain unchanged when it is disabled.
         self.loss_mask = MODELS.build(loss_mask)
         self.class_agnostic = class_agnostic
+        if self.decoder_tail_enabled:
+            if self.final_mask_coordinate_mode != "full_image" or self.roi_sam_enabled:
+                raise ValueError("UDPR requires full_image native-mask semantics, not ROI-SAM")
+            if not self.class_agnostic:
+                raise ValueError("UDPR v1 requires class_agnostic=True")
+            if self.quality_head_enabled:
+                raise ValueError("UDPR v1 forbids a quality head (no reranking contract)")
+            self.decoder_tail_refiner = DecoderTailPointRefiner(**self._decoder_tail_cfg)
+        elif self._decoder_tail_cfg:
+            raise ValueError("decoder_tail_refiner_cfg may only contain enabled=False when disabled")
 
         self.assert_no_mask_embedding_contract("model construction")
 
@@ -953,7 +972,7 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         else:
             high_res_features_expanded = None
         
-        low_res_masks, iou_predictions, mask_tokens_out = self.mask_decoder(
+        decoder_outputs = self.mask_decoder(
             image_embeddings,
             image_positional_embeddings,
             sparse_embeddings,
@@ -962,6 +981,25 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
             False,
             high_res_features=high_res_features_expanded,
         )
+        if self.decoder_tail_enabled:
+            low_res_masks, iou_predictions, mask_tokens_out, upscaled_embedding = decoder_outputs
+            low_res_masks, self._last_tail_outputs = self.decoder_tail_refiner(
+                low_res_masks, upscaled_embedding, mask_tokens_out
+            )
+            debug_stats.update({
+                "TAIL/selected_count": low_res_masks.new_tensor(float(self._last_tail_outputs["indices"].numel())),
+                "TAIL/selected_abs_logit": (
+                    self._last_tail_outputs["selected_abs"].detach().mean()
+                    if self._last_tail_outputs["selected_abs"].numel() else low_res_masks.new_zeros(())
+                ),
+                "TAIL/delta_abs": (
+                    self._last_tail_outputs["delta"].detach().abs().mean()
+                    if self._last_tail_outputs["delta"].numel() else low_res_masks.new_zeros(())
+                ),
+            })
+        else:
+            low_res_masks, iou_predictions, mask_tokens_out = decoder_outputs
+            self._last_tail_outputs = None
         h, w = low_res_masks.shape[-2:]
         low_res_masks = low_res_masks.reshape(roi_bs, -1, h, w)
         iou_predictions = iou_predictions.reshape(roi_bs, -1)

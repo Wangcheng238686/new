@@ -14,6 +14,7 @@
 | `Epoch N P2 R1 supervision` / `gradient probe` | 仅 `P2_BOUNDARY_REFINER_LOSS_MODE=correction_keep`；全部 step 和 DDP rank 汇总后再除分母，gradient probe 每 epoch 每 rank 首个有限 batch 一次 | 审计 R1 实际选择的错误/低置信/保持像素、两项辅助损失及其共享 P2BR 参数梯度关系；不能直接替代验证指标。 |
 | `Epoch N prompt pathway` | 每个训练 epoch；每 rank 首个有限训练 batch 的 `loss_mask` autograd probe 经 DDP group-L2 RMS/计数汇总，参数更新量为整个 epoch 的 rank-wise group-L2 RMS | 判断最终 mask loss 是否真的训练 dense/P2BR，及 optimizer 是否改变这些参数。 |
 | `DDP parameter-sync audit after first nonzero-LR update` | 仅 DDP 训练；首次计划学习率非零的 optimizer update 后，逐 trainable tensor 比较各 rank 参数与跨-rank 均值的最大绝对偏差 | 训练接线自检。正常应为 `0` 或仅有极小浮点误差；明显非零时，该次多卡实验不可用于比较。 |
+| `TAIL/*` | UDPR 启用时的 latest-forward/selected-point loss 字段；前者由 `PROMPT_DEBUG_STATS_INTERVAL` 输出，后者也进入 epoch detailed losses | 仅说明 tail 的选点和残差/监督实际发生；不能替代 paired validation 效用。 |
 
 `loss_mask` 指最终 SAM2 MaskDecoder 的 mask loss；它不包含 `loss_shape_prior` 或
 `loss_p2_boundary_refiner`。因此 pathway 的 gradient 字段可区分最终任务训练与辅助 loss 训练。
@@ -56,7 +57,28 @@
 | `P2 R1 gradient probe: corrective_l2_rms` / `keep_l2_rms` | 每 epoch 每 rank 首个有限 batch；按生产的 auxiliary weight 与 DDP 全局有效-ROI归一化后，分别对全部 P2BR 参数做 autograd；各 rank 的 group-L2² 先汇总、后取 RMS | 两项真实进入参数更新的梯度量级。keep 明显大于 corrective 才构成“可能主导更新”的必要但非充分证据。probe 不增加 loss、不执行 optimizer step。 |
 | `P2 R1 gradient probe: cosine` | 上述两项梯度的参数内积与平方范数先跨所有 probe/DDP rank 汇总，再计算 `dot/sqrt(norm²_corrective×norm²_keep)` | `<0` 表示两项在共享参数空间存在相互抵消方向，接近 `+1` 表示同向；须同时看两项 L2，任一近零时 cosine 不应过度解读。 |
 
-## 4. 共同字段与 D1/D2 判读
+## 4. UDPR decoder-tail 字段
+
+| 字段 | 范围 / 公式 | 正确解读 |
+|---|---|---|
+| `TAIL/selected_count` | 当前 forward 所有正 RoI × 固定 K 的选点数 | K64 时应为 `64×RoI数`；零说明 RoI/接线而非“模块无效”。 |
+| `TAIL/selected_abs_logit` | selector 后 `mean(|z|)`，z 为冻结 A0 native logits | 越低表示 selector 确实落在 A0 不确定点；不是错误率。 |
+| `TAIL/selected_pos` | loss batch 中 selected target 的正点总数 | 必须同 `selected_count` 一起读；极端稀疏时依赖正/负独立归一化。 |
+| `TAIL/selected_bce` | selected point 的正/负 BCE：每类的**脱离梯度的 numerator 与计数均跨 DDP 求和**，各自归一后再等权平均 | 是可跨 GPU 解读的单 batch 监督遥测；不等于反传的局部 DDP-scaled loss，也不是整 mask loss 或 Oracle gain。 |
+| `TAIL/delta_abs` / `TAIL/delta_max` | selected native logits 的残差绝对均值/最大值 | 零初始化第一步为 0；非零仅证明 tail 写回，不证明指标提升。 |
+| `TAIL/selected_error_fraction` | 在 selected K 点中，**写回前** A0 native hard label (`logit>=0`) 与训练 assignment 的 full-image GT 不一致的比例 | selector 是否真的把预算投向错误点；不是全图错误率。GT 仅用于训练期统计，绝不参与 selector。 |
+| `TAIL/selected_error_coverage` | `selected_error_count / all_native_grid_error_count`；分子是 selected 点中的 A0 错误，分母是同一正 RoI 完整 native 256 网格的 A0 错误 | 当前固定 K 覆盖了多少可纠正错误池；因全图背景也在分母中，须与 `selected_error_fraction` 联合读。 |
+| `TAIL/changed_fraction` | selected 点中 `abs(delta)>1e-6` 的比例 | 细化器实际修改点的范围；零初始化时应为 0。 |
+| `TAIL/error_direction_agreement` | 分母=selected A0 error 点；分子=其中 `abs(delta)>1e-6` 且 delta 符号朝 GT 修正方向的点 | 训练期方向性机制证据；未改动的错误点按 0 计入，故它同时反映“改动覆盖”和方向正确性。 |
+| `TAIL/correct_flip_fraction` | selected 点中 A0 错误、写回后 native hard label 变为正确的比例 | 真正跨 0 阈值的局部修正量；不是 soft improvement。 |
+| `TAIL/destroy_fraction` | selected 点中 A0 原本正确、写回后 native hard label 变错的比例 | 副作用；应远小于 `correct_flip_fraction`。 |
+
+`TAIL/selected_bce` 的单 batch 值按上表跨 DDP 聚合；其 epoch `detailed losses` 仍是
+rank-0 的时间均值，而非严格的全局 epoch 加权均值。其余 Tail telemetry 是 rank-0 当前
+batch 的 latest-forward 快照，epoch `detailed losses` 同样只是 rank-0 batch 均值。所有这些
+字段仅用于接线/机制诊断，不能代替完整 validation paired bootstrap。
+
+## 5. 共同字段与 D1/D2 判读
 
 `params` 为该分支可训练 parameter tensor 个数；`probes` 为每 rank 成功执行的 final-mask
 gradient probe 次数。固定训练中通常为 1。probe 取 epoch 首个有限训练 batch，用于控制额外

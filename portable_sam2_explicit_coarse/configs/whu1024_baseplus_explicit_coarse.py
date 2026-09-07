@@ -152,6 +152,19 @@ if _pe_train_mask_downscaling_raw not in {"0", "1"}:
         f"{_pe_train_mask_downscaling_raw!r}"
     )
 
+_decoder_tail_enabled_raw = os.environ.get("DECODER_TAIL_REFINER_ENABLED", "0")
+if _decoder_tail_enabled_raw not in {"0", "1"}:
+    raise ValueError("DECODER_TAIL_REFINER_ENABLED must be 0 or 1")
+_decoder_tail_enabled = _decoder_tail_enabled_raw == "1"
+_decoder_tail_cfg = dict(enabled=_decoder_tail_enabled)
+if _decoder_tail_enabled:
+    _decoder_tail_cfg.update(
+        num_points=int(os.environ.get("DECODER_TAIL_NUM_POINTS", "64")),
+        hidden_dim=int(os.environ.get("DECODER_TAIL_HIDDEN_DIM", "128")),
+        point_loss_weight=float(os.environ.get("DECODER_TAIL_POINT_LOSS_WEIGHT", "1.0")),
+        delta_logit_max=float(os.environ.get("DECODER_TAIL_DELTA_LOGIT_MAX", "2.0")),
+    )
+
 model = dict(
     roi_head=dict(
         mask_head=dict(
@@ -312,6 +325,10 @@ model = dict(
                     else {}
                 ),
             ),
+            # Do not materialize an inactive key: historical A0/P2 config
+            # fingerprints must remain reconstructible byte-for-byte.
+            **({"decoder_tail_refiner_cfg": _decoder_tail_cfg}
+               if _decoder_tail_enabled else {}),
             prune_unused_prompt_components=False,
         )
     )

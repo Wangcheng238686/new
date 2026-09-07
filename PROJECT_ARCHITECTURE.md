@@ -53,7 +53,8 @@ flowchart LR
     N --> M
     I --> O["SAM2 MaskDecoder"]
     M --> O
-    O --> P["实例 mask + bbox/segm COCO 指标"]
+    O --> UDPR["可选 UDPR<br/>native-logit uncertainty tail"]
+    UDPR --> P["实例 mask + bbox/segm COCO 指标"]
     Q["自描述 checkpoint<br/>model_config + 超参 + 数据协议"] --> R["infer_from_checkpoint.py"]
     R --> C
     P --> S["predictions.json<br/>metrics.json<br/>run_manifest.json"]
@@ -181,6 +182,8 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 | `DEBUG_FIELDS.md` | 训练机制日志字段字典；定义 latest-forward、DDP epoch 统计和 pathway gradient/update probe 的分母与判读。 |
 | `portable_sam2_explicit_coarse/docs/whu_fi_dev_results_20260906.md` | WHU fi 开发结果台账：14 次训练曲线与证据路径；§0 补充 627 图评估的 P→PB→PBM 平均递增暂定结论、稳定性边界与 E14/末轮区别。 |
 | `portable_sam2_explicit_coarse/docs/d5_review_handoff.md` | 2026-09-06 阶段诊断复审与跨-agent交接：核实证据边界、提出 P2-off 的 D5-A/B dense 适配及 PE 独立更新验收；属于待实施建议，不表示脚本已落地或训练已启动。 |
+| `portable_sam2_explicit_coarse/docs/a0_two_site_oracle_design.md` | 以 NWPU A0 最佳权重为共同冻结底座的双位置 Oracle 设计：canvas 输入端的 GT-content×gate 格，与不加新 prompt token 的 SAM2 decoder-tail PointRend-style uncertainty-point 格；明确 GT 仅作 Oracle/训练 target，均尚未实现候选模型。 |
+| `portable_sam2_explicit_coarse/docs/udpr_decoder_tail_design.md` | UDPR 独立 decoder-tail 实施契约：冻结 A0、无 GT selector 的 uncertainty Top-K、热启动白名单、日志和 paired-bootstrap 验收；不将 Oracle 上限写成模型收益。 |
 | `C5_V2_METHOD.md` | C5-v2 论文方法设计文档；整理完整架构、张量数据流、ECPG/P2-BRR、损失与制图说明。 |
 | `portable_sam2_explicit_coarse/docs/prompt_consumption_and_p2_refinement_implementation_guide.md` | Prompt 消费鲁棒化与 P2 边界提示的实施前指导；本轮在固定 WHU 10% train / 10% validation 上快速验证，P2 点细化须通过 real-P2 对 sham-P2 的信息门。 |
 | `portable_sam2_explicit_coarse/docs/p2_point_refiner_design.md` | P2 点细化的历史候选设计；已降级，不能作为当前实施依据。 |
@@ -235,6 +238,7 @@ rsprompter_anchor_satS_v11_sam2_large_full.py
 | `coarse_mask_loss.py` | coarse mask 的 BCE、Dice、boundary、distance 组合损失及权重调度。 |
 | `dense_prompt_utils.py` | raw/confidence coarse 变换、ROI-local mask 粘贴，以及 R1-C4-G 的 detached exact-EDT Gaussian 挖掘与图像空间映射。 |
 | `p2_boundary_refiner.py` | C5-v2 的 P2 高频边界残差模块；实现 raw-only forward support、受限残差和 boundary auxiliary loss。 |
+| `decoder_tail_refiner.py` | UDPR：在 SAM2 native logits 后按最小 `|logit|` 的确定性 Top-K 选点，以 decoder upscaled feature、mask token、logit/坐标预测局部残差；不读取 P2/coarse，GT 只用于训练 selected-point target。 |
 | `architecture_contract.py` | 从完整解析后的 `cfg.model` 派生架构 ID、schema-v2 SHA256 指纹，并校验 INIT/RESUME。 |
 | `ckpt_utils.py` | SAM2 子模块 checkpoint 的严格加载、key 过滤和主进程日志。 |
 
@@ -464,7 +468,9 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `paper_promptminer_rd_p2_whu_full_fast.sh` | WHU fast-150 论文运行入口（test segm/mAP 0.7342）。 |
 | `test_only_from_ckpt.sh` | 给定 checkpoint 仅做 test 评估。 |
 | `vhr10_fast400.sh` 等 5 个 | VHR-10 薄入口，见 `scripts/_run_vhr10.sh`。 |
-| `vhr10_p2v2_dev.sh` / `vhr10_p2v2_dev_series.sh` / `vhr10_p2v2_eval.sh` | NWPU P2-v2 的 A0/A1/A2 100ep 受控训练、严格串行总入口与 strict post-run 评估入口：全量 520/130、4 卡、fi、raw 选型、E100 显式保存；series 任一臂失败即停止。评估从 checkpoint 重放 VHR-10 10 类契约并导出 bootstrap records。A0 固定 D5-B，A2 仅切 correction-keep P2 auxiliary loss。 |
+| `vhr10_p2v2_dev.sh` / `vhr10_p2v2_dev_series.sh` / `vhr10_p2v2_eval.sh` | NWPU A 系列的 A0/A1/A2/A3 100ep 受控训练、串行总入口与 strict post-run 评估入口：全量 520/130、4 卡、fi、raw 选型、E100 显式保存；series 任一臂失败即停止，传 arm 参数可只追加新臂。评估从 checkpoint 重放 VHR-10 10 类契约并导出 bootstrap records。A0 固定 D5-B；A1/A2 是 P2 轴；A3 仅加入零初始化 UDPR-K64、单阶段端到端训练。 |
+| `vhr10_udpr_k64.sh` | NWPU 独立 UDPR-K64 热启动入口：从固定 A0 best 权重跨架构初始化，强制只训练 decoder tail；不属于 P2-v2 A0/A1/A2 主线。 |
+| `queue_vhr10_a2_a3.sh` | 本地持久队列：仅在 GPU 0–3 均无 compute PID 后，经 A2/A3 DRY_RUN 再严格前台串行启动 `a2 a3`；`flock` 防止同一 checkpoint 目录的重复队列。A2 明确为默认 R1，非 A2e。 |
 | `eval_test_raw.sh` / `eval_test_winner.sh` / `eval_vhr10_final.sh` | checkpoint 的 raw/EMA 评估 wrapper。 |
 
 `scripts/smoke/`：
@@ -476,6 +482,9 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `smoke_ddp_control_plane.py` | DDP 控制面广播单测。 |
 | `test_dense_prompt_utils.py` | 检查 raw detach、Gaussian 中心/面积映射、各向同性、空 coarse 和不可导契约。 |
 | `check_forward_equivalence.py` | 黄金前向等价校验：从 checkpoint `model` 权重（非 EMA）重建模型，逐位比对 state_dict 与固定输入前向输出（2026-09 重构回归门）。 |
+| `test_decoder_tail_refiner.py` | UDPR 张量回归：零初始化恒等、stable tie-break 与 selected-point BCE 对末层参数的非零梯度。 |
+| `test_decoder_tail_ddp_empty_rank.py` | CPU/Gloo 双 rank 回归：一张 rank 无正 RoI 时仍与有 RoI rank 对齐 UDPR 的两次 BCE collective，且二者得到相同 global-BCE telemetry。 |
+| `check_udpr_a0_equivalence.py` | 用真实验证 batch 依次重建 A0 与零初始化 UDPR，严格核验 A0 load、UDPR heat-init missing-key 白名单及最终 bbox/label/score/mask prediction SHA256 恒等。 |
 
 ### 4.7 工具与通用函数
 
@@ -483,7 +492,8 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 |---|---|
 | `tools/mask_to_coco_whu512.py` | 将 WHU 二值 mask 转为 COCO polygon 标注；属于数据准备工具，不是训练必需步骤。 |
 | `tools/eval_boundary_ap.py` / `tools/eval_vhr10_original_scale.py` / `tools/visualize_instances.py` / `tools/smoke_test_components.py` | 评估与可视化工具。 |
-| `inference/probes/` | 审计探针（通路审计、oracle、E0、点可学性、P2 可视化），手动调用；P2 通路审计结论见 `docs/p2_decoder_side_findings.md`。 |
+| `inference/probes/canvas_accuracy_probe.py` | 冻结 checkpoint 的 dense-canvas 信息质量与消费敏感性探针：按推理期 IoU 匹配实例 GT，在全图 PE canvas 上测 learned→GT logit 混合，并交叉 `current/forced alpha`；先以 unhooked 标准推理逐图 hash 断言 `blend=0,current` 逐位一致，再要求所有画布干预保持检测输出不变。`blend=1,alpha=1` 是 GT 画布与全开 gate 的定位格，不是可部署模型或训练消融。 |
+| `inference/probes/`（其余） | 审计探针（通路审计、P2 oracle、E0、点可学性、P2 可视化），手动调用；P2 通路审计结论见 `docs/p2_decoder_side_findings.md`。 |
 | `utils/__init__.py` | 通用工具包标记。 |
 | `utils/coco_eval_utils.py` | 构造 COCO GT/DT 并执行 bbox/segm COCOeval；支持 bbox score 和 mask score 两种评估分数。 |
 | `.gitignore` | 忽略本地缓存、运行产物等。 |
@@ -692,6 +702,8 @@ bash scripts/reproduce_legacy_segm.sh
 | `P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX` | `tanh` 前残差幅度，默认 `2.0`；固定 beta `0.20` 后实际上界 `0.4`。 |
 | `P2_BOUNDARY_REFINER_LOSS_WEIGHT` | 边界 BCE 权重，默认 `0.05`。 |
 | `P2_BOUNDARY_REFINER_LR_MULT` | refiner 独立参数组学习率倍率，默认 `1.0`，weight decay 继承 `0.05`。 |
+| `DECODER_TAIL_REFINER_ENABLED` | 默认 `0`；仅 UDPR 独立路线设为 `1`，此时解析其 `NUM_POINTS/HIDDEN_DIM/POINT_LOSS_WEIGHT/DELTA_LOGIT_MAX` 至 `cfg.model` 与新架构指纹。关闭时不写入模型配置，以保持历史 A0/P2 架构键不变。 |
+| `DECODER_TAIL_LR_MULT` | UDPR 参数组 LR 倍率，默认 `1.0`；仅 `--train-decoder-tail-only` 路线使用。 |
 | `SAM_IMAGE_EMBED_STRIDE` | SAM2 MaskDecoder image embedding步长；B0/B1、M0/M1、C1–C4默认`32`，R0、R1-C3、R1-C4、C5-v2固定`16`。 |
 | `SHAPE_POINT_ADAPTIVE_VALIDITY` | `1` 默认自适应点槽有效性；`0` 固定输出有效 2P2N 极值点。 |
 | `SHAPE_DENSE_TRANSFORM` | dense表示；默认`raw_logits`，R1-C4-G固定`gaussian_edt`。 |
@@ -769,6 +781,14 @@ bash scripts/reproduce_legacy_segm.sh
 处理本项目的新增或改动时，它负责默认执行上述同步流程。
 
 ## 8. 文档同步记录
+
+- 2026-09-07：新增并审计 `canvas_accuracy_probe.py`。该冻结权重 probe 以实际 `ShapePriorInjector.forward_roi` 包装记录 matched-ROI coarse Dice（不再错误依赖未被调用的 module forward hook）；将画布 blend 与 dense gate 分解为 `current/forced alpha` 二维格，默认包含 `blend=1,alpha=1` 的 GT 内容×全开门定位格。执行前后以逐图 detector/full-output SHA256 验证：`blend=0,current` 必须逐位复现无 hook 标准推理，所有画布格不得改变检测输出。仅用于诊断，不新增训练日志字段、不改变训练或模型前向。
+- 2026-09-07：新增独立 UDPR decoder-tail 路线与 NWPU `vhr10_udpr_k64.sh` 热启动入口。启用时 wrapper 受控捕获 SAM2 `output_upscaling`，但不改 vendored SAM2 默认 API；UDPR 在 native 256 网格用稳定最小 `|logit|` Top-K 选择点并仅 scatter 残差。A0 默认路径不启用 capture/模块，保持原三元 decoder 返回契约。Tail-only 训练冻结完整 A0，INIT_FROM 强制只允许新增 tail keys 缺失且拒绝 shape/unexpected/migration。真实 validation 首 batch 的 zero-init A0/UDPR 完整 prediction SHA256 恒等；4-GPU 单 batch 热启动验证只有 38,217 个 tail 参数更新且 DDP deviation=0。实际长训、指标及 bootstrap 尚未执行。
+- 2026-09-07：为 UDPR 增加训练期 target-aware telemetry：selected error fraction/coverage、非零残差范围、错误方向一致率、correct/destroy flip fraction。均在标准正 RoI assignment 的 full-image GT target 构造之后 detached 计算，不参与 Top-K selector、loss 或推理；base hard label 直接取写回前 logits，避免 AMP 下以 `refined-delta` 回推零阈值符号。`selected_bce` 的 detached numerator/count 跨 DDP 求和；空正-RoI rank 也执行相同零值 collectives，避免稀疏 batch 死锁。`DEBUG_FIELDS.md` 明确分母与统计范围。正在运行的 UDPR 进程不会读取本次磁盘改动。
+- 2026-09-07：A 系列新增 `a3`：PBM/A0 上仅开启零初始化 UDPR-K64、P2 保持 off、其余 fi/D5-B/100ep/seed44 参数与 A0 同口径，且不设置 INIT_FROM、不传 tail-only，因此是完整网络的单阶段训练而非 A0 热启动。runner 将 module enabled 与 `DECODER_TAIL_TRAIN_ONLY` 解耦；`udpr64` 机制筛选臂显式保留后者。series 默认 A0→A1→A2→A3，传 `a3` 可安全追加而不重跑已有臂；已用解析后的 config 核验 A0↔A3 仅 `decoder_tail_refiner_cfg` 差异。完整 model-build 审计还需待一张 GPU 空闲（SAM2 构建会分配 CUDA position embedding）。
+- 2026-09-07：按 A3 接线审计修复环境漂移：A 系列显式锁定 Tail LR multiplier=1.0、D5-B context/dense/gaussian/coarse-loss/final-loss 参数、ROI-SAM off、point warmup off 和 score mode；A3 不再会继承 interactive shell 的 ROI-SAM、two-stage loss、warmup 或 Tail LR。`verify_p2v2_arms.py` 先在 CPU-only static-config 路径清除全部 config env 再逐臂重放，并注入污染值回归 A0/A3；A3 dry-run 同时断言 `init=none`、`tail_only=0`、`lr_mult=1.0`。该 preflight 已通过，完整 CUDA model-build 审计仍待 GPU 空闲。
+- 2026-09-08：新增 `queue_vhr10_a2_a3.sh` 并由用户授权后台排队。它只观察本机 GPU 0–3 的 compute PID，四卡同时空闲后先运行 A2/A3 DRY_RUN、再以 A2→A3 前台串行占满四卡；`flock` 防重复，队列日志在仓库外 checkpoint 根目录。A2 是 default-R1，明确不包含 A2e。
+- 2026-09-07：新增 `docs/a0_two_site_oracle_design.md`（设计文档，无代码路径变更）。它将 A0 冻结权重诊断拆为 canvas 输入端 Oracle 与 decoder-tail PointRend-style Oracle；经独立审查，canvas 必须区分原 bbox 支持域内的 GT 替换与放宽支持域的全图 GT ceiling，并补 label-aware matching、per-image bootstrap records/manifest；tail 则须先验证能无扰动取到 decoder `upscaled_embedding`。两者均固定检测与 prompt，GT 不得进入候选模块推理；实现及任何训练尚未开始。
 
 - 2026-09-07：按 R1 debug 独立审查补齐观察闭环：`corrective_support` 追加 `error_support` 与 `error_low_confidence`，可拆解真实错误、错误低置信、正确低置信与 keep；训练器在每 epoch/rank 首个有限 batch 对已按生产 DDP 分母和 auxiliary weight 缩放的 corrective/keep 项单独做 `autograd.grad`，跨 rank 汇总 gradient L2 RMS 和 energy-weighted cosine。该 probe 不进入总 loss、不执行第二次 backward/step；A2 将在其新进程启动后生效，正在运行的 A1 不受磁盘变更影响。
 
