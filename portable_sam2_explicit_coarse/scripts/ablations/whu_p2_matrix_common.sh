@@ -5,8 +5,13 @@
 export NECK_TYPE="pafpn"
 export PROMPT_ROUTE="coarse"
 export SAM_IMAGE_EMBED_STRIDE=16
-export FINAL_MASK_COORDINATE_MODE="roi_local"
-export SHAPE_DENSE_TRANSFORM="raw_logits"
+# Historical matrix protocol is roi_local; the full_image spatial-contract
+# protocol (whu_fi_*) presets this to full_image + roi_balanced_dice BEFORE
+# invoking the row wrappers.  Default keeps every legacy run byte-compatible.
+export FINAL_MASK_COORDINATE_MODE="${FINAL_MASK_COORDINATE_MODE:-roi_local}"
+# Same overridability contract: legacy default raw_logits; the D4-csig dev
+# arm presets confidence_signed before invoking the row wrapper.
+export SHAPE_DENSE_TRANSFORM="${SHAPE_DENSE_TRANSFORM:-raw_logits}"
 
 # The matrix verifies an end-to-end prompt path.  In particular, its dense
 # rows keep the graph from final-mask loss to coarse/P2-BRR open.

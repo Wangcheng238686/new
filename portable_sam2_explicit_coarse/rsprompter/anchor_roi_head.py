@@ -401,6 +401,14 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                     )
                     mask_results["_p2br_local_sum"] = local_sum
                     mask_results["_p2br_valid_count"] = local_count
+                    for probe_key in (
+                        "_r1_corrective_term_for_probe",
+                        "_r1_keep_term_for_probe",
+                    ):
+                        if probe_key in boundary_stats:
+                            mask_results[f"_p2br{probe_key}"] = boundary_stats.pop(
+                                probe_key
+                            )
                     with torch.no_grad():
                         _, refined_stats = self.mask_head.coarse_mask_loss_module(
                             refined_coarse_logits.detach(), coarse_targets
@@ -498,6 +506,13 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                 losses["_p2br_valid_count"] = mask_results.get(
                     "_p2br_valid_count", zero.detach()
                 )
+                for probe_key in (
+                    "_r1_corrective_term_for_probe",
+                    "_r1_keep_term_for_probe",
+                ):
+                    value = mask_results.get(f"_p2br{probe_key}")
+                    if value is not None:
+                        losses[f"_p2br{probe_key}"] = value
         return losses
 
     def predict_mask(
@@ -619,5 +634,4 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                 high_res_features=high_res_features,
             )
         return results_list
-
 

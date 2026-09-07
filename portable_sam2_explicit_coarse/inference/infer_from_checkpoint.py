@@ -67,6 +67,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sam2-repo", default=None)
     parser.add_argument("--sam2-ckpt", default=None)
     parser.add_argument("--output-dir", default=None)
+    parser.add_argument(
+        "--export-bootstrap-records", action="store_true",
+        help="Export model-space GT/DT/images records beside predictions for "
+        "paired image-bootstrap; includes zero-detection images in images.json.",
+    )
     parser.add_argument("--score-thr", type=float, default=0.0)
     parser.add_argument("--no-eval", action="store_true")
     parser.add_argument("--inspect-only", action="store_true")
@@ -295,13 +300,49 @@ def _resolve_model_config(
         from mmengine.config import Config
         from rsprompter.architecture_contract import architecture_contract
 
+        def _contract_matches(saved, config):
+            """Return the config variant whose contract EQUALS the saved one
+            (the input itself, a compat variant, or None).  Returning the
+            matched variant keeps downstream config fingerprints identical to
+            the training-time contract instead of merely semantically equal."""
+            resolved = architecture_contract(config)
+            if (
+                saved.get("architecture_id") == resolved.get("architecture_id")
+                and saved.get("model_fingerprint") == resolved.get("model_fingerprint")
+            ):
+                return config
+            # Compat: checkpoints saved before PROMPT_ENCODER_TRAIN_
+            # MASK_DOWNSCALING was plumbed into the main config carry no
+            # train_mask_downscaling key; a re-resolution that adds an
+            # explicit False is semantically identical (mask-head setdefault)
+            # and must not fail the contract.  Only this exact no-op key
+            # addition is tolerated, and the KEY-LESS variant is returned so
+            # config fingerprints stay bit-identical.
+            head_cfg = config.get("roi_head", {}).get("mask_head", {})
+            pe_cfg = head_cfg.get("prompt_encoder_cfg")
+            if isinstance(pe_cfg, dict) and pe_cfg.get("train_mask_downscaling") is False:
+                pe_variant = {k: v for k, v in pe_cfg.items()
+                              if k != "train_mask_downscaling"}
+                head_variant = dict(head_cfg)
+                head_variant["prompt_encoder_cfg"] = pe_variant
+                config_variant = dict(config)
+                config_variant["roi_head"] = {
+                    **config.get("roi_head", {}), "mask_head": head_variant}
+                resolved_variant = architecture_contract(config_variant)
+                if (
+                    saved.get("architecture_id")
+                    == resolved_variant.get("architecture_id")
+                    and saved.get("model_fingerprint")
+                    == resolved_variant.get("model_fingerprint")
+                ):
+                    return config_variant
+            return None
+
         resolved_contract = architecture_contract(model_config)
-        if (
-            saved_contract.get("architecture_id")
-            != resolved_contract.get("architecture_id")
-            or saved_contract.get("model_fingerprint")
-            != resolved_contract.get("model_fingerprint")
-        ):
+        matched_config = _contract_matches(saved_contract, model_config)
+        if matched_config is not None and matched_config is not model_config:
+            model_config = matched_config
+        if matched_config is None:
             # Older schema-v2 training runs calculated the contract before
             # MODELS.build(), but captured cfg.model afterwards. MMEngine
             # registries may consume nested config fields in place, so that
@@ -318,12 +359,11 @@ def _resolve_model_config(
             else:
                 candidate = None
                 candidate_contract = {}
-            if candidate is None or (
-                saved_contract.get("architecture_id")
-                != candidate_contract.get("architecture_id")
-                or saved_contract.get("model_fingerprint")
-                != candidate_contract.get("model_fingerprint")
-            ):
+            matched_candidate = (
+                None if candidate is None
+                else _contract_matches(saved_contract, candidate)
+            )
+            if matched_candidate is None:
                 raise RuntimeError(
                     "Embedded model_config does not match its saved architecture "
                     f"contract: saved={dict(saved_contract)} "
@@ -335,7 +375,7 @@ def _resolve_model_config(
                 "contract-matching recorded config %s",
                 recorded_path,
             )
-            model_config = candidate
+            model_config = matched_candidate
             source = str(recorded_path)
 
     runtime = snapshot.get("runtime_config", {})
@@ -833,6 +873,47 @@ def main() -> None:
     predictions_path = output_dir / "predictions.json"
     _write_json(predictions_path, prediction_records)
 
+    if args.export_bootstrap_records:
+        # Keep this export in the evaluator's model-space contract: GT comes
+        # from the same resized data samples as prediction RLEs, not from the
+        # original-scale VHR annotation file.  That makes both sides directly
+        # consumable by bootstrap_paired_map for WHU and 10-class VHR-10.
+        from utils.coco_eval_utils import _mask_to_rle, _xyxy_to_xywh
+
+        gt_records = []
+        dt_records = []
+        images = []
+        for gt, prediction, meta in zip(all_gt, all_dt, all_metas):
+            image_id = int(meta.get("image_id", meta.get("scene_id", 0)))
+            images.append({
+                "image_id": image_id,
+                "height": int(meta["img_shape"][0]),
+                "width": int(meta["img_shape"][1]),
+            })
+            for index, label in enumerate(np.asarray(gt["labels"])):
+                gt_records.append({
+                    "image_id": image_id,
+                    "category_id": int(label) + 1,
+                    "bbox": [float(v) for v in _xyxy_to_xywh(gt["bboxes"][index])],
+                    "segmentation": _mask_to_rle(gt["masks"][index]),
+                    "iscrowd": 0,
+                })
+            scores = prediction.get("scores", np.ones(len(prediction["bboxes"])))
+            mask_scores = prediction.get("mask_scores", scores)
+            for index, box in enumerate(np.asarray(prediction["bboxes"])):
+                x1, y1, x2, y2 = (float(v) for v in box)
+                dt_records.append({
+                    "image_id": image_id,
+                    "category_id": int(prediction["labels"][index]) + 1,
+                    "bbox": [x1, y1, x2 - x1, y2 - y1],
+                    "score": float(scores[index]),
+                    "mask_score": float(mask_scores[index]),
+                    "segmentation": _mask_to_rle(prediction["masks"][index]),
+                })
+        _write_json(output_dir / "gt_records.json", gt_records)
+        _write_json(output_dir / "dt_records.json", dt_records)
+        _write_json(output_dir / "images.json", images)
+
     metrics: Dict[str, float] = {}
     total_gt = sum(len(item["labels"]) for item in all_gt)
     if not args.no_eval and total_gt > 0:
@@ -885,9 +966,17 @@ def main() -> None:
             else "full_image_resize"
         ),
         "processed_images": len(all_metas),
+        # Identity evidence for downstream paired comparisons (bootstrap):
+        # the exact image ids this run executed, including zero-detection
+        # images, so coverage can be verified as sets rather than counts.
+        "processed_image_ids": sorted({
+            int(meta.get("image_id", meta.get("scene_id", 0)))
+            for meta in all_metas
+        }),
         "ground_truth_instances": total_gt,
         "predicted_instances": len(prediction_records),
         "predictions": str(predictions_path),
+        "bootstrap_records": bool(args.export_bootstrap_records),
         "metrics": metrics,
     }
     _write_json(output_dir / "run_manifest.json", manifest)

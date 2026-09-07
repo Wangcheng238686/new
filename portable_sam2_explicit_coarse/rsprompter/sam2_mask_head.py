@@ -1035,18 +1035,14 @@ Verbatim-extracted from forward; operation order unchanged.
                 with torch.no_grad():
                     delta = refiner_outputs["delta_logits"].detach().float()
                     support_valid = refiner_outputs["support_valid"].detach()
-                    # 饱和判据必须跟随本次训练自身上限 beta*delta_logit_max：
-                    # 旧硬编码 0.396 按黄金跑 0.2*2.0=0.40 标定，对小上限配置
-                    # （如 0.1*0.5=0.05）结构性恒 0。x0.99 保持黄金跑阈值不变。
-                    saturation_threshold = (
-                        float(self.p2_boundary_refiner.beta)
-                        * float(self.p2_boundary_refiner.delta_logit_max)
-                        * 0.99
+                    from .p2_boundary_refiner import saturation_telemetry
+
+                    telemetry = saturation_telemetry(
+                        delta,
+                        refiner_outputs["search_support"].detach(),
+                        beta=float(self.p2_boundary_refiner.beta),
+                        delta_logit_max=float(self.p2_boundary_refiner.delta_logit_max),
                     )
-                    support_pixels = (
-                        refiner_outputs["search_support"].detach().float().flatten(1).sum(1)
-                    )
-                    saturated = delta.abs().ge(saturation_threshold).float()
                     debug_stats.update({
                         "P2BR/roi_count": delta.new_tensor(float(delta.shape[0])),
                         "P2BR/valid_support_count": support_valid.float().sum(),
@@ -1054,11 +1050,12 @@ Verbatim-extracted from forward; operation order unchanged.
                         "P2BR/search_coverage_sum": refiner_outputs["search_coverage_sum"],
                         "P2BR/delta_abs_sum": delta.abs().flatten(1).mean(1).sum(),
                         "P2BR/delta_nonzero_sum": delta.ne(0).float().flatten(1).mean(1).sum(),
-                        "P2BR/delta_saturated_sum": saturated.flatten(1).mean(1).sum(),
-                        "P2BR/delta_saturated_support_ratio_sum": (
-                            saturated.flatten(1).sum(1) / support_pixels.clamp_min(1.0)
-                        ).sum(),
-                        "P2BR/saturation_threshold": delta.new_tensor(saturation_threshold),
+                        "P2BR/delta_saturated_sum": telemetry["delta_saturated_sum"],
+                        "P2BR/support_pixel_sum": telemetry["support_pixel_sum"],
+                        "P2BR/delta_saturated_support_pixel_sum": telemetry[
+                            "saturated_support_pixel_sum"
+                        ],
+                        "P2BR/saturation_threshold": telemetry["saturation_threshold"],
                         "P2BR/projected_feature_norm_sum": refiner_outputs["projected_feature_norm_sum"],
                         "P2BR/highpass_feature_norm_sum": refiner_outputs["highpass_feature_norm_sum"],
                     })

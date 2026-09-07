@@ -19,8 +19,8 @@
 #     value mode, fixed 1024 canvas so frozen SAM2 always sees native input).
 #   - Early stopping DISABLED: run the full cosine schedule; best-only
 #     retention keeps the peak regardless.
-#   - --prompt-encoder-lr-mult 0.0 MUST be passed explicitly: the argparse
-#     default is 0.1; the protocol freezes the prompt encoder.
+#   - prompt encoder is frozen by default.  Dev wrappers may explicitly
+#     unfreeze mask_downscaling and pass its independently audited LR scale.
 #
 # Dataset: NWPU VHR-10 10-class instance segmentation, RSPrompter-release
 # 80/20 split (520 train / 130 val), val doubles as the report split exactly
@@ -83,14 +83,25 @@ case "${VARIANT}" in
 esac
 
 # --- architecture contract exports (single source of truth; see header) ---
+# Overridable (2026-09-06, NWPU fi-matrix prep): defaults preserve every
+# legacy VHR-10 run byte-for-byte; the vhr10_fi_matrix_* row wrappers preset
+# the full_image spatial contract and their prompt combination before
+# invoking this runner.  The config chain (vhr10 -> whu1024_baseplus)
+# already parses all of these env vars, including FINAL_MASK_LOSS_MODE and
+# PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING.
 export NECK_TYPE=pafpn
 export PROMPT_ROUTE=coarse
-export EXPLICIT_PROMPT_MODE=points_box_dense
-export P2_BOUNDARY_REFINER_ENABLED=1
+export EXPLICIT_PROMPT_MODE="${EXPLICIT_PROMPT_MODE:-points_box_dense}"
+export P2_BOUNDARY_REFINER_ENABLED="${P2_BOUNDARY_REFINER_ENABLED:-1}"
 export SAM_IMAGE_EMBED_STRIDE=16
-export SHAPE_DENSE_TRANSFORM=raw_logits
-export SHAPE_DENSE_DETACH=1
-export FINAL_MASK_COORDINATE_MODE=roi_local
+export SHAPE_DENSE_TRANSFORM="${SHAPE_DENSE_TRANSFORM:-raw_logits}"
+export SHAPE_DENSE_DETACH="${SHAPE_DENSE_DETACH:-1}"
+export FINAL_MASK_COORDINATE_MODE="${FINAL_MASK_COORDINATE_MODE:-roi_local}"
+export FINAL_MASK_LOSS_MODE="${FINAL_MASK_LOSS_MODE:-standard}"
+export SHAPE_DENSE_ALPHA_INIT="${SHAPE_DENSE_ALPHA_INIT:-0.25}"
+export SHAPE_DENSE_TEMPERATURE="${SHAPE_DENSE_TEMPERATURE:-1.0}"
+export PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING="${PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING:-0}"
+export PROMPT_ENCODER_LR_MULT="${PROMPT_ENCODER_LR_MULT:-0.0}"
 export P2_BOUNDARY_REFINER_PROJECTED_CHANNELS="${P2_BOUNDARY_REFINER_PROJECTED_CHANNELS:-64}"
 export P2_BOUNDARY_REFINER_MID_CHANNELS="${P2_BOUNDARY_REFINER_MID_CHANNELS:-64}"
 export P2_BOUNDARY_REFINER_LOSS_WEIGHT="${P2_BOUNDARY_REFINER_LOSS_WEIGHT:-0.05}"
@@ -119,6 +130,7 @@ export TEST_MAX_PER_IMG=100
 export EMA_ENABLED=1 EMA_EVAL=0 EMA_SAVE_BEST=0
 export SAVE_BBOX_BEST_METRIC=""
 export SAVE_LAST_CHECKPOINT=1
+export SAVE_LAST_MODEL="${SAVE_LAST_MODEL:-0}"
 export TRAIN_FLIP_PROB=0.5 TRAIN_VFLIP_PROB=0.5
 export TRAIN_MULTI_SCALE_RESIZE_PROB=0.5
 export TRAIN_MULTI_SCALE_MODE=value
@@ -132,6 +144,18 @@ CHECKPOINT_DIR="${CHECKPOINT_DIR:-${PORTABLE_SAM2_CHECKPOINT_ROOT}/ablations/${R
 LOG_DIR="${PORTABLE_SAM2_LOG_ROOT}/ablations"
 TS="$(date +%Y%m%d_%H%M%S)"
 LOG_FILE="${LOG_DIR}/${RUN_TAG}_${SUBSET_TAG}_${TS}_pid$$.log"
+
+# Dry run FIRST: print the launch plan to the terminal only — no log file,
+# no checkpoint/log directories (same semantics as _run_ablation.sh, whose
+# "terminal_log=disabled(dry_run)" behavior this mirrors; until 2026-09-07
+# every dry run left a two-line stub log behind).
+if [ "${DRY_RUN:-0}" = "1" ]; then
+  RESUME_FROM="${RESUME_FROM:-}"
+  echo "dry_run=1 — launch skipped; would run: ${CONFIG_PATH} epochs=${MAX_EPOCHS} lr=${DEFAULT_LR}"
+  echo "contract: mode=${EXPLICIT_PROMPT_MODE} p2=${P2_BOUNDARY_REFINER_ENABLED} coord=${FINAL_MASK_COORDINATE_MODE} loss=${FINAL_MASK_LOSS_MODE} detach=${SHAPE_DENSE_DETACH} alpha=${SHAPE_DENSE_ALPHA_INIT} md=${PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING} pe_lr_mult=${PROMPT_ENCODER_LR_MULT} p2_beta=${P2_BOUNDARY_REFINER_BETA:-0.20} p2_delta=${P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX:-2.0} p2_channels=${P2_BOUNDARY_REFINER_PROJECTED_CHANNELS}/${P2_BOUNDARY_REFINER_MID_CHANNELS} p2_aux=${P2_BOUNDARY_REFINER_LOSS_WEIGHT} p2_loss=${P2_BOUNDARY_REFINER_LOSS_MODE:-boundary} p2_margin=${P2_BOUNDARY_REFINER_CORRECTION_MARGIN:-1.0} p2_keep_w=${P2_BOUNDARY_REFINER_KEEP_LOSS_WEIGHT:-0.1} shape_aux=${SHAPE_PRIOR_LOSS_WEIGHT} checkpoint_dir=${CHECKPOINT_DIR} resume=${RESUME_FROM:-none} save_last_model=${SAVE_LAST_MODEL} run_tag=${RUN_TAG}"
+  exit 0
+fi
+
 mkdir -p "${CHECKPOINT_DIR}" "${LOG_DIR}"
 exec > >(tee -a "${LOG_FILE}") 2>&1
 
@@ -145,13 +169,6 @@ if [[ -n "${RESUME_FROM}" ]]; then
   EXTRA_ARGS+=(--resume-from "${RESUME_FROM}")
 fi
 
-# Dry run: verify env/protocol resolution and print the launch plan, but do
-# not start torchrun (same semantics as DRY_RUN=1 in _run_ablation.sh).
-if [ "${DRY_RUN:-0}" = "1" ]; then
-  echo "dry_run=1 — launch skipped; would run: ${CONFIG_PATH} epochs=${MAX_EPOCHS} lr=${DEFAULT_LR}"
-  exit 0
-fi
-
 GIT_COMMIT="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 GIT_DIRTY="$( [[ -n "$(git status --porcelain 2>/dev/null)" ]] && echo 1 || echo 0 )"
 echo "============================================================"
@@ -163,6 +180,7 @@ echo "  gpus=${CUDA_VISIBLE_DEVICES} nproc=${NPROC_PER_NODE}"
 echo "  batch=${BATCH_SIZE}x${GRAD_ACCUM_STEPS} (effective $((BATCH_SIZE*GRAD_ACCUM_STEPS*NPROC_PER_NODE)))"
 echo "  epochs=${MAX_EPOCHS} lr=${DEFAULT_LR} warmup=100 seed=44 amp=1"
 echo "  ema=${EMA_ENABLED}/${EMA_EVAL} maxdet=${TEST_MAX_PER_IMG} early_stop=off"
+echo "  prompt_encoder: mask_downscaling=${PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING} lr_mult=${PROMPT_ENCODER_LR_MULT}; save_last_model=${SAVE_LAST_MODEL}"
 echo "  aug: vflip=${TRAIN_VFLIP_PROB} ms=${TRAIN_MULTI_SCALE_RESIZE_PROB}@${TRAIN_MULTI_SCALE_MODE}"
 echo "  checkpoint_dir=${CHECKPOINT_DIR}"
 echo "  log_file=${LOG_FILE}"
@@ -185,7 +203,7 @@ exec "${PYTHON}" -m torch.distributed.run \
   --lr "${DEFAULT_LR}" \
   --warmup-iters 100 \
   --weight-decay 0.05 \
-  --prompt-encoder-lr-mult 0.0 \
+  --prompt-encoder-lr-mult "${PROMPT_ENCODER_LR_MULT}" \
   --checkpoint-dir "${CHECKPOINT_DIR}" \
   --train-subset-ratio 1.0 \
   --val-subset-ratio 1.0 \

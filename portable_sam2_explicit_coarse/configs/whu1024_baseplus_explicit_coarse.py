@@ -12,6 +12,14 @@ _use_dense = _mode in {"mask", "points_box_dense"}
 _p2_boundary_refiner = (
     os.environ.get("P2_BOUNDARY_REFINER_ENABLED", "0") == "1"
 )
+_p2_loss_mode = os.environ.get(
+    "P2_BOUNDARY_REFINER_LOSS_MODE", "boundary"
+).strip().lower()
+if _p2_loss_mode not in {"boundary", "correction_keep"}:
+    raise ValueError(
+        "P2_BOUNDARY_REFINER_LOSS_MODE must be boundary or correction_keep, "
+        f"got {_p2_loss_mode!r}"
+    )
 _shape_context_fusion = os.environ.get(
     "SHAPE_CONTEXT_FUSION", "roi_only"
 ).strip().lower()
@@ -135,6 +143,15 @@ _point_full_start_epoch = int(
     )
 )
 
+_pe_train_mask_downscaling_raw = os.environ.get(
+    "PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING", "0"
+)
+if _pe_train_mask_downscaling_raw not in {"0", "1"}:
+    raise ValueError(
+        "PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING must be 0 or 1, got "
+        f"{_pe_train_mask_downscaling_raw!r}"
+    )
+
 model = dict(
     roi_head=dict(
         mask_head=dict(
@@ -144,6 +161,11 @@ model = dict(
             prompt_encoder_cfg=dict(
                 require_pretrained=True,
                 freeze_all=True,
+                # D5-B dense adaptation: unfreeze ONLY the mask-input
+                # convolution stack (4,684 params).  Default 0 keeps the
+                # historical fully-frozen PE; point/box embeddings stay
+                # frozen either way (validated by the ablation contract).
+                train_mask_downscaling=_pe_train_mask_downscaling_raw == "1",
             ),
             checkpoint_load_cfg=dict(strict_reproduction=True),
             freeze_mask_decoder=False,
@@ -274,6 +296,21 @@ model = dict(
                     "P2_BOUNDARY_REFINER_LOSS_WEIGHT", "0.05"
                 )),
                 zero_init_residual=True,
+                # Do not materialize R1-only keys for legacy/boundary runs:
+                # config_snapshot feeds the architecture fingerprint.
+                **(
+                    dict(
+                        loss_mode="correction_keep",
+                        correction_margin=float(os.environ.get(
+                            "P2_BOUNDARY_REFINER_CORRECTION_MARGIN", "1.0"
+                        )),
+                        keep_loss_weight=float(os.environ.get(
+                            "P2_BOUNDARY_REFINER_KEEP_LOSS_WEIGHT", "0.1"
+                        )),
+                    )
+                    if _p2_boundary_refiner and _p2_loss_mode == "correction_keep"
+                    else {}
+                ),
             ),
             prune_unused_prompt_components=False,
         )

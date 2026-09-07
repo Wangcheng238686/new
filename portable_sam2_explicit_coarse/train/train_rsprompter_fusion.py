@@ -825,7 +825,8 @@ _P2BR_EPOCH_FIELDS = (
     "delta_abs_sum",
     "delta_nonzero_sum",
     "delta_saturated_sum",
-    "delta_saturated_support_ratio_sum",
+    "support_pixel_sum",
+    "delta_saturated_support_pixel_sum",
     "saturation_threshold",
     "projected_feature_norm_sum",
     "highpass_feature_norm_sum",
@@ -843,10 +844,28 @@ _P2BR_EPOCH_FIELDS = (
     "boundary_loss_valid_roi_count",
     "boundary_loss_support_pixels",
     "boundary_loss_foreground_pixels",
+    # R1 correction-keep telemetry.  All are detached sums; the reducer
+    # performs the only division after aggregating all steps and DDP ranks.
+    "r1_corrective_pixel_sum",
+    "r1_error_pixel_sum",
+    "r1_low_confidence_pixel_sum",
+    "r1_error_low_confidence_pixel_sum",
+    "r1_keep_pixel_sum",
+    "r1_corrective_term_sum",
+    "r1_keep_term_sum",
+    "r1_valid_roi_count",
 )
 
 
-_PROMPT_PATHWAY_BRANCHES = ("dense", "p2br")
+_P2BR_R1_GRAD_FIELDS = (
+    "probe_count",
+    "corrective_grad_sq_sum",
+    "keep_grad_sq_sum",
+    "gradient_dot_sum",
+)
+
+
+_PROMPT_PATHWAY_BRANCHES = ("dense", "p2br", "pe_mask_downscaling")
 
 
 def _prompt_pathway_parameters(model: torch.nn.Module) -> Dict[str, List[torch.nn.Parameter]]:
@@ -856,7 +875,10 @@ def _prompt_pathway_parameters(model: torch.nn.Module) -> Dict[str, List[torch.n
     ShapePointMiner is hard/stop-gradient, so ``loss_mask`` can reach the
     injector only through the differentiable dense-prompt route.  ``p2br`` is
     kept separate so its auxiliary boundary loss can never masquerade as a
-    final-mask gradient in the diagnostics below.
+    final-mask gradient in the diagnostics below.  ``pe_mask_downscaling``
+    covers the PromptEncoder mask-input convolution stack when (and only
+    when) PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING=1 unfreezes it — audited
+    separately so dense-group activity can never masquerade as PE adaptation.
     """
     model_core = model.module if hasattr(model, "module") else model
     mask_head = getattr(getattr(model_core, "roi_head", None), "mask_head", None)
@@ -877,7 +899,22 @@ def _prompt_pathway_parameters(model: torch.nn.Module) -> Dict[str, List[torch.n
         if p2br is not None
         else []
     )
-    return {"dense": dense_params, "p2br": p2br_params}
+    prompt_encoder = getattr(mask_head, "prompt_encoder", None)
+    mask_downscaling = getattr(prompt_encoder, "mask_downscaling", None)
+    pe_md_params = (
+        [
+            parameter
+            for parameter in mask_downscaling.parameters()
+            if parameter.requires_grad
+        ]
+        if mask_downscaling is not None
+        else []
+    )
+    return {
+        "dense": dense_params,
+        "p2br": p2br_params,
+        "pe_mask_downscaling": pe_md_params,
+    }
 
 
 def _new_prompt_pathway_monitor() -> Dict[str, float]:
@@ -1046,7 +1083,8 @@ def _accumulate_p2br_epoch_monitor(
         "delta_abs_sum": "P2BR/delta_abs_sum",
         "delta_nonzero_sum": "P2BR/delta_nonzero_sum",
         "delta_saturated_sum": "P2BR/delta_saturated_sum",
-        "delta_saturated_support_ratio_sum": "P2BR/delta_saturated_support_ratio_sum",
+        "support_pixel_sum": "P2BR/support_pixel_sum",
+        "delta_saturated_support_pixel_sum": "P2BR/delta_saturated_support_pixel_sum",
         "projected_feature_norm_sum": "P2BR/projected_feature_norm_sum",
         "highpass_feature_norm_sum": "P2BR/highpass_feature_norm_sum",
         "raw_boundary_tp": "COARSE/raw_boundary_tp",
@@ -1059,6 +1097,14 @@ def _accumulate_p2br_epoch_monitor(
         "boundary_loss_valid_roi_count": "COARSE/loss_valid_roi_count",
         "boundary_loss_support_pixels": "COARSE/loss_support_pixel_sum",
         "boundary_loss_foreground_pixels": "COARSE/loss_support_foreground_sum",
+        "r1_corrective_pixel_sum": "COARSE/r1_corrective_pixel_sum",
+        "r1_error_pixel_sum": "COARSE/r1_error_pixel_sum",
+        "r1_low_confidence_pixel_sum": "COARSE/r1_low_confidence_pixel_sum",
+        "r1_error_low_confidence_pixel_sum": "COARSE/r1_error_low_confidence_pixel_sum",
+        "r1_keep_pixel_sum": "COARSE/r1_keep_pixel_sum",
+        "r1_corrective_term_sum": "COARSE/r1_corrective_term_sum",
+        "r1_keep_term_sum": "COARSE/r1_keep_term_sum",
+        "r1_valid_roi_count": "COARSE/r1_valid_roi_count",
     }
     for out_key, stat_key in direct.items():
         value = _stat_scalar(stats, stat_key)
@@ -1103,7 +1149,7 @@ def _reduce_p2br_epoch_monitor(
         fn = values[f"{prefix}_boundary_fn"]
         return (2.0 * tp) / max(2.0 * tp + fp + fn, 1e-12)
 
-    return {
+    result = {
         "roi_count": roi_count,
         "valid_support_ratio": values["valid_support_count"] / roi_count,
         "rejected_support_ratio": values["rejected_support_count"] / roi_count,
@@ -1111,8 +1157,12 @@ def _reduce_p2br_epoch_monitor(
         "delta_abs": values["delta_abs_sum"] / roi_count,
         "delta_nonzero_ratio": values["delta_nonzero_sum"] / roi_count,
         "delta_saturated_ratio": values["delta_saturated_sum"] / roi_count,
-        "delta_saturated_support_ratio": values["delta_saturated_support_ratio_sum"]
-        / roi_count,
+        # Pooled in-support saturation: total saturated support pixels over
+        # total support pixels, summed across steps AND DDP ranks before the
+        # division — per-ROI mean-of-ratios would let empty/rejected-support
+        # ROIs (zero numerator AND denominator) dilute the ratio toward 0.
+        "delta_saturated_support_ratio": values["delta_saturated_support_pixel_sum"]
+        / max(values["support_pixel_sum"], 1.0),
         "saturation_threshold": values["saturation_threshold"] / roi_count,
         "projected_feature_norm": values["projected_feature_norm_sum"] / roi_count,
         "highpass_feature_norm": values["highpass_feature_norm_sum"] / roi_count,
@@ -1126,6 +1176,117 @@ def _reduce_p2br_epoch_monitor(
         "boundary_support_fg_ratio": values["boundary_loss_foreground_pixels"]
         / max(values["boundary_loss_support_pixels"], 1.0),
         "valid_count_for_norm": valid_count,
+    }
+    r1_count = values["r1_valid_roi_count"]
+    if r1_count > 0:
+        result.update(
+            {
+                "r1_corrective_support_ratio": values["r1_corrective_pixel_sum"]
+                / max(values["boundary_loss_support_pixels"], 1.0),
+                "r1_error_support_ratio": values["r1_error_pixel_sum"]
+                / max(values["boundary_loss_support_pixels"], 1.0),
+                "r1_low_confidence_support_ratio": values[
+                    "r1_low_confidence_pixel_sum"
+                ]
+                / max(values["boundary_loss_support_pixels"], 1.0),
+                "r1_error_low_confidence_support_ratio": values[
+                    "r1_error_low_confidence_pixel_sum"
+                ]
+                / max(values["boundary_loss_support_pixels"], 1.0),
+                "r1_keep_support_ratio": values["r1_keep_pixel_sum"]
+                / max(values["boundary_loss_support_pixels"], 1.0),
+                "r1_corrective_term": values["r1_corrective_term_sum"] / r1_count,
+                "r1_keep_term": values["r1_keep_term_sum"] / r1_count,
+                "r1_valid_roi_count": r1_count,
+            }
+        )
+    return result
+
+
+def _new_p2br_r1_gradient_monitor() -> Dict[str, float]:
+    """Create detached, once-per-epoch R1 auxiliary-gradient telemetry."""
+    return {key: 0.0 for key in _P2BR_R1_GRAD_FIELDS}
+
+
+def _accumulate_p2br_r1_gradient_probe(
+    model: torch.nn.Module,
+    corrective_term: Any,
+    keep_term: Any,
+    monitor: Dict[str, float],
+) -> bool:
+    """Probe R1 term gradients without adding a second loss or optimizer step.
+
+    The terms already have the production DDP normalization and auxiliary
+    weight applied.  This is deliberately called only once per finite epoch
+    batch, before the normal backward, with ``retain_graph=True``.
+    """
+    if not (
+        isinstance(corrective_term, torch.Tensor)
+        and isinstance(keep_term, torch.Tensor)
+        and corrective_term.requires_grad
+        and keep_term.requires_grad
+    ):
+        return False
+    parameters = _prompt_pathway_parameters(model)["p2br"]
+    if not parameters:
+        return False
+    corrective_grads = torch.autograd.grad(
+        corrective_term, parameters, retain_graph=True, allow_unused=True
+    )
+    keep_grads = torch.autograd.grad(
+        keep_term, parameters, retain_graph=True, allow_unused=True
+    )
+    corrective_sq = 0.0
+    keep_sq = 0.0
+    dot = 0.0
+    for corrective_grad, keep_grad in zip(corrective_grads, keep_grads):
+        if corrective_grad is not None:
+            corrective_sq += float(
+                corrective_grad.detach().float().square().sum().item()
+            )
+        if keep_grad is not None:
+            keep_sq += float(keep_grad.detach().float().square().sum().item())
+        if corrective_grad is not None and keep_grad is not None:
+            dot += float(
+                (corrective_grad.detach().float() * keep_grad.detach().float())
+                .sum()
+                .item()
+            )
+    monitor["probe_count"] += 1.0
+    monitor["corrective_grad_sq_sum"] += corrective_sq
+    monitor["keep_grad_sq_sum"] += keep_sq
+    monitor["gradient_dot_sum"] += dot
+    return True
+
+
+def _reduce_p2br_r1_gradient_monitor(
+    monitor: Dict[str, float], device: torch.device, distributed: bool
+) -> Dict[str, float]:
+    packed = torch.tensor(
+        [monitor[key] for key in _P2BR_R1_GRAD_FIELDS],
+        dtype=torch.float64,
+        device=device,
+    )
+    if distributed and dist.is_initialized():
+        dist.all_reduce(packed, op=dist.ReduceOp.SUM)
+    values = {
+        key: float(packed[index].item())
+        for index, key in enumerate(_P2BR_R1_GRAD_FIELDS)
+    }
+    probes = values["probe_count"]
+    if probes <= 0:
+        return {}
+    corrective_sq = values["corrective_grad_sq_sum"]
+    keep_sq = values["keep_grad_sq_sum"]
+    return {
+        "corrective_grad_group_l2_rms": math.sqrt(corrective_sq / probes),
+        "keep_grad_group_l2_rms": math.sqrt(keep_sq / probes),
+        # This energy-weighted cosine is calculated from summed parameter
+        # inner products/norms across all probed DDP ranks, not an average of
+        # rank-local cosines.  It is undefined only if either term is zero.
+        "gradient_cosine": values["gradient_dot_sum"]
+        / math.sqrt(max(corrective_sq * keep_sq, 1e-30)),
+        "probe_count": probes,
     }
 
 
@@ -1344,7 +1505,11 @@ def _materialize_p2_boundary_refiner_loss(
     """
     local_sum = loss_dict.pop("_p2br_local_sum", None)
     local_count = loss_dict.pop("_p2br_valid_count", None)
+    r1_corrective = loss_dict.pop("_p2br_r1_corrective_term_for_probe", None)
+    r1_keep = loss_dict.pop("_p2br_r1_keep_term_for_probe", None)
     if local_sum is None and local_count is None:
+        if r1_corrective is not None or r1_keep is not None:
+            raise RuntimeError("received R1 probe metadata without P2 loss metadata")
         return loss_dict
     if not torch.is_tensor(local_sum) or not torch.is_tensor(local_count):
         raise TypeError("P2 boundary refiner loss metadata must be tensors")
@@ -1368,6 +1533,21 @@ def _materialize_p2_boundary_refiner_loss(
     loss_dict["loss_p2_boundary_refiner"] = (
         float(refiner.boundary_loss_weight) * normalized
     )
+    if (r1_corrective is None) != (r1_keep is None):
+        raise RuntimeError("R1 gradient probe metadata must contain both loss terms")
+    if r1_corrective is not None:
+        if not torch.is_tensor(r1_corrective) or not torch.is_tensor(r1_keep):
+            raise TypeError("R1 gradient probe metadata must be tensors")
+        # Keep the production auxiliary scaling exactly: these private keys
+        # are consumed by the once-per-epoch probe and contain no ``loss``
+        # substring, so they cannot be summed into backward a second time.
+        probe_scale = float(refiner.boundary_loss_weight) * (
+            float(world_size) / max(float(global_count.item()), 1.0)
+        )
+        if float(global_count.item()) <= 0:
+            probe_scale = 0.0
+        loss_dict["_p2br_r1_corrective_probe"] = r1_corrective * probe_scale
+        loss_dict["_p2br_r1_keep_probe"] = r1_keep * probe_scale
     return loss_dict
 
 
@@ -2671,9 +2851,11 @@ def main():
         dense_monitor_sums = {key: 0.0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
         dense_monitor_counts = {key: 0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
         p2br_monitor_sums = {key: 0.0 for key in _P2BR_EPOCH_FIELDS}
+        p2br_r1_gradient_monitor = _new_p2br_r1_gradient_monitor()
         prompt_pathway_monitor = _new_prompt_pathway_monitor()
         prompt_pathway_snapshot = _snapshot_prompt_pathway_parameters(model)
         prompt_pathway_grad_probed = False
+        p2br_r1_gradient_probed = False
         num_batches = 0
         grad_accum = args.grad_accum_steps
         train_batches_limit = len(train_loader)
@@ -2837,6 +3019,13 @@ def main():
                     model, loss_dict.get("loss_mask"), prompt_pathway_monitor
                 )
                 prompt_pathway_grad_probed = True
+            if not p2br_r1_gradient_probed:
+                p2br_r1_gradient_probed = _accumulate_p2br_r1_gradient_probe(
+                    model,
+                    loss_dict.get("_p2br_r1_corrective_probe"),
+                    loss_dict.get("_p2br_r1_keep_probe"),
+                    p2br_r1_gradient_monitor,
+                )
 
             global_step = epoch * max(1, train_batches_limit) + batch_idx + 1
             if (
@@ -2923,6 +3112,9 @@ def main():
         )
         p2br_monitor_epoch = _reduce_p2br_epoch_monitor(
             p2br_monitor_sums, device=device, distributed=distributed
+        )
+        p2br_r1_gradient_epoch = _reduce_p2br_r1_gradient_monitor(
+            p2br_r1_gradient_monitor, device=device, distributed=distributed
         )
         _accumulate_prompt_pathway_updates(
             model, prompt_pathway_snapshot, prompt_pathway_monitor
@@ -3013,11 +3205,43 @@ def main():
                     p2br_monitor_epoch["refined_boundary_f1"]
                     - p2br_monitor_epoch["raw_boundary_f1"],
                 )
+                if "r1_valid_roi_count" in p2br_monitor_epoch:
+                    logger.info(
+                        "Epoch %d P2 R1 supervision: corrective_support=%.2f%% "
+                        "error_support=%.2f%% low_confidence_support=%.2f%% "
+                        "error_low_confidence=%.2f%% keep_support=%.2f%% "
+                        "corrective_bce=%.6f keep_penalty=%.6f valid_rois=%.0f",
+                        epoch_number,
+                        100.0 * p2br_monitor_epoch["r1_corrective_support_ratio"],
+                        100.0 * p2br_monitor_epoch["r1_error_support_ratio"],
+                        100.0 * p2br_monitor_epoch["r1_low_confidence_support_ratio"],
+                        100.0 * p2br_monitor_epoch[
+                            "r1_error_low_confidence_support_ratio"
+                        ],
+                        100.0 * p2br_monitor_epoch["r1_keep_support_ratio"],
+                        p2br_monitor_epoch["r1_corrective_term"],
+                        p2br_monitor_epoch["r1_keep_term"],
+                        p2br_monitor_epoch["r1_valid_roi_count"],
+                    )
+                if p2br_r1_gradient_epoch:
+                    logger.info(
+                        "Epoch %d P2 R1 gradient probe: corrective_l2_rms=%.3e "
+                        "keep_l2_rms=%.3e cosine=%+.4f probes=%.0f",
+                        epoch_number,
+                        p2br_r1_gradient_epoch[
+                            "corrective_grad_group_l2_rms"
+                        ],
+                        p2br_r1_gradient_epoch["keep_grad_group_l2_rms"],
+                        p2br_r1_gradient_epoch["gradient_cosine"],
+                        p2br_r1_gradient_epoch["probe_count"],
+                    )
             logger.info(
                 "Epoch %d prompt pathway: dense final_mask_grad_group_l2_rms=%.3e "
                 "active=%.2f%% update_group_l2_rms=%.3e params=%.0f probes=%.0f | "
                 "p2br final_mask_grad_group_l2_rms=%.3e active=%.2f%% update_group_l2_rms=%.3e "
-                "params=%.0f probes=%.0f",
+                "params=%.0f probes=%.0f | "
+                "pe_mask_downscaling final_mask_grad_group_l2_rms=%.3e "
+                "active=%.2f%% update_group_l2_rms=%.3e params=%.0f probes=%.0f",
                 epoch_number,
                 prompt_pathway_epoch["dense_final_mask_grad_group_l2_rms"],
                 100.0 * prompt_pathway_epoch["dense_final_mask_grad_nonzero_param_ratio"],
@@ -3029,6 +3253,19 @@ def main():
                 prompt_pathway_epoch["p2br_parameter_update_group_l2_rms"],
                 prompt_pathway_epoch["p2br_parameter_count"],
                 prompt_pathway_epoch["p2br_final_mask_grad_probe_count"],
+                prompt_pathway_epoch[
+                    "pe_mask_downscaling_final_mask_grad_group_l2_rms"
+                ],
+                100.0 * prompt_pathway_epoch[
+                    "pe_mask_downscaling_final_mask_grad_nonzero_param_ratio"
+                ],
+                prompt_pathway_epoch[
+                    "pe_mask_downscaling_parameter_update_group_l2_rms"
+                ],
+                prompt_pathway_epoch["pe_mask_downscaling_parameter_count"],
+                prompt_pathway_epoch[
+                    "pe_mask_downscaling_final_mask_grad_probe_count"
+                ],
             )
             averaged_components = {
                 key: value / max(1, num_batches) for key, value in loss_meter.items()

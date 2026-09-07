@@ -21,6 +21,43 @@ def _group_norm(channels: int, preferred_groups: int = 8) -> nn.GroupNorm:
     return nn.GroupNorm(groups, channels)
 
 
+def saturation_telemetry(
+    delta_logits: Tensor, search_support: Tensor, beta: float, delta_logit_max: float
+) -> Dict[str, Tensor]:
+    """Saturation stats for one forward's refiner output (telemetry only).
+
+    The saturation threshold MUST track this run's own residual envelope
+    ``beta * delta_logit_max``: the historical hard-coded 0.396 was calibrated
+    for the golden run (0.2 * 2.0 = 0.40) and read a structurally-always-zero
+    count once the envelope shrank (e.g. 0.10 * 0.50 = 0.05).  The 0.99
+    factor reproduces the historical 0.396 threshold bit-for-bit on the
+    golden run.
+
+    All returned values are per-forward SUMS intended to be accumulated
+    across steps and DDP ranks:
+      - saturation_threshold: constant per run (report via threshold*roi_count
+        accumulation, then divide by roi_count at epoch level).
+      - support_pixel_sum / saturated_support_pixel_sum: pooled numerator and
+        denominator; the epoch-level ``saturated_in_support`` ratio is
+        num/den, so ROIs with empty (or rejected) support contribute zero to
+        both and can neither dilute the ratio nor produce NaN.
+      - delta_saturated_sum: legacy all-pixel ratio (per-ROI mean summed over
+        ROIs); kept distinct from the in-support pooled ratio.
+    ``search_support`` is already zeroed for rejected ROIs by the refiner, so
+    masking the saturated count by it restricts every statistic to the
+    supported region explicitly.
+    """
+    threshold = float(beta) * float(delta_logit_max) * 0.99
+    support = search_support.to(dtype=delta_logits.dtype)
+    saturated = delta_logits.abs().ge(threshold).to(dtype=delta_logits.dtype)
+    return {
+        "saturation_threshold": delta_logits.new_tensor(threshold),
+        "support_pixel_sum": support.flatten(1).sum(),
+        "saturated_support_pixel_sum": (saturated * support).flatten(1).sum(),
+        "delta_saturated_sum": saturated.flatten(1).mean(1).sum(),
+    }
+
+
 class P2BoundaryRefiner(nn.Module):
     """Bounded P2 high-frequency residual around a raw coarse boundary."""
 
@@ -42,6 +79,9 @@ class P2BoundaryRefiner(nn.Module):
         max_search_coverage: float = 0.50,
         boundary_loss_weight: float = 0.05,
         zero_init_residual: bool = True,
+        loss_mode: str = "boundary",
+        correction_margin: float = 1.0,
+        keep_loss_weight: float = 0.1,
     ) -> None:
         super().__init__()
         for name, value in (
@@ -67,6 +107,12 @@ class P2BoundaryRefiner(nn.Module):
             raise ValueError("max_search_coverage must be in (0, 1]")
         if float(boundary_loss_weight) < 0:
             raise ValueError("boundary_loss_weight must be non-negative")
+        if loss_mode not in {"boundary", "correction_keep"}:
+            raise ValueError("loss_mode must be boundary or correction_keep")
+        if float(correction_margin) < 0:
+            raise ValueError("correction_margin must be non-negative")
+        if float(keep_loss_weight) < 0:
+            raise ValueError("keep_loss_weight must be non-negative")
 
         self.p2_in_channels = int(p2_in_channels)
         self.projected_channels = int(projected_channels)
@@ -83,6 +129,9 @@ class P2BoundaryRefiner(nn.Module):
         self.search_band_radius = int(search_band_radius)
         self.max_search_coverage = float(max_search_coverage)
         self.boundary_loss_weight = float(boundary_loss_weight)
+        self.loss_mode = str(loss_mode)
+        self.correction_margin = float(correction_margin)
+        self.keep_loss_weight = float(keep_loss_weight)
 
         self.p2_projection = nn.Sequential(
             nn.Conv2d(self.p2_in_channels, self.projected_channels, 1),
@@ -246,7 +295,59 @@ class P2BoundaryRefiner(nn.Module):
         pixel_loss = F.binary_cross_entropy_with_logits(
             refined_for_boundary, target_binary, reduction="none"
         )
-        per_roi = (pixel_loss * loss_support).flatten(1).sum(dim=1) / pixel_count.clamp_min(1.0)
+        if self.loss_mode == "boundary":
+            per_roi = (pixel_loss * loss_support).flatten(1).sum(dim=1) / pixel_count.clamp_min(1.0)
+            r1_stats = {}
+        else:
+            # R1: all selectors are detached.  error and keep form a
+            # partition of the same loss_support, so no pixel receives both
+            # the corrective BCE and the residual-preservation penalty.
+            with torch.no_grad():
+                raw_d = raw_logits.detach()
+                error = raw_d.ge(0).ne(target_binary.bool())
+                low_confidence = raw_d.abs().lt(self.correction_margin)
+                error_region = loss_support.bool() & (error | low_confidence)
+                keep_region = loss_support.bool() & ~error & ~low_confidence
+            error_count = error_region.flatten(1).sum(dim=1)
+            keep_count = keep_region.flatten(1).sum(dim=1)
+            corrective = (pixel_loss * error_region).flatten(1).sum(dim=1)
+            preserve = (delta_logits.abs() * keep_region).flatten(1).sum(dim=1)
+            corrective_term = corrective / error_count.clamp_min(1)
+            keep_term = self.keep_loss_weight * preserve / keep_count.clamp_min(1)
+            per_roi = corrective_term + keep_term
+            # Detached R1 telemetry.  These are sums, not per-step means:
+            # the trainer pools pixel counts across ranks and reports the two
+            # actual per-ROI loss terms using the same valid-ROI denominator
+            # as ``local_sum``.  It must remain observational only.
+            r1_stats = {
+                "r1_corrective_pixel_sum": error_count[valid_roi].sum().detach(),
+                "r1_error_pixel_sum": (
+                    (loss_support.bool() & error)[valid_roi].flatten(1).sum().detach()
+                ),
+                "r1_low_confidence_pixel_sum": (
+                    (loss_support.bool() & low_confidence)[valid_roi]
+                    .flatten(1)
+                    .sum()
+                    .detach()
+                ),
+                "r1_error_low_confidence_pixel_sum": (
+                    (loss_support.bool() & error & low_confidence)[valid_roi]
+                    .flatten(1)
+                    .sum()
+                    .detach()
+                ),
+                "r1_keep_pixel_sum": keep_count[valid_roi].sum().detach(),
+                "r1_corrective_term_sum": corrective_term[valid_roi].sum().detach(),
+                "r1_keep_term_sum": keep_term[valid_roi].sum().detach(),
+                "r1_valid_roi_count": valid_roi.sum()
+                .to(dtype=raw_logits.dtype)
+                .detach(),
+                # These two graph-bearing scalars are consumed immediately by
+                # the trainer's once-per-epoch gradient probe, never emitted
+                # as debug stats and never added to a loss a second time.
+                "_r1_corrective_term_for_probe": corrective_term[valid_roi].sum(),
+                "_r1_keep_term_for_probe": keep_term[valid_roi].sum(),
+            }
         local_sum = per_roi[valid_roi].sum()
         if not valid_roi.any():
             local_sum = delta_logits.sum() * 0.0
@@ -258,4 +359,8 @@ class P2BoundaryRefiner(nn.Module):
             loss_support_pixel_sum=support_pixel_sum,
             loss_support_foreground_sum=foreground_sum,
             loss_valid_roi_count=local_count,
+            loss_mode_correction_keep=raw_logits.new_tensor(
+                float(self.loss_mode == "correction_keep")
+            ),
+            **r1_stats,
         )

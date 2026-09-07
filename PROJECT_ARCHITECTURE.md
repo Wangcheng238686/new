@@ -25,6 +25,8 @@ memory、topology token、SABL refined-box 依赖等不属于
 
 历史基线与新主线必须使用不同的输出目录，不能覆盖历史 checkpoint。
 
+> 2026-09-07：为 VHR-10 P2-v2 A2（R1 `correction_keep`）新增纯遥测字段：纠错/错误/低置信/保持支持域比例及 corrective BCE、keep penalty；另在每 epoch 首个有效 batch 以与生产辅助损失相同的 DDP 归一化探测两项对 P2BR 的梯度 L2 与 cosine。统计与 probe 均不参与 forward、loss 或 optimizer step，也不改变 A1 已启动进程；详见 `DEBUG_FIELDS.md`。
+
 ## 2. 整体架构
 
 ```mermaid
@@ -177,6 +179,8 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 | `README.md` | 项目概览、基线复现和新主线快速入口。 |
 | `PROJECT_ARCHITECTURE.md` | 本文档；架构、逐文件说明和维护契约的事实来源。 |
 | `DEBUG_FIELDS.md` | 训练机制日志字段字典；定义 latest-forward、DDP epoch 统计和 pathway gradient/update probe 的分母与判读。 |
+| `portable_sam2_explicit_coarse/docs/whu_fi_dev_results_20260906.md` | WHU fi 开发结果台账：14 次训练曲线与证据路径；§0 补充 627 图评估的 P→PB→PBM 平均递增暂定结论、稳定性边界与 E14/末轮区别。 |
+| `portable_sam2_explicit_coarse/docs/d5_review_handoff.md` | 2026-09-06 阶段诊断复审与跨-agent交接：核实证据边界、提出 P2-off 的 D5-A/B dense 适配及 PE 独立更新验收；属于待实施建议，不表示脚本已落地或训练已启动。 |
 | `C5_V2_METHOD.md` | C5-v2 论文方法设计文档；整理完整架构、张量数据流、ECPG/P2-BRR、损失与制图说明。 |
 | `portable_sam2_explicit_coarse/docs/prompt_consumption_and_p2_refinement_implementation_guide.md` | Prompt 消费鲁棒化与 P2 边界提示的实施前指导；本轮在固定 WHU 10% train / 10% validation 上快速验证，P2 点细化须通过 real-P2 对 sham-P2 的信息门。 |
 | `portable_sam2_explicit_coarse/docs/p2_point_refiner_design.md` | P2 点细化的历史候选设计；已降级，不能作为当前实施依据。 |
@@ -374,7 +378,7 @@ device，避免所有进程初始化阶段暂时落到 GPU0。
 | 文件 | 用途 |
 |---|---|
 | `__init__.py` | checkpoint 推理包标记。 |
-| `infer_from_checkpoint.py` | 读取指定 checkpoint，恢复自描述模型配置，严格加载 model/EMA 权重，在 WHU validation、test 或自定义 COCO split 上推理与评估。 |
+| `infer_from_checkpoint.py` | 读取指定 checkpoint，恢复自描述模型配置，严格加载 model/EMA 权重，在 WHU、VHR-10 validation、test 或自定义 COCO split 上推理与评估；`--export-bootstrap-records` 同时导出同一模型空间的 GT/DT/images 供 paired bootstrap。 |
 
 推理默认使用 `checkpoint["model"]`。`--weights ema` 可显式读取
 `checkpoint["ema_state"]["ema_state"]`；训练产生的 best checkpoint 在启用 EMA
@@ -450,9 +454,17 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `whu_p2_matrix_full.sh` | 仅在第三行基础上启用 P2BoundaryRefiner 的完整矩阵行。 |
 | `whu_d1_dense_dev_10p_2gpu.sh` | D1 两臂短程开发：points+box 对 points+box+dense；固定两卡、有效全局 batch 8、WHU 10%/10%、15 epoch。 |
 | `whu_d2_p2_dev_10p_2gpu.sh` | D2 两臂短程开发：冻结 dense 后比较 Mask 对 Full；固定两卡、有效全局 batch 8、WHU 10%/10%、15 epoch。 |
+| `whu_fullimage_overlay.sh` | full_image 空间契约 overlay（`FINAL_MASK_COORDINATE_MODE=full_image` + `FINAL_MASK_LOSS_MODE=roi_balanced_dice`），供下列 whu_fi_* 在调用行 wrapper 前 source。roi_balanced_dice 是该协议的组成部分——稀疏前景下全画布标准 BCE 会塌缩到全背景捷径（git 6dc6aa4）——不是超参扫参。 |
+| `whu_fi_matrix_full_data.sh` | 四行矩阵的 full_image 契约版：协议旋钮全部继承 `whu_p2_matrix_common.sh` 默认（4 GPU、150 epoch、全量 WHU、EMA），仅坐标/loss 契约不同；行序 Point→+Box→+Mask→Full。 |
+| `whu_fi_d1_dense_10p_2gpu.sh` / `whu_fi_d2_p2_10p_2gpu.sh` | D1/D2 的 full_image 契约版：除契约两字段外与 roi_local D 系列 dev 协议逐项一致（DRY_RUN resolved-Hyperparameters 逐字段差分核验通过，仅 run_tag/坐标/loss 三处不同）；`whu_d1fi_*` / `whu_d2fi_*` run tag 与旧结果隔离。 |
+| `whu_fi_d3_p2esc_10p_2gpu.sh` / `whu_fi_d4_csig_10p_2gpu.sh` | D3（P2 包络 ±0.30 组合配方）/ D4（csig 画布）dev 臂；设计 `docs/d3_d4_p2_escalation_canvas_design.md`（v3）。 |
+| `whu_fi_d5a_mask_gate050_10p_2gpu.sh` / `whu_fi_d5b_mask_gate050_pe010_10p_2gpu.sh` | D5 两臂（门控初值 0.5 对照 / +PE mask_downscaling 适配）；方案 `docs/d5_review_handoff.md`；协议硬锁。 |
+| `whu_fi_d6_pb_control_10p_2gpu.sh` / `whu_fi_d6_mask_gate010_pe010_10p_2gpu.sh` / `whu_fi_d0_point_10p_2gpu.sh` | D6（PB 对照复跑 + 小门 α0.1×PE 适配候选）与 D0（fi 契约 Point-only 首跑）。 |
+| `tools/eval_existing_runs.py` / `tools/chain_fulleval_probe.py` | 现有权重的统一全量评估（7 臂×best/末轮；fcntl 运行锁防双调度器；陈旧输出自动清理）与批次→补跑→提示开关探针的自动链（失败传播，14/14 校验）。 |
 | `paper_promptminer_rd_p2_whu_full_fast.sh` | WHU fast-150 论文运行入口（test segm/mAP 0.7342）。 |
 | `test_only_from_ckpt.sh` | 给定 checkpoint 仅做 test 评估。 |
 | `vhr10_fast400.sh` 等 5 个 | VHR-10 薄入口，见 `scripts/_run_vhr10.sh`。 |
+| `vhr10_p2v2_dev.sh` / `vhr10_p2v2_dev_series.sh` / `vhr10_p2v2_eval.sh` | NWPU P2-v2 的 A0/A1/A2 100ep 受控训练、严格串行总入口与 strict post-run 评估入口：全量 520/130、4 卡、fi、raw 选型、E100 显式保存；series 任一臂失败即停止。评估从 checkpoint 重放 VHR-10 10 类契约并导出 bootstrap records。A0 固定 D5-B，A2 仅切 correction-keep P2 auxiliary loss。 |
 | `eval_test_raw.sh` / `eval_test_winner.sh` / `eval_vhr10_final.sh` | checkpoint 的 raw/EMA 评估 wrapper。 |
 
 `scripts/smoke/`：
@@ -667,8 +679,8 @@ bash scripts/reproduce_legacy_segm.sh
 | `NECK_TYPE` | `aggregator` 或 `pafpn`；消融 wrapper 会固定。 |
 | `EXPLICIT_PROMPT_MODE` | `points`、`points_box` 或 `points_box_dense`。 |
 | `CONFIG_OVERRIDE` | coarse wrapper 的可选配置变体路径；默认仍为显式 coarse 主配置，densefix wrappers 固定选择 densefix 子配置。 |
-| `FINAL_MASK_COORDINATE_MODE` | MLP clean config 的最终 mask 坐标契约，默认 `roi_local`；公共 wrapper 将 B0/B1/R0 固定为 `roi_local`、M0/M1 固定为 `full_image`，普通 coarse 路线固定为 `full_image`，C2-R 固定为 `roi_local`。解析进 `cfg.model` 和 checkpoint。 |
-| `FINAL_MASK_LOSS_MODE` | 最终 mask 监督；原矩阵默认 `standard`，C2-L 固定为 `roi_balanced_dice`。仅改训练 loss，不改 full-image 验证/推理后处理。 |
+| `FINAL_MASK_COORDINATE_MODE` | 最终 mask 坐标契约，默认 `roi_local`；MLP clean config 的公共 wrapper 将 B0/B1/R0 固定为 `roi_local`、M0/M1 固定为 `full_image`，C2-R 固定为 `roi_local`。四行矩阵 common 行自 2026-09 起可被外部覆盖（默认仍 `roi_local`，旧行为不变）；`whu_fi_*` 空间契约修正协议经 `whu_fullimage_overlay.sh` 固定为 `full_image`。解析进 `cfg.model` 和 checkpoint，推理端自动选择 `roi_local_bbox_paste` 或 `full_image_resize`。 |
+| `FINAL_MASK_LOSS_MODE` | 最终 mask 监督；默认 `standard`，C2-L 与 `whu_fi_*` 空间契约协议固定为 `roi_balanced_dice`（后者必须配 `full_image`，头部构造函数强制校验）。仅改训练 loss，不改 full-image 验证/推理后处理。 |
 | `FINAL_MASK_ROI_EXPAND_RATIO` | C2-L proposal loss support 扩张倍率，默认 `1.20`。 |
 | `FINAL_MASK_ROI_BCE_WEIGHT` / `FINAL_MASK_ROI_DICE_WEIGHT` | C2-L ROI 内平衡 BCE 与 Dice 权重，默认 `1.0/1.0`。 |
 | `FINAL_MASK_OUTSIDE_BCE_WEIGHT` | C2-L ROI 外背景约束权重，默认 `0.05`。 |
@@ -709,7 +721,7 @@ bash scripts/reproduce_legacy_segm.sh
 | `MASK_DECODER_LR_MULT` | mask decoder 学习率倍率，默认 `1.0`。 |
 | `NO_MASK_LR_MULT` | B0/B1/M0/M1 trainable no-mask 参数倍率，默认 `1.0`。 |
 | `PROMPT_ENCODER_LR_MULT` | PromptEncoder 可训练参数组 LR 倍率，默认 `0.0`；densefix-unfreeze 固定为 `1.0`。 |
-| `PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING` | 默认 `0`；densefix-unfreeze 固定为 `1`，由 densefix 配置解析为 `cfg.model.roi_head.mask_head.prompt_encoder_cfg.train_mask_downscaling`，不允许只作为未归档环境状态生效。旧名 `UNFREEZE_MASK_DOWNSCALING` 仅作 runner 输入兼容。 |
+| `PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING` | 默认 `0`；`1` 时由**主配置**（whu1024_baseplus_explicit_coarse.py）与 densefix 配置共同解析为 `cfg.model.roi_head.mask_head.prompt_encoder_cfg.train_mask_downscaling`，仅解冻 PE mask 下采样卷积栈（4,684 参数/10 张量，契约校验断言；点/框 embedding 保持冻结），不允许只作为未归档环境状态生效。旧名 `UNFREEZE_MASK_DOWNSCALING` 仅作 runner 输入兼容。配套要求 `PROMPT_ENCODER_LR_MULT` 非零（D5-B 用 0.1，组 LR 5e-5），否则解冻参数不更新。 |
 | `SHAPE_DENSE_ALPHA_INIT` | dense 系数初值或 fixed 值；C4 默认 `0.25`，densefix 默认固定为 `0.5`。 |
 | `WARMUP_ITERS` | warmup optimizer steps，默认 `100`。 |
 | `WEIGHT_DECAY` | AdamW weight decay，默认 `0.05`。 |
@@ -757,6 +769,20 @@ bash scripts/reproduce_legacy_segm.sh
 处理本项目的新增或改动时，它负责默认执行上述同步流程。
 
 ## 8. 文档同步记录
+
+- 2026-09-07：按 R1 debug 独立审查补齐观察闭环：`corrective_support` 追加 `error_support` 与 `error_low_confidence`，可拆解真实错误、错误低置信、正确低置信与 keep；训练器在每 epoch/rank 首个有限 batch 对已按生产 DDP 分母和 auxiliary weight 缩放的 corrective/keep 项单独做 `autograd.grad`，跨 rank 汇总 gradient L2 RMS 和 energy-weighted cosine。该 probe 不进入总 loss、不执行第二次 backward/step；A2 将在其新进程启动后生效，正在运行的 A1 不受磁盘变更影响。
+
+- 2026-09-07：新增 `vhr10_p2v2_dev_series.sh`，以 A0→A1→A2 的固定顺序调用四卡 dev 入口；子臂前台执行，任一非零退出会阻止后续臂启动。P2-v2 dev wrapper 强制 `CUDA_VISIBLE_DEVICES=0,1,2,3`，不继承机器的两卡 WHU 默认，以保证 `NPROC_PER_NODE=4` 与可见设备数一致。
+
+- 2026-09-07：NWPU P2-v2 dev 实施：VHR runner 不再把 PromptEncoder 学习率倍率硬编码为 0，D5-B 可真实解冻 mask_downscaling；新增 `vhr10_p2v2_dev.sh` 统一锁定 A0/A1/A2 的 100ep fi 契约与末轮保存，并清除 resume/init/目录及共同超参环境污染。P2 R1 仅在启用时写入 `correction_keep`、margin、keep weight，避免污染旧 checkpoint 指纹；prompt-switch 探针补入 P2-off raw passthrough，VHR-10 10 类类别表进入探针和 bootstrap。历史 VHR best checkpoint 的完整 130 图验收导出 10 类 records/manifest，`--resamples 0` 与 inference mAP 逐位一致；未启动正式训练。
+
+- 2026-09-07：更新结果台账 §0：P/PB/PBM 全验证集均值 0.619496/0.622138/0.629132，保留正向递增的初步证据；区分数据量、更新预算、选权重与训练非确定性的未证实解释。仅文档记录，不改变配方或启动实验。
+
+- 2026-09-06：补录 `docs/whu_fi_dev_results_20260906.md`，从原始日志核对 14 次 fi 开发运行，包含 D6 Mask 复跑与 Point 补跑。明确 Box/Mask 稳定收益未确立、D6 小门控未优于 D5-B，以及 Box 日志不能作为贡献证明。本次仅文档落盘与索引同步，不改源码、配置、日志或权重，不启动实验。
+
+- 2026-09-06：新增 `docs/d5_review_handoff.md`，独立记录冻结权重诊断复审、
+  D5 门控/PE 适配两臂建议及配置、梯度和更新验收要求，供另一 agent 接续。
+  本次仅新增交接文档和指南索引，不改源码、原始阶段报告、训练配置或 debug 字段，不启动实验。
 
 - 2026-09-04：新增 `DEBUG_FIELDS.md` 并在训练器补充 D1/D2 机制字段：最终 `loss_mask` 对
   dense/coarse 与 P2BR 的首个有限 batch/rank gradient group-L2 RMS、非零 parameter-tensor 比例、整 epoch

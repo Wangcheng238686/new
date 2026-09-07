@@ -48,6 +48,53 @@ bash scripts/ablations/whu_d2_p2_dev_10p_2gpu.sh
 所有入口经 `_run_ablation.sh` 校验解析后的 architecture ID、数据集与模型契约。
 `DRY_RUN=1 CHECK_DATA=1 PREFLIGHT_MODEL=1` 可完成不训练的预检。
 
+## full_image 空间契约协议（whu_fi_*，2026-09）
+
+roi_local 矩阵的全图特征/提示输入与 ROI-local 监督/粘贴之间存在未显式实现
+的空间重映射（诊断见会话记录）。`whu_fi_*` 系列把最终 mask 契约切到
+`full_image`（整图 target 监督 + 推理只 resize 一次），并配 `roi_balanced_dice`
+loss（稀疏前景下全画布标准 BCE 会塌缩到全背景捷径，git 6dc6aa4——该 loss 是
+协议组成部分而非扫参）：
+
+```bash
+# 四行矩阵（Point → +Box → +Mask → Full），协议=common 默认（4 卡/150ep/全量）
+bash scripts/ablations/whu_fi_matrix_full_data.sh
+
+# D1/D2 的 full_image 版：除契约两字段外与 roi_local D 系列逐项一致
+bash scripts/ablations/whu_fi_d1_dense_10p_2gpu.sh
+bash scripts/ablations/whu_fi_d2_p2_10p_2gpu.sh
+```
+
+run tag（`whu_fi_matrix_*` / `whu_d1fi_*` / `whu_d2fi_*`）与 roi_local 结果
+完全隔离；跨协议（新旧坐标契约之间）的 mAP 对比**不可**直接当作同协议比较。
+注意：full_image 协议的 architecture ID 与 roi_local 同名字符串相同（历史
+checkpoint 兼容优先），区分靠 checkpoint 内嵌 model_config/fingerprint 与
+run tag。串行约定：`whu_fi_*` 全部强制 `RUN_IN_BACKGROUND=0`（公共 runner
+默认是后台启动即返回，四行矩阵会并发抢卡），上一臂成功结束才启动下一臂；
+需要整系列后台时对整个 wrapper 用 `nohup`，不要依赖 runner 的后台模式。
+
+## D5：dense 门控初值 + PE 读取端适配（2026-09-06，冻结权重诊断后）
+
+设计依据：`docs/p2_dense_frozen_diagnostic_report.md`（实例准确画布 +
+门开大的全量配对增益 +0.0154）与 `docs/d5_review_handoff.md`（Codex
+定稿方案）。两臂均为 Mask 行（P2 关闭）、full_image 契约、D 系列 dev
+协议；判读：D5-A vs 历史 Mask（0.6090/0.6133）筛门控初值作用，D5-B vs
+D5-A 筛 PE 适配作用，候选须超 Point+Box 0.6144 并配对复跑确认。
+
+```bash
+# D5-A：门控初值 0.5（可学习 global_sigmoid 门，非 fixed），PE 全冻结
+DEV_GPU_LIST=0,1 bash scripts/ablations/whu_fi_d5a_mask_gate050_10p_2gpu.sh
+
+# D5-B：D5-A + 解冻 mask_downscaling（4,684 参数）+ PE 组 LR 5e-5
+DEV_GPU_LIST=2,3 bash scripts/ablations/whu_fi_d5b_mask_gate050_pe010_10p_2gpu.sh
+```
+
+验收遥测：`Epoch N prompt pathway` 行的 `pe_mask_downscaling` 分支
+（梯度/更新 RMS）与 `Optimizer group prompt_encoder` 审计行（参数数
+4684、LR 5e-5）；详见根目录 `DEBUG_FIELDS.md`。注意 wrapper 的协议
+变量（RUN_TAG/MAX_EPOCHS/子集比例/DEV_GPU_LIST 等）为无条件 export，
+做 smoke 时需用独立副本或临时改写，避免污染正式 run 目录。
+
 ## VHR-10 入口（共享 runner：`scripts/_run_vhr10.sh`）
 
 5 个薄入口只声明变体名；协议与架构 exports 块（C4 事故教训）单一存在于
@@ -57,6 +104,37 @@ bash scripts/ablations/whu_d2_p2_dev_10p_2gpu.sh
 
 ```bash
 RUN_IN_BACKGROUND=1 bash scripts/ablations/vhr10_large600.sh
+```
+
+### NWPU P2-v2 dev（已实现，未授权启动）
+
+三臂使用同一 100ep / 520 train + 130 validation / 4 GPU / fi / raw-selection
+协议，前台串行运行并保存真正的 E100 末轮权重。A0 是严格的 D5-B PBM 底座
+（alpha=0.5、dense 不 detach、解冻 mask_downscaling、PE LR multiplier=0.1）；
+A1 只加原 P2，A2 只将 P2 auxiliary loss 改为 correction-keep R1。
+
+```bash
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_dev.sh a0
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_dev.sh a1
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_dev.sh a2
+```
+
+三臂须严格串行（每臂占满四卡，任一失败即停止），可用统一入口：
+
+```bash
+bash scripts/ablations/vhr10_p2v2_dev_series.sh
+```
+
+正式训练必须在 VHR-10 推理/manifest/bootstrap/p2_off smoke 均通过、并得到用户
+启动授权后执行；100ep 是机制筛选，不是对 600ep 最终协议的否定性结论。
+
+每臂结束后按实际权重口径重放 checkpoint 内嵌的 VHR-10 数据契约，并导出模型
+1024-space 的 `gt_records.json`、`dt_records.json`、`images.json`；这三者与
+`run_manifest.json`（含 130 个 `processed_image_ids`）共同构成 paired bootstrap 输入：
+
+```bash
+bash scripts/ablations/vhr10_p2v2_eval.sh a0 best
+bash scripts/ablations/vhr10_p2v2_eval.sh a0 last
 ```
 
 ## 目录地图（2026-09 重构后）
