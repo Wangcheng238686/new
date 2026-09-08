@@ -788,6 +788,8 @@ bash scripts/reproduce_legacy_segm.sh
 - 2026-09-07：A 系列新增 `a3`：PBM/A0 上仅开启零初始化 UDPR-K64、P2 保持 off、其余 fi/D5-B/100ep/seed44 参数与 A0 同口径，且不设置 INIT_FROM、不传 tail-only，因此是完整网络的单阶段训练而非 A0 热启动。runner 将 module enabled 与 `DECODER_TAIL_TRAIN_ONLY` 解耦；`udpr64` 机制筛选臂显式保留后者。series 默认 A0→A1→A2→A3，传 `a3` 可安全追加而不重跑已有臂；已用解析后的 config 核验 A0↔A3 仅 `decoder_tail_refiner_cfg` 差异。完整 model-build 审计还需待一张 GPU 空闲（SAM2 构建会分配 CUDA position embedding）。
 - 2026-09-07：按 A3 接线审计修复环境漂移：A 系列显式锁定 Tail LR multiplier=1.0、D5-B context/dense/gaussian/coarse-loss/final-loss 参数、ROI-SAM off、point warmup off 和 score mode；A3 不再会继承 interactive shell 的 ROI-SAM、two-stage loss、warmup 或 Tail LR。`verify_p2v2_arms.py` 先在 CPU-only static-config 路径清除全部 config env 再逐臂重放，并注入污染值回归 A0/A3；A3 dry-run 同时断言 `init=none`、`tail_only=0`、`lr_mult=1.0`。该 preflight 已通过，完整 CUDA model-build 审计仍待 GPU 空闲。
 - 2026-09-08：新增 `queue_vhr10_a2_a3.sh` 并由用户授权后台排队。它只观察本机 GPU 0–3 的 compute PID，四卡同时空闲后先运行 A2/A3 DRY_RUN、再以 A2→A3 前台串行占满四卡；`flock` 防重复，队列日志在仓库外 checkpoint 根目录。A2 是 default-R1，明确不包含 A2e。
+- 2026-09-08：`vhr10_p2v2_eval.sh` 补齐 A3 checkpoint 标签映射，并支持 `EVAL_CUDA_VISIBLE_DEVICES` 将单个推理固定到一张物理 GPU；推理始终以 `cuda:0` 指向该可见卡，checkpoint 内嵌数据/模型契约与输出目录语义不变。用于 A0/A3 best 与 E100 的逐图 records 对齐和后续 paired bootstrap。
+- 2026-09-08：修复 A3 schema-v2 checkpoint 的严格推理恢复：训练时 contract 取自 pre-`MODELS.build` config，而早期 snapshot 中的 post-build `model_config` 含 registry 注入的 RoI train/test cfg 并遗漏已消费的 UDPR key。推理仅从同一 checkpoint 的 `mask_head_config` 恢复 Tail，并移除这两个已知注入键；恢复后的 pre-build variant 必须仍逐位匹配保存的 architecture contract，才能严格加载，非 permissive fallback。
 - 2026-09-07：新增 `docs/a0_two_site_oracle_design.md`（设计文档，无代码路径变更）。它将 A0 冻结权重诊断拆为 canvas 输入端 Oracle 与 decoder-tail PointRend-style Oracle；经独立审查，canvas 必须区分原 bbox 支持域内的 GT 替换与放宽支持域的全图 GT ceiling，并补 label-aware matching、per-image bootstrap records/manifest；tail 则须先验证能无扰动取到 decoder `upscaled_embedding`。两者均固定检测与 prompt，GT 不得进入候选模块推理；实现及任何训练尚未开始。
 
 - 2026-09-07：按 R1 debug 独立审查补齐观察闭环：`corrective_support` 追加 `error_support` 与 `error_low_confidence`，可拆解真实错误、错误低置信、正确低置信与 keep；训练器在每 epoch/rank 首个有限 batch 对已按生产 DDP 分母和 auxiliary weight 缩放的 corrective/keep 项单独做 `autograd.grad`，跨 rank 汇总 gradient L2 RMS 和 energy-weighted cosine。该 probe 不进入总 loss、不执行第二次 backward/step；A2 将在其新进程启动后生效，正在运行的 A1 不受磁盘变更影响。
@@ -1039,3 +1041,11 @@ bash scripts/reproduce_legacy_segm.sh
 - 2026-07-28：建立项目架构、逐文件用途、运行入口和文档同步规则；覆盖当前
   PAFPN、MLP/coarse 双路线、PromptEncoder；当时的 DenseBR 已在 2026-07-29
   被 P2BoundaryRefiner 严格对照替代。
+## 2026-09-08：NWPU dev100 A0/A2/A3 完整评测记录同步
+
+- 新增 `portable_sam2_explicit_coarse/docs/p2v2_dev100_a0_a2_a3_fulleval_results.md`：固化
+  本机四卡下 A0/A2/A3 best/last 的同协议 NWPU-130 完整 COCO 推理、权重口径、工件路径与
+  A0↔A3 配对 bootstrap 的待办边界。
+- `inference/infer_from_checkpoint.py` 对历史 A2/A3 snapshot 提供严格的 pre-build 配置复原：
+  仅在恢复 checkpoint 内保留的 decoder-tail 配置后 contract 指纹精确相等时才接受，绝不降级
+  architecture contract 校验。

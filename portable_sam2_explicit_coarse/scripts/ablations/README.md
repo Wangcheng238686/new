@@ -153,6 +153,8 @@ tail -f /data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10
 ```bash
 bash scripts/ablations/vhr10_p2v2_eval.sh a0 best
 bash scripts/ablations/vhr10_p2v2_eval.sh a0 last
+bash scripts/ablations/vhr10_p2v2_eval.sh a3 best
+bash scripts/ablations/vhr10_p2v2_eval.sh a3 last
 ```
 
 ## 目录地图（2026-09 重构后）

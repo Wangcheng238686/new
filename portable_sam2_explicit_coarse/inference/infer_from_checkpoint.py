@@ -216,6 +216,35 @@ def _restore_embedded_architecture_environment(
             os.environ["SHAPE_DENSE_DETACH"] = "1" if bool(detach) else "0"
 
 
+def _prebuild_config_compat_variant(
+    model_config: Mapping[str, Any], snapshot: Mapping[str, Any]
+) -> Dict[str, Any]:
+    """Recover the exact pre-``MODELS.build`` config from an old v2 snapshot.
+
+    Some schema-v2 checkpoints calculated their architecture contract from
+    ``cfg.model`` before MMEngine consumed nested fields, then serialized the
+    mutated post-build object.  RoI ``train_cfg``/``test_cfg`` are injected by
+    the registry, while a newly introduced nested module can be consumed.  In
+    particular, A3's UDPR tail lived in ``mask_head_config`` but disappeared
+    from the post-build ``model_config``.  This variant is accepted only by
+    the normal exact fingerprint check below; it is never a permissive load.
+    """
+    variant = copy.deepcopy(dict(model_config))
+    roi_head = variant.get("roi_head")
+    if not isinstance(roi_head, MutableMapping):
+        return variant
+    roi_head.pop("train_cfg", None)
+    roi_head.pop("test_cfg", None)
+    mask_head = roi_head.get("mask_head")
+    saved_head = snapshot.get("mask_head_config", {})
+    if not isinstance(mask_head, MutableMapping) or not isinstance(saved_head, Mapping):
+        return variant
+    tail_cfg = saved_head.get("decoder_tail_refiner_cfg")
+    if isinstance(tail_cfg, Mapping) and bool(tail_cfg.get("enabled", False)):
+        mask_head.setdefault("decoder_tail_refiner_cfg", copy.deepcopy(dict(tail_cfg)))
+    return variant
+
+
 def _resolve_sam2_repo(args: argparse.Namespace, snapshot: Mapping[str, Any]) -> Path:
     runtime = snapshot.get("runtime_config", {})
     saved = runtime.get("sam2_repo") if isinstance(runtime, Mapping) else None
@@ -340,6 +369,14 @@ def _resolve_model_config(
 
         resolved_contract = architecture_contract(model_config)
         matched_config = _contract_matches(saved_contract, model_config)
+        if matched_config is None:
+            prebuild_variant = _prebuild_config_compat_variant(model_config, snapshot)
+            matched_config = _contract_matches(saved_contract, prebuild_variant)
+            if matched_config is not None:
+                logger.warning(
+                    "Recovered contract-matching pre-build model_config from "
+                    "checkpoint snapshot"
+                )
         if matched_config is not None and matched_config is not model_config:
             model_config = matched_config
         if matched_config is None:
