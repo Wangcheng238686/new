@@ -133,18 +133,54 @@ bash scripts/ablations/vhr10_p2v2_dev_series.sh
 bash scripts/ablations/vhr10_p2v2_dev_series.sh a3
 ```
 
-在四卡被其他训练占用时，可使用持久本地队列排 A2→A3（A2 是默认 R1，**不是** A2e）：
+### NWPU P2-v2 historical formal600 anchor
+
+`vhr10_p2v2_full600.sh` 与 dev100 共用同一 A 系列模型/消融定义，避免复制模型
+exports 后漂移；仅改正式训练协议：4 GPU × batch1 × accumulation2（有效 batch 8）、
+600 epoch 单段 cosine、LR 5e-4、AMP、每 5 epoch 完整验证、保存 E600 last；early
+stopping 显式关闭，保证完整走完调度。
+
+每次验证独立维护三套 checkpoint（互不覆盖）：默认 `best_model.pth` 按
+`segm/mAP`，`best_bbox_model.pth` 按 `bbox/mAP`，`best_composite_model.pth` 按预注册的
+等权平衡分数 `0.5*bbox/mAP + 0.5*segm/mAP`。后者是选择折中模型的确定性规则，不应把它
+当作额外独立实验或在训练结束后再调权重。
 
 ```bash
-nohup bash scripts/ablations/queue_vhr10_a2_a3.sh >/dev/null 2>&1 &
-tail -f /data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10_a2_a3_queue.log
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_full600.sh a0
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_full600.sh a2
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_full600.sh a3
+
+# 默认严格串行 A0 → A1 → A2 → A3；也可只指定待跑臂。
+bash scripts/ablations/vhr10_p2v2_full600_series.sh
+bash scripts/ablations/vhr10_p2v2_full600_series.sh a0 a2 a3
 ```
 
-队列以 `flock` 拒绝重复启动；每 60 秒检查 GPU 0–3，全部空闲后先 DRY_RUN 两臂、再以
-前台串行方式执行。可用 `QUEUE_POLL_SECONDS=120` 调整轮询频率。
+2026-09-08 起不再启动新的 formal600 臂：正在运行的 A3/full600 是单独的长程锚点，
+不再排队 A0/full600，且不得与主矩阵逐行混合。
 
-正式训练必须在 VHR-10 推理/manifest/bootstrap/p2_off smoke 均通过、并得到用户
-启动授权后执行；100ep 是机制筛选，不是对 600ep 最终协议的否定性结论。
+### NWPU P2-v2 matrix300（主消融协议）
+
+后续主矩阵统一使用 300 epoch、4 GPU × batch1 × accumulation2（有效 batch 8）、
+LR 5e-4 cosine、100 warmup steps、AMP、每 5 epoch 完整验证、early stopping 关闭。
+每臂同时保存 `segm/mAP`、`bbox/mAP` 与等权 composite 的最佳权重；所有主矩阵行必须
+从头使用该协议，不能用 dev100 或 historical full600 权重替代。
+
+```bash
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh p
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh pb
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a0
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a3
+
+# 默认严格串行：P -> PB -> PBM(A0) -> PBM+UDPR(A3)
+bash scripts/ablations/vhr10_p2v2_matrix300_series.sh
+```
+
+历史 full600 队列已删除；不要重新创建或启动 A0/full600。运行中的 A3/full600 输出 tag
+以 `vhr10_p2v2_full600_` 开头，与 `dev100` 和 `matrix300` 工件物理隔离。
+
+启动 matrix300 前必须保存 DRY_RUN 输出，并核验 `epochs=300`、`val_every=5`、
+`early_patience=0`、`batch=1x2 (effective 8)`、三套 selection metric 与所选 arm 的
+P2/UDPR 状态。
 
 每臂结束后按实际权重口径重放 checkpoint 内嵌的 VHR-10 数据契约，并导出模型
 1024-space 的 `gt_records.json`、`dt_records.json`、`images.json`；这三者与

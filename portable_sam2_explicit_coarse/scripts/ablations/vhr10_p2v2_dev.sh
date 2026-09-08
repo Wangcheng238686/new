@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# NWPU P2-v2 100-epoch development protocol.  This is deliberately one
+# NWPU P2-v2 development protocol.  This is deliberately one
 # parameterized thin entry, so A-series arms cannot drift through copied runners.
 # It never starts in the background: one arm consumes all four GPUs.
 #
@@ -13,6 +13,60 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ARM="${1:?usage: vhr10_p2v2_dev.sh <p|pb|a0|a1|a2|a2e|a3|udpr64>}"
 shift || true
 
+# Protocol entries share the same architecture/arm block below, so the
+# development screen, the historical 600-epoch anchor, and the budgeted
+# matrix protocol cannot drift through copied model exports.
+P2V2_PROTOCOL="${P2V2_PROTOCOL:-dev100}"
+case "${P2V2_PROTOCOL}" in
+  dev100)
+    P2V2_TAG_PREFIX="vhr10_p2v2_dev100"
+    export MAX_EPOCHS=100
+    export VAL_EVERY_N_EPOCHS=1
+    export EARLY_STOPPING_PATIENCE=9999
+    export EARLY_STOPPING_START_EPOCH=9999
+    export EARLY_STOPPING_MIN_DELTA=5e-4
+    export EARLY_STOPPING_SMOOTH_WINDOW=5
+    export SAVE_BBOX_BEST_METRIC=""
+    export SAVE_COMPOSITE_BEST=0
+    export SAVE_COMPOSITE_WEIGHTS="0.5*bbox/mAP_75+0.5*segm/mAP_75"
+    ;;
+  full600)
+    P2V2_TAG_PREFIX="vhr10_p2v2_full600"
+    export MAX_EPOCHS=600
+    export VAL_EVERY_N_EPOCHS=5
+    # Formal runs must exhaust the entire cosine schedule.  Do not make
+    # validation cadence implicitly alter the training horizon.
+    export EARLY_STOPPING_PATIENCE=0
+    export EARLY_STOPPING_START_EPOCH=9999
+    export EARLY_STOPPING_MIN_DELTA=5e-4
+    export EARLY_STOPPING_SMOOTH_WINDOW=5
+    # Three independent best aliases: segmentation, detection, and the
+    # pre-registered equal-weight balance of their headline mAP values.
+    export SAVE_BBOX_BEST_METRIC="bbox/mAP"
+    export SAVE_COMPOSITE_BEST=1
+    export SAVE_COMPOSITE_WEIGHTS="0.5*bbox/mAP+0.5*segm/mAP"
+    ;;
+  matrix300)
+    # Deadline-budgeted NWPU main-matrix protocol.  Every row must start from
+    # scratch under this exact schedule; the completed A3/full600 run is a
+    # historical long-horizon anchor, never a row to mix into this matrix.
+    P2V2_TAG_PREFIX="vhr10_p2v2_matrix300"
+    export MAX_EPOCHS=300
+    export VAL_EVERY_N_EPOCHS=5
+    export EARLY_STOPPING_PATIENCE=0
+    export EARLY_STOPPING_START_EPOCH=9999
+    export EARLY_STOPPING_MIN_DELTA=5e-4
+    export EARLY_STOPPING_SMOOTH_WINDOW=5
+    export SAVE_BBOX_BEST_METRIC="bbox/mAP"
+    export SAVE_COMPOSITE_BEST=1
+    export SAVE_COMPOSITE_WEIGHTS="0.5*bbox/mAP+0.5*segm/mAP"
+    ;;
+  *)
+    echo "Unknown P2V2_PROTOCOL=${P2V2_PROTOCOL}; expected dev100, full600, or matrix300" >&2
+    exit 2
+    ;;
+esac
+
 # A-series arms are fresh, isolated comparisons, not continuations.  Prevent a
 # caller's shell state from changing initialization or output ownership.
 unset RESUME_FROM INIT_FROM CHECKPOINT_DIR RUN_TAG
@@ -21,7 +75,6 @@ unset RESUME_FROM INIT_FROM CHECKPOINT_DIR RUN_TAG
 # two-card WHU default, otherwise torchrun ranks 2/3 have no visible device.
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 export NPROC_PER_NODE=4
-export MAX_EPOCHS=100
 export RUN_IN_BACKGROUND=0
 export SAVE_LAST_MODEL=1
 export EXPLICIT_PROMPT_MODE=points_box_dense
@@ -88,7 +141,7 @@ case "${ARM}" in
     export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
     export PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING=0
     export PROMPT_ENCODER_LR_MULT=0.0
-    export RUN_TAG="${RUN_TAG:-vhr10_p2v2_dev100_p_point}"
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_p_point}"
     ;;
   pb)
     # Point+Box baseline: isolates the box-token gain (pb - p) and the
@@ -98,24 +151,24 @@ case "${ARM}" in
     export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
     export PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING=0
     export PROMPT_ENCODER_LR_MULT=0.0
-    export RUN_TAG="${RUN_TAG:-vhr10_p2v2_dev100_pb}"
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_pb}"
     ;;
   a0)
     export P2_BOUNDARY_REFINER_ENABLED=0
     export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
-    export RUN_TAG="${RUN_TAG:-vhr10_p2v2_dev100_a0_pbm_d5b}"
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a0_pbm_d5b}"
     ;;
   a1)
     export P2_BOUNDARY_REFINER_ENABLED=1
     export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
-    export RUN_TAG="${RUN_TAG:-vhr10_p2v2_dev100_a1_p2v1}"
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a1_p2v1}"
     ;;
   a2)
     export P2_BOUNDARY_REFINER_ENABLED=1
     export P2_BOUNDARY_REFINER_LOSS_MODE=correction_keep
     export P2_BOUNDARY_REFINER_CORRECTION_MARGIN=1.0
     export P2_BOUNDARY_REFINER_KEEP_LOSS_WEIGHT=0.1
-    export RUN_TAG="${RUN_TAG:-vhr10_p2v2_dev100_a2_r1}"
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a2_r1}"
     ;;
   a2e)
     # Envelope-escalated R1 (2026-09-07, user-directed): live telemetry on
@@ -132,7 +185,7 @@ case "${ARM}" in
     export P2_BOUNDARY_REFINER_KEEP_LOSS_WEIGHT=0.1
     export P2_BOUNDARY_REFINER_BETA=0.30
     export P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX=1.00
-    export RUN_TAG="${RUN_TAG:-vhr10_p2v2_dev100_a2e_r1_esc030}"
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a2e_r1_esc030}"
     ;;
   a3)
     # A-series UDPR arm: relative to PBM/A0, add only the decoder-tail
@@ -147,7 +200,7 @@ case "${ARM}" in
     export DECODER_TAIL_HIDDEN_DIM=128
     export DECODER_TAIL_POINT_LOSS_WEIGHT=1.0
     export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
-    export RUN_TAG="${RUN_TAG:-vhr10_p2v2_dev100_a3_pbm_udprk64}"
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3_pbm_udprk64}"
     ;;
   udpr64)
     # Independent decoder-tail arm.  It starts from the frozen A0 winner;
@@ -161,7 +214,7 @@ case "${ARM}" in
     export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
     export DECODER_TAIL_TRAIN_ONLY=1
     export INIT_FROM="${UDPR_INIT_FROM:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10_p2v2_dev100_a0_pbm_d5b_tr1.0_va1.0/best_model_epoch36.pth}"
-    export RUN_TAG="${RUN_TAG:-vhr10_udprk64_a0init}"
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_udprk64_a0init}"
     ;;
   *)
     echo "Unknown arm ${ARM}; expected p, pb, a0, a1, a2, a2e, a3, or udpr64" >&2
@@ -176,7 +229,7 @@ source "${SCRIPT_DIR}/vhr10_fi_overlay.sh"
 # scripts/smoke/verify_p2v2_arms.py so model-construction checks replay the
 # REAL arm env rather than a hand-copied one.
 if [ "${DEV_DUMP_ENV:-0}" = "1" ]; then
-  env | grep -E '^(NECK_TYPE|PROMPT_ROUTE|EXPLICIT_PROMPT_MODE|P2_BOUNDARY_REFINER_[A-Z_]+|DECODER_TAIL_[A-Z_]+|INIT_FROM|SAM_IMAGE_EMBED_STRIDE|SEGM_SCORE_MODE|ROI_SAM_[A-Z_]+|COARSE_MASK_OUTPUT_SIZE|POINT_(WARMUP_[A-Z_]+|NO_POINT_EPOCHS|ONE_PAIR_EPOCHS|FULL_START_EPOCH)|SHAPE_[A-Z_]+|PROMPT_ENCODER_[A-Z_]+|FINAL_MASK_[A-Z_]+|MAX_EPOCHS|BATCH_SIZE|GRAD_ACCUM_STEPS|NPROC_PER_NODE|SAVE_LAST_MODEL|RUN_TAG|CUDA_VISIBLE_DEVICES)=' | sort
+  env | grep -E '^(NECK_TYPE|PROMPT_ROUTE|EXPLICIT_PROMPT_MODE|P2_BOUNDARY_REFINER_[A-Z_]+|DECODER_TAIL_[A-Z_]+|INIT_FROM|SAM_IMAGE_EMBED_STRIDE|SEGM_SCORE_MODE|ROI_SAM_[A-Z_]+|COARSE_MASK_OUTPUT_SIZE|POINT_(WARMUP_[A-Z_]+|NO_POINT_EPOCHS|ONE_PAIR_EPOCHS|FULL_START_EPOCH)|SHAPE_[A-Z_]+|PROMPT_ENCODER_[A-Z_]+|FINAL_MASK_[A-Z_]+|MAX_EPOCHS|BATCH_SIZE|GRAD_ACCUM_STEPS|NPROC_PER_NODE|VAL_EVERY_N_EPOCHS|EARLY_STOPPING_[A-Z_]+|SAVE_LAST_MODEL|RUN_TAG|CUDA_VISIBLE_DEVICES)=' | sort
   exit 0
 fi
 

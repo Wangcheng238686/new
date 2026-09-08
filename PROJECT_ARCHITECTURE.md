@@ -790,6 +790,8 @@ bash scripts/reproduce_legacy_segm.sh
 - 2026-09-08：新增 `queue_vhr10_a2_a3.sh` 并由用户授权后台排队。它只观察本机 GPU 0–3 的 compute PID，四卡同时空闲后先运行 A2/A3 DRY_RUN、再以 A2→A3 前台串行占满四卡；`flock` 防重复，队列日志在仓库外 checkpoint 根目录。A2 是 default-R1，明确不包含 A2e。
 - 2026-09-08：`vhr10_p2v2_eval.sh` 补齐 A3 checkpoint 标签映射，并支持 `EVAL_CUDA_VISIBLE_DEVICES` 将单个推理固定到一张物理 GPU；推理始终以 `cuda:0` 指向该可见卡，checkpoint 内嵌数据/模型契约与输出目录语义不变。用于 A0/A3 best 与 E100 的逐图 records 对齐和后续 paired bootstrap。
 - 2026-09-08：修复 A3 schema-v2 checkpoint 的严格推理恢复：训练时 contract 取自 pre-`MODELS.build` config，而早期 snapshot 中的 post-build `model_config` 含 registry 注入的 RoI train/test cfg 并遗漏已消费的 UDPR key。推理仅从同一 checkpoint 的 `mask_head_config` 恢复 Tail，并移除这两个已知注入键；恢复后的 pre-build variant 必须仍逐位匹配保存的 architecture contract，才能严格加载，非 permissive fallback。
+- 2026-09-08：新增 `scripts/ablations/vhr10_p2v2_full600.sh` 与串行 `*_series.sh`。它们复用 A 系列唯一模型/消融定义，只将正式协议固定为 4×batch1×accum2（有效 batch 8）、600 epoch 单段 cosine、LR 5e-4、AMP、每 5 epoch validation 和 E600 last 保存。共享 VHR runner 的 validation/selection 参数改为环境可配置，旧 dev100 默认仍仅按 segm/mAP 保存；full600 显式关闭 early stopping（patience=0），并独立保存 `segm/mAP` best、`bbox/mAP` best、和预注册 `0.5*bbox/mAP+0.5*segm/mAP` composite best 三套权重。
+- 2026-09-08：新增 `queue_vhr10_p2v2_full600_a3_a0.sh`，在用户授权后持久等待本机 GPU0–3 全空闲，再以前台串行 A3(PBM+UDPR-K64)→A0(PBM) 启动 full600。队列 `flock` 防重复、先 DRY_RUN、并拒绝覆盖已有 formal best/E600-last 工件；日志存 checkpoint 根目录而非仓库。
 - 2026-09-07：新增 `docs/a0_two_site_oracle_design.md`（设计文档，无代码路径变更）。它将 A0 冻结权重诊断拆为 canvas 输入端 Oracle 与 decoder-tail PointRend-style Oracle；经独立审查，canvas 必须区分原 bbox 支持域内的 GT 替换与放宽支持域的全图 GT ceiling，并补 label-aware matching、per-image bootstrap records/manifest；tail 则须先验证能无扰动取到 decoder `upscaled_embedding`。两者均固定检测与 prompt，GT 不得进入候选模块推理；实现及任何训练尚未开始。
 
 - 2026-09-07：按 R1 debug 独立审查补齐观察闭环：`corrective_support` 追加 `error_support` 与 `error_low_confidence`，可拆解真实错误、错误低置信、正确低置信与 keep；训练器在每 epoch/rank 首个有限 batch 对已按生产 DDP 分母和 auxiliary weight 缩放的 corrective/keep 项单独做 `autograd.grad`，跨 rank 汇总 gradient L2 RMS 和 energy-weighted cosine。该 probe 不进入总 loss、不执行第二次 backward/step；A2 将在其新进程启动后生效，正在运行的 A1 不受磁盘变更影响。
@@ -1049,3 +1051,12 @@ bash scripts/reproduce_legacy_segm.sh
 - `inference/infer_from_checkpoint.py` 对历史 A2/A3 snapshot 提供严格的 pre-build 配置复原：
   仅在恢复 checkpoint 内保留的 decoder-tail 配置后 contract 指纹精确相等时才接受，绝不降级
   architecture contract 校验。
+
+## 2026-09-08：NWPU 主消融切换为统一 matrix300
+
+- 正在运行的 A3/full600 保留为单独长程锚点；已终止 A0/full600 的等待/串行 wrapper，并删除
+  `queue_vhr10_p2v2_full600_a3_a0.sh`，后续不再新启动 600 epoch 臂，避免将不同训练时长混入矩阵。
+- 新增 `scripts/ablations/vhr10_p2v2_matrix300.sh` 与 `vhr10_p2v2_matrix300_series.sh`：
+  所有后续主矩阵行从头以 300 epoch、4 卡有效 batch 8、LR 5e-4、100-step warmup、AMP、
+  val/5、无 early stop 的同一协议训练。默认顺序为 P、PB、A0(PBM)、A3(PBM+UDPR)；
+  仍可显式传入 P2 臂，但不自动把缺乏正面证据的 P2 纳入主矩阵。

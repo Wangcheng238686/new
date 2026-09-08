@@ -134,9 +134,20 @@ export CUDNN_BENCHMARK=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export TEST_MAX_PER_IMG=100
 export EMA_ENABLED=1 EMA_EVAL=0 EMA_SAVE_BEST=0
-export SAVE_BBOX_BEST_METRIC=""
+# Empty/default values retain historic single-segm selection.  Formal wrappers
+# can opt into independent bbox and composite checkpoint aliases.
+export SAVE_BBOX_BEST_METRIC="${SAVE_BBOX_BEST_METRIC:-}"
+export SAVE_COMPOSITE_BEST="${SAVE_COMPOSITE_BEST:-0}"
+export SAVE_COMPOSITE_WEIGHTS="${SAVE_COMPOSITE_WEIGHTS:-0.5*bbox/mAP_75+0.5*segm/mAP_75}"
 export SAVE_LAST_CHECKPOINT=1
 export SAVE_LAST_MODEL="${SAVE_LAST_MODEL:-0}"
+export VAL_EVERY_N_EPOCHS="${VAL_EVERY_N_EPOCHS:-1}"
+# Keep the historic development default disabled.  Long-series wrappers may
+# explicitly opt in; patience counts *validation events*, not raw epochs.
+export EARLY_STOPPING_PATIENCE="${EARLY_STOPPING_PATIENCE:-9999}"
+export EARLY_STOPPING_START_EPOCH="${EARLY_STOPPING_START_EPOCH:-9999}"
+export EARLY_STOPPING_MIN_DELTA="${EARLY_STOPPING_MIN_DELTA:-5e-4}"
+export EARLY_STOPPING_SMOOTH_WINDOW="${EARLY_STOPPING_SMOOTH_WINDOW:-5}"
 export TRAIN_FLIP_PROB=0.5 TRAIN_VFLIP_PROB=0.5
 export TRAIN_MULTI_SCALE_RESIZE_PROB=0.5
 export TRAIN_MULTI_SCALE_MODE=value
@@ -158,7 +169,7 @@ LOG_FILE="${LOG_DIR}/${RUN_TAG}_${SUBSET_TAG}_${TS}_pid$$.log"
 if [ "${DRY_RUN:-0}" = "1" ]; then
   RESUME_FROM="${RESUME_FROM:-}"
   echo "dry_run=1 — launch skipped; would run: ${CONFIG_PATH} epochs=${MAX_EPOCHS} lr=${DEFAULT_LR}"
-  echo "contract: mode=${EXPLICIT_PROMPT_MODE} p2=${P2_BOUNDARY_REFINER_ENABLED} udpr=${DECODER_TAIL_REFINER_ENABLED:-0}/K${DECODER_TAIL_NUM_POINTS:-0}/tail_only=${DECODER_TAIL_TRAIN_ONLY:-0}/lr_mult=${DECODER_TAIL_LR_MULT:-1.0} coord=${FINAL_MASK_COORDINATE_MODE} loss=${FINAL_MASK_LOSS_MODE} detach=${SHAPE_DENSE_DETACH} alpha=${SHAPE_DENSE_ALPHA_INIT} md=${PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING} pe_lr_mult=${PROMPT_ENCODER_LR_MULT} p2_beta=${P2_BOUNDARY_REFINER_BETA:-0.20} p2_delta=${P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX:-2.0} p2_channels=${P2_BOUNDARY_REFINER_PROJECTED_CHANNELS}/${P2_BOUNDARY_REFINER_MID_CHANNELS} p2_aux=${P2_BOUNDARY_REFINER_LOSS_WEIGHT} p2_loss=${P2_BOUNDARY_REFINER_LOSS_MODE:-boundary} p2_margin=${P2_BOUNDARY_REFINER_CORRECTION_MARGIN:-1.0} p2_keep_w=${P2_BOUNDARY_REFINER_KEEP_LOSS_WEIGHT:-0.1} shape_aux=${SHAPE_PRIOR_LOSS_WEIGHT} init=${INIT_FROM:-none} checkpoint_dir=${CHECKPOINT_DIR} resume=${RESUME_FROM:-none} save_last_model=${SAVE_LAST_MODEL} run_tag=${RUN_TAG}"
+  echo "contract: mode=${EXPLICIT_PROMPT_MODE} p2=${P2_BOUNDARY_REFINER_ENABLED} udpr=${DECODER_TAIL_REFINER_ENABLED:-0}/K${DECODER_TAIL_NUM_POINTS:-0}/tail_only=${DECODER_TAIL_TRAIN_ONLY:-0}/lr_mult=${DECODER_TAIL_LR_MULT:-1.0} coord=${FINAL_MASK_COORDINATE_MODE} loss=${FINAL_MASK_LOSS_MODE} detach=${SHAPE_DENSE_DETACH} alpha=${SHAPE_DENSE_ALPHA_INIT} md=${PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING} pe_lr_mult=${PROMPT_ENCODER_LR_MULT} p2_beta=${P2_BOUNDARY_REFINER_BETA:-0.20} p2_delta=${P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX:-2.0} p2_channels=${P2_BOUNDARY_REFINER_PROJECTED_CHANNELS}/${P2_BOUNDARY_REFINER_MID_CHANNELS} p2_aux=${P2_BOUNDARY_REFINER_LOSS_WEIGHT} p2_loss=${P2_BOUNDARY_REFINER_LOSS_MODE:-boundary} p2_margin=${P2_BOUNDARY_REFINER_CORRECTION_MARGIN:-1.0} p2_keep_w=${P2_BOUNDARY_REFINER_KEEP_LOSS_WEIGHT:-0.1} shape_aux=${SHAPE_PRIOR_LOSS_WEIGHT} val_every=${VAL_EVERY_N_EPOCHS} early_patience=${EARLY_STOPPING_PATIENCE} early_start=${EARLY_STOPPING_START_EPOCH} select_segm=segm/mAP select_bbox=${SAVE_BBOX_BEST_METRIC:-off} select_composite=${SAVE_COMPOSITE_BEST}/${SAVE_COMPOSITE_WEIGHTS} init=${INIT_FROM:-none} checkpoint_dir=${CHECKPOINT_DIR} resume=${RESUME_FROM:-none} save_last_model=${SAVE_LAST_MODEL} run_tag=${RUN_TAG}"
   exit 0
 fi
 
@@ -193,7 +204,12 @@ echo "  config=${CONFIG_PATH}"
 echo "  gpus=${CUDA_VISIBLE_DEVICES} nproc=${NPROC_PER_NODE}"
 echo "  batch=${BATCH_SIZE}x${GRAD_ACCUM_STEPS} (effective $((BATCH_SIZE*GRAD_ACCUM_STEPS*NPROC_PER_NODE)))"
 echo "  epochs=${MAX_EPOCHS} lr=${DEFAULT_LR} warmup=100 seed=44 amp=1"
-echo "  ema=${EMA_ENABLED}/${EMA_EVAL} maxdet=${TEST_MAX_PER_IMG} early_stop=off"
+if [[ "${EARLY_STOPPING_PATIENCE}" = "0" ]]; then
+  EARLY_STOP_LABEL="off"
+else
+  EARLY_STOP_LABEL="patience:${EARLY_STOPPING_PATIENCE},start:${EARLY_STOPPING_START_EPOCH},min_delta:${EARLY_STOPPING_MIN_DELTA},smooth:${EARLY_STOPPING_SMOOTH_WINDOW}"
+fi
+echo "  ema=${EMA_ENABLED}/${EMA_EVAL} maxdet=${TEST_MAX_PER_IMG} val_every=${VAL_EVERY_N_EPOCHS} early_stop=${EARLY_STOP_LABEL} select=segm/mAP,bbox:${SAVE_BBOX_BEST_METRIC:-off},composite:${SAVE_COMPOSITE_BEST}/${SAVE_COMPOSITE_WEIGHTS}"
 echo "  prompt_encoder: mask_downscaling=${PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING} lr_mult=${PROMPT_ENCODER_LR_MULT}; save_last_model=${SAVE_LAST_MODEL}"
 echo "  aug: vflip=${TRAIN_VFLIP_PROB} ms=${TRAIN_MULTI_SCALE_RESIZE_PROB}@${TRAIN_MULTI_SCALE_MODE}"
 echo "  checkpoint_dir=${CHECKPOINT_DIR}"
@@ -223,10 +239,12 @@ exec "${PYTHON}" -m torch.distributed.run \
   --train-subset-ratio 1.0 \
   --val-subset-ratio 1.0 \
   --val-batch-size 2 \
-  --val-every-n-epochs 1 \
+  --val-every-n-epochs "${VAL_EVERY_N_EPOCHS}" \
   --compute-val-loss 0 \
-  --early-stopping-patience 9999 \
-  --early-stopping-start-epoch 9999 \
+  --early-stopping-patience "${EARLY_STOPPING_PATIENCE}" \
+  --early-stopping-start-epoch "${EARLY_STOPPING_START_EPOCH}" \
+  --early-stopping-min-delta "${EARLY_STOPPING_MIN_DELTA}" \
+  --early-stopping-smooth-window "${EARLY_STOPPING_SMOOTH_WINDOW}" \
   --amp 1 \
   --ema-enabled 1 \
   --ema-decay 0.999 \
