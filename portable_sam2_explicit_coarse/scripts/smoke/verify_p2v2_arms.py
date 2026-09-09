@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Arm-level verification for the NWPU P2-v2 dev arms (p/pb/a0/a1/a2/a2e/a3).
+"""Arm-level verification for the NWPU P2-v2 dev arms (p/pb/a0/a1/a2/a2e/a3/a4).
 
 For each arm: capture the REAL environment produced by vhr10_p2v2_dev.sh
 (DEV_DUMP_ENV), build the model from the actual config, and assert the
@@ -22,7 +22,7 @@ MAINLINE = ROOT.parent                      # repo root (repo/)
 sys.path.insert(0, str(MAINLINE))
 sys.path.insert(0, str(MAINLINE / "portable_sam2_explicit_coarse" / "inference"))
 
-ARMS = ["p", "pb", "a0", "a1", "a2", "a2e", "a3"]
+ARMS = ["p", "pb", "a0", "a1", "a2", "a2e", "a3", "a4"]
 
 # Every config input read by the VHR-10 inheritance chain.  ``build`` clears
 # these before applying an arm dump, so one arm (or the caller's terminal)
@@ -47,6 +47,8 @@ CONFIG_ENV_KEYS = {
     "POINT_FULL_START_EPOCH", "PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING",
     "DECODER_TAIL_REFINER_ENABLED", "DECODER_TAIL_NUM_POINTS", "DECODER_TAIL_HIDDEN_DIM",
     "DECODER_TAIL_POINT_LOSS_WEIGHT", "DECODER_TAIL_DELTA_LOGIT_MAX",
+    "DECODER_TAIL_MODE", "DECODER_TAIL_GATE_INIT_PROB", "DECODER_TAIL_GATE_LOSS_WEIGHT",
+    "DECODER_TAIL_KEEP_LOSS_WEIGHT",
 }
 
 # Values deliberately incompatible with D5-B.  A0 and A3 must resolve to
@@ -60,6 +62,8 @@ POLLUTION = {
     "POINT_ONE_PAIR_EPOCHS": "4", "FINAL_MASK_OUTSIDE_BCE_WEIGHT": "0.7",
     "FINAL_MASK_ROI_EXPAND_RATIO": "2.0", "P2_BOUNDARY_REFINER_ENABLED": "1",
     "DECODER_TAIL_TRAIN_ONLY": "1", "INIT_FROM": "/tmp/forbidden-init.pth",
+    "DECODER_TAIL_MODE": "confidence_gated", "DECODER_TAIL_GATE_INIT_PROB": "0.9",
+    "DECODER_TAIL_GATE_LOSS_WEIGHT": "7.0", "DECODER_TAIL_KEEP_LOSS_WEIGHT": "3.0",
 }
 
 
@@ -117,12 +121,12 @@ def dry_run(arm: str, extra_env: Optional[Dict[str, str]] = None) -> str:
 
 def preflight_errors() -> list[str]:
     errors = []
-    for arm in ("a0", "a3"):
+    for arm in ("a0", "a3", "a4"):
         clean_env, polluted_env = arm_env(arm), arm_env(arm, POLLUTION)
         clean_cfg, polluted_cfg = config_only(clean_env), config_only(polluted_env)
         if clean_cfg != polluted_cfg:
             errors.append(f"{arm}: polluted shell changed resolved model_config")
-        if arm == "a3":
+        if arm in {"a3", "a4"}:
             expected = {
                 "DECODER_TAIL_LR_MULT": "1.0", "ROI_SAM_ENABLED": "0",
                 "SHAPE_CONTEXT_FUSION": "roi_only", "SHAPE_DENSE_TEMPERATURE": "1.0",
@@ -131,11 +135,11 @@ def preflight_errors() -> list[str]:
             }
             for key, value in expected.items():
                 if polluted_env.get(key) != value:
-                    errors.append(f"a3: {key}={polluted_env.get(key)!r}, expected {value!r}")
+                    errors.append(f"{arm}: {key}={polluted_env.get(key)!r}, expected {value!r}")
             text = dry_run(arm, POLLUTION)
             for required in ("init=none", "resume=none", "tail_only=0/lr_mult=1.0"):
                 if required not in text:
-                    errors.append(f"a3: dry-run lacks {required!r}: {text}")
+                    errors.append(f"{arm}: dry-run lacks {required!r}: {text}")
     return errors
 
 
@@ -191,7 +195,7 @@ def check_arm(arm: str, model, cfg) -> list:
         if arm == "a0":
             want(refiner is None, "refiner should be absent")
             want(not head.decoder_tail_enabled, "UDPR should be disabled")
-        elif arm == "a3":
+        elif arm in {"a3", "a4"}:
             want(refiner is None, "P2 refiner should be absent")
             want(head.decoder_tail_enabled, "UDPR should be enabled")
             tcfg = head._decoder_tail_cfg
@@ -201,6 +205,16 @@ def check_arm(arm: str, model, cfg) -> list:
                  "UDPR point loss weight != 1")
             want(abs(float(tcfg.get("delta_logit_max", -1)) - 2.0) < 1e-9,
                  "UDPR delta cap != 2")
+            if arm == "a3":
+                want("mode" not in tcfg, "v1 A3 must not materialize a mode key")
+            else:
+                want(tcfg.get("mode") == "confidence_gated", "DCR mode != confidence_gated")
+                want(abs(float(tcfg.get("gate_init_prob", -1)) - 0.1) < 1e-9,
+                     "DCR gate init != 0.1")
+                want(abs(float(tcfg.get("gate_loss_weight", -1)) - 1.0) < 1e-9,
+                     "DCR gate loss != 1")
+                want(abs(float(tcfg.get("keep_loss_weight", -1)) - 0.05) < 1e-9,
+                     "DCR keep loss != 0.05")
         else:
             want(refiner is not None, "refiner missing")
             rcfg = head.p2_boundary_refiner_cfg
@@ -251,7 +265,7 @@ def main() -> int:
         del model
 
     print("\n===== pairwise model_config diffs (ablation feasibility) =====")
-    pairs = [("p", "pb"), ("pb", "a0"), ("a0", "a1"), ("a1", "a2"), ("a2", "a2e"), ("a0", "a3")]
+    pairs = [("p", "pb"), ("pb", "a0"), ("a0", "a1"), ("a1", "a2"), ("a2", "a2e"), ("a0", "a3"), ("a3", "a4")]
     expected = {
         ("p", "pb"): {"explicit_prompt_mode"},
         ("pb", "a0"): {"explicit_prompt_mode", "train_mask_downscaling",
@@ -260,6 +274,7 @@ def main() -> int:
         ("a1", "a2"): {"loss_mode", "correction_margin", "keep_loss_weight"},
         ("a2", "a2e"): {"beta", "delta_logit_max"},
         ("a0", "a3"): {"decoder_tail_refiner_cfg"},
+        ("a3", "a4"): {"gate_init_prob", "gate_loss_weight", "keep_loss_weight", "mode"},
     }
     ok = True
     for x, y in pairs:

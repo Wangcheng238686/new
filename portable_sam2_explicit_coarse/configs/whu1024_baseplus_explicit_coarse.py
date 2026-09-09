@@ -164,6 +164,28 @@ if _decoder_tail_enabled:
         point_loss_weight=float(os.environ.get("DECODER_TAIL_POINT_LOSS_WEIGHT", "1.0")),
         delta_logit_max=float(os.environ.get("DECODER_TAIL_DELTA_LOGIT_MAX", "2.0")),
     )
+    # Keep absence of these keys as the v1 checkpoint contract.  Only the
+    # explicit A4/DCR mode materializes new architecture-affecting fields.
+    _decoder_tail_mode = os.environ.get("DECODER_TAIL_MODE", "residual_v1")
+    if _decoder_tail_mode == "confidence_gated":
+        _decoder_tail_gate_init_prob = float(os.environ.get("DECODER_TAIL_GATE_INIT_PROB", "0.1"))
+        _decoder_tail_gate_loss_weight = float(os.environ.get("DECODER_TAIL_GATE_LOSS_WEIGHT", "1.0"))
+        _decoder_tail_keep_loss_weight = float(os.environ.get("DECODER_TAIL_KEEP_LOSS_WEIGHT", "0.05"))
+        if not 0.0 < _decoder_tail_gate_init_prob < 1.0:
+            raise ValueError("DECODER_TAIL_GATE_INIT_PROB must lie in (0, 1)")
+        if _decoder_tail_gate_loss_weight < 0 or _decoder_tail_keep_loss_weight < 0:
+            raise ValueError("DECODER_TAIL gate/keep loss weights must be non-negative")
+        _decoder_tail_cfg.update(
+            mode="confidence_gated",
+            gate_init_prob=_decoder_tail_gate_init_prob,
+            gate_loss_weight=_decoder_tail_gate_loss_weight,
+            keep_loss_weight=_decoder_tail_keep_loss_weight,
+        )
+    elif _decoder_tail_mode != "residual_v1":
+        raise ValueError(
+            "DECODER_TAIL_MODE must be residual_v1 or confidence_gated, got "
+            f"{_decoder_tail_mode!r}"
+        )
 
 model = dict(
     roi_head=dict(
@@ -333,5 +355,19 @@ model = dict(
         )
     )
 )
+
+# Training-time RCNN proposal sampler size (positive-RoI cap = num *
+# pos_fraction 0.25 = 64 at the historical default 256).  RCNN_SAMPLER_NUM is
+# a train-only screening knob (num=128 -> <=32 positives per image) for
+# mask-head cost reduction studies; RPN sampling and inference are untouched.
+# The default reproduces the historical merged config value exactly.  NOTE:
+# any non-default value changes model.train_cfg and therefore the
+# architecture model_fingerprint — such checkpoints need allow_cross_arch to
+# load against a canonical-env contract (2026-09-08 screening: num=128 lost
+# ~-0.02..-0.03 segm/mAP vs 256 over a 30ep compressed schedule; keep 256).
+_rcnn_sampler_num = int(os.environ.get("RCNN_SAMPLER_NUM", "256"))
+if _rcnn_sampler_num <= 0:
+    raise ValueError(f"RCNN_SAMPLER_NUM must be > 0, got {_rcnn_sampler_num}")
+model.update(train_cfg=dict(rcnn=dict(sampler=dict(num=_rcnn_sampler_num))))
 
 train_cfg = dict(max_epochs=_epochs, val_interval=1)

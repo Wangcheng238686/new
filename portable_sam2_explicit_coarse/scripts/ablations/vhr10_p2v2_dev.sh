@@ -10,12 +10,18 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ARM="${1:?usage: vhr10_p2v2_dev.sh <p|pb|a0|a1|a2|a2e|a3|udpr64>}"
+ARM="${1:?usage: vhr10_p2v2_dev.sh <p|pb|a0|a1|a2|a2e|a3|a4|udpr64>}"
 shift || true
 
 # Protocol entries share the same architecture/arm block below, so the
 # development screen, the historical 600-epoch anchor, and the budgeted
 # matrix protocol cannot drift through copied model exports.
+# Sharded validation is a matrix300-only opt-in; never let a caller's
+# polluted shell silently shard dev100/full600 validation.  Likewise the
+# RCNN sampler size stays at the historical 256 everywhere (2026-09-08
+# screening: num=128 lost ~-0.02..-0.03 segm; user ruling: do not revisit).
+unset VAL_SHARD_ACROSS_RANKS
+unset RCNN_SAMPLER_NUM
 P2V2_PROTOCOL="${P2V2_PROTOCOL:-dev100}"
 case "${P2V2_PROTOCOL}" in
   dev100)
@@ -60,6 +66,13 @@ case "${P2V2_PROTOCOL}" in
     export SAVE_BBOX_BEST_METRIC="bbox/mAP"
     export SAVE_COMPOSITE_BEST=1
     export SAVE_COMPOSITE_WEIGHTS="0.5*bbox/mAP+0.5*segm/mAP"
+    # Sharded validation (2026-09-08): every rank owns deterministic batches
+    # (rank, rank+W, ...) of the deterministic val loader; predictions are
+    # gathered over the gloo control group and reassembled on rank 0 in
+    # global batch order, so COCO inputs are identical to the rank0-only
+    # path while the validation wall drops ~3-4x on 4 GPUs.  dev100/full600
+    # keep the historical rank0-only validation for run continuity.
+    export VAL_SHARD_ACROSS_RANKS=1
     ;;
   *)
     echo "Unknown P2V2_PROTOCOL=${P2V2_PROTOCOL}; expected dev100, full600, or matrix300" >&2
@@ -129,7 +142,8 @@ export DECODER_TAIL_LR_MULT=1.0
 # Enabling the module and restricting optimization to it are independent
 # choices.  A3 is a normal single-stage A0+UDPR arm; udpr64 remains the
 # frozen-A0 mechanism-screening heat start.
-unset DECODER_TAIL_TRAIN_ONLY
+unset DECODER_TAIL_TRAIN_ONLY DECODER_TAIL_MODE DECODER_TAIL_GATE_INIT_PROB \
+  DECODER_TAIL_GATE_LOSS_WEIGHT DECODER_TAIL_KEEP_LOSS_WEIGHT
 
 case "${ARM}" in
   p)
@@ -202,6 +216,22 @@ case "${ARM}" in
     export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
     export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3_pbm_udprk64}"
     ;;
+  a4)
+    # DCR/UDPR-CG: relative to A3, retain the same uncertainty Top-K and
+    # residual budget but authorize residual writes with correction confidence.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export DECODER_TAIL_REFINER_ENABLED=1
+    export DECODER_TAIL_NUM_POINTS=64
+    export DECODER_TAIL_HIDDEN_DIM=128
+    export DECODER_TAIL_POINT_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
+    export DECODER_TAIL_MODE=confidence_gated
+    export DECODER_TAIL_GATE_INIT_PROB=0.1
+    export DECODER_TAIL_GATE_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_KEEP_LOSS_WEIGHT=0.05
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a4_pbm_udprcgk64}"
+    ;;
   udpr64)
     # Independent decoder-tail arm.  It starts from the frozen A0 winner;
     # only the newly introduced UDPR parameters are optimized.
@@ -217,7 +247,7 @@ case "${ARM}" in
     export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_udprk64_a0init}"
     ;;
   *)
-    echo "Unknown arm ${ARM}; expected p, pb, a0, a1, a2, a2e, a3, or udpr64" >&2
+    echo "Unknown arm ${ARM}; expected p, pb, a0, a1, a2, a2e, a3, a4, or udpr64" >&2
     exit 2
     ;;
 esac
@@ -229,7 +259,7 @@ source "${SCRIPT_DIR}/vhr10_fi_overlay.sh"
 # scripts/smoke/verify_p2v2_arms.py so model-construction checks replay the
 # REAL arm env rather than a hand-copied one.
 if [ "${DEV_DUMP_ENV:-0}" = "1" ]; then
-  env | grep -E '^(NECK_TYPE|PROMPT_ROUTE|EXPLICIT_PROMPT_MODE|P2_BOUNDARY_REFINER_[A-Z_]+|DECODER_TAIL_[A-Z_]+|INIT_FROM|SAM_IMAGE_EMBED_STRIDE|SEGM_SCORE_MODE|ROI_SAM_[A-Z_]+|COARSE_MASK_OUTPUT_SIZE|POINT_(WARMUP_[A-Z_]+|NO_POINT_EPOCHS|ONE_PAIR_EPOCHS|FULL_START_EPOCH)|SHAPE_[A-Z_]+|PROMPT_ENCODER_[A-Z_]+|FINAL_MASK_[A-Z_]+|MAX_EPOCHS|BATCH_SIZE|GRAD_ACCUM_STEPS|NPROC_PER_NODE|VAL_EVERY_N_EPOCHS|EARLY_STOPPING_[A-Z_]+|SAVE_LAST_MODEL|RUN_TAG|CUDA_VISIBLE_DEVICES)=' | sort
+  env | grep -E '^(NECK_TYPE|PROMPT_ROUTE|EXPLICIT_PROMPT_MODE|P2_BOUNDARY_REFINER_[A-Z_]+|DECODER_TAIL_[A-Z_]+|INIT_FROM|SAM_IMAGE_EMBED_STRIDE|SEGM_SCORE_MODE|VAL_SHARD_ACROSS_RANKS|RCNN_SAMPLER_NUM|ROI_SAM_[A-Z_]+|COARSE_MASK_OUTPUT_SIZE|POINT_(WARMUP_[A-Z_]+|NO_POINT_EPOCHS|ONE_PAIR_EPOCHS|FULL_START_EPOCH)|SHAPE_[A-Z_]+|PROMPT_ENCODER_[A-Z_]+|FINAL_MASK_[A-Z_]+|MAX_EPOCHS|BATCH_SIZE|GRAD_ACCUM_STEPS|NPROC_PER_NODE|VAL_EVERY_N_EPOCHS|EARLY_STOPPING_[A-Z_]+|SAVE_LAST_MODEL|RUN_TAG|CUDA_VISIBLE_DEVICES)=' | sort
   exit 0
 fi
 

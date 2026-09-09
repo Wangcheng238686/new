@@ -112,7 +112,9 @@ RUN_IN_BACKGROUND=1 bash scripts/ablations/vhr10_large600.sh
 协议，前台串行运行并保存真正的 E100 末轮权重。A0 是严格的 D5-B PBM 底座
 （alpha=0.5、dense 不 detach、解冻 mask_downscaling、PE LR multiplier=0.1）；
 A1 只加原 P2，A2 只将 P2 auxiliary loss 改为 correction-keep R1，A3 则仅加
-零初始化 UDPR-K64，并保持 P2 off、完整网络单阶段训练。
+零初始化 UDPR-K64，并保持 P2 off、完整网络单阶段训练。A4/DCR 在 A3 的同一
+Top-K residual 上加入连续纠错置信度和 correct-pixel keep 约束；它不自动加入默认串行
+队列，须先通过短程机制筛查。
 
 该入口显式锁定 D5-B 的 dense/context/coarse-loss/ROI-SAM/point-warmup/final-loss
 配置，以及 UDPR 的 LR multiplier=1.0；不要依赖调用终端中的同名环境变量。DRY_RUN
@@ -123,6 +125,7 @@ DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_dev.sh a0
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_dev.sh a1
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_dev.sh a2
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_dev.sh a3
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_dev.sh a4
 ```
 
 完整 A0→A1→A2→A3 系列须严格串行（每臂占满四卡，任一失败即停止），可用统一入口：
@@ -149,6 +152,7 @@ stopping 显式关闭，保证完整走完调度。
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_full600.sh a0
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_full600.sh a2
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_full600.sh a3
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_full600.sh a4
 
 # 默认严格串行 A0 → A1 → A2 → A3；也可只指定待跑臂。
 bash scripts/ablations/vhr10_p2v2_full600_series.sh
@@ -170,9 +174,13 @@ DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh p
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh pb
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a0
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a3
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a4
 
 # 默认严格串行：P -> PB -> PBM(A0) -> PBM+UDPR(A3)
 bash scripts/ablations/vhr10_p2v2_matrix300_series.sh
+
+# A4 不改变默认矩阵；通过机制筛查后才显式作为独立臂启动。
+bash scripts/ablations/vhr10_p2v2_matrix300_series.sh a4
 ```
 
 历史 full600 队列已删除；不要重新创建或启动 A0/full600。运行中的 A3/full600 输出 tag
@@ -187,11 +195,16 @@ P2/UDPR 状态。
 `run_manifest.json`（含 130 个 `processed_image_ids`）共同构成 paired bootstrap 输入：
 
 ```bash
-bash scripts/ablations/vhr10_p2v2_eval.sh a0 best
-bash scripts/ablations/vhr10_p2v2_eval.sh a0 last
-bash scripts/ablations/vhr10_p2v2_eval.sh a3 best
-bash scripts/ablations/vhr10_p2v2_eval.sh a3 last
+P2V2_EVAL_PROTOCOL=matrix300 bash scripts/ablations/vhr10_p2v2_eval.sh a0 best
+P2V2_EVAL_PROTOCOL=matrix300 bash scripts/ablations/vhr10_p2v2_eval.sh a0 best_bbox
+P2V2_EVAL_PROTOCOL=matrix300 bash scripts/ablations/vhr10_p2v2_eval.sh a0 best_composite
+P2V2_EVAL_PROTOCOL=matrix300 bash scripts/ablations/vhr10_p2v2_eval.sh a3 best
+P2V2_EVAL_PROTOCOL=matrix300 bash scripts/ablations/vhr10_p2v2_eval.sh a3 last
+P2V2_EVAL_PROTOCOL=matrix300 bash scripts/ablations/vhr10_p2v2_eval.sh a4 best
 ```
+
+`vhr10_p2v2_eval.sh` 默认仍是历史 `dev100`，因此 matrix300/full600 **必须**显式设置
+`P2V2_EVAL_PROTOCOL`；否则脚本会指向同名的 dev100 工件而非报错。
 
 ## 目录地图（2026-09 重构后）
 

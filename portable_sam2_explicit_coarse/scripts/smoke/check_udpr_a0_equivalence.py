@@ -1,4 +1,4 @@
-"""Compare frozen A0 and zero-initialized UDPR on real validation batches.
+"""Compare frozen A0 and zero-initialized UDPR/DCR on real validation batches.
 
 This is an integration guard, not an accuracy evaluation.  It proves that the
 optional decoder feature capture and zero-initialized scatter path preserve
@@ -61,6 +61,10 @@ def main() -> None:
     parser.add_argument("--image-subdir", default=None)
     parser.add_argument("--image-size", type=int, nargs=2, default=None)
     parser.add_argument("--batch-size", type=int, default=None)
+    parser.add_argument(
+        "--tail-mode", choices=("residual_v1", "confidence_gated"), default="residual_v1",
+        help="v1 UDPR or A4/DCR; both must be exact zero-init identities",
+    )
     args = parser.parse_args()
     if args.max_batches <= 0:
         raise ValueError("--max-batches must be positive")
@@ -72,6 +76,11 @@ def main() -> None:
         enabled=True, num_points=64, hidden_dim=128,
         point_loss_weight=1.0, delta_logit_max=2.0,
     )
+    if args.tail_mode == "confidence_gated":
+        tail_cfg["roi_head"]["mask_head"]["decoder_tail_refiner_cfg"].update(
+            mode="confidence_gated", gate_init_prob=0.1,
+            gate_loss_weight=1.0, keep_loss_weight=0.05,
+        )
     device = _resolve_device(args.device)
     contract = _resolve_dataset_contract(args, snapshot)
     loader = _build_loader(contract, num_workers=0)
@@ -94,11 +103,11 @@ def main() -> None:
     report = _load_model_state(tail, checkpoint["model"], allow_nonstrict=True)
     expected = sorted(k for k in tail.state_dict() if ".decoder_tail_refiner." in k)
     if sorted(report["missing_keys"]) != expected or report["unexpected_keys"]:
-        raise RuntimeError(f"UDPR heat-init whitelist failed: report={report}, expected={expected}")
+        raise RuntimeError(f"{args.tail_mode} heat-init whitelist failed: report={report}, expected={expected}")
     tail_hashes = [_digest(_predict_one(tail, batch, device)) for batch in batches]
     if baseline_hashes != tail_hashes:
-        raise RuntimeError(f"zero-init UDPR changed A0 predictions: {baseline_hashes} != {tail_hashes}")
-    print("UDPR A0 zero-init full prediction equivalence: PASS")
+        raise RuntimeError(f"zero-init {args.tail_mode} changed A0 predictions: {baseline_hashes} != {tail_hashes}")
+    print(f"{args.tail_mode} A0 zero-init full prediction equivalence: PASS")
     for index, digest in enumerate(tail_hashes):
         print(f"batch={index} prediction_sha256={digest}")
 

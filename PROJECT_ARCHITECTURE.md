@@ -183,7 +183,13 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 | `portable_sam2_explicit_coarse/docs/whu_fi_dev_results_20260906.md` | WHU fi 开发结果台账：14 次训练曲线与证据路径；§0 补充 627 图评估的 P→PB→PBM 平均递增暂定结论、稳定性边界与 E14/末轮区别。 |
 | `portable_sam2_explicit_coarse/docs/d5_review_handoff.md` | 2026-09-06 阶段诊断复审与跨-agent交接：核实证据边界、提出 P2-off 的 D5-A/B dense 适配及 PE 独立更新验收；属于待实施建议，不表示脚本已落地或训练已启动。 |
 | `portable_sam2_explicit_coarse/docs/a0_two_site_oracle_design.md` | 以 NWPU A0 最佳权重为共同冻结底座的双位置 Oracle 设计：canvas 输入端的 GT-content×gate 格，与不加新 prompt token 的 SAM2 decoder-tail PointRend-style uncertainty-point 格；明确 GT 仅作 Oracle/训练 target，均尚未实现候选模型。 |
-| `portable_sam2_explicit_coarse/docs/udpr_decoder_tail_design.md` | UDPR 独立 decoder-tail 实施契约：冻结 A0、无 GT selector 的 uncertainty Top-K、热启动白名单、日志和 paired-bootstrap 验收；不将 Oracle 上限写成模型收益。 |
+| `portable_sam2_explicit_coarse/docs/a0_coarse_to_mining_oracle.md` | A0 原设计链路的四格冻结 Oracle：只在现有 `ShapePointMiner` 和/或生产 dense-canvas 变换的上游以匹配 GT coarse 取代 raw coarse，分离更准 coarse 对点挖掘与 dense 消费的可达上限；完全不训练或改 detector。 |
+| `portable_sam2_explicit_coarse/docs/a0_coarse_to_mining_oracle_results.md` | A0 四格 Oracle 的正式结果台账：GPU3 全量 NWPU-130、hash/canonical 不变量、十类 500 次 paired-bootstrap CI 与收缩后的 P2→coarse→dense 双门裁决。 |
+| `portable_sam2_explicit_coarse/docs/p2_first_gate_a2_results.md` | A2/R1 的第一门正式台账：冻结自然 P2 raw/refined coarse、生产 canvas、全 NWPU-130 图像级 paired bootstrap 与不通过裁决；不把训练期 P2 telemetry 当作效用证据。 |
+| `portable_sam2_explicit_coarse/docs/a0_p2_support_decomposition_results.md` | 冻结 A0 的 P2 支持域分解 Oracle：比较 accepted S4、只撤 coverage reject 的 ungated S4 与 full ROI 的 correct-errors-only 上限，定位 A2/R1 的 hard-reject 空间瓶颈。 |
+| `portable_sam2_explicit_coarse/docs/a0_p2_error_readability_gate.md` | 冻结 A0 的下一门实施契约：以训练集拟合、验证集盲评的 raw-only / aligned-P2 / ROI-permuted-P2 线性读出器，检验 P2 是否能无 GT 定位 accepted-S4 之外的 raw coarse 错误；结果写入前不得宣称新模块有效。 |
+| `portable_sam2_explicit_coarse/docs/udpr_decoder_tail_design.md` | A3/UDPR-v1 的独立 decoder-tail 历史实施契约：冻结 A0、无 GT selector 的 uncertainty Top-K、热启动白名单、日志和 paired-bootstrap 验收；不将 Oracle 上限写成模型收益。 |
+| `portable_sam2_explicit_coarse/docs/dcr_dual_confidence_refinement_design.md` | A4/DCR（双置信度解码细化）论文级模块定义：不确定性选点、纠错置信度授权、训练期 detached error label、DDP loss/日志与机制停止条件；不含任何尚未获得的精度声明。 |
 | `C5_V2_METHOD.md` | C5-v2 论文方法设计文档；整理完整架构、张量数据流、ECPG/P2-BRR、损失与制图说明。 |
 | `portable_sam2_explicit_coarse/docs/prompt_consumption_and_p2_refinement_implementation_guide.md` | Prompt 消费鲁棒化与 P2 边界提示的实施前指导；本轮在固定 WHU 10% train / 10% validation 上快速验证，P2 点细化须通过 real-P2 对 sham-P2 的信息门。 |
 | `portable_sam2_explicit_coarse/docs/p2_point_refiner_design.md` | P2 点细化的历史候选设计；已降级，不能作为当前实施依据。 |
@@ -238,7 +244,7 @@ rsprompter_anchor_satS_v11_sam2_large_full.py
 | `coarse_mask_loss.py` | coarse mask 的 BCE、Dice、boundary、distance 组合损失及权重调度。 |
 | `dense_prompt_utils.py` | raw/confidence coarse 变换、ROI-local mask 粘贴，以及 R1-C4-G 的 detached exact-EDT Gaussian 挖掘与图像空间映射。 |
 | `p2_boundary_refiner.py` | C5-v2 的 P2 高频边界残差模块；实现 raw-only forward support、受限残差和 boundary auxiliary loss。 |
-| `decoder_tail_refiner.py` | UDPR：在 SAM2 native logits 后按最小 `|logit|` 的确定性 Top-K 选点，以 decoder upscaled feature、mask token、logit/坐标预测局部残差；不读取 P2/coarse，GT 只用于训练 selected-point target。 |
+| `decoder_tail_refiner.py` | UDPR decoder tail：A3/v1 在 SAM2 native logits 后按最小 `|logit|` 的确定性 Top-K 选点并预测局部残差；A4/DCR 在同一候选集上再预测连续纠错置信度，以 `q*delta` 授权写回。均不读取 P2/coarse，GT 仅训练期使用。 |
 | `architecture_contract.py` | 从完整解析后的 `cfg.model` 派生架构 ID、schema-v2 SHA256 指纹，并校验 INIT/RESUME。 |
 | `ckpt_utils.py` | SAM2 子模块 checkpoint 的严格加载、key 过滤和主进程日志。 |
 
@@ -468,7 +474,7 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `paper_promptminer_rd_p2_whu_full_fast.sh` | WHU fast-150 论文运行入口（test segm/mAP 0.7342）。 |
 | `test_only_from_ckpt.sh` | 给定 checkpoint 仅做 test 评估。 |
 | `vhr10_fast400.sh` 等 5 个 | VHR-10 薄入口，见 `scripts/_run_vhr10.sh`。 |
-| `vhr10_p2v2_dev.sh` / `vhr10_p2v2_dev_series.sh` / `vhr10_p2v2_eval.sh` | NWPU A 系列的 A0/A1/A2/A3 100ep 受控训练、串行总入口与 strict post-run 评估入口：全量 520/130、4 卡、fi、raw 选型、E100 显式保存；series 任一臂失败即停止，传 arm 参数可只追加新臂。评估从 checkpoint 重放 VHR-10 10 类契约并导出 bootstrap records。A0 固定 D5-B；A1/A2 是 P2 轴；A3 仅加入零初始化 UDPR-K64、单阶段端到端训练。 |
+| `vhr10_p2v2_dev.sh` / `vhr10_p2v2_dev_series.sh` / `vhr10_p2v2_eval.sh` | NWPU A 系列 A0/A1/A2/A3/A4 的受控训练、串行总入口与 strict post-run 评估入口：全量 520/130、4 卡、fi、raw 选型。A0 固定 D5-B；A1/A2 是 P2 轴；A3 是无条件 UDPR-K64；A4/DCR 在同一 K64 residual 上增加纠错置信度。eval 默认 dev100，matrix300/full600 必须以 `P2V2_EVAL_PROTOCOL` 显式选择目录及末轮 epoch；支持 segm/bbox/composite/last 四种预注册权重口径。A4 可显式运行，但不插入既有默认队列。 |
 | `vhr10_udpr_k64.sh` | NWPU 独立 UDPR-K64 热启动入口：从固定 A0 best 权重跨架构初始化，强制只训练 decoder tail；不属于 P2-v2 A0/A1/A2 主线。 |
 | `queue_vhr10_a2_a3.sh` | 本地持久队列：仅在 GPU 0–3 均无 compute PID 后，经 A2/A3 DRY_RUN 再严格前台串行启动 `a2 a3`；`flock` 防止同一 checkpoint 目录的重复队列。A2 明确为默认 R1，非 A2e。 |
 | `eval_test_raw.sh` / `eval_test_winner.sh` / `eval_vhr10_final.sh` | checkpoint 的 raw/EMA 评估 wrapper。 |
@@ -482,9 +488,9 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `smoke_ddp_control_plane.py` | DDP 控制面广播单测。 |
 | `test_dense_prompt_utils.py` | 检查 raw detach、Gaussian 中心/面积映射、各向同性、空 coarse 和不可导契约。 |
 | `check_forward_equivalence.py` | 黄金前向等价校验：从 checkpoint `model` 权重（非 EMA）重建模型，逐位比对 state_dict 与固定输入前向输出（2026-09 重构回归门）。 |
-| `test_decoder_tail_refiner.py` | UDPR 张量回归：零初始化恒等、stable tie-break 与 selected-point BCE 对末层参数的非零梯度。 |
-| `test_decoder_tail_ddp_empty_rank.py` | CPU/Gloo 双 rank 回归：一张 rank 无正 RoI 时仍与有 RoI rank 对齐 UDPR 的两次 BCE collective，且二者得到相同 global-BCE telemetry。 |
-| `check_udpr_a0_equivalence.py` | 用真实验证 batch 依次重建 A0 与零初始化 UDPR，严格核验 A0 load、UDPR heat-init missing-key 白名单及最终 bbox/label/score/mask prediction SHA256 恒等。 |
+| `test_decoder_tail_refiner.py` | UDPR/DCR 张量回归：v1 与 DCR 零初始化恒等、stable tie-break、DCR gate/residual 首步梯度和第二步 shared-trunk 梯度。 |
+| `test_decoder_tail_ddp_empty_rank.py` | CPU/Gloo 双 rank 回归：一张 rank 无正 RoI 时仍与有 RoI rank 对齐 A3 的 BCE 或 A4/DCR 的 BCE+gate+telemetry collectives，且二者得到相同 global telemetry。 |
+| `check_udpr_a0_equivalence.py` | 用真实验证 batch 依次重建 A0 与零初始化 UDPR/DCR（`--tail-mode`），严格核验 heat-init missing-key 白名单及最终 bbox/label/score/mask prediction SHA256 恒等。 |
 
 ### 4.7 工具与通用函数
 
@@ -493,6 +499,10 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `tools/mask_to_coco_whu512.py` | 将 WHU 二值 mask 转为 COCO polygon 标注；属于数据准备工具，不是训练必需步骤。 |
 | `tools/eval_boundary_ap.py` / `tools/eval_vhr10_original_scale.py` / `tools/visualize_instances.py` / `tools/smoke_test_components.py` | 评估与可视化工具。 |
 | `inference/probes/canvas_accuracy_probe.py` | 冻结 checkpoint 的 dense-canvas 信息质量与消费敏感性探针：按推理期 IoU 匹配实例 GT，在全图 PE canvas 上测 learned→GT logit 混合，并交叉 `current/forced alpha`；先以 unhooked 标准推理逐图 hash 断言 `blend=0,current` 逐位一致，再要求所有画布干预保持检测输出不变。`blend=1,alpha=1` 是 GT 画布与全开 gate 的定位格，不是可部署模型或训练消融。 |
+| `inference/probes/coarse_to_mining_oracle_probe.py` | A0/P2-off 的原链路四格 Oracle：hook `mask_head._forward_coarse_p2`，将同类 IoU≥0.5 匹配 proposal 的 GT signed ROI coarse 仅送入 ShapePointMiner、仅经生产 `_shape_prior_to_prompt_mask` 送入 dense，或两者均送入；unmatched 行保持 raw。先断言 unhooked production parity、再断言所有格 detector hash 不变与 raw hook 输出逐位恒等，并导出 paired-bootstrap records。 |
+| `inference/probes/p2_coarse_gate_probe.py` | P2 第一门的只读自然输出审计：从 `coarse_outputs` 显式取 raw/refined（第一个 forward 返回槽是 refined，不能误作 raw），分别经生产 canvas renderer 与 GT 后验同类匹配比较；以图像级 paired bootstrap 裁决 coarse 与 support-canvas 内容门，并断言观察 hook 不改变最终输出 hash。 |
+| `inference/probes/p2_support_decomposition_oracle.py` | 冻结 A0 的 P2-style support reachability Oracle：从 A2 checkpoint 固化 raw-boundary S4/support-reject 几何，GT 只对同类 IoU 匹配 ROI 的 raw 错误像素作反事实修正；四臂只切 dense canvas 来源，导出完整 COCO records 供 paired bootstrap。 |
+| `inference/probes/p2_error_readability_probe.py` | 冻结 A0 的 P2 可读性门：在 NWPU train-520 仅拟合轻量 linear readout，NWPU val-130 盲评 raw-only、raw+空间对齐 P2 和 ROI-permuted P2；固定每 ROI 写入预算，统计带外错误的 recall/precision 与 raw-sign flip 的 coarse-IoU 反事实。它不改模型 tensor 或 checkpoint。 |
 | `inference/probes/`（其余） | 审计探针（通路审计、P2 oracle、E0、点可学性、P2 可视化），手动调用；P2 通路审计结论见 `docs/p2_decoder_side_findings.md`。 |
 | `utils/__init__.py` | 通用工具包标记。 |
 | `utils/coco_eval_utils.py` | 构造 COCO GT/DT 并执行 bbox/segm COCOeval；支持 bbox score 和 mask score 两种评估分数。 |
@@ -702,7 +712,9 @@ bash scripts/reproduce_legacy_segm.sh
 | `P2_BOUNDARY_REFINER_DELTA_LOGIT_MAX` | `tanh` 前残差幅度，默认 `2.0`；固定 beta `0.20` 后实际上界 `0.4`。 |
 | `P2_BOUNDARY_REFINER_LOSS_WEIGHT` | 边界 BCE 权重，默认 `0.05`。 |
 | `P2_BOUNDARY_REFINER_LR_MULT` | refiner 独立参数组学习率倍率，默认 `1.0`，weight decay 继承 `0.05`。 |
-| `DECODER_TAIL_REFINER_ENABLED` | 默认 `0`；仅 UDPR 独立路线设为 `1`，此时解析其 `NUM_POINTS/HIDDEN_DIM/POINT_LOSS_WEIGHT/DELTA_LOGIT_MAX` 至 `cfg.model` 与新架构指纹。关闭时不写入模型配置，以保持历史 A0/P2 架构键不变。 |
+| `DECODER_TAIL_REFINER_ENABLED` | 默认 `0`；UDPR/DCR 路线设为 `1`，此时解析其 `NUM_POINTS/HIDDEN_DIM/POINT_LOSS_WEIGHT/DELTA_LOGIT_MAX` 至 `cfg.model` 与新架构指纹。关闭时不写入模型配置，以保持历史 A0/P2 架构键不变。 |
+| `DECODER_TAIL_MODE` | 未设置或 `residual_v1` 保持 A3 的旧配置字段/架构 ID；`confidence_gated` 显式启用 A4/DCR，并将 `GATE_INIT_PROB/GATE_LOSS_WEIGHT/KEEP_LOSS_WEIGHT` 写入配置、产生 `_udprcgkK` ID。 |
+| `DECODER_TAIL_GATE_INIT_PROB` / `DECODER_TAIL_GATE_LOSS_WEIGHT` / `DECODER_TAIL_KEEP_LOSS_WEIGHT` | A4/DCR 专用，首配方固定 `0.1/1.0/0.05`；gate 是连续残差幅度，不是阈值式稀疏开关。 |
 | `DECODER_TAIL_LR_MULT` | UDPR 参数组 LR 倍率，默认 `1.0`；仅 `--train-decoder-tail-only` 路线使用。 |
 | `SAM_IMAGE_EMBED_STRIDE` | SAM2 MaskDecoder image embedding步长；B0/B1、M0/M1、C1–C4默认`32`，R0、R1-C3、R1-C4、C5-v2固定`16`。 |
 | `SHAPE_POINT_ADAPTIVE_VALIDITY` | `1` 默认自适应点槽有效性；`0` 固定输出有效 2P2N 极值点。 |
@@ -1060,3 +1072,77 @@ bash scripts/reproduce_legacy_segm.sh
   所有后续主矩阵行从头以 300 epoch、4 卡有效 batch 8、LR 5e-4、100-step warmup、AMP、
   val/5、无 early stop 的同一协议训练。默认顺序为 P、PB、A0(PBM)、A3(PBM+UDPR)；
   仍可显式传入 P2 臂，但不自动把缺乏正面证据的 P2 纳入主矩阵。
+
+## 2026-09-08：A4 双置信度解码细化（DCR）接线
+
+- 新增 A4/DCR：在 A3 的 fixed-K native-logit decoder-tail 上将“不确定性选点”与“纠错
+  授权”分离。共享 feature 同时输出有界残差与连续 `q`，写回为 `q*delta`；`q` 仅由训练期
+  detached pre-tail error label 监督，推理期无 GT、无新增 prompt，也不影响 bbox/class/score。
+- A4 固定 `K64, hidden128, cap2.0, q0=0.1, gate=1.0, keep=0.05`，其 architecture ID 为
+  `_udprcgk64`。A3/v1 不写 mode/gate 配置，仍为 `_udprk64`，所以当前 matrix300 A3 的
+  代码和 checkpoint 语义不变。
+- `dev100`、historical `full600`、`matrix300` 均可显式解析 A4；默认 matrix300 串行队列
+  仍严格为 P→PB→A0→A3-v1。先以日志中的 `gate_on_error > gate_on_correct`、correct 的
+  applied delta 降低与 destroy/net-flip 改善筛查机制，之后才允许 A4 进入正式比较。
+
+## 2026-09-08：A0 原 coarse-to-mining 四格 Oracle
+
+- 新增 `inference/probes/coarse_to_mining_oracle_probe.py` 与其 tensor smoke：这是冻结 A0
+  的 inference-only 诊断，不改训练主线、checkpoint、architecture ID 或 debug fields。
+  它通过实际 `_forward_coarse_p2` 返回值分别干预 raw coarse 的点消费者和 dense 消费者，且
+  dense 格仍调用生产 canvas 变换；同类 IoU≥0.5 未匹配 proposal 保持 raw。
+- 完整运行先要求无 hook 标准输出与保存的 A0 production inference records/mAP 精确一致；
+  再要求每格 detector SHA256 不变、raw hook mask 输出逐位一致，并导出全验证集 records/
+  manifests 供 paired bootstrap。结果仅能决定后续“改 P2/coarse 源是否有下游可达空间”，
+  不得视为任何训练模型或 P2 效果。
+- GPU3 上的 A0 epoch36 全量 NWPU-130 正式运行已通过以上不变量：raw=0.666929，
+  points=0.667831（+0.000902），dense=0.675280（+0.008351），both=0.676067（+0.009138）。
+  因而当前冻结模型中完美 coarse 的主要可达空间在既有 dense 消费端，而非点挖掘；结果仍为
+  Oracle 上限。修复 Oracle manifest 漏写的 VHR-10 十类数据契约后，`_full_v2` 工件的
+  `resamples=0` paired-bootstrap 重建逐项精确复现上述 mAP；完整 CI 结论见下一条和
+  `docs/a0_coarse_to_mining_oracle.md`。
+- `_full_v2` 的 500 次十类 paired image-bootstrap 已完成：`dense−raw` 的 Δ CI 为
+  **[+0.005167,+0.011141]**，而 `points−raw` 为 [−0.000882,+0.002867]、`both−dense`
+  为 [−0.001625,+0.003721]。后续 P2 只允许以“先改善 coarse content、经既有 dense canvas
+  消费，再在 paired full-val 中改善 A2”的双门继续；不再把选点策略或新 sparse token 作为
+  本链路的优先开发方向。
+
+## 2026-09-09：A2/R1 自然 P2 第一门裁决
+
+- 新增 `inference/probes/p2_coarse_gate_probe.py` 与 CPU accounting smoke。探针只读
+  checkpoint 的自然 `coarse_outputs.raw_logits/refined_logits`，以同类 IoU≥0.5 匹配
+  GT 作事后评估；raw/refined 均经生产 canvas renderer，指标按 image 而非 ROI 配对
+  bootstrap。实现显式防止把 `_forward_coarse_p2` 的第一个（已 refined）返回槽误读为 raw。
+- A2 epoch63 在 NWPU-130 的 full run 通过 strict load、hook/unhooked detector 与输出
+  hash 恒等；715 匹配 ROI 中 valid/rejected P2 support 为 272/443。自然 P2 使 canvas
+  support IoU 仅 +0.000209（CI [+0.000123,+0.000298]），但 coarse IoU +0.000054 的
+  CI [−0.000048,+0.000172] 跨零；19.82% canvas support 连续值改变，故不是消费端死路。
+  按预注册双条件第一门 **fail**，A2/R1 不进入主矩阵或重训；完整结果及外部工件路径见
+  `docs/p2_first_gate_a2_results.md`。
+
+## 2026-09-09：冻结 A0 P2 支持域收益分解
+
+- 在第一门 A2/R1 未通过后，新增 `inference/probes/p2_support_decomposition_oracle.py`
+  及 tensor smoke。它不是 P2 模型训练：以 A0 raw coarse 通过 A2 保存的 raw-only
+  S4 形态学支持域产生 three-way correct-errors-only Oracle，所有变化只进入既有 dense
+  canvas；检测、points、未匹配 ROI 与 raw hook 输出契约均保持隔离。
+- NWPU-130 全量结果通过 A0 canonical standard、strict load 和四臂 detector hash
+  不变量。训练同构 floor/ceil target 的 v2 中，accepted S4 ΔmAP `+0.001909` CI
+  `[+0.000009,+0.003221]`，同一 S4 只撤 coverage reject 的 ungated Δ `+0.005782` CI
+  `[+0.002985,+0.007898]`，接近 full ROI 的 `+0.007501` CI
+  `[+0.004103,+0.010134]`；ungated−accepted CI `[+0.001670,+0.005927]`。这只证明
+  已知 GT correction direction 下 hard reject 是 Oracle 可达空间的高杠杆限制；实际训练
+  前仍须先证明 P2 feature 对带外错误的无 GT 定位能力。完整证据见
+  `docs/a0_p2_support_decomposition_results.md`。
+
+## 2026-09-09：冻结 A0 P2 错误定位可读性门（待运行）
+
+- 新增 `inference/probes/p2_error_readability_probe.py` 与 CPU smoke。它将 A2 的 accepted-S4
+  几何固定为“旧支持域”，只在训练集使用 GT 标注该域外的 raw-binary coarse error；冻结 A0
+  forward 始终返回原输出。两个线性读出器分别使用 raw/|raw|，以及 raw/|raw|+同一 proposal
+  对齐的冻结 P2；验证集另将 P2 ROI 行循环置换（单 ROI 时空间平移）作为负对照。
+- 验收预注册为：NWPU val-130 的 image-bootstrap 中，aligned P2 相对 raw 和相对 permuted
+  P2 的 error recall、precision、固定 10% per-ROI write-budget 下 signed raw-flip coarse IoU
+  三项 95% CI 下界均大于 0。只有通过才允许设计/训练 P2-conditioned adaptive correction
+  support；该探针本身无训练模型、无 COCO mAP 结论、也不新增训练日志字段。详见
+  `docs/a0_p2_error_readability_gate.md`。

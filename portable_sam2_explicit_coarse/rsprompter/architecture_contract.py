@@ -130,7 +130,12 @@ def architecture_id(model_config: Mapping[str, Any]) -> str:
         f"{neck_name}_coarse_{mode}_emb{1024 // stride}_p2br{int(refiner)}",
     )
     if tail:
-        return f"{base}_udprk{int(head['decoder_tail_refiner_cfg'].get('num_points', 0))}"
+        tail_cfg = head["decoder_tail_refiner_cfg"]
+        tail_k = int(tail_cfg.get("num_points", 0))
+        # A3/v1 has no mode key by design, preserving its historic semantic ID.
+        if tail_cfg.get("mode", "residual_v1") == "confidence_gated":
+            return f"{base}_udprcgk{tail_k}"
+        return f"{base}_udprk{tail_k}"
     return base
 
 

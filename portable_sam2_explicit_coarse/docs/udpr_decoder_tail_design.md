@@ -1,5 +1,9 @@
 # UDPR：不确定性感知解码尾部点细化器
 
+> 本文档保留 A3/UDPR-v1 的历史实施契约。针对其“低置信但正确像素也被无条件写回”
+> 的诊断修正，A4 的论文级模块定义、损失、接线和停止条件见
+> [`dcr_dual_confidence_refinement_design.md`](dcr_dual_confidence_refinement_design.md)。
+
 ## 定位
 
 UDPR（Uncertainty-Guided Decoder-tail Point Refiner）是 A0 的独立输出端模块，位于

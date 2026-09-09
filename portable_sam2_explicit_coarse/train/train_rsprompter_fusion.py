@@ -4,6 +4,7 @@ import argparse
 import gc
 import logging
 import math
+import time
 import os
 import sys
 from datetime import timedelta
@@ -1563,6 +1564,37 @@ def _materialize_p2_boundary_refiner_loss(
     return loss_dict
 
 
+def _shard_val_loader(val_loader, rank: int, world_size: int) -> Tuple[Any, int]:
+    """Rebuild the validation loader so each rank owns batches rank, rank+W, ...
+
+    The val dataset pipeline is deterministic (no flip/noise/erasing/multi-scale)
+    and the loader never shuffles, so batching the same Subset indices with the
+    same batch_size/collate reproduces the exact per-batch composition of the
+    unsharded loader: per-image tensors and padding are unchanged and only the
+    ownership of batches differs.  Returns (shard_loader, total_images).
+    """
+    dataset = val_loader.dataset
+    batch_size = val_loader.batch_size or 1
+    total = len(dataset)
+    num_batches = math.ceil(total / batch_size)
+    owned_indices: List[int] = []
+    for b in range(rank, num_batches, world_size):
+        owned_indices.extend(range(b * batch_size, min((b + 1) * batch_size, total)))
+    from torch.utils.data import DataLoader, Subset
+
+    shard = DataLoader(
+        Subset(dataset, owned_indices),
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=val_loader.num_workers,
+        collate_fn=val_loader.collate_fn,
+        pin_memory=True,
+        drop_last=False,
+        persistent_workers=val_loader.num_workers > 0 and len(owned_indices) > 0,
+    )
+    return shard, total
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="portable_sam_fusion: RSPrompter(SAM) + Drone semantic guidance"
@@ -2119,15 +2151,44 @@ def main():
     )
     # Preserve the proven WHU1024 baseline validation contract: rank 0 runs
     # the complete validation loader while the other DDP ranks wait at the
-    # existing end-of-epoch synchronization point.  Iterating the unsharded
-    # loader on every rank duplicates full-resolution mask accumulation and
-    # can exhaust host memory.
-    if distributed and not is_main:
+    # next training all-reduce.  Iterating the unsharded loader on every rank
+    # duplicates full-resolution mask accumulation and can exhaust host
+    # memory.  VAL_SHARD_ACROSS_RANKS=1 opts into sharded validation instead:
+    # every rank owns loader batches rank, rank+W, ... (identical batch
+    # composition because the val pipeline is deterministic), predictions are
+    # gathered to rank 0 over the gloo control group and reassembled in
+    # global batch order, so COCO inputs match the rank0-only path exactly.
+    val_shard_world = int(dist_info.get("world_size", 1)) if distributed else 1
+    val_shard_enabled = (
+        os.environ.get("VAL_SHARD_ACROSS_RANKS", "0") == "1"
+        and distributed
+        and val_shard_world > 1
+    )
+    val_shard_total = -1
+    if val_shard_enabled:
+        if args.compute_val_loss:
+            raise SystemExit(
+                "VAL_SHARD_ACROSS_RANKS=1 requires --compute-val-loss 0: a "
+                "shard-mean validation loss would silently change the metric."
+            )
+        if args.max_val_batches > 0:
+            # The gather count check would otherwise fire only on rank 0 and
+            # leave the other ranks blocked on the gloo control group until
+            # its 86400s timeout.
+            raise SystemExit(
+                "VAL_SHARD_ACROSS_RANKS=1 is incompatible with "
+                "--max-val-batches (truncated shards cannot be reassembled)."
+            )
+        val_loader, val_shard_total = _shard_val_loader(
+            val_loader, rank, val_shard_world
+        )
+    elif distributed and not is_main:
         val_loader = None
     if is_main:
         logger.info(
-            "Validation policy: rank0_only=%d batch_size=%d every_n_epochs=%d compute_loss=%d",
-            int(distributed),
+            "Validation policy: rank0_only=%d sharded=%d batch_size=%d every_n_epochs=%d compute_loss=%d",
+            int(distributed and not val_shard_enabled),
+            int(val_shard_enabled),
             int(args.val_batch_size),
             int(args.val_every_n_epochs),
             int(args.compute_val_loss),
@@ -3364,12 +3425,36 @@ def main():
             val_loader is not None
             and (epoch + 1) % int(args.val_every_n_epochs) == 0
         ):
+            _val_wall_t0 = time.monotonic()
             if use_ema_this_epoch:
                 ema.apply_to(model)
                 ema_applied_for_eval = True
             model.eval()
             if args.freeze_bn:
                 _set_norm_eval(model)
+
+            # Apply the TEST_MAX_PER_IMG model-side cap BEFORE the inference
+            # loop and on EVERY rank (sharded validation runs predict() on all
+            # ranks, and the cap doubles as the decoder memory-spike guard).
+            # Previously this mutation ran inside the rank0-only eval section
+            # after inference, so it only took effect from the second val.
+            _val_max_dets = None
+            _val_md_env = int(os.environ.get("TEST_MAX_PER_IMG", "0") or 0)
+            if _val_md_env > 0:
+                _val_max_dets = [1, 10, _val_md_env]
+                _val_model_for_eval = (
+                    model.module if hasattr(model, "module") else model
+                )
+                _val_test_cfg = getattr(_val_model_for_eval, "test_cfg", None)
+                if _val_test_cfg is not None and "rcnn" in _val_test_cfg:
+                    _val_test_cfg["rcnn"]["max_per_img"] = _val_md_env
+                _val_roi_cfg = getattr(
+                    getattr(_val_model_for_eval, "roi_head", None),
+                    "test_cfg",
+                    None,
+                )
+                if _val_roi_cfg is not None and "max_per_img" in _val_roi_cfg:
+                    _val_roi_cfg["max_per_img"] = _val_md_env
 
             collect_gt_records = cached_val_gt_records is None
             all_gt: List[dict] = (
@@ -3381,6 +3466,10 @@ def main():
             val_batches = 0
             skipped_no_gt_val_loss_batches = 0
             seen_val_batches = 0
+            # (global_batch_idx, images_in_batch) for the sharded gather; the
+            # global index is rank + local_idx * world_size because the shard
+            # loader yields batches rank, rank+W, ... in order.
+            shard_batch_spans: List[Tuple[int, int]] = []
 
             with torch.no_grad():
                 for batch_idx, batch in enumerate(val_loader):
@@ -3518,6 +3607,67 @@ def main():
 
                         all_img_metas.append(meta)
 
+                    if val_shard_enabled:
+                        shard_batch_spans.append(
+                            (
+                                rank + batch_idx * val_shard_world,
+                                len(outputs),
+                            )
+                        )
+
+            if val_shard_enabled:
+                _payload = {
+                    "spans": shard_batch_spans,
+                    "dt": all_dt,
+                    "metas": all_img_metas,
+                    "gt": all_gt if collect_gt_records else None,
+                }
+                _gathered = [None] * val_shard_world if is_main else None
+                dist.gather_object(_payload, _gathered, dst=0, group=control_group)
+                if is_main:
+                    _merged: Dict[int, Dict[str, Any]] = {}
+                    for _pl in _gathered:
+                        if _pl is None:
+                            continue
+                        _pos = 0
+                        for _gb, _cnt in _pl["spans"]:
+                            _merged[_gb] = {
+                                "dt": _pl["dt"][_pos : _pos + _cnt],
+                                "metas": _pl["metas"][_pos : _pos + _cnt],
+                                "gt": (
+                                    _pl["gt"][_pos : _pos + _cnt]
+                                    if _pl["gt"] is not None
+                                    else None
+                                ),
+                            }
+                            _pos += _cnt
+                    _ordered = sorted(_merged)
+                    _total_imgs = sum(len(_merged[g]["dt"]) for g in _ordered)
+                    if _total_imgs != val_shard_total:
+                        raise RuntimeError(
+                            "Sharded validation gather assembled "
+                            f"{_total_imgs} images, expected {val_shard_total}"
+                        )
+                    all_dt = [rec for g in _ordered for rec in _merged[g]["dt"]]
+                    all_img_metas = [
+                        m for g in _ordered for m in _merged[g]["metas"]
+                    ]
+                    if collect_gt_records:
+                        all_gt = [rec for g in _ordered for rec in _merged[g]["gt"]]
+                    logger.info(
+                        "Validation shard gather: ranks=%d batches=%d images=%d "
+                        "wall=%.1fs",
+                        val_shard_world,
+                        len(_ordered),
+                        _total_imgs,
+                        time.monotonic() - _val_wall_t0,
+                    )
+                else:
+                    # Non-main ranks must not feed shard-local records into
+                    # the COCO section below; empty lists skip it naturally
+                    # (total_gt == 0), matching the unsharded contract.
+                    all_gt, all_dt, all_img_metas = [], [], []
+
             if args.compute_val_loss and skipped_no_gt_val_loss_batches > 0:
                 logger.warning(
                     (
@@ -3539,13 +3689,13 @@ def main():
                 else None
             )
 
-            if collect_gt_records:
+            if is_main and collect_gt_records:
                 cached_val_gt_records = all_gt
                 logger.info(
                     "Cached validation GT as RLE records: images=%d",
                     len(cached_val_gt_records),
                 )
-            elif len(all_gt) != len(all_dt):
+            elif is_main and len(all_gt) != len(all_dt):
                 raise RuntimeError(
                     "Cached validation GT count no longer matches predictions: "
                     f"GT={len(all_gt)} DT={len(all_dt)}"
@@ -3579,23 +3729,9 @@ def main():
                 # hundreds of instances through the SAM2 decoder (~10 GB
                 # spike) only for the eval to keep the top 150 anyway. Ranking
                 # is score-based, so metrics are identical either way.
-                _val_max_dets = None
-                _val_md_env = int(os.environ.get("TEST_MAX_PER_IMG", "0") or 0)
-                if _val_md_env > 0:
-                    _val_max_dets = [1, 10, _val_md_env]
-                    _val_model_for_eval = (
-                        model.module if hasattr(model, "module") else model
-                    )
-                    _val_test_cfg = getattr(_val_model_for_eval, "test_cfg", None)
-                    if _val_test_cfg is not None and "rcnn" in _val_test_cfg:
-                        _val_test_cfg["rcnn"]["max_per_img"] = _val_md_env
-                    _val_roi_cfg = getattr(
-                        getattr(_val_model_for_eval, "roi_head", None),
-                        "test_cfg",
-                        None,
-                    )
-                    if _val_roi_cfg is not None and "max_per_img" in _val_roi_cfg:
-                        _val_roi_cfg["max_per_img"] = _val_md_env
+                # (The model-side cap itself is now applied at validation
+                # entry on every rank — see the _val_max_dets block above the
+                # inference loop; only the eval maxDets list is consumed here.)
                 # The segmentation score contract is stored in cfg.model and
                 # consumed identically by validation and checkpoint inference.
                 # Bbox candidate selection/ranking always remains detector-score based.
@@ -3899,11 +4035,6 @@ def main():
                     ema_state=ema_state_to_save,
                 )
 
-            # Restore training weights after EMA-based eval/save
-            if ema_applied_for_eval:
-                ema.restore(model)
-                ema_applied_for_eval = False
-
             # Logging: metric evaluation and early stopping do not depend on
             # whether the optional validation-loss forward is enabled.
             lr_str = " ".join([f"{k}={v:.2e}" for k, v in lr_groups.items()])
@@ -3956,6 +4087,16 @@ def main():
                     int(args.early_stopping_patience),
                 )
                 stop_training = True
+
+        # Restore training weights after EMA-based eval/save.  This must run
+        # on EVERY rank: with VAL_SHARD_ACROSS_RANKS=1 all ranks apply EMA
+        # inside the validation block, and a rank that keeps the shadow
+        # weights would silently desync DDP training.  It stays after rank
+        # 0's checkpoint saves and epoch logging (unchanged rank-0 ordering)
+        # and before the stop broadcast below.
+        if ema_applied_for_eval:
+            ema.restore(model)
+            ema_applied_for_eval = False
 
         # Rank 0 decides whether to stop after its rank-0-only validation. The
         # CPU/Gloo broadcast doubles as the epoch boundary: non-main ranks wait

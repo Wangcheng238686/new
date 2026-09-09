@@ -62,21 +62,29 @@
 | 字段 | 范围 / 公式 | 正确解读 |
 |---|---|---|
 | `TAIL/selected_count` | 当前 forward 所有正 RoI × 固定 K 的选点数 | K64 时应为 `64×RoI数`；零说明 RoI/接线而非“模块无效”。 |
-| `TAIL/selected_abs_logit` | selector 后 `mean(|z|)`，z 为冻结 A0 native logits | 越低表示 selector 确实落在 A0 不确定点；不是错误率。 |
+| `TAIL/selected_abs_logit` | selector 后 `mean(|z|)`，z 为**当前训练模型写回前**的 native logits | 越低表示 selector 确实落在 native 不确定点；不是错误率。仅 tail-only A0 heat-start 时该 `z` 才是冻结 A0 的 logits。 |
 | `TAIL/selected_pos` | loss batch 中 selected target 的正点总数 | 必须同 `selected_count` 一起读；极端稀疏时依赖正/负独立归一化。 |
 | `TAIL/selected_bce` | selected point 的正/负 BCE：每类的**脱离梯度的 numerator 与计数均跨 DDP 求和**，各自归一后再等权平均 | 是可跨 GPU 解读的单 batch 监督遥测；不等于反传的局部 DDP-scaled loss，也不是整 mask loss 或 Oracle gain。 |
 | `TAIL/delta_abs` / `TAIL/delta_max` | selected native logits 的残差绝对均值/最大值 | 零初始化第一步为 0；非零仅证明 tail 写回，不证明指标提升。 |
-| `TAIL/selected_error_fraction` | 在 selected K 点中，**写回前** A0 native hard label (`logit>=0`) 与训练 assignment 的 full-image GT 不一致的比例 | selector 是否真的把预算投向错误点；不是全图错误率。GT 仅用于训练期统计，绝不参与 selector。 |
-| `TAIL/selected_error_coverage` | `selected_error_count / all_native_grid_error_count`；分子是 selected 点中的 A0 错误，分母是同一正 RoI 完整 native 256 网格的 A0 错误 | 当前固定 K 覆盖了多少可纠正错误池；因全图背景也在分母中，须与 `selected_error_fraction` 联合读。 |
+| `TAIL/selected_error_fraction` | 在 selected K 点中，**写回前当前模型**的 native hard label (`logit>=0`) 与训练 assignment 的 full-image GT 不一致的比例 | selector 是否真的把预算投向 pre-tail 错误点；不是全图错误率。GT 仅用于训练期统计，绝不参与 selector。仅 tail-only 冻结 A0 时才等价于“A0 error”。 |
+| `TAIL/selected_error_coverage` | `selected_error_count / all_native_grid_error_count`；分子是 selected 点中的 pre-tail 错误，分母是同一正 RoI 完整 native 256 网格的 pre-tail 错误 | 当前固定 K 覆盖了多少可纠正错误池；因全图背景也在分母中，须与 `selected_error_fraction` 联合读。 |
 | `TAIL/changed_fraction` | selected 点中 `abs(delta)>1e-6` 的比例 | 细化器实际修改点的范围；零初始化时应为 0。 |
 | `TAIL/error_direction_agreement` | 分母=selected A0 error 点；分子=其中 `abs(delta)>1e-6` 且 delta 符号朝 GT 修正方向的点 | 训练期方向性机制证据；未改动的错误点按 0 计入，故它同时反映“改动覆盖”和方向正确性。 |
-| `TAIL/correct_flip_fraction` | selected 点中 A0 错误、写回后 native hard label 变为正确的比例 | 真正跨 0 阈值的局部修正量；不是 soft improvement。 |
-| `TAIL/destroy_fraction` | selected 点中 A0 原本正确、写回后 native hard label 变错的比例 | 副作用；应远小于 `correct_flip_fraction`。 |
+| `TAIL/correct_flip_fraction` | selected 点中 pre-tail 错误、写回后 native hard label 变为正确的比例 | 真正跨 0 阈值的局部修正量；不是 soft improvement。 |
+| `TAIL/destroy_fraction` | selected 点中 pre-tail 原本正确、写回后 native hard label 变错的比例 | 副作用；应远小于 `correct_flip_fraction`。 |
+| `TAIL/gate_mean` | A4/DCR selected 点的 `mean(q)` | 连续纠错授权的平均强度；不是稀疏写入率。A3/v1 不产生该字段。 |
+| `TAIL/gate_on_error` / `TAIL/gate_on_correct` | 写回前 native hard label 与 training target 不同/相同的 selected 点上，分别取 `mean(q)` | A4 的首要判读是前者应高于后者；两者都只用于训练期机制诊断，GT 不进入推理。 |
+| `TAIL/gate_bce` | 对 error/correct 两类分别按**跨 DDP 全局计数**归一化、再等权平均的 `BCEWithLogits(g,e)`，其中 `q=sigmoid(g)` | 衡量纠错授权监督是否可学习；以 logits-space BCE 保证 AMP 安全，不等同于完整训练总 loss。 |
+| `TAIL/applied_delta_abs` | selected 点 `mean(abs(q*delta))` | A4 的实际写回幅度；等价于 A4 的 `TAIL/delta_abs`，保留前者以明确与 raw residual 的区别。 |
+| `TAIL/applied_delta_error_abs` / `TAIL/applied_delta_correct_abs` | 分别在写回前错误/正确的 selected 点上取 `mean(abs(q*delta))` | 后者应低于前者，才支持 DCR 在抑制正确低置信像素的无谓改写。 |
+| `TAIL/keep_loss` | correct selected 点的跨 DDP 全局 `mean(abs(q*delta))` | A4 total loss 中、尚未乘 `KEEP_LOSS_WEIGHT` 的 keep 项；读它时同时检查权重固定为 `0.05`。 |
+| `TAIL/net_flip_fraction` | `correct_flip_fraction - destroy_fraction` | 写回跨阈值后的净局部收益；不能替代 validation mAP。 |
+| `TAIL/gate_open_fraction_q50` | selected 点中 `q >= 0.5` 的比例 | 仅作分布辅助观察；DCR 没有硬阈值或二元 open/close 路径。 |
 
-`TAIL/selected_bce` 的单 batch 值按上表跨 DDP 聚合；其 epoch `detailed losses` 仍是
-rank-0 的时间均值，而非严格的全局 epoch 加权均值。其余 Tail telemetry 是 rank-0 当前
-batch 的 latest-forward 快照，epoch `detailed losses` 同样只是 rank-0 batch 均值。所有这些
-字段仅用于接线/机制诊断，不能代替完整 validation paired bootstrap。
+`TAIL/selected_bce`、A4 的 `gate_bce`/`keep_loss` 与所有 A4 decision telemetry 的单 batch
+值按上表跨 DDP 聚合；`delta_max` 是 rank-local latest-forward 辅助值。其 epoch `detailed
+losses` 仍是 rank-0 的时间均值，而非严格的全局 epoch 加权均值。所有这些字段仅用于
+接线/机制诊断，不能代替完整 validation paired bootstrap。
 
 ## 5. 共同字段与 D1/D2 判读
 
