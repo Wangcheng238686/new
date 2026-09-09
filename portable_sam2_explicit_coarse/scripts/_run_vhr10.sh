@@ -126,7 +126,10 @@ esac
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
 export NPROC_PER_NODE="${NPROC_PER_NODE:-4}"
 export AMP=1
-export BATCH_SIZE=1
+# Overridable for fewer-GPU machines: keep the effective batch
+# (BATCH_SIZE * GRAD_ACCUM_STEPS * NPROC_PER_NODE) at 8 so results stay
+# comparable with the four-card protocol (e.g. 1 GPU -> GRAD_ACCUM_STEPS=8).
+export BATCH_SIZE="${BATCH_SIZE:-1}"
 export GRAD_ACCUM_STEPS="${GRAD_ACCUM_STEPS:-2}"
 export MAX_EPOCHS="${MAX_EPOCHS:-${DEFAULT_EPOCHS}}"
 export FINAL_MASK_TARGET_SIZE=256
@@ -203,7 +206,7 @@ echo "  split=${VHR10_TRAIN_ANN_FILE} / ${VHR10_VAL_ANN_FILE}"
 echo "  config=${CONFIG_PATH}"
 echo "  gpus=${CUDA_VISIBLE_DEVICES} nproc=${NPROC_PER_NODE}"
 echo "  batch=${BATCH_SIZE}x${GRAD_ACCUM_STEPS} (effective $((BATCH_SIZE*GRAD_ACCUM_STEPS*NPROC_PER_NODE)))"
-echo "  epochs=${MAX_EPOCHS} lr=${DEFAULT_LR} warmup=100 seed=44 amp=1"
+echo "  epochs=${MAX_EPOCHS} lr=${DEFAULT_LR} warmup=100 seed=${SEED:-44} amp=1"
 if [[ "${EARLY_STOPPING_PATIENCE}" = "0" ]]; then
   EARLY_STOP_LABEL="off"
 else
@@ -250,7 +253,7 @@ exec "${PYTHON}" -m torch.distributed.run \
   --ema-decay 0.999 \
   --ema-eval 0 \
   --ema-save-best 0 \
-  --seed 44 \
+  --seed "${SEED:-44}" \
   --prompt-debug-stats 1 \
   --prompt-debug-stats-interval 50 \
   "${TAIL_ARGS[@]}" \

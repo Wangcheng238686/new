@@ -84,10 +84,13 @@ esac
 # caller's shell state from changing initialization or output ownership.
 unset RESUME_FROM INIT_FROM CHECKPOINT_DIR RUN_TAG
 
-# This protocol is explicitly four-card.  Do not inherit the machine's
+# This protocol is four-card by default.  Do not inherit the machine's
 # two-card WHU default, otherwise torchrun ranks 2/3 have no visible device.
-export CUDA_VISIBLE_DEVICES=0,1,2,3
-export NPROC_PER_NODE=4
+# A single-GPU arm launch must override BOTH (CUDA_VISIBLE_DEVICES=<gpu>
+# NPROC_PER_NODE=1) AND GRAD_ACCUM_STEPS=8 so the effective batch stays 8
+# and the arm remains directly comparable with the other machines' arms.
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
+export NPROC_PER_NODE="${NPROC_PER_NODE:-4}"
 export RUN_IN_BACKGROUND=0
 export SAVE_LAST_MODEL=1
 export EXPLICIT_PROMPT_MODE=points_box_dense
@@ -251,6 +254,12 @@ case "${ARM}" in
     exit 2
     ;;
 esac
+
+# Seed-replication runs (e.g. SEED=45) must not write into the seed-44
+# output lineage: checkpoint dirs, logs and manifests are keyed by RUN_TAG.
+if [ "${SEED:-44}" != "44" ]; then
+  export RUN_TAG="${RUN_TAG}_seed${SEED}"
+fi
 
 source "${SCRIPT_DIR}/vhr10_fi_overlay.sh"
 
