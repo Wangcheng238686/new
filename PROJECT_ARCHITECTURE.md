@@ -1146,3 +1146,14 @@ bash scripts/reproduce_legacy_segm.sh
   三项 95% CI 下界均大于 0。只有通过才允许设计/训练 P2-conditioned adaptive correction
   support；该探针本身无训练模型、无 COCO mAP 结论、也不新增训练日志字段。详见
   `docs/a0_p2_error_readability_gate.md`。
+
+## 2026-09-09：双机同步协议成文（lthpc 与 machine2 两侧均需遵守）
+
+两机共用本分支且无共享存储，同步规则固化为
+[`portable_sam2_explicit_coarse/docs/machine_sync_protocol.md`](portable_sam2_explicit_coarse/docs/machine_sync_protocol.md)，
+要点：① 谁出结论谁推送、小步快推、分叉先 rebase；② 热点文件
+（`_run_vhr10.sh` / `vhr10_p2v2_dev.sh` / configs 链）改动前必须先 fetch，
+batch/卡数/seed 参数化已入主线勿回退硬编码；③ 关键臂完赛后跑
+`vhr10_p2v2_eval.sh` 导出 per-image evidence 入库（跨机复查与配对
+bootstrap 的唯一输入）；④ 结论效力排序：同机同 seed 配对 > 同机异 seed >
+跨机直比（不作数，机器偏移 +0.011）。
