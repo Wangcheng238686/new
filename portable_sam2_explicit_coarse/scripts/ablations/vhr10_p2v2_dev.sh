@@ -83,6 +83,14 @@ esac
 # A-series arms are fresh, isolated comparisons, not continuations.  Prevent a
 # caller's shell state from changing initialization or output ownership.
 unset RESUME_FROM INIT_FROM CHECKPOINT_DIR RUN_TAG
+# Same-run crash recovery (e.g. server restart): the unset above stays intact
+# so stale shell state can never silently turn a fresh arm into a resume;
+# operators must opt in EXPLICITLY via RESUME_OWN pointing at the same run
+# lineage's last_checkpoint.pth.  RUN_TAG/CHECKPOINT_DIR still derive from
+# the arm defaults, so the resume lands in the original output directory.
+if [ -n "${RESUME_OWN:-}" ]; then
+  export RESUME_FROM="${RESUME_OWN}"
+fi
 
 # This protocol is four-card by default.  Do not inherit the machine's
 # two-card WHU default, otherwise torchrun ranks 2/3 have no visible device.
