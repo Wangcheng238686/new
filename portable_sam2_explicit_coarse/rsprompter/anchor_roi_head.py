@@ -137,6 +137,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             boxes=rois[:, 1:] if rois is not None else boxes_override,
             p2_feature=x[0],
             prompt_rois=prompt_rois,
+            renderer_features=x,
         )
         if len(mask_head_out) != 6:
             raise RuntimeError(
@@ -449,6 +450,41 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                         **{k: v.detach() for k, v in boundary_stats.items()},
                     })
 
+            # R3 has one standalone, positive-RoI canvas objective.  The
+            # legacy ShapePrior auxiliary loss remains intact for point mining.
+            canvas_logits = coarse_outputs.get("canvas_logits")
+            if canvas_logits is not None:
+                canvas_targets = self.mask_head.get_coarse_targets(
+                    sampling_results, batch_gt_instances,
+                    mask_size=canvas_logits.shape[-2:],
+                    prompt_pos_priors=prompt_pos_priors,
+                )
+                target = canvas_targets[:, None].to(dtype=canvas_logits.dtype)
+                logits, target_float = canvas_logits.float(), target.float()
+                bce = F.binary_cross_entropy_with_logits(logits, target_float)
+                probability = torch.sigmoid(logits)
+                intersection = (probability * target_float).flatten(1).sum(1)
+                denominator = probability.flatten(1).sum(1) + target_float.flatten(1).sum(1)
+                dice = 1.0 - ((2.0 * intersection + 1e-6) / (denominator + 1e-6)).mean()
+                renderer_loss = self.mask_head.canvas_renderer_loss_weight * (bce + dice)
+                mask_results["loss_canvas_renderer"] = {
+                    "loss_canvas_renderer": renderer_loss,
+                    "r3_canvas_bce": bce.detach(),
+                    "r3_canvas_dice": dice.detach(),
+                }
+                if not hasattr(self, "_last_coarse_stats") or self._last_coarse_stats is None:
+                    self._last_coarse_stats = {}
+                self._last_coarse_stats.update({
+                    "r3_canvas_bce": bce.detach(),
+                    "r3_canvas_dice_loss": dice.detach(),
+                    "r3_canvas_soft_iou": (
+                        intersection / (
+                            probability.flatten(1).sum(1)
+                            + target_float.flatten(1).sum(1) - intersection
+                        ).clamp_min(1e-6)
+                    ).mean().detach(),
+                })
+
         # uav_aux_losses stays a slot of the 6-value mask-head contract but is
         # always empty since the UAV branch was removed.
 
@@ -512,6 +548,8 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             losses.update(mask_results["loss_mask"])
             if "loss_shape_prior" in mask_results:
                 losses.update(mask_results["loss_shape_prior"])
+            if "loss_canvas_renderer" in mask_results:
+                losses.update(mask_results["loss_canvas_renderer"])
             for loss_name in (
                 "loss_mask_quality",
             ):

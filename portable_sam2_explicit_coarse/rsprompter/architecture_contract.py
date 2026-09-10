@@ -9,7 +9,7 @@ from typing import Any, Dict
 from pathlib import Path
 
 
-ARCHITECTURE_SCHEMA_VERSION = 2
+ARCHITECTURE_SCHEMA_VERSION = 3
 _PATH_KEYS = {"checkpoint", "checkpoint_path", "ckpt_path"}
 
 
@@ -62,6 +62,7 @@ def architecture_id(model_config: Mapping[str, Any]) -> str:
     coarse = bool(head.get("shape_prior_cfg", {}).get("enabled", False))
     refiner = bool(head.get("p2_boundary_refiner_cfg", {}).get("enabled", False))
     tail = bool(head.get("decoder_tail_refiner_cfg", {}).get("enabled", False))
+    renderer = bool(head.get("canvas_renderer_cfg", {}).get("enabled", False))
     if not coarse:
         known = {
             ("aggregator", "roi_local", 32): "b0_aggregator_mlp",
@@ -129,6 +130,8 @@ def architecture_id(model_config: Mapping[str, Any]) -> str:
         (neck_name, mode, stride, refiner),
         f"{neck_name}_coarse_{mode}_emb{1024 // stride}_p2br{int(refiner)}",
     )
+    if renderer:
+        base = f"{base}_r3"
     if tail:
         tail_cfg = head["decoder_tail_refiner_cfg"]
         tail_k = int(tail_cfg.get("num_points", 0))

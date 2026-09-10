@@ -101,6 +101,7 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         # ===== 阶段2: shape prior =====
         shape_prior_cfg: Optional[Dict] = None,    # dict(enabled=True, context_source="visual", ...) 或 None
         shape_prior_loss_weight: float = 0.5,       # 辅助 dice_bce loss 权重
+        canvas_renderer_cfg: Optional[Dict] = None,
         p2_boundary_refiner_cfg: Optional[Dict] = None,
         decoder_tail_refiner_cfg: Optional[Dict] = None,
         quality_head_cfg: Optional[Dict] = None,
@@ -756,6 +757,23 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
             self.shape_scale_mode = "legacy_unbounded"
             self.use_shape_dense = False
 
+        # R3 is intentionally appended after legacy ShapePrior construction:
+        # when this key is absent, historical arms instantiate no R3 state.
+        self.canvas_renderer_cfg = dict(canvas_renderer_cfg or {})
+        if self.canvas_renderer_cfg.get("enabled", False):
+            if not _shape_prior_enabled or not self.use_shape_dense:
+                raise ValueError("R3 requires enabled ShapePrior dense delivery")
+            from .canvas_renderer import ProposalCanvasRenderer
+            _renderer_cfg = dict(self.canvas_renderer_cfg)
+            _renderer_cfg.pop("enabled", None)
+            self.canvas_renderer_loss_weight = float(_renderer_cfg.pop("loss_weight", 0.05))
+            if self.canvas_renderer_loss_weight < 0:
+                raise ValueError("R3 loss_weight must be non-negative")
+            self.canvas_renderer = ProposalCanvasRenderer(**_renderer_cfg)
+        else:
+            self.canvas_renderer = None
+            self.canvas_renderer_loss_weight = 0.0
+
         # C5-v2 is a P2-driven local boundary modifier.  Construct it after all
         # shared random modules and restore the CPU RNG afterwards so enabling
         # the ablation cannot perturb R1-C4 shared initialization.
@@ -844,6 +862,7 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         boxes=None,
         p2_feature=None,
         prompt_rois=None,
+        renderer_features=None,
     ):
         img_bs = image_embeddings.shape[0]
         roi_bs = x.shape[0]
@@ -876,6 +895,7 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
             shape_dense_valid,
         ) = self._forward_coarse_p2(
             x, image_embeddings, boxes, roi_img_ids, p2_feature, prompt_rois,
+            renderer_features,
             debug_stats,
         )
 
@@ -1040,6 +1060,7 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         roi_img_ids,
         p2_feature,
         prompt_rois,
+        renderer_features,
         debug_stats,
     ):
         """(forward phase) shape injector + P2BoundaryRefiner + canvas prep.
@@ -1109,11 +1130,24 @@ Verbatim-extracted from forward; operation order unchanged.
             # Refined coarse logits are the only downstream semantic source;
             # raw logits remain independently supervised by the C4 objective.
             if self.use_shape_dense:
+                dense_source_logits = shape_prior_mask_logits
+                if self.canvas_renderer is not None:
+                    if renderer_features is None or prompt_rois is None:
+                        raise ValueError("R3 requires renderer_features and prompt_rois [N,5]")
+                    dense_source_logits = self.canvas_renderer(renderer_features, prompt_rois)
+                    coarse_outputs["canvas_logits"] = dense_source_logits
+                    with torch.no_grad():
+                        canvas = dense_source_logits.detach().float()
+                        debug_stats.update({
+                            "R3/roi_count": canvas.new_tensor(float(canvas.shape[0])),
+                            "R3/logit_abs_mean": canvas.abs().mean(),
+                            "R3/foreground_ratio": torch.sigmoid(canvas).ge(0.5).float().mean(),
+                        })
                 (
                     shape_prior_prompt_logits,
                     shape_dense_valid,
                     dense_excavation_stats,
-                ) = self._shape_prior_to_prompt_mask(shape_prior_mask_logits, boxes)
+                ) = self._shape_prior_to_prompt_mask(dense_source_logits, boxes)
                 for stat_name, stat_value in dense_excavation_stats.items():
                     debug_stats[f"GAUSSIAN/{stat_name}"] = stat_value
             else:

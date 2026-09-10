@@ -15,6 +15,7 @@
 | `Epoch N prompt pathway` | 每个训练 epoch；每 rank 首个有限训练 batch 的 `loss_mask` autograd probe 经 DDP group-L2 RMS/计数汇总，参数更新量为整个 epoch 的 rank-wise group-L2 RMS | 判断最终 mask loss 是否真的训练 dense/P2BR，及 optimizer 是否改变这些参数。 |
 | `DDP parameter-sync audit after first nonzero-LR update` | 仅 DDP 训练；首次计划学习率非零的 optimizer update 后，逐 trainable tensor 比较各 rank 参数与跨-rank 均值的最大绝对偏差 | 训练接线自检。正常应为 `0` 或仅有极小浮点误差；明显非零时，该次多卡实验不可用于比较。 |
 | `TAIL/*` | UDPR 启用时的 latest-forward/selected-point loss 字段；前者由 `PROMPT_DEBUG_STATS_INTERVAL` 输出，后者也进入 epoch detailed losses | 仅说明 tail 的选点和残差/监督实际发生；不能替代 paired validation 效用。 |
+| `R3/*` / `r3_canvas_*` | R3 启用时的 latest-forward canvas 快照与 positive-RoI auxiliary loss；前者是 rank-0 latest-forward，后者是 trainer detailed losses | 接线和内容质量诊断；不代表 unmatched proposal 安全性或验证集收益。 |
 
 `loss_mask` 指最终 SAM2 MaskDecoder 的 mask loss；它不包含 `loss_shape_prior` 或
 `loss_p2_boundary_refiner`。因此 pathway 的 gradient 字段可区分最终任务训练与辅助 loss 训练。
@@ -32,7 +33,17 @@
 | `dense_parameter_update_group_l2_rms` | 各 rank 的 epoch 前后同一组参数总 L2 差，再跨 rank 取 RMS | 包含 optimizer 的全部更新效应（含 weight decay）；须与 final-mask gradient 联合解读。 |
 | `pe_mask_downscaling_*`（同构三件套） | PromptEncoder mask 下采样卷积栈（`PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING=1` 时 10 张量/4,684 参数；否则该分支为空、字段恒 0）的 final-mask 梯度 group-L2 RMS / 非零比例 / epoch 前后更新 group-L2 RMS；与 `dense`/`p2br` 分支同构同分母 | D5-B 的 PE 适配独立验收：`update_group_l2_rms>0` 且 `final_mask_grad` 非零才证明读取端真的在学习；**不得**用 dense 组的活动冒充（两组参数不相交）。optimizer 组审计行（`Optimizer group prompt_encoder`）给出入组参数数与实际 LR（应为 基础 LR×`PROMPT_ENCODER_LR_MULT`）。 |
 
-## 3. P2BoundaryRefiner 字段
+## 3. R3 canvas renderer 字段
+
+| 字段 | 范围 / 公式 | 正确解读 |
+|---|---|---|
+| `R3/roi_count` | rank-0 latest-forward 的 canvas RoI 数 | 应与该次正 RoI prompt 数一致；零首先排查采样或接线。 |
+| `R3/logit_abs_mean` | 最新 batch、所有 R3 ROI-local 128² logit 的 `mean(abs(z))` | 零终层初始化首步为零；非零只说明渲染器开始写画布。 |
+| `R3/foreground_ratio` | 最新 batch 中 `sigmoid(z)>=0.5` 的像素比例 | 只能用于发现全黑/全白塌缩，不能充当目标质量或 false-positive 安全结论。 |
+| `r3_canvas_bce` / `r3_canvas_dice` | positive RoI 的未加权 BCE 与 Dice loss；训练 detailed-loss 时间均值 | 二者相加后才乘固定 `CANVAS_RENDERER_LOSS_WEIGHT=0.05` 写入 `loss_canvas_renderer`。它们不含原有 `loss_shape_prior`。 |
+| `COARSE/r3_canvas_soft_iou` | 同一正 RoI 上 sigmoid canvas 与 128² target 的 soft IoU 的 latest-forward 均值 | 仅为训练内容遥测；不能与检测 RoI 的 matched canvas IoU 或 COCO mAP 混用。 |
+
+## 4. P2BoundaryRefiner 字段
 
 | 字段 | 范围 / 公式 | 正确解读 |
 |---|---|---|
@@ -57,7 +68,7 @@
 | `P2 R1 gradient probe: corrective_l2_rms` / `keep_l2_rms` | 每 epoch 每 rank 首个有限 batch；按生产的 auxiliary weight 与 DDP 全局有效-ROI归一化后，分别对全部 P2BR 参数做 autograd；各 rank 的 group-L2² 先汇总、后取 RMS | 两项真实进入参数更新的梯度量级。keep 明显大于 corrective 才构成“可能主导更新”的必要但非充分证据。probe 不增加 loss、不执行 optimizer step。 |
 | `P2 R1 gradient probe: cosine` | 上述两项梯度的参数内积与平方范数先跨所有 probe/DDP rank 汇总，再计算 `dot/sqrt(norm²_corrective×norm²_keep)` | `<0` 表示两项在共享参数空间存在相互抵消方向，接近 `+1` 表示同向；须同时看两项 L2，任一近零时 cosine 不应过度解读。 |
 
-## 4. UDPR decoder-tail 字段
+## 5. UDPR decoder-tail 字段
 
 | 字段 | 范围 / 公式 | 正确解读 |
 |---|---|---|
@@ -86,7 +97,7 @@
 losses` 仍是 rank-0 的时间均值，而非严格的全局 epoch 加权均值。所有这些字段仅用于
 接线/机制诊断，不能代替完整 validation paired bootstrap。
 
-## 5. 共同字段与 D1/D2 判读
+## 6. 共同字段与 D1/D2 判读
 
 `params` 为该分支可训练 parameter tensor 个数；`probes` 为每 rank 成功执行的 final-mask
 gradient probe 次数。固定训练中通常为 1。probe 取 epoch 首个有限训练 batch，用于控制额外

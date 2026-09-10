@@ -10,7 +10,7 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ARM="${1:?usage: vhr10_p2v2_dev.sh <p|pb|a0|a1|a2|a2e|a3|a4|udpr64>}"
+ARM="${1:?usage: vhr10_p2v2_dev.sh <p|pb|a0|a1|a2|a2e|a3|a3r|a4|r3|r3_udpr|udpr64>}"
 shift || true
 
 # Protocol entries share the same architecture/arm block below, so the
@@ -22,6 +22,9 @@ shift || true
 # screening: num=128 lost ~-0.02..-0.03 segm; user ruling: do not revisit).
 unset VAL_SHARD_ACROSS_RANKS
 unset RCNN_SAMPLER_NUM
+# Mask-loss ramp is an a3r-only trainer knob; never let a polluted
+# shell change any other arm's loss schedule.
+unset MASK_LOSS_RAMP_EPOCHS MASK_LOSS_RAMP_START
 P2V2_PROTOCOL="${P2V2_PROTOCOL:-dev100}"
 case "${P2V2_PROTOCOL}" in
   dev100)
@@ -149,12 +152,16 @@ export SHAPE_PRIOR_LOSS_WEIGHT=0.10
 # A caller's old R1 environment must not silently leak into A0/A1.
 unset P2_BOUNDARY_REFINER_CORRECTION_MARGIN P2_BOUNDARY_REFINER_KEEP_LOSS_WEIGHT
 export DECODER_TAIL_REFINER_ENABLED=0
+export CANVAS_RENDERER_ENABLED=0
+export CANVAS_RENDERER_LOSS_WEIGHT=0.05
 export DECODER_TAIL_LR_MULT=1.0
 # Enabling the module and restricting optimization to it are independent
 # choices.  A3 is a normal single-stage A0+UDPR arm; udpr64 remains the
 # frozen-A0 mechanism-screening heat start.
 unset DECODER_TAIL_TRAIN_ONLY DECODER_TAIL_MODE DECODER_TAIL_GATE_INIT_PROB \
-  DECODER_TAIL_GATE_LOSS_WEIGHT DECODER_TAIL_KEEP_LOSS_WEIGHT
+  DECODER_TAIL_GATE_LOSS_WEIGHT DECODER_TAIL_KEEP_LOSS_WEIGHT \
+  DECODER_TAIL_NUM_POINTS DECODER_TAIL_HIDDEN_DIM \
+  DECODER_TAIL_POINT_LOSS_WEIGHT DECODER_TAIL_DELTA_LOGIT_MAX
 
 case "${ARM}" in
   p)
@@ -243,6 +250,47 @@ case "${ARM}" in
     export DECODER_TAIL_KEEP_LOSS_WEIGHT=0.05
     export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a4_pbm_udprcgk64}"
     ;;
+  a3r)
+    # A3 + smooth mask-loss ramp (2026-09-10, user-directed): mask-family
+    # loss weights ramp 0.2 -> 1.0 linearly over the first 100 epochs so the
+    # fast mask branch fits the maturing detector instead of the weak early
+    # one (A3's bestS sits at 15% progress with bbox 0.068 below its own
+    # convergence).  Trainer-side only: the built model is identical to a3
+    # (same fingerprint); the ramp lives in RUN_TAG + the runner contract
+    # echo + the per-epoch schedule log.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export DECODER_TAIL_REFINER_ENABLED=1
+    export DECODER_TAIL_NUM_POINTS=64
+    export DECODER_TAIL_HIDDEN_DIM=128
+    export DECODER_TAIL_POINT_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
+    export MASK_LOSS_RAMP_EPOCHS=100
+    export MASK_LOSS_RAMP_START=0.2
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3_pbm_udprk64_maskramp100}"
+    ;;
+  r3)
+    # Independent R3 arm: PB plus the decoupled dense-canvas renderer.
+    # P2 stays off and no decoder-tail state is materialized.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export CANVAS_RENDERER_ENABLED=1
+    export CANVAS_RENDERER_LOSS_WEIGHT=0.05
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_pb_r3}"
+    ;;
+  r3_udpr)
+    # The sole difference from r3 is the existing A3 UDPR configuration.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export CANVAS_RENDERER_ENABLED=1
+    export CANVAS_RENDERER_LOSS_WEIGHT=0.05
+    export DECODER_TAIL_REFINER_ENABLED=1
+    export DECODER_TAIL_NUM_POINTS=64
+    export DECODER_TAIL_HIDDEN_DIM=128
+    export DECODER_TAIL_POINT_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_pb_r3_udprk64}"
+    ;;
   udpr64)
     # Independent decoder-tail arm.  It starts from the frozen A0 winner;
     # only the newly introduced UDPR parameters are optimized.
@@ -258,7 +306,7 @@ case "${ARM}" in
     export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_udprk64_a0init}"
     ;;
   *)
-    echo "Unknown arm ${ARM}; expected p, pb, a0, a1, a2, a2e, a3, a4, or udpr64" >&2
+    echo "Unknown arm ${ARM}; expected p, pb, a0, a1, a2, a2e, a3, a3r, a4, r3, r3_udpr, or udpr64" >&2
     exit 2
     ;;
 esac
@@ -276,7 +324,7 @@ source "${SCRIPT_DIR}/vhr10_fi_overlay.sh"
 # scripts/smoke/verify_p2v2_arms.py so model-construction checks replay the
 # REAL arm env rather than a hand-copied one.
 if [ "${DEV_DUMP_ENV:-0}" = "1" ]; then
-  env | grep -E '^(NECK_TYPE|PROMPT_ROUTE|EXPLICIT_PROMPT_MODE|P2_BOUNDARY_REFINER_[A-Z_]+|DECODER_TAIL_[A-Z_]+|INIT_FROM|SAM_IMAGE_EMBED_STRIDE|SEGM_SCORE_MODE|VAL_SHARD_ACROSS_RANKS|RCNN_SAMPLER_NUM|ROI_SAM_[A-Z_]+|COARSE_MASK_OUTPUT_SIZE|POINT_(WARMUP_[A-Z_]+|NO_POINT_EPOCHS|ONE_PAIR_EPOCHS|FULL_START_EPOCH)|SHAPE_[A-Z_]+|PROMPT_ENCODER_[A-Z_]+|FINAL_MASK_[A-Z_]+|MAX_EPOCHS|BATCH_SIZE|GRAD_ACCUM_STEPS|NPROC_PER_NODE|VAL_EVERY_N_EPOCHS|EARLY_STOPPING_[A-Z_]+|SAVE_LAST_MODEL|RUN_TAG|CUDA_VISIBLE_DEVICES)=' | sort
+  env | grep -E '^(NECK_TYPE|PROMPT_ROUTE|EXPLICIT_PROMPT_MODE|P2_BOUNDARY_REFINER_[A-Z_]+|DECODER_TAIL_[A-Z_]+|CANVAS_RENDERER_[A-Z_]+|INIT_FROM|SAM_IMAGE_EMBED_STRIDE|SEGM_SCORE_MODE|VAL_SHARD_ACROSS_RANKS|RCNN_SAMPLER_NUM|MASK_LOSS_RAMP_[A-Z_]+|ROI_SAM_[A-Z_]+|COARSE_MASK_OUTPUT_SIZE|POINT_(WARMUP_[A-Z_]+|NO_POINT_EPOCHS|ONE_PAIR_EPOCHS|FULL_START_EPOCH)|SHAPE_[A-Z0-9_]+|PROMPT_ENCODER_[A-Z_]+|FINAL_MASK_[A-Z_]+|MAX_EPOCHS|BATCH_SIZE|GRAD_ACCUM_STEPS|NPROC_PER_NODE|VAL_EVERY_N_EPOCHS|EARLY_STOPPING_[A-Z_]+|SAVE_LAST_MODEL|RUN_TAG|CUDA_VISIBLE_DEVICES)=' | sort
   exit 0
 fi
 

@@ -9,6 +9,33 @@ if _mode not in {"points", "box", "mask", "points_box", "points_box_dense"}:
     raise ValueError(f"Unsupported EXPLICIT_PROMPT_MODE={_mode!r}")
 
 _use_dense = _mode in {"mask", "points_box_dense"}
+_canvas_renderer_raw = os.environ.get("CANVAS_RENDERER_ENABLED", "0")
+if _canvas_renderer_raw not in {"0", "1"}:
+    raise ValueError("CANVAS_RENDERER_ENABLED must be 0 or 1")
+_canvas_renderer_enabled = _canvas_renderer_raw == "1"
+if _canvas_renderer_enabled and not _use_dense:
+    raise ValueError("R3 requires EXPLICIT_PROMPT_MODE=points_box_dense")
+_canvas_renderer_loss_weight = float(
+    os.environ.get("CANVAS_RENDERER_LOSS_WEIGHT", "0.05")
+)
+if _canvas_renderer_loss_weight < 0:
+    raise ValueError("CANVAS_RENDERER_LOSS_WEIGHT must be non-negative")
+_canvas_renderer_override = {}
+if _canvas_renderer_enabled:
+    # Kept absent for legacy arms, preserving their resolved config/fingerprint.
+    _canvas_renderer_override["canvas_renderer_cfg"] = dict(
+        enabled=True,
+        feature_indices=(1, 2),
+        featmap_strides=(8, 16),
+        in_channels=512,
+        branch_channels=128,
+        p3_roi_size=64,
+        p4_roi_size=32,
+        output_size=128,
+        sampling_ratio=0,
+        aligned=True,
+        loss_weight=_canvas_renderer_loss_weight,
+    )
 _p2_boundary_refiner = (
     os.environ.get("P2_BOUNDARY_REFINER_ENABLED", "0") == "1"
 )
@@ -351,6 +378,7 @@ model = dict(
             # fingerprints must remain reconstructible byte-for-byte.
             **({"decoder_tail_refiner_cfg": _decoder_tail_cfg}
                if _decoder_tail_enabled else {}),
+            **_canvas_renderer_override,
             prune_unused_prompt_components=False,
         )
     )

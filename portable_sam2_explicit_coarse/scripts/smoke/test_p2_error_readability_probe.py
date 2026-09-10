@@ -27,6 +27,7 @@ def _row(image_id: int, *, p2_hits: int) -> dict:
 def main() -> int:
     p2 = torch.arange(2 * 3 * 4 * 4).reshape(2, 3, 4, 4)
     assert not torch.equal(_safe_permutation(p2)[0], p2[0])
+    assert torch.equal(_safe_permutation(p2)[0], p2[0].roll((2, 2), dims=(-2, -1)))
     one = p2[:1]
     assert not torch.equal(_safe_permutation(one), one), "one-ROI control must still be spatially misaligned"
 
@@ -39,6 +40,11 @@ def main() -> int:
     eligible = torch.ones_like(target)
     _add_counts(row, "p2", raw, target, eligible, torch.tensor([[.9, .8], [.1, .2]]), .5)
     assert row["p2_hits"] == 2 and row["p2_writes"] == 2 and row["p2_errors"] == 2
+    raw_row = {key: 0.0 for key in row}
+    _add_counts(raw_row, "raw", raw, target, eligible, torch.tensor([[.9, .8], [.1, .2]]), .5)
+    # Raw selector must contribute only its post-write mask, never a second
+    # unmodified baseline under the same raw_ prefix.
+    assert raw_row["raw_inter"] == 2 and raw_row["raw_union"] == 2
 
     bootstrap = _bootstrap([_row(i, p2_hits=5) for i in range(10)], 100, 44)
     assert _verdict(bootstrap)["verdict"] == "pass"

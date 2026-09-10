@@ -1,26 +1,32 @@
 #!/usr/bin/env python
 """R3 pre-test: learned-canvas accuracy vs matched instance GT, plus the
-canvas-accuracy -> mAP sensitivity curve, in one probe.
+canvas-content -> mAP oracle grid, in one frozen-weight probe.
 
 Motivation (P2-v2 design discussion, 2026-09-07): the +0.0154 GT-canvas
 intervention (WHU) proved the decoder pays for an accurate spatial prior,
 but R3 (a dedicated canvas renderer) only pays if the DELIVERED canvas is
 currently inaccurate.  This probe measures, on frozen weights:
 
-  per blend ratio r in --blends (0=learned, 1=GT) and gate setting g:
-    - canvas accuracy: per matched ROI, IoU(bin canvas, GT instance) on the
-      256x256 PE canvas frame (matched by max box-IoU >= 0.5, GT occupancy
-      nearest-resized to 256; unmatched ROIs keep the learned canvas and are
-      excluded from the accuracy stat)
-    - canvas intervention: matched ROIs' canvas logits blended
-      learned*(1-r) + gt_occupancy*(+/- logit_span)*r
+  per canvas mode x gate setting (--canvas-modes x --gate-alphas):
+    - canvas accuracy: per matched ROI (max box-IoU >= 0.5, same class,
+      many-to-one by design), IoU(bin canvas, GT occupancy) restricted to
+      the pasted bbox support on the PE canvas frame (2026-09-09 audit P0
+      fix: outside_fill is background, never part of the prediction)
+    - canvas intervention: matched ROIs' canvas logits replaced by GT
+      occupancy encoded at +-logit_span
+      * learned          - no rewrite (accuracy baseline; asserted bitwise
+                           identical to an unhooked standard inference pass)
+      * support_matched  - GT only inside the original bbox-paste support
+      * full_gt          - GT everywhere, but NOTE: with
+                           restrict_dense_prompt_to_box=True (this model) the
+                           embedding-level box support is re-imposed after the
+                           PE, so full_gt is "GT within the same support
+                           restriction", NOT a geometry-unconstrained ceiling.
     - full-val segm mAP for the pass (every image scored, zero-dets kept)
 
-``r=0,g=current`` gives the delivered-canvas accuracy baseline.  The
-``r=1,g=1`` cell, rather than r=1 alone, is comparable to the earlier
-GT-canvas + fully-open-gate intervention.  The probe also asserts bitwise
-parity between r=0/current and an unhooked standard inference pass, and
-reports coarse ROI-local Dice from the actual ``forward_roi`` call.
+Blend interpolation (learned*(1-r)+gt*r) was intentionally dropped in favour
+of the discrete mode grid (docs/a0_two_site_oracle_design.md): no r=0.5
+midpoint is produced.
 """
 
 from __future__ import annotations
@@ -48,6 +54,7 @@ from inference.infer_from_checkpoint import (  # noqa: E402
     _register_and_build,
     _resolve_dataset_contract,
     _resolve_model_config,
+    _resolve_sam2_repo,
     _select_state_dict,
     _snapshot,
 )
@@ -59,15 +66,26 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--weights", choices=("model", "ema"), default="model")
     parser.add_argument("--device", default=None)
     parser.add_argument("--split", default="validation")
+    parser.add_argument("--ann-file", default=None,
+                        help="Optional COCO annotation override for frozen train-split diagnostics.")
+    parser.add_argument("--image-subdir", default=None,
+                        help="Optional image subdirectory paired with --ann-file.")
     parser.add_argument("--max-batches", type=int, default=0)
     parser.add_argument("--match-iou", type=float, default=0.5)
-    parser.add_argument("--logit-span", type=float, default=4.0)
+    parser.add_argument("--logit-span", type=float, default=None,
+                        help="GT-occupancy logit magnitude. Default: derive "
+                             "from the model's dense clamp_range (8.0 for the "
+                             "current recipe) so the GT canvas matches the "
+                             "learned canvas distribution; falls back to 4.0.")
     parser.add_argument(
         "--canvas-modes", nargs="+",
         choices=("learned", "support_matched", "full_gt"),
         default=["learned", "support_matched", "full_gt"],
         help="support_matched replaces GT only inside the original bbox-paste "
-             "support; full_gt is an unconstrained diagnostic ceiling.",
+             "support; full_gt writes GT everywhere BUT the model's "
+             "restrict_dense_prompt_to_box re-imposes the box support on the "
+             "embedding after the PE, so full_gt is a GT ceiling within the "
+             "same support restriction, not a geometry-unconstrained ceiling.",
     )
     parser.add_argument(
         "--gate-alphas", nargs="+", default=["current", "1.0"],
@@ -83,6 +101,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", default=None)
     parser.add_argument("--output-dir", default=None,
                         help="Directory for per-cell records and manifests.")
+    parser.add_argument("--export-pre-prompt-features", action="store_true",
+                        help="Export read-only per-proposal features from the "
+                             "pre-PromptEncoder ROI/coarse/canvas path; requires "
+                             "--output-dir and never changes model tensors.")
     parser.add_argument("--canonical-dir", default=None,
                         help="Required for legacy contract drift: production A0 "
                              "inference directory whose predictions.json anchors C0.")
@@ -96,7 +118,7 @@ def main() -> int:
     snapshot = _snapshot(checkpoint)
     ns = SimpleNamespace(
         checkpoint=str(checkpoint_path), config=None, split=args.split,
-        data_root=None, ann_file=None, image_subdir=None, image_size=None,
+        data_root=None, ann_file=args.ann_file, image_subdir=args.image_subdir, image_size=None,
         batch_size=None, sam2_repo=None, sam2_ckpt=None,
     )
     contract_drift = None
@@ -112,6 +134,7 @@ def main() -> int:
         model_config = snapshot["model_config"]
         config_source = "embedded_config_strict_state_only_legacy_contract_drift"
         contract_drift = str(exc)
+    ns.sam2_repo = _resolve_sam2_repo(ns, snapshot)
     model = _register_and_build(model_config)
     load_report = _load_model_state(
         model, _select_state_dict(checkpoint, args.weights), allow_nonstrict=False
@@ -131,6 +154,19 @@ def main() -> int:
         raise SystemExit(
             "dense-canvas probe requires both ShapePriorInjector and PromptEncoder"
         )
+    print(f"[startup] canvas probe ready: checkpoint={checkpoint_path.name} "
+          f"device={device} (model loaded strict)", flush=True)
+    if args.logit_span is None:
+        _dense_cfg = getattr(head, "dense_prompt_cfg", None) or {}
+        _clamp = _dense_cfg.get("clamp_range")
+        if isinstance(_clamp, (tuple, list)) and len(_clamp) == 2:
+            args.logit_span = float(max(abs(float(_clamp[0])), abs(float(_clamp[1]))))
+        elif isinstance(_clamp, (int, float)):
+            args.logit_span = float(_clamp)
+        else:
+            args.logit_span = 4.0
+        print(f"[startup] logit_span derived from model clamp_range: "
+              f"{args.logit_span}", flush=True)
     mask_hw = head._pe_mask_input_size()
 
     def gt_cache(data_samples):
@@ -186,8 +222,10 @@ def main() -> int:
 
     def run_pass(canvas_mode, forced_alpha, *, standard_inference=False):
         state = {"ids": None, "boxes": None, "labels": None, "gts": None,
-                 "label_queue": None, "label_cursor": 0, "canvas_hw": mask_hw}
+                 "label_queue": None, "label_cursor": 0, "canvas_hw": mask_hw,
+                 "pre_prompt": None, "feature_rows": []}
         stats = {"roi_n": 0, "iou_sum": 0.0, "iou_vals": [],
+                 "canvas_min": float("inf"), "canvas_max": float("-inf"),
                  "coarse_dice_sum": 0.0, "coarse_n": 0,
                  "matched": 0, "unmatched": 0}
         detector_hash = hashlib.sha256()
@@ -251,6 +289,29 @@ def main() -> int:
             record_coarse(output)
             return output
 
+        # Observational wrapper: all captured tensors already exist upstream of
+        # PromptEncoder.  The original output object is returned unchanged.
+        original_coarse = head._forward_coarse_p2
+        had_coarse_attr = "_forward_coarse_p2" in head.__dict__
+        saved_coarse_attr = head.__dict__.get("_forward_coarse_p2")
+
+        def wrapped_coarse(*fn_args, **fn_kwargs):
+            output = original_coarse(*fn_args, **fn_kwargs)
+            if not args.export_pre_prompt_features:
+                return output
+            raw, _coarse_outputs, canvas, _valid = output
+            x = fn_args[0] if fn_args else fn_kwargs.get("x")
+            boxes, labels, ids = state["boxes"], state["labels"], state["ids"]
+            if (raw is None or canvas is None or x is None or boxes is None
+                    or labels is None or ids is None):
+                raise RuntimeError("pre-PromptEncoder feature hook lacks active A0 tensors")
+            if not (raw.shape[0] == canvas.shape[0] == x.shape[0] == boxes.shape[0]
+                    == labels.shape[0] == ids.shape[0]):
+                raise RuntimeError("pre-PromptEncoder feature rows are not aligned")
+            state["pre_prompt"] = tuple(value.detach().cpu() for value in
+                                         (x, raw, canvas, boxes, labels, ids))
+            return output
+
         def pe_pre_hook(module, fn_args, kwargs):
             masks = kwargs.get("masks")
             ids, boxes, labels, gts = state["ids"], state["boxes"], state["labels"], state["gts"]
@@ -281,27 +342,40 @@ def main() -> int:
                 stats["matched"] += 1
                 gt_occ = gt_canvas_256(masks_t[best])  # [256,256] on device
                 learned = canvas[i, 0]
-                pred_fg = learned >= 0
-                gt_fg = gt_occ >= 0.5
+                # Audit P0 fix (2026-09-09): outside the pasted box the canvas
+                # is outside_fill_logit (0.0), which the >=0 binarization would
+                # otherwise count as foreground across the whole frame and turn
+                # "IoU" into the GT occupancy fraction.  Both the accuracy stat
+                # and the support rewrite use the true paste support, computed
+                # with paste_roi_to_full_canvas's floor/ceil mapping.
+                image_size = float(head.prompt_encoder_image_size)
+                bx1, by1, bx2, by2 = [float(v) for v in boxes[i]]
+                sx1 = max(0, min(mask_hw[1] - 1, int(np.floor(bx1 * mask_hw[1] / image_size))))
+                sy1 = max(0, min(mask_hw[0] - 1, int(np.floor(by1 * mask_hw[0] / image_size))))
+                sx2 = max(sx1 + 1, min(mask_hw[1], int(np.ceil(bx2 * mask_hw[1] / image_size))))
+                sy2 = max(sy1 + 1, min(mask_hw[0], int(np.ceil(by2 * mask_hw[0] / image_size))))
+                support = learned[sy1:sy2, sx1:sx2]
+                pred_fg = support >= 0
+                gt_fg = gt_occ[sy1:sy2, sx1:sx2] >= 0.5
                 inter = float((pred_fg & gt_fg).sum())
                 union = float((pred_fg | gt_fg).sum())
                 if union > 0:
                     stats["iou_sum"] += inter / union
                     stats["iou_vals"].append(inter / union)
                     stats["roi_n"] += 1
+                    stats["canvas_min"] = min(stats["canvas_min"], float(support.min()))
+                    stats["canvas_max"] = max(stats["canvas_max"], float(support.max()))
                 if canvas_mode == "learned":
                     continue
                 gt_logits = gt_occ * args.logit_span - (1.0 - gt_occ) * args.logit_span
                 if canvas_mode == "support_matched":
-                    image_size = float(head.prompt_encoder_image_size)
-                    x1, y1, x2, y2 = [float(v) for v in boxes[i]]
-                    x1 = max(0, min(mask_hw[1] - 1, int(np.floor(x1 * mask_hw[1] / image_size))))
-                    y1 = max(0, min(mask_hw[0] - 1, int(np.floor(y1 * mask_hw[0] / image_size))))
-                    x2 = max(x1 + 1, min(mask_hw[1], int(np.ceil(x2 * mask_hw[1] / image_size))))
-                    y2 = max(y1 + 1, min(mask_hw[0], int(np.ceil(y2 * mask_hw[0] / image_size))))
                     delivered = learned.clone()
-                    delivered[y1:y2, x1:x2] = gt_logits[y1:y2, x1:x2]
+                    delivered[sy1:sy2, sx1:sx2] = gt_logits[sy1:sy2, sx1:sx2]
                 elif canvas_mode == "full_gt":
+                    # NOTE: with restrict_dense_prompt_to_box=True the box
+                    # support is re-imposed on the embedding after the PE, so
+                    # this is a GT ceiling within the same support restriction
+                    # (not geometry-unconstrained).
                     delivered = gt_logits
                 else:
                     raise AssertionError(f"unexpected canvas mode {canvas_mode!r}")
@@ -328,6 +402,7 @@ def main() -> int:
         head_handle = head.register_forward_pre_hook(head_pre_hook, with_kwargs=True)
         model.roi_head.predict_mask = wrapped_predict_mask
         injector.forward_roi = wrapped_forward_roi
+        head._forward_coarse_p2 = wrapped_coarse
         pe_handle = head.prompt_encoder.register_forward_pre_hook(
             pe_pre_hook, with_kwargs=True
         )
@@ -370,6 +445,25 @@ def main() -> int:
                         )
                         dt = _extract_instances_numpy(pred, shape)
                         image_id = int(meta.get("image_id", meta.get("scene_id", position)))
+                        if args.export_pre_prompt_features:
+                            payload = state["pre_prompt"]
+                            if payload is None:
+                                raise RuntimeError("feature hook did not run before prediction")
+                            x, raw, canvas, pboxes, plabels, pids = payload
+                            take = pids.eq(position)
+                            if int(take.sum()) != len(dt["bboxes"]):
+                                raise RuntimeError("pre-PromptEncoder feature proposal count differs from output")
+                            if not np.allclose(pboxes[take].numpy(), dt["bboxes"], rtol=0, atol=1e-4):
+                                raise RuntimeError("pre-PromptEncoder feature boxes differ from output detections")
+                            if not np.array_equal(plabels[take].numpy(), dt["labels"]):
+                                raise RuntimeError("pre-PromptEncoder feature labels differ from output detections")
+                            from inference.probes.dense_gate_readability import pre_prompt_features
+                            scalar, full = pre_prompt_features(
+                                x[take], raw[take], canvas[take], pboxes[take], tuple(shape[:2]),
+                                plabels[take], torch.from_numpy(np.asarray(dt["scores"], dtype=np.float32)),
+                                int(contract["num_classes"]),
+                            )
+                            state["feature_rows"].append((image_id, scalar.numpy(), full.numpy()))
                         _update_hash(detector_hash, np.asarray([image_id], dtype=np.int64))
                         for key in ("bboxes", "scores", "labels"):
                             _update_hash(detector_hash, dt[key])
@@ -390,6 +484,10 @@ def main() -> int:
                 injector.forward_roi = saved_forward_roi_attr
             else:
                 delattr(injector, "forward_roi")
+            if had_coarse_attr:
+                head._forward_coarse_p2 = saved_coarse_attr
+            else:
+                delattr(head, "_forward_coarse_p2")
             if forced_alpha is not None:
                 if had_alpha_attr:
                     head._effective_shape_dense_alpha = saved_alpha_attr
@@ -413,6 +511,12 @@ def main() -> int:
             "canvas_iou_mean": float(vals.mean()) if vals.size else None,
             "canvas_iou_median": float(np.median(vals)) if vals.size else None,
             "canvas_iou_p25": float(np.percentile(vals, 25)) if vals.size else None,
+            "canvas_support_min": (
+                stats["canvas_min"] if stats["canvas_min"] != float("inf") else None
+            ),
+            "canvas_support_max": (
+                stats["canvas_max"] if stats["canvas_max"] != float("-inf") else None
+            ),
             "coarse_dice_mean": (
                 stats["coarse_dice_sum"] / max(stats["coarse_n"], 1)
                 if stats["coarse_n"] else None
@@ -448,6 +552,9 @@ def main() -> int:
                         "mask_score": float(dt.get("mask_scores", dt["scores"])[j]),
                         "segmentation": _mask_to_rle(dt["masks"][j])})
             manifest = {"checkpoint": str(checkpoint_path), "weights": args.weights,
+                # Paired bootstrap selects its COCO category contract from this
+                # field.  Keeping it avoids a silent one-class fallback.
+                "dataset": dict(contract),
                 "processed_images": len(images),
                 "processed_image_ids": sorted(item["image_id"] for item in images),
                 "ground_truth_instances": len(gt_records), "predicted_instances": len(dt_records),
@@ -459,6 +566,21 @@ def main() -> int:
             _write_json(artifact_dir / "images.json", images)
             _write_json(artifact_dir / "metrics.json", metrics)
             _write_json(artifact_dir / "run_manifest.json", manifest)
+            if args.export_pre_prompt_features:
+                rows = state["feature_rows"]
+                if len(rows) != len(all_dt):
+                    raise RuntimeError("feature export image row count differs from predictions")
+                image_ids = np.concatenate([
+                    np.full(len(scalar), image_id, dtype=np.int64)
+                    for image_id, scalar, _full in rows
+                ]) if rows else np.zeros(0, dtype=np.int64)
+                scalar = np.concatenate([value for _id, value, _full in rows], axis=0) if rows else np.zeros((0, 0), dtype=np.float32)
+                full = np.concatenate([value for _id, _scalar, value in rows], axis=0) if rows else np.zeros((0, 0), dtype=np.float32)
+                if len(image_ids) != len(dt_records) or scalar.shape[0] != len(dt_records):
+                    raise RuntimeError("feature export rows do not map one-to-one to dt_records")
+                np.savez_compressed(artifact_dir / "pre_prompt_features.npz",
+                                    image_ids=image_ids, scalar=scalar, full=full)
+                cell["pre_prompt_features"] = str(artifact_dir / "pre_prompt_features.npz")
             cell["artifact_dir"] = str(artifact_dir)
         return cell
 
@@ -473,6 +595,8 @@ def main() -> int:
         Path(args.output_dir).expanduser().resolve() if args.output_dir else
         (Path(args.output).expanduser().resolve().with_suffix("") if args.output else None)
     )
+    if args.export_pre_prompt_features and output_dir is None:
+        raise RuntimeError("--export-pre-prompt-features requires --output-dir")
     standard = None
     if not args.skip_parity_check:
         standard = run_pass("learned", None, standard_inference=True)
@@ -497,9 +621,17 @@ def main() -> int:
         print(f"[standard] mAP={standard['segm/mAP']:.4f}", flush=True)
 
     results = []
+    reference_detector = None
     for gate_label, forced_alpha in gate_specs:
         for canvas_mode in args.canvas_modes:
             cell = run_pass(canvas_mode, forced_alpha)
+            if reference_detector is None:
+                reference_detector = cell["detector_sha256"]
+            elif cell["detector_sha256"] != reference_detector:
+                raise RuntimeError(
+                    "detector output changed under a canvas/gate-only intervention: "
+                    f"canvas={canvas_mode}, gate={gate_label}"
+                )
             if standard is not None:
                 if cell["detector_sha256"] != standard["detector_sha256"]:
                     raise RuntimeError(
@@ -528,7 +660,21 @@ def main() -> int:
         "contract_drift": contract_drift,
         "weights": args.weights,
         "match_iou": args.match_iou,
+        "matching_protocol": "per-ROI argmax, same-class, many-to-one by design",
         "logit_span": args.logit_span,
+        "canvas_binarization_logit": 0.0,
+        "canvas_frame": list(mask_hw),
+        "outside_fill_logit": (
+            (getattr(head, "dense_prompt_cfg", None) or {}).get("outside_fill_logit")
+        ),
+        "restrict_dense_prompt_to_box": bool(
+            getattr(head, "restrict_dense_prompt_to_box", False)
+        ),
+        "gate_alpha_current": (
+            float(torch.sigmoid(torch.as_tensor(_raw)).item())
+            if (_raw := getattr(head, "shape_dense_alpha_raw", None)) is not None
+            and torch.is_tensor(_raw) else None
+        ),
         "standard_inference": standard,
         "cells": results,
         "delta_mAP_vs_learned": {
@@ -539,8 +685,13 @@ def main() -> int:
         },
         "note": (
             "Frozen-weight canvas oracle. learned/current is asserted bitwise "
-            "identical to standard inference. support_matched preserves the "
-            "original bbox support; full_gt is an unconstrained ceiling."
+            "identical to standard inference. canvas_iou is computed on the "
+            "pasted bbox support only (outside_fill is background). "
+            "support_matched preserves the original bbox support; full_gt "
+            "writes GT everywhere but, under restrict_dense_prompt_to_box, the "
+            "embedding-level box support is re-imposed after the PE, so it is "
+            "a GT ceiling within the same support restriction, not an "
+            "unconstrained one. No blend interpolation by design."
         ),
     }
     print(json.dumps(summary, indent=2, ensure_ascii=False))

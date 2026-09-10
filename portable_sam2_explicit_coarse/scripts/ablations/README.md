@@ -175,12 +175,16 @@ DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh pb
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a0
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a3
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a4
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh r3
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh r3_udpr
 
 # 默认严格串行：P -> PB -> PBM(A0) -> PBM+UDPR(A3)
 bash scripts/ablations/vhr10_p2v2_matrix300_series.sh
 
 # A4 不改变默认矩阵；通过机制筛查后才显式作为独立臂启动。
 bash scripts/ablations/vhr10_p2v2_matrix300_series.sh a4
+# R3 rows are opt-in: this does not alter or restart the frozen default matrix.
+bash scripts/ablations/vhr10_p2v2_matrix300_series.sh r3 r3_udpr
 ```
 
 历史 full600 队列已删除；不要重新创建或启动 A0/full600。运行中的 A3/full600 输出 tag

@@ -8,8 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${PROJECT_ROOT}/scripts/load_environment.sh"
 
-ARM="${1:?usage: vhr10_p2v2_eval.sh <p|pb|a0|a1|a2|a2e|a3|a4> <best|best_bbox|best_composite|last>}"
-KIND="${2:?usage: vhr10_p2v2_eval.sh <p|pb|a0|a1|a2|a2e|a3|a4> <best|best_bbox|best_composite|last>}"
+ARM="${1:?usage: vhr10_p2v2_eval.sh <p|pb|a0|a1|a2|a2e|a3|a3r|a4|r3|r3_udpr> <best|best_bbox|best_composite|last>}"
+KIND="${2:?usage: vhr10_p2v2_eval.sh <p|pb|a0|a1|a2|a2e|a3|a3r|a4|r3|r3_udpr> <best|best_bbox|best_composite|last>}"
 # Keep dev100 as the historical default.  Formal protocol callers must set
 # P2V2_EVAL_PROTOCOL explicitly, so a matrix300 result cannot silently
 # evaluate a same-named dev100 directory.
@@ -29,6 +29,9 @@ case "${ARM}" in
   a2e) SUFFIX="a2e_r1_esc030" ;;
   a3) SUFFIX="a3_pbm_udprk64" ;;
   a4) SUFFIX="a4_pbm_udprcgk64" ;;
+  a3r) SUFFIX="a3_pbm_udprk64_maskramp100" ;;
+  r3) SUFFIX="pb_r3" ;;
+  r3_udpr) SUFFIX="pb_r3_udprk64" ;;
   *) echo "Unknown arm ${ARM}" >&2; exit 2 ;;
 esac
 TAG="vhr10_p2v2_${PROTOCOL}_${SUFFIX}"

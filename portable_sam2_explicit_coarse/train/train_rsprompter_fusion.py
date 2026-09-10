@@ -1504,6 +1504,38 @@ def _apply_detection_loss_weight(loss_dict: dict, scale: float, device) -> dict:
     return loss_dict
 
 
+_MASK_RAMP_LOSS_KEY_PREFIXES = (
+    "loss_mask",
+    "loss_shape_prior",
+    "loss_decoder_tail",
+    "loss_p2_boundary_refiner",
+)
+
+
+def _mask_loss_ramp_factor(ramp_epochs: int, ramp_start: float, epoch_number: int) -> float:
+    """Linear mask-side loss ramp: ``ramp_start`` at epoch 1 -> 1.0 at
+    ``ramp_epochs`` (inclusive), flat 1.0 afterwards.  ``ramp_epochs <= 0``
+    disables the ramp (factor always 1.0, bit-identical legacy behaviour)."""
+    if ramp_epochs <= 0 or epoch_number >= ramp_epochs or ramp_epochs == 1:
+        return 1.0
+    frac = (epoch_number - 1) / (ramp_epochs - 1)
+    return ramp_start + (1.0 - ramp_start) * frac
+
+
+def _apply_mask_loss_ramp(loss_dict: dict, factor: float, device) -> dict:
+    """Scale the mask-side (fast-capacity branch) losses as one group.
+
+    Deliberately excludes every detection key and every debug/probe key:
+    only keys prefixed with a mask-family loss name move, and a
+    ``schedule/mask_ramp`` telemetry tensor is recorded the same way
+    ``schedule/det_weight`` is (it never enters the backward sum)."""
+    for key in list(loss_dict.keys()):
+        if key.startswith(_MASK_RAMP_LOSS_KEY_PREFIXES):
+            loss_dict[key] = _scale_loss_value(loss_dict[key], factor)
+    loss_dict["schedule/mask_ramp"] = torch.tensor(float(factor), device=device)
+    return loss_dict
+
+
 def _materialize_p2_boundary_refiner_loss(
     loss_dict: dict,
     model: torch.nn.Module,
@@ -2088,6 +2120,23 @@ def main():
     if train_ms_mode not in ("value", "range"):
         raise ValueError(
             f"TRAIN_MULTI_SCALE_MODE must be value or range, got {train_ms_mode}"
+        )
+
+    # --- mask-side loss ramp (branch two-timescale alignment; default off) ---
+    # MASK_LOSS_RAMP_EPOCHS=100 + MASK_LOSS_RAMP_START=0.2 scales the
+    # mask-family losses linearly 0.2 -> 1.0 over the first 100 epochs so the
+    # fast mask branch (pretrained decoder + prompts + tail) fits the maturing
+    # detector instead of a weak one.  Trainer-side only: no model-config or
+    # fingerprint change for any arm; 0/absent = bit-identical legacy runs.
+    mask_loss_ramp_epochs = int(os.environ.get("MASK_LOSS_RAMP_EPOCHS", "0") or 0)
+    mask_loss_ramp_start = float(os.environ.get("MASK_LOSS_RAMP_START", "1.0") or 1.0)
+    if mask_loss_ramp_epochs < 0:
+        raise ValueError(
+            f"MASK_LOSS_RAMP_EPOCHS must be >= 0, got {mask_loss_ramp_epochs}"
+        )
+    if not 0.0 <= mask_loss_ramp_start <= 1.0:
+        raise ValueError(
+            f"MASK_LOSS_RAMP_START must be in [0,1], got {mask_loss_ramp_start}"
         )
 
     train_loader, val_loader, train_dataset = (
@@ -3051,6 +3100,12 @@ def main():
                 loss_dict = _apply_detection_loss_weight(
                     loss_dict, det_loss_weight, device
                 )
+                mask_ramp_factor = _mask_loss_ramp_factor(
+                    mask_loss_ramp_epochs, mask_loss_ramp_start, epoch_number
+                )
+                loss_dict = _apply_mask_loss_ramp(
+                    loss_dict, mask_ramp_factor, device
+                )
                 loss_parts = []
                 for k, v in loss_dict.items():
                     if "loss" not in k:
@@ -3409,6 +3464,12 @@ def main():
                 int(args.early_stopping_start_epoch),
                 float(args.early_stopping_min_delta),
             )
+            if mask_loss_ramp_epochs > 0:
+                logger.info(
+                    "Epoch %d schedule: mask_loss_ramp=%.3f (E1=%.3f -> E%d=1.0)",
+                    epoch_number, mask_ramp_factor, mask_loss_ramp_start,
+                    mask_loss_ramp_epochs,
+                )
             # Debug: log current learning rates
             lr_str = ", ".join([f"{k}={v:.2e}" for k, v in lr_groups.items()])
             logger.info(f"Epoch {epoch + 1} learning rates: {lr_str}")

@@ -19,7 +19,7 @@
 - `legacy_baseline/`：旧项目冻结复现包，只用于历史基线复现，不被新主线 import。
 
 新主线只保留已经选定的 PAFPN、显式 coarse mask、原生 PromptEncoder 加载，
-以及实验性的 Gaussian dense 表示和 P2BoundaryRefiner。旧 DenseBR 已从当前代码删除；IIMR、多轮 mask
+以及实验性的 Gaussian dense 表示、P2BoundaryRefiner 和 R3 canvas renderer。旧 DenseBR 已从当前代码删除；IIMR、多轮 mask
 memory、topology token、SABL refined-box 依赖等不属于
 新主线。
 
@@ -47,9 +47,11 @@ flowchart LR
     H -->|B0/B1/M0/M1| I["旧 point_emb MLP<br/>5-token route"]
     H -->|C1-C5-v2 / C2-L / C2-R / R1-C4-RD/G| J["ShapePriorInjector<br/>ROI-local raw coarse logits"]
     J --> K["ShapePointMiner<br/>2P2N stop-gradient"]
+    F --> R3["可选 R3 CanvasRenderer<br/>detached P3/P4 RoI canvas"]
     J --> L["可选 P2BoundaryRefiner<br/>P2 高频边界残差"]
     K --> M["冻结的 SAM2 PromptEncoder"]
     L --> N["可选 box / dense canvas"]
+    R3 --> N
     N --> M
     I --> O["SAM2 MaskDecoder"]
     M --> O
@@ -184,6 +186,7 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 | `portable_sam2_explicit_coarse/docs/d5_review_handoff.md` | 2026-09-06 阶段诊断复审与跨-agent交接：核实证据边界、提出 P2-off 的 D5-A/B dense 适配及 PE 独立更新验收；属于待实施建议，不表示脚本已落地或训练已启动。 |
 | `portable_sam2_explicit_coarse/docs/a0_two_site_oracle_design.md` | 以 NWPU A0 最佳权重为共同冻结底座的双位置 Oracle 设计：canvas 输入端的 GT-content×gate 格，与不加新 prompt token 的 SAM2 decoder-tail PointRend-style uncertainty-point 格；明确 GT 仅作 Oracle/训练 target，均尚未实现候选模型。 |
 | `portable_sam2_explicit_coarse/docs/a0_coarse_to_mining_oracle.md` | A0 原设计链路的四格冻结 Oracle：只在现有 `ShapePointMiner` 和/或生产 dense-canvas 变换的上游以匹配 GT coarse 取代 raw coarse，分离更准 coarse 对点挖掘与 dense 消费的可达上限；完全不训练或改 detector。 |
+| `portable_sam2_explicit_coarse/docs/a0_dense_gate_selector_oracle.md` | A0 learned-canvas 的逐实例 dense-gate 上限审计：只在两份同冻结前向的 mask 记录之间事后选择，GT 不进入前向；以逐图同数量随机 selector 和十类 paired bootstrap 作为进入可学习 gate 的双对照。 |
 | `portable_sam2_explicit_coarse/docs/a0_coarse_to_mining_oracle_results.md` | A0 四格 Oracle 的正式结果台账：GPU3 全量 NWPU-130、hash/canonical 不变量、十类 500 次 paired-bootstrap CI 与收缩后的 P2→coarse→dense 双门裁决。 |
 | `portable_sam2_explicit_coarse/docs/p2_first_gate_a2_results.md` | A2/R1 的第一门正式台账：冻结自然 P2 raw/refined coarse、生产 canvas、全 NWPU-130 图像级 paired bootstrap 与不通过裁决；不把训练期 P2 telemetry 当作效用证据。 |
 | `portable_sam2_explicit_coarse/docs/a0_p2_support_decomposition_results.md` | 冻结 A0 的 P2 支持域分解 Oracle：比较 accepted S4、只撤 coverage reject 的 ungated S4 与 full ROI 的 correct-errors-only 上限，定位 A2/R1 的 hard-reject 空间瓶颈。 |
@@ -213,7 +216,7 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 | `environment.local.sh` | 可选、被 Git 忽略的单机覆盖文件；存在时由统一 loader 优先读取，避免迁移机器时改动已提交默认配置。 |
 | `rsprompter_anchor_satS_v11_sam2_large_full.py` | 继承自旧项目的完整 MMEngine 基础配置，定义 detector、RPN、RoI head、优化相关默认值。 |
 | `whu1024_baseplus_clean.py` | WHU-1024 / SAM2 Base+ 的干净桥接基线；通过 `NECK_TYPE` 切换 aggregator/PAFPN，默认使用旧 MLP prompt 路线。 |
-| `whu1024_baseplus_explicit_coarse.py` | 显式 coarse 主配置；选择 points、points+box、points+box+dense，并解析可选 P2BoundaryRefiner。 |
+| `whu1024_baseplus_explicit_coarse.py` | 显式 coarse 主配置；选择 points、points+box、points+box+dense，并解析可选 P2BoundaryRefiner、R3 与 UDPR。R3 key 仅在显式启用时写入 `cfg.model`。 |
 | `whu1024_baseplus_explicit_coarse_densefix.py` | 继承显式 coarse 主配置，只覆盖固定 dense 系数，并按显式开关把 mask-downscaling trainability 解析进 `cfg.model`。 |
 
 配置继承关系：
@@ -231,11 +234,12 @@ rsprompter_anchor_satS_v11_sam2_large_full.py
 |---|---|
 | `__init__.py` | 注册 MMDetection 模型组件；`RSPROMPTER_LIGHT_IMPORT=1` 用于轻量张量测试。 |
 | `anchor_detector.py` | `RSPrompterAnchor`：SAM2 特征抽取与 RPN/ROI 两阶段 loss/predict。 |
-| `anchor_roi_head.py` | `RSPrompterAnchorRoIPromptHead`：prompt 构造、box jitter、ROI-local coarse/P2 监督接线、chunked mask forward。 |
+| `anchor_roi_head.py` | `RSPrompterAnchorRoIPromptHead`：prompt 构造、box jitter、ROI-local coarse/P2/R3 监督接线、chunked mask forward。 |
 | `sam2_vision.py` | SAM2 checkpoint 加载 helper、`RSSAM2PositionalEmbedding`、LoRA `RSSAM2VisionEncoder`、`_load_pretrained_no_mask_embedding`。 |
 | `sam2_decoder.py` | `RSSAM2MaskDecoderWrapper`（SAM2 MaskDecoder 严格加载与前向）。 |
 | `sam2_neck.py` | `RSFeatureAggregatorSAM2`（基线 aggregator）与 `RSSAM2PAFPN`。 |
-| `sam2_mask_head.py` | `RSPrompterAnchorMaskHeadSAM2` 主体：配置布线（__init__）、因果链 forward、predict 与 no-mask 契约。 |
+| `sam2_mask_head.py` | `RSPrompterAnchorMaskHeadSAM2` 主体：配置布线、因果链 forward、predict 与 no-mask 契约；R3 仅替换 dense canvas，不改变 coarse→2P2N。 |
+| `canvas_renderer.py` | R3 `ProposalCanvasRenderer`：对 canonical prompt RoI 从 detached P3/P4 做多尺度 RoIAlign，渲染 128² dense logits；输出仍走既有 paste/support/PromptEncoder/gate。 |
 | `sam2_mask_head_helpers.py` | mask head 的 prompt canvas / ROI-SAM / debug 方法 mixin。 |
 | `sam2_mask_head_targets.py` | mask head 的 GT targets 与 coarse/final-mask loss 方法 mixin。 |
 | `models.py` / `models_sam2.py` / `shape_prior.py` | 兼容门面：纯再导出，外部 import 路径与注册表名不变（2026-09 拆分）。 |
@@ -245,7 +249,7 @@ rsprompter_anchor_satS_v11_sam2_large_full.py
 | `dense_prompt_utils.py` | raw/confidence coarse 变换、ROI-local mask 粘贴，以及 R1-C4-G 的 detached exact-EDT Gaussian 挖掘与图像空间映射。 |
 | `p2_boundary_refiner.py` | C5-v2 的 P2 高频边界残差模块；实现 raw-only forward support、受限残差和 boundary auxiliary loss。 |
 | `decoder_tail_refiner.py` | UDPR decoder tail：A3/v1 在 SAM2 native logits 后按最小 `|logit|` 的确定性 Top-K 选点并预测局部残差；A4/DCR 在同一候选集上再预测连续纠错置信度，以 `q*delta` 授权写回。均不读取 P2/coarse，GT 仅训练期使用。 |
-| `architecture_contract.py` | 从完整解析后的 `cfg.model` 派生架构 ID、schema-v2 SHA256 指纹，并校验 INIT/RESUME。 |
+| `architecture_contract.py` | 从完整解析后的 `cfg.model` 派生架构 ID、schema-v3 SHA256 指纹，并校验 INIT/RESUME。 |
 | `ckpt_utils.py` | SAM2 子模块 checkpoint 的严格加载、key 过滤和主进程日志。 |
 
 关键类的定位：
@@ -474,7 +478,7 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `paper_promptminer_rd_p2_whu_full_fast.sh` | WHU fast-150 论文运行入口（test segm/mAP 0.7342）。 |
 | `test_only_from_ckpt.sh` | 给定 checkpoint 仅做 test 评估。 |
 | `vhr10_fast400.sh` 等 5 个 | VHR-10 薄入口，见 `scripts/_run_vhr10.sh`。 |
-| `vhr10_p2v2_dev.sh` / `vhr10_p2v2_dev_series.sh` / `vhr10_p2v2_eval.sh` | NWPU A 系列 A0/A1/A2/A3/A4 的受控训练、串行总入口与 strict post-run 评估入口：全量 520/130、4 卡、fi、raw 选型。A0 固定 D5-B；A1/A2 是 P2 轴；A3 是无条件 UDPR-K64；A4/DCR 在同一 K64 residual 上增加纠错置信度。eval 默认 dev100，matrix300/full600 必须以 `P2V2_EVAL_PROTOCOL` 显式选择目录及末轮 epoch；支持 segm/bbox/composite/last 四种预注册权重口径。A4 可显式运行，但不插入既有默认队列。 |
+| `vhr10_p2v2_dev.sh` / `vhr10_p2v2_dev_series.sh` / `vhr10_p2v2_eval.sh` | NWPU 受控训练、串行总入口与 strict post-run 评估入口。既有 A0–A4 行不变；新增 `r3`（PB+R3）与 `r3_udpr`（PB+R3+UDPR），两者须显式指定，不插入既有默认 matrix300 队列。 |
 | `vhr10_udpr_k64.sh` | NWPU 独立 UDPR-K64 热启动入口：从固定 A0 best 权重跨架构初始化，强制只训练 decoder tail；不属于 P2-v2 A0/A1/A2 主线。 |
 | `queue_vhr10_a2_a3.sh` | 本地持久队列：仅在 GPU 0–3 均无 compute PID 后，经 A2/A3 DRY_RUN 再严格前台串行启动 `a2 a3`；`flock` 防止同一 checkpoint 目录的重复队列。A2 明确为默认 R1，非 A2e。 |
 | `eval_test_raw.sh` / `eval_test_winner.sh` / `eval_vhr10_final.sh` | checkpoint 的 raw/EMA 评估 wrapper。 |
@@ -498,11 +502,15 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 |---|---|
 | `tools/mask_to_coco_whu512.py` | 将 WHU 二值 mask 转为 COCO polygon 标注；属于数据准备工具，不是训练必需步骤。 |
 | `tools/eval_boundary_ap.py` / `tools/eval_vhr10_original_scale.py` / `tools/visualize_instances.py` / `tools/smoke_test_components.py` | 评估与可视化工具。 |
-| `inference/probes/canvas_accuracy_probe.py` | 冻结 checkpoint 的 dense-canvas 信息质量与消费敏感性探针：按推理期 IoU 匹配实例 GT，在全图 PE canvas 上测 learned→GT logit 混合，并交叉 `current/forced alpha`；先以 unhooked 标准推理逐图 hash 断言 `blend=0,current` 逐位一致，再要求所有画布干预保持检测输出不变。`blend=1,alpha=1` 是 GT 画布与全开 gate 的定位格，不是可部署模型或训练消融。 |
+| `inference/probes/canvas_accuracy_probe.py` | 冻结 checkpoint 的 dense-canvas 信息质量与消费敏感性探针：按推理期 IoU 匹配实例 GT，在全图 PE canvas 上测 learned→GT logit 混合，并交叉 `current/forced alpha`；先以 unhooked 标准推理逐图 hash 断言 `blend=0,current` 逐位一致，再要求所有画布干预保持检测输出不变。可选 `--export-pre-prompt-features` 仅在 output 工件中导出 PromptEncoder 前的 RoI/coarse/canvas 行特征并逐 proposal 对齐 DT；不改模型张量。`blend=1,alpha=1` 是 GT 画布与全开 gate 的定位格，不是可部署模型或训练消融。 |
+| `inference/probes/dense_gate_selector_oracle.py` | 纯 records 后处理的 A0 instance-selective dense-gate Oracle：current/forced-alpha 输出的检测字段逐条恒等后，GT 仅用于匹配后 mask-IoU 选择；输出 Oracle、每图同数量随机对照与完整 selector audit，绝不运行或改写模型前向。 |
+| `inference/probes/dense_gate_readability.py` | 不构建模型的 pre-PromptEncoder gate 特征/线性 readout 核心：严格定义 raw coarse、canvas、几何、类别、检测分数与对齐 RoI appearance 的两级特征，包含训练集专用 balanced logistic、行置乱控制与无 sklearn 的 tie-aware AUC。冻结 collector 只可调用此核心，不能在 val 上拟合。 |
+| `inference/probes/run_dense_gate_readout.py` | GPU-free readout 裁决器：消费 train/val 的 current/forced-alpha 冻结工件与 pre-PE 特征，GT 只生成训练 Oracle 标签和 val AUC；固定阈值将全体 val proposal 选择为 raw/full/appearance-row-permuted 三臂 records，供十类 paired bootstrap 评测。 |
+| `scripts/smoke/run_a0_dense_gate_readability.sh` | 不排队、不后台启动的 A0 single-GPU 冻结 readout 入口：先导出 train-520/val-130 current/alpha=1 pre-PE 工件，再 train-only 拟合并对 full 对 raw/permuted 做 500 次十类 paired bootstrap；仅应在用户显式释放单卡后运行。 |
 | `inference/probes/coarse_to_mining_oracle_probe.py` | A0/P2-off 的原链路四格 Oracle：hook `mask_head._forward_coarse_p2`，将同类 IoU≥0.5 匹配 proposal 的 GT signed ROI coarse 仅送入 ShapePointMiner、仅经生产 `_shape_prior_to_prompt_mask` 送入 dense，或两者均送入；unmatched 行保持 raw。先断言 unhooked production parity、再断言所有格 detector hash 不变与 raw hook 输出逐位恒等，并导出 paired-bootstrap records。 |
 | `inference/probes/p2_coarse_gate_probe.py` | P2 第一门的只读自然输出审计：从 `coarse_outputs` 显式取 raw/refined（第一个 forward 返回槽是 refined，不能误作 raw），分别经生产 canvas renderer 与 GT 后验同类匹配比较；以图像级 paired bootstrap 裁决 coarse 与 support-canvas 内容门，并断言观察 hook 不改变最终输出 hash。 |
 | `inference/probes/p2_support_decomposition_oracle.py` | 冻结 A0 的 P2-style support reachability Oracle：从 A2 checkpoint 固化 raw-boundary S4/support-reject 几何，GT 只对同类 IoU 匹配 ROI 的 raw 错误像素作反事实修正；四臂只切 dense canvas 来源，导出完整 COCO records 供 paired bootstrap。 |
-| `inference/probes/p2_error_readability_probe.py` | 冻结 A0 的 P2 可读性门：在 NWPU train-520 仅拟合轻量 linear readout，NWPU val-130 盲评 raw-only、raw+空间对齐 P2 和 ROI-permuted P2；固定每 ROI 写入预算，统计带外错误的 recall/precision 与 raw-sign flip 的 coarse-IoU 反事实。它不改模型 tensor 或 checkpoint。 |
+| `inference/probes/p2_error_readability_probe.py` | 冻结 A0 的视觉源可读性门：同一 train-520→val-130 linear-readout 协议可选择 detector P2，或**自定义 PAFPN 之前**的 SAM2 native `image_embedding`、high-res `s0+s1`、二者融合；每项均有 raw-only 与 ROI-permuted 对照，固定写入预算统计带外错误的 recall/precision 与 raw-sign flip coarse-IoU。它不改模型 tensor 或 checkpoint。 |
 | `inference/probes/`（其余） | 审计探针（通路审计、P2 oracle、E0、点可学性、P2 可视化），手动调用；P2 通路审计结论见 `docs/p2_decoder_side_findings.md`。 |
 | `utils/__init__.py` | 通用工具包标记。 |
 | `utils/coco_eval_utils.py` | 构造 COCO GT/DT 并执行 bbox/segm COCOeval；支持 bbox score 和 mask score 两种评估分数。 |
@@ -716,6 +724,8 @@ bash scripts/reproduce_legacy_segm.sh
 | `DECODER_TAIL_MODE` | 未设置或 `residual_v1` 保持 A3 的旧配置字段/架构 ID；`confidence_gated` 显式启用 A4/DCR，并将 `GATE_INIT_PROB/GATE_LOSS_WEIGHT/KEEP_LOSS_WEIGHT` 写入配置、产生 `_udprcgkK` ID。 |
 | `DECODER_TAIL_GATE_INIT_PROB` / `DECODER_TAIL_GATE_LOSS_WEIGHT` / `DECODER_TAIL_KEEP_LOSS_WEIGHT` | A4/DCR 专用，首配方固定 `0.1/1.0/0.05`；gate 是连续残差幅度，不是阈值式稀疏开关。 |
 | `DECODER_TAIL_LR_MULT` | UDPR 参数组 LR 倍率，默认 `1.0`；仅 `--train-decoder-tail-only` 路线使用。 |
+| `CANVAS_RENDERER_ENABLED` | 默认 `0`；`1` 才将 R3 P3/P4 renderer 配置写入 `cfg.model` 并生成 `_r3` architecture ID。关闭时该键缺失，旧臂 config/fingerprint 不变。 |
+| `CANVAS_RENDERER_LOSS_WEIGHT` | R3 positive-RoI Dice+BCE 的总权重，默认且 matrix300 固定为 `0.05`。 |
 | `SAM_IMAGE_EMBED_STRIDE` | SAM2 MaskDecoder image embedding步长；B0/B1、M0/M1、C1–C4默认`32`，R0、R1-C3、R1-C4、C5-v2固定`16`。 |
 | `SHAPE_POINT_ADAPTIVE_VALIDITY` | `1` 默认自适应点槽有效性；`0` 固定输出有效 2P2N 极值点。 |
 | `SHAPE_DENSE_TRANSFORM` | dense表示；默认`raw_logits`，R1-C4-G固定`gaussian_edt`。 |
@@ -793,6 +803,60 @@ bash scripts/reproduce_legacy_segm.sh
 处理本项目的新增或改动时，它负责默认执行上述同步流程。
 
 ## 8. 文档同步记录
+
+- 2026-09-10：实现独立 R3（Decoupled Proposal-conditioned Canvas Renderer）。原 ShapePriorInjector 继续生成 2P2N 与原 coarse loss；R3 只由同序 prompt RoI 在 detached P3/P4 上 ROIAlign、渲染 128² dense canvas，并复用既有 paste/support/PromptEncoder/mask-downscaling/gate。新增 `r3`（PB+R3）与 `r3_udpr`（PB+R3+UDPR）受控 wrapper/eval/contract 检查；matrix300 旧默认 P/PB/A0/A3 不改。R3 仅新增权重 0.05 的 positive-RoI BCE+Dice，unmatched proposal 行为是后续 checkpoint 审计项，不作为未登记 loss 混入本轮。严格推理重放遇到旧 checkpoint 缺 R3 key 时强制复位 renderer env，避免继承调用 shell。CPU renderer smoke、static config/architecture-ID、Python/shell syntax、env-replay 与 diff check 已通过；待 CUDA build/DDP 及独立实现审计。
+
+- 2026-09-10：将 `r3` 与 `r3_udpr` 显式登记到两个唯一的 300epoch 生产入口：`vhr10_p2v2_matrix300.sh` 现在校验单个合法 arm 后才委托共享定义，`vhr10_p2v2_matrix300_series.sh` 对逐臂序列作相同校验。无参数 series 默认仍是已冻结的 `p pb a0 a3`，因此新接线不触发历史行重跑；新增两臂须显式以 `r3 r3_udpr` 启动。
+
+- 2026-09-09：修复 `inference/probes/canvas_accuracy_probe.py` 导出的
+  `run_manifest.json` 漏写 `dataset` 的问题。paired bootstrap 由该字段选择 COCO
+  类别契约；旧工件会错误回退单类。新 probe 工件现在写入完整 dataset contract，
+  不改变冻结前向、模型或已有输出。旧 A0 canvas 工件的十类复核使用同 checkpoint、
+  同130 image-ID 的新几何审计 manifest，结果另行注明。
+
+- 2026-09-09：使用上述同 checkpoint、同 NWPU-130 image-ID、十类合同的 manifest 对历史
+  A0 canvas 工件补做 500 次 image-paired bootstrap：仅把 learned canvas 的 dense gate 从
+  `current` 强制为 `1.0`，mAP 0.666929→0.669332，Δ=+0.002403，95% CI
+  [-0.001495,+0.006008]。全局增大 dense 信任度不通过稳定收益门；旧 canvas manifest
+  的单类 bootstrap CI 明确作废，后续只允许以逐实例 Oracle 对同数量随机 selector 的优势
+  决定是否进入自适应 gate 设计。
+
+- 2026-09-09：完成 A0 instance-selective dense-gate 的纯 records 冻结 Oracle。`current`
+  与 forced-`alpha=1` 的 918 个 detection 非 mask 字段逐条恒等，GT 只在前向之后选择
+  728 个 class/box matched 检测中 mask-IoU 更优的候选；248 个被选择。Oracle mAP
+  0.673236，相对 current/全局 alpha=1/逐图同数量随机(seed44) 的 500 次十类
+  image-paired Δ CI 分别为 [+0.003364,+0.009406]、[+0.002262,+0.005646]、
+  [+0.001664,+0.006485]。它仅证明可选择上限，下一门是 train-520→val-130 的
+  inference-feature readout，未通过则不实现或训练 adaptive gate 模块。
+
+- 2026-09-09：新增 `docs/a0_prompt_geometry_audit.md`（新主线），预注册冻结 A0
+  的 box-token GT替换和 dense支持域1.1倍扩张解耦审计；计划保存不变量与逐行干预，
+  独立复核统计/结论。不修改生产模型、训练参数或 debug 字段。
+  实现为 `inference/probes/prompt_geometry_oracle_probe.py`，CPU回归位于
+  `scripts/smoke/test_prompt_geometry_oracle.py`；逐ROI保存PE/support框与匹配ID，
+  并核验points/canvas/pre-support dense不变量。CPU与真实单batch smoke通过，
+  完整130图及两个500次bootstrap完成：B ΔmAP +0.002944，CI[-0.001201,+0.006536]；
+  S -0.001629，CI[-0.004550,+0.000987]。两臂不直接晋级训练；代码及records独立
+  审核通过，最终CI复核见审计文档。
+
+- 2026-09-09：新增新主线 `inference/probes/point_reliability_oracle_probe.py`
+  与 `docs/a0_point_reliability_oracle.md`，以及
+  `scripts/smoke/test_point_reliability_oracle.py` 的符号/坐标/无效槽位回归。
+  冻结 A0，仅以匹配 GT 判定错误正/负点，
+  用生产 label=-1/zero-token 路径屏蔽；保留坐标、box、dense 与 detector，
+  unhooked/canonical/identity 控制后分别评估 negative/all。未修改训练主线或日志字段。
+  完整 NWPU-130 和等数量同符号随机屏蔽均已运行。Oracle negative/all 对 raw 的
+  ΔmAP=+0.000639/+0.001186，500次 paired CI 均跨零；negative 对单seed随机
+  对照有微小正信号（+0.000248），仍不足以启动可靠性模块训练。详见诊断文档。
+
+- 2026-09-09：新增 `inference/probes/neighbor_negative_oracle_probe.py`、
+  `scripts/smoke/test_neighbor_negative_oracle.py` 与 `docs/a0_neighbor_negative_oracle.md`
+  （均在新主线目录）。冻结 A0 只替换有效 N2，使用固定扩框网格与 GT 邻居归属作
+  受限 Oracle；核验其他提示/dense/检测不变量，记录 eligible proposal 的邻居误覆盖
+  和 target 覆盖。它不改 coarse、训练主线或 debug 字段。完整 NWPU-130 三次前向
+  与所有 hash/canonical 检查通过；298/918 proposals 被干预，mAP
+  0.666929→0.665956，邻居误覆盖未降低；500次十类 image-bootstrap 的 ΔmAP CI
+  [-0.002949,+0.000350]，晋级门 fail，停止此固定候选单负点配方，不宣称显著变差。
 
 - 2026-09-07：新增并审计 `canvas_accuracy_probe.py`。该冻结权重 probe 以实际 `ShapePriorInjector.forward_roi` 包装记录 matched-ROI coarse Dice（不再错误依赖未被调用的 module forward hook）；将画布 blend 与 dense gate 分解为 `current/forced alpha` 二维格，默认包含 `blend=1,alpha=1` 的 GT 内容×全开门定位格。执行前后以逐图 detector/full-output SHA256 验证：`blend=0,current` 必须逐位复现无 hook 标准推理，所有画布格不得改变检测输出。仅用于诊断，不新增训练日志字段、不改变训练或模型前向。
 - 2026-09-07：新增独立 UDPR decoder-tail 路线与 NWPU `vhr10_udpr_k64.sh` 热启动入口。启用时 wrapper 受控捕获 SAM2 `output_upscaling`，但不改 vendored SAM2 默认 API；UDPR 在 native 256 网格用稳定最小 `|logit|` Top-K 选择点并仅 scatter 残差。A0 默认路径不启用 capture/模块，保持原三元 decoder 返回契约。Tail-only 训练冻结完整 A0，INIT_FROM 强制只允许新增 tail keys 缺失且拒绝 shape/unexpected/migration。真实 validation 首 batch 的 zero-init A0/UDPR 完整 prediction SHA256 恒等；4-GPU 单 batch 热启动验证只有 38,217 个 tail 参数更新且 DDP deviation=0。实际长训、指标及 bootstrap 尚未执行。
@@ -1135,7 +1199,7 @@ bash scripts/reproduce_legacy_segm.sh
   前仍须先证明 P2 feature 对带外错误的无 GT 定位能力。完整证据见
   `docs/a0_p2_support_decomposition_results.md`。
 
-## 2026-09-09：冻结 A0 P2 错误定位可读性门（待运行）
+## 2026-09-09：冻结 A0 P2 错误定位可读性门
 
 - 新增 `inference/probes/p2_error_readability_probe.py` 与 CPU smoke。它将 A2 的 accepted-S4
   几何固定为“旧支持域”，只在训练集使用 GT 标注该域外的 raw-binary coarse error；冻结 A0
@@ -1157,3 +1221,21 @@ batch/卡数/seed 参数化已入主线勿回退硬编码；③ 关键臂完赛�
 `vhr10_p2v2_eval.sh` 导出 per-image evidence 入库（跨机复查与配对
 bootstrap 的唯一输入）；④ 结论效力排序：同机同 seed 配对 > 同机异 seed >
 跨机直比（不作数，机器偏移 +0.011）。
+
+- 完整 NWPU train-520 → val-130 已完成（77,465 拟合样本；1000 image-bootstrap）。P2 相对
+  raw-only 的 recall CI `[-0.01961,+0.00143]`、precision CI `[-0.01587,+0.00086]` 跨零，故预注册 gate **fail**：不能以
+  support Oracle 启动 P2-conditioned support 训练，也不得将“优于打乱”转写成模型收益。
+- 同一探针已扩展 `--feature-source=sam_image|sam_highres|sam_fused`：原生来源由
+  `RSPrompterAnchor.extract_feat` 在进入自定义 `RSSAM2PAFPN` 前直接交给 mask head，分别为
+  official stride-16 image embedding 与 native backbone-FPN 的 s0/s1；先运行 `sam_image` 完整
+  盲评。该扩展尚无结果，不能据此宣称 SAM2 原生特征有效。
+- 独立审计发现 v1 的 raw-selector coarse-IoU 双计数 bug，故两次旧 probe 的所有 IoU/IoU CI
+  已作废并修代码/重跑；不影响上述 recall/precision 的 gate fail。`sam_image` 相对 raw 的
+  recall/precision CI 为 `[-0.01607,-0.00970]`、`[-0.01156,-0.00626]`，故淘汰 official stride-16 `image_embeddings` 作为当前 pre-PE 带外错误定位源；
+  尚可验证的源仅为更高分辨率 native s0/s1，详细数值见
+  `docs/a0_p2_error_readability_gate.md`。
+- 修复后的 native high-res s0/s1 v2 已完成且经独立审计：provenance 明确为
+  pre-`RSSAM2PAFPN` 的 SAM2 backbone-FPN 256²/128²，130 图 paired bootstrap 的
+  aligned−raw recall/precision/coarse-IoU CI 为 `[-0.01534,+0.00180]`、
+  `[-0.01118,+0.00114]`、`[-0.00252,+0.00067]`，故 gate fail。停止该 frozen-linear、
+  10%预算下的 native high-res pre-PE 来源路线；不外推为所有非线性 SAM2 high-res 模块无效。

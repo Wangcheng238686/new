@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Arm-level verification for the NWPU P2-v2 dev arms (p/pb/a0/a1/a2/a2e/a3/a4).
+"""Arm-level verification for NWPU P2-v2 arms, including R3 and R3+UDPR.
 
 For each arm: capture the REAL environment produced by vhr10_p2v2_dev.sh
 (DEV_DUMP_ENV), build the model from the actual config, and assert the
@@ -22,7 +22,7 @@ MAINLINE = ROOT.parent                      # repo root (repo/)
 sys.path.insert(0, str(MAINLINE))
 sys.path.insert(0, str(MAINLINE / "portable_sam2_explicit_coarse" / "inference"))
 
-ARMS = ["p", "pb", "a0", "a1", "a2", "a2e", "a3", "a4"]
+ARMS = ["p", "pb", "a0", "a1", "a2", "a2e", "a3", "a3r", "a4", "r3", "r3_udpr"]
 
 # Every config input read by the VHR-10 inheritance chain.  ``build`` clears
 # these before applying an arm dump, so one arm (or the caller's terminal)
@@ -49,6 +49,8 @@ CONFIG_ENV_KEYS = {
     "DECODER_TAIL_POINT_LOSS_WEIGHT", "DECODER_TAIL_DELTA_LOGIT_MAX",
     "DECODER_TAIL_MODE", "DECODER_TAIL_GATE_INIT_PROB", "DECODER_TAIL_GATE_LOSS_WEIGHT",
     "DECODER_TAIL_KEEP_LOSS_WEIGHT",
+    "CANVAS_RENDERER_ENABLED", "CANVAS_RENDERER_LOSS_WEIGHT",
+    "MASK_LOSS_RAMP_EPOCHS", "MASK_LOSS_RAMP_START",
 }
 
 # Values deliberately incompatible with D5-B.  A0 and A3 must resolve to
@@ -121,12 +123,12 @@ def dry_run(arm: str, extra_env: Optional[Dict[str, str]] = None) -> str:
 
 def preflight_errors() -> list[str]:
     errors = []
-    for arm in ("a0", "a3", "a4"):
+    for arm in ("a0", "a3", "a4", "r3", "r3_udpr"):
         clean_env, polluted_env = arm_env(arm), arm_env(arm, POLLUTION)
         clean_cfg, polluted_cfg = config_only(clean_env), config_only(polluted_env)
         if clean_cfg != polluted_cfg:
             errors.append(f"{arm}: polluted shell changed resolved model_config")
-        if arm in {"a3", "a4"}:
+        if arm in {"a3", "a4", "r3", "r3_udpr"}:
             expected = {
                 "DECODER_TAIL_LR_MULT": "1.0", "ROI_SAM_ENABLED": "0",
                 "SHAPE_CONTEXT_FUSION": "roi_only", "SHAPE_DENSE_TEMPERATURE": "1.0",
@@ -192,10 +194,18 @@ def check_arm(arm: str, model, cfg) -> list:
         want(md_train == 4684, f"mask_downscaling trainable {md_train} != 4684")
         want(pe_train == 4684, f"PE trainable {pe_train} != 4684")
         refiner = head.p2_boundary_refiner
-        if arm == "a0":
+        is_r3 = arm in {"r3", "r3_udpr"}
+        renderer = getattr(head, "canvas_renderer", None)
+        if is_r3:
+            want(renderer is not None, "R3 renderer missing")
+            want(abs(float(head.canvas_renderer_loss_weight) - 0.05) < 1e-9,
+                 "R3 loss weight != 0.05")
+        else:
+            want(renderer is None, "legacy arm unexpectedly has R3 renderer")
+        if arm in {"a0", "r3"}:
             want(refiner is None, "refiner should be absent")
             want(not head.decoder_tail_enabled, "UDPR should be disabled")
-        elif arm in {"a3", "a4"}:
+        elif arm in {"a3", "a3r", "a4", "r3_udpr"}:
             want(refiner is None, "P2 refiner should be absent")
             want(head.decoder_tail_enabled, "UDPR should be enabled")
             tcfg = head._decoder_tail_cfg
@@ -205,7 +215,7 @@ def check_arm(arm: str, model, cfg) -> list:
                  "UDPR point loss weight != 1")
             want(abs(float(tcfg.get("delta_logit_max", -1)) - 2.0) < 1e-9,
                  "UDPR delta cap != 2")
-            if arm == "a3":
+            if arm in {"a3", "a3r", "r3_udpr"}:
                 want("mode" not in tcfg, "v1 A3 must not materialize a mode key")
             else:
                 want(tcfg.get("mode") == "confidence_gated", "DCR mode != confidence_gated")
@@ -265,7 +275,7 @@ def main() -> int:
         del model
 
     print("\n===== pairwise model_config diffs (ablation feasibility) =====")
-    pairs = [("p", "pb"), ("pb", "a0"), ("a0", "a1"), ("a1", "a2"), ("a2", "a2e"), ("a0", "a3"), ("a3", "a4")]
+    pairs = [("p", "pb"), ("pb", "a0"), ("a0", "a1"), ("a1", "a2"), ("a2", "a2e"), ("a0", "a3"), ("a3", "a3r"), ("a3", "a4"), ("pb", "r3"), ("r3", "r3_udpr")]
     expected = {
         ("p", "pb"): {"explicit_prompt_mode"},
         ("pb", "a0"): {"explicit_prompt_mode", "train_mask_downscaling",
@@ -274,7 +284,10 @@ def main() -> int:
         ("a1", "a2"): {"loss_mode", "correction_margin", "keep_loss_weight"},
         ("a2", "a2e"): {"beta", "delta_logit_max"},
         ("a0", "a3"): {"decoder_tail_refiner_cfg"},
+        ("a3", "a3r"): set(),  # trainer-side knob only: model identical
         ("a3", "a4"): {"gate_init_prob", "gate_loss_weight", "keep_loss_weight", "mode"},
+        ("pb", "r3"): {"explicit_prompt_mode", "train_mask_downscaling", "use_shape_dense", "canvas_renderer_cfg"},
+        ("r3", "r3_udpr"): {"decoder_tail_refiner_cfg"},
     }
     ok = True
     for x, y in pairs:

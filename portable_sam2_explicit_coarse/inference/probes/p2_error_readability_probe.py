@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Frozen-A0 test of whether spatially aligned P2 can localise coarse errors.
+"""Frozen-A0 test of whether a spatial visual source can localise coarse errors.
 
 This is a *readability* gate, not a new model and not an Oracle mask result.
 The frozen A0 detector/coarse head is run once on the NWPU train split to fit
 two linear pixel readouts, then once on the held-out validation split:
 
 ``raw``       raw-logit / |raw-logit| only;
-``p2``        the same raw features plus aligned frozen P2 channels;
-``permuted``  the trained P2 readout with ROI P2 rows cyclically permuted.
+``p2``        the same raw features plus the selected aligned visual channels;
+``permuted``  the trained visual readout with ROI visual rows cyclically permuted.
 
 The target is a raw-binary error outside A2's *accepted* S4 support.  GT is
 used only to train/evaluate that target; it never enters A0 forward.  At a
@@ -50,6 +50,7 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--checkpoint", required=True, help="frozen P2-off A0 checkpoint")
     p.add_argument("--support-reference-checkpoint", required=True, help="A2 checkpoint supplying accepted-S4 geometry")
+    p.add_argument("--feature-source", choices=("detector_p2", "sam_image", "sam_highres", "sam_fused"), default="detector_p2", help="candidate source; SAM sources are native pre-custom-PAFPN features")
     p.add_argument("--train-ann-file", required=True)
     p.add_argument("--train-image-subdir", required=True)
     p.add_argument("--device", default="cuda:0")
@@ -89,12 +90,8 @@ def _features(raw: torch.Tensor, p2_roi: torch.Tensor) -> Tuple[torch.Tensor, to
 
 
 def _safe_permutation(p2: torch.Tensor) -> torch.Tensor:
-    """ROI permutation negative control; no row may retain its own P2 map."""
-    if p2.shape[0] < 2:
-        # A one-ROI image has no other ROI.  A spatial roll remains a strict
-        # misalignment control rather than silently treating aligned P2 as null.
-        return p2.roll(shifts=(p2.shape[-2] // 2, p2.shape[-1] // 2), dims=(-2, -1))
-    return p2.roll(shifts=1, dims=0)
+    """Strict spatial-misalignment control; no ROI keeps its own pixel map."""
+    return p2.roll(shifts=(max(1, p2.shape[-2] // 2), max(1, p2.shape[-1] // 2)), dims=(-2, -1))
 
 
 def _fit_linear(x: torch.Tensor, y: torch.Tensor, args: argparse.Namespace) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -125,10 +122,7 @@ def _add_counts(row: Dict[str, float], name: str, raw: torch.Tensor, target: tor
         selected.flatten()[flat[score.flatten()[flat].topk(count).indices]] = True
     hits = int((selected & error).sum()); writes = int(selected.sum())
     fixed = raw.ge(0).clone(); fixed[selected] = ~fixed[selected]
-    pairs = [(name + "_", fixed)]
-    if name == "raw":
-        pairs.insert(0, ("raw_", raw.ge(0)))
-    for prefix, prediction in pairs:
+    for prefix, prediction in ((name + "_", fixed),):
         inter = int((prediction & target).sum()); pred = int(prediction.sum()); tgt = int(target.sum())
         row[prefix + "inter"] += inter; row[prefix + "union"] += pred + tgt - inter
     row[name + "_hits"] += hits; row[name + "_writes"] += writes; row[name + "_errors"] += total_error
@@ -174,20 +168,25 @@ def main() -> int:
     device = torch.device(args.device); model.to(device).eval(); head = model.roi_head.mask_head
     if head.p2_boundary_refiner is not None: raise RuntimeError("readability gate requires P2-off A0")
     accepted, _, support_cfg = _support_refiner(Path(args.support_reference_checkpoint).resolve())
-    align = RoIAlign(output_size=(args.roi_output_size, args.roi_output_size), spatial_scale=.25, sampling_ratio=0, pool_mode="avg", aligned=True).to(device)
+    align_p2 = RoIAlign(output_size=(args.roi_output_size, args.roi_output_size), spatial_scale=.25, sampling_ratio=0, pool_mode="avg", aligned=True).to(device)
+    align_image = RoIAlign(output_size=(args.roi_output_size, args.roi_output_size), spatial_scale=1 / 16, sampling_ratio=0, pool_mode="avg", aligned=True).to(device)
+    align_s0 = RoIAlign(output_size=(args.roi_output_size, args.roi_output_size), spatial_scale=1 / 4, sampling_ratio=0, pool_mode="avg", aligned=True).to(device)
+    align_s1 = RoIAlign(output_size=(args.roi_output_size, args.roi_output_size), spatial_scale=1 / 8, sampling_ratio=0, pool_mode="avg", aligned=True).to(device)
     val_contract = _resolve_dataset_contract(ns, snapshot); train_contract = dict(val_contract); train_contract.update({"ann_file": args.train_ann_file, "image_subdir": args.train_image_subdir})
     out = Path(args.output_dir).resolve(); out.mkdir(parents=True, exist_ok=True)
+    provenance: Dict[str, Any] = {}
     torch.manual_seed(args.seed)
     sample_generator = torch.Generator(device=device).manual_seed(args.seed)
 
     def collect(contract: Mapping[str, Any], *, train: bool) -> Any:
         loader = _build_loader(contract, 0); features: List[torch.Tensor] = []; labels: List[torch.Tensor] = []; rows: Dict[int, Dict[str, float]] = {}
-        state: Dict[str, Any] = {"gts": None, "labels": None, "ids": None, "boxes": None, "queue": None, "cursor": 0, "metas": None}
+        state: Dict[str, Any] = {"gts": None, "labels": None, "ids": None, "boxes": None, "queue": None, "cursor": 0, "metas": None, "image_embeddings": None, "high_res_features": None}
         original_predict, original_coarse = model.roi_head.predict_mask, head._forward_coarse_p2
         def predict(*fa: Any, **kw: Any) -> Any:
             result = kw.get("results_list", fa[2] if len(fa) > 2 else None); state["queue"] = torch.cat([r.labels.detach() for r in result]) if result else torch.zeros(0, dtype=torch.long, device=device); state["cursor"] = 0; return original_predict(*fa, **kw)
         def pre(_m: Any, _fa: Tuple[Any, ...], kw: Dict[str, Any]) -> None:
             boxes, ids = kw.get("boxes"), kw.get("roi_img_ids"); state["boxes"], state["ids"] = boxes, ids
+            state["image_embeddings"], state["high_res_features"] = kw.get("image_embeddings"), kw.get("high_res_features")
             if boxes is not None:
                 s, e = state["cursor"], state["cursor"] + boxes.shape[0]
                 state["labels"], state["cursor"] = state["queue"][s:e], e
@@ -195,12 +194,27 @@ def main() -> int:
             output = original_coarse(*fa, **kw); raw = output[0]
             if raw is None or state["boxes"] is None: return output
             p2 = fa[4] if len(fa) > 4 else kw.get("p2_feature"); rois = fa[5] if len(fa) > 5 else kw.get("prompt_rois")
-            p2_rows = align(p2.detach(), rois).float(); p2_perm = _safe_permutation(p2_rows)
+            if args.feature_source == "detector_p2":
+                visual_rows = align_p2(p2.detach(), rois).float()
+            else:
+                image = state["image_embeddings"]
+                high = state["high_res_features"]
+                if image is None or high is None or len(high) < 2:
+                    raise RuntimeError("native SAM feature source was not delivered to pre-PromptEncoder mask head")
+                if image.shape[-2:] != (64, 64) or high[0].shape[-2:] != (256, 256) or high[1].shape[-2:] != (128, 128):
+                    raise RuntimeError(f"unexpected native SAM feature geometry: image={tuple(image.shape)}, s0={tuple(high[0].shape)}, s1={tuple(high[1].shape)}")
+                if p2 is high[0] or p2 is high[1]:
+                    raise RuntimeError("native high-res source aliases custom detector PAFPN P2")
+                provenance.update({"source": "sam2_backbone_fpn_pre_RSSAM2PAFPN", "image_embedding_shape": list(image.shape), "s0_shape": list(high[0].shape), "s1_shape": list(high[1].shape), "image_stride": 16, "s0_stride": 4, "s1_stride": 8})
+                image_rows = align_image(image.detach(), rois).float()
+                high_rows = torch.cat([align_s0(high[0].detach(), rois).float(), align_s1(high[1].detach(), rois).float()], dim=1)
+                visual_rows = image_rows if args.feature_source == "sam_image" else high_rows if args.feature_source == "sam_highres" else torch.cat([image_rows, high_rows], dim=1)
+            p2_perm = _safe_permutation(visual_rows)
             for i in range(raw.shape[0]):
                 image_index = int(state["ids"][i]); entry = state["gts"][image_index] if 0 <= image_index < len(state["gts"]) else None
                 got = _target_and_eligible(raw[i, 0], state["boxes"][i], state["labels"][i], entry, accepted, args.match_iou)
                 if got is None: continue
-                target, error, eligible = got; raw_x, p2_x = _features(raw[i, 0].float(), p2_rows[i]); _, perm_x = _features(raw[i, 0].float(), p2_perm[i])
+                target, error, eligible = got; raw_x, p2_x = _features(raw[i, 0].float(), visual_rows[i]); _, perm_x = _features(raw[i, 0].float(), p2_perm[i])
                 if train:
                     for label in (0, 1):
                         ids = (eligible & error.eq(bool(label))).flatten().nonzero().flatten()
@@ -241,7 +255,7 @@ def main() -> int:
     keep = keep[torch.randperm(keep.numel(), generator=gen)]; packed, y = packed[keep].to(device), y[keep].to(device)
     raw_w, raw_b, raw_norm = _fit_linear(packed[:, :2], y, args); p2_w, p2_b, p2_norm = _fit_linear(packed[:, 2:], y, args)
     readouts = {"raw": (raw_w, raw_b, raw_norm), "p2": (p2_w, p2_b, p2_norm), "permuted": (p2_w, p2_b, p2_norm)}
-    rows = collect(val_contract, train=False); boot = _bootstrap(rows, args.resamples, args.seed); summary = {"checkpoint": str(ckpt_path), "support_reference_checkpoint": str(Path(args.support_reference_checkpoint).resolve()), "support_geometry": support_cfg, "config_source": source, "strict_load": strict, "train_contract": train_contract, "validation_contract": val_contract, "fit_samples": int(y.numel()), "fit_positive_fraction": float(y.mean()), "write_budget": args.write_budget, "validation_images": len(rows), "bootstrap": boot, "gate": _verdict(boot), "note": "Frozen A0 P2 readability gate; GT defines only train/eval old-support-outside error labels. No GT tensor enters model forward or selected correction."}
+    rows = collect(val_contract, train=False); boot = _bootstrap(rows, args.resamples, args.seed); summary = {"checkpoint": str(ckpt_path), "feature_source": args.feature_source, "feature_provenance": provenance if args.feature_source != "detector_p2" else {"source": "custom_RSSAM2PAFPN_p2"}, "support_reference_checkpoint": str(Path(args.support_reference_checkpoint).resolve()), "support_geometry": support_cfg, "config_source": source, "strict_load": strict, "train_contract": train_contract, "validation_contract": val_contract, "fit_samples": int(y.numel()), "fit_positive_fraction": float(y.mean()), "write_budget": args.write_budget, "validation_images": len(rows), "bootstrap": boot, "gate": _verdict(boot), "note": "Frozen A0 visual-source readability gate; GT defines only train/eval old-support-outside error labels. No GT tensor enters model forward or selected correction."}
     _write_json(out / "summary.json", summary); _write_json(out / "image_records.json", rows); print(json.dumps(summary, indent=2), flush=True); return 0
 
 

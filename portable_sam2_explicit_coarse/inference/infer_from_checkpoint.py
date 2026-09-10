@@ -206,6 +206,18 @@ def _restore_embedded_architecture_environment(
         os.environ["P2_BOUNDARY_REFINER_ENABLED"] = (
             "1" if bool(p2_cfg["enabled"]) else "0"
         )
+    # Unlike a generic optional config key, R3 must be explicitly reset for
+    # legacy checkpoints: otherwise a caller shell left at `=1` would rebuild
+    # an A0/PB snapshot as R3 before strict fingerprint validation.
+    renderer_cfg = head.get("canvas_renderer_cfg", {})
+    renderer_enabled = (
+        isinstance(renderer_cfg, Mapping) and bool(renderer_cfg.get("enabled", False))
+    )
+    os.environ["CANVAS_RENDERER_ENABLED"] = "1" if renderer_enabled else "0"
+    if renderer_enabled and renderer_cfg.get("loss_weight") is not None:
+        os.environ["CANVAS_RENDERER_LOSS_WEIGHT"] = str(renderer_cfg["loss_weight"])
+    else:
+        os.environ.pop("CANVAS_RENDERER_LOSS_WEIGHT", None)
     dense_cfg = head.get("dense_prompt_cfg", {})
     if isinstance(dense_cfg, Mapping):
         transform = dense_cfg.get("transform")
