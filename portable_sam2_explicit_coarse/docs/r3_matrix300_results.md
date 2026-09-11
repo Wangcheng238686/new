@@ -17,6 +17,24 @@ P/PB/A0/A3 结果，也不据此启动重训。
 last 差为 -0.0122 segm/mAP。单 seed 结果不是显著性检验，但已明确不满足预注册的
 正向采纳预期。
 
+## 四权重完整 COCO（2026-09-11 16:00 补齐，依赖链自动推理）
+
+R3 全部四口径（`infer_from_checkpoint --split validation`，与矩阵 16 权重表同协议）。
+产物：`pb_r3` 四目录（各含 metrics/predictions/run_manifest，同步协议 evidence 项）；
+批量日志 `logs/ablations/chain_evals_v3_1140.log`；20 行全矩阵表见
+`docs/box_prompt_dependence_vs_contribution.md`。
+
+| ckpt | segm/mAP | segm/AP50 | segm/AP75 | bbox/mAP | bbox/AP50 | bbox/AP75 | segm/AR100 | bbox/AR100 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| bestS(E70) | 0.6433 | 0.9363 | 0.6780 | 0.6847 | 0.9414 | 0.8002 | 0.6846 | 0.7314 |
+| bestB(E250) | 0.6248 | 0.9083 | 0.6554 | 0.7131 | 0.9197 | 0.7996 | 0.6674 | 0.7549 |
+| bestC(E290) | 0.6284 | 0.9096 | 0.6720 | 0.7123 | 0.9184 | 0.8036 | 0.6685 | 0.7537 |
+| last(E300) | 0.6271 | 0.9105 | 0.6709 | 0.7127 | 0.9181 | 0.8022 | 0.6676 | 0.7544 |
+
+要点：R3 四口径全部低于 PB 对应行（last 0.6392/0.7215、bestB 0.6411/0.7276），
+负结论在 bestB/bestC 口径下不变；bestS(E70) 的 segm 峰 0.6433 伴随 bbox 谷 0.6847，
+错峰形态与 A3 bestS(E45) 的选择伪影同构，主口径仍以 last 为准。
+
 ## 冻结 canvas probe
 
 R3 last checkpoint 的标准推理由 probe parity hash 验证，matched/unmatched RoI 为
