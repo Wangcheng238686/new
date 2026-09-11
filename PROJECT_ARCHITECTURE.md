@@ -804,6 +804,13 @@ bash scripts/reproduce_legacy_segm.sh
 
 ## 8. 文档同步记录
 
+- 2026-09-11：完成 R3 matrix300 last E300 与冻结 canvas probe 诊断，结果写入
+  `docs/r3_matrix300_results.md`。R3 last segm/bbox mAP 为 0.6273/0.7127，低于
+  A0 的 0.6330/0.7218；同口径 learned canvas IoU 0.7614 也低于 A0 0.7821，故
+  R3 v1 不通过“更优 dense source”采纳门。GT matched-canvas 替换仍有 +0.0092 mAP，
+  表明通道未失效而是 R3 内容未达标。同步澄清 DEBUG 字典：既有 dense pathway gradient
+  probe 不包含 R3 renderer，且 R3 loss 仅监督正 RoI；这些是诊断边界，不改训练实现。
+
 - 2026-09-10：实现独立 R3（Decoupled Proposal-conditioned Canvas Renderer）。原 ShapePriorInjector 继续生成 2P2N 与原 coarse loss；R3 只由同序 prompt RoI 在 detached P3/P4 上 ROIAlign、渲染 128² dense canvas，并复用既有 paste/support/PromptEncoder/mask-downscaling/gate。新增 `r3`（PB+R3）与 `r3_udpr`（PB+R3+UDPR）受控 wrapper/eval/contract 检查；matrix300 旧默认 P/PB/A0/A3 不改。R3 仅新增权重 0.05 的 positive-RoI BCE+Dice，unmatched proposal 行为是后续 checkpoint 审计项，不作为未登记 loss 混入本轮。严格推理重放遇到旧 checkpoint 缺 R3 key 时强制复位 renderer env，避免继承调用 shell。CPU renderer smoke、static config/architecture-ID、Python/shell syntax、env-replay 与 diff check 已通过；待 CUDA build/DDP 及独立实现审计。
 
 - 2026-09-10：将 `r3` 与 `r3_udpr` 显式登记到两个唯一的 300epoch 生产入口：`vhr10_p2v2_matrix300.sh` 现在校验单个合法 arm 后才委托共享定义，`vhr10_p2v2_matrix300_series.sh` 对逐臂序列作相同校验。无参数 series 默认仍是已冻结的 `p pb a0 a3`，因此新接线不触发历史行重跑；新增两臂须显式以 `r3 r3_udpr` 启动。

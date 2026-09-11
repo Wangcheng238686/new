@@ -28,7 +28,7 @@
 | `DENSE/source_delta_norm` | `||dense_pe - base_dense||₂` 的实例均值 | PromptEncoder 编码后的原始 dense 差异。 |
 | `DENSE/applied_delta_norm` | `||dense_embeddings - base_dense||₂` 的实例均值 | 真正送入 MaskDecoder 的 dense 改变量。 |
 | `DENSE/source_delta_ratio` / `applied_delta_ratio` | 对应 norm 除以 `||base_dense||₂` | `applied_delta_ratio>0` 才证明 dense 注入非空；过大不等于更好。 |
-| `dense_final_mask_grad_group_l2_rms` | 每 rank 首个有限训练 batch 上，`loss_mask` 对 ShapePriorInjector + trainable dense gate 的参数组 L2 范数；跨 rank 后取 RMS。probe 使用未 scale、未 accumulation-divide 的 local `loss_mask` | D1 dense 行应非零；Point+Box control 理应为零或数值噪声，因为硬挖点不可微。它是 shape-injector+dense-gate 的代理，不是 dense-off control 中不存在模块的“dense 参数梯度”。 |
+| `dense_final_mask_grad_group_l2_rms` | 每 rank 首个有限训练 batch 上，`loss_mask` 对 ShapePriorInjector + trainable dense gate 的参数组 L2 范数；跨 rank 后取 RMS。probe 使用未 scale、未 accumulation-divide 的 local `loss_mask` | D1/A0 dense 行的代理。**当前不含 R3 CanvasRenderer 参数**：R3 行的该字段低或仅 gate 非零，不能据此推断 renderer 没有 final-mask 梯度；须配合 R3 独立审计或后续 renderer telemetry。 |
 | `dense_final_mask_grad_nonzero_param_ratio` | 获得有限、非零 `loss_mask` 梯度的参数 tensor 数 / probe 参数 tensor 数 | 诊断是否只激活局部参数；不是元素级比例。 |
 | `dense_parameter_update_group_l2_rms` | 各 rank 的 epoch 前后同一组参数总 L2 差，再跨 rank 取 RMS | 包含 optimizer 的全部更新效应（含 weight decay）；须与 final-mask gradient 联合解读。 |
 | `pe_mask_downscaling_*`（同构三件套） | PromptEncoder mask 下采样卷积栈（`PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING=1` 时 10 张量/4,684 参数；否则该分支为空、字段恒 0）的 final-mask 梯度 group-L2 RMS / 非零比例 / epoch 前后更新 group-L2 RMS；与 `dense`/`p2br` 分支同构同分母 | D5-B 的 PE 适配独立验收：`update_group_l2_rms>0` 且 `final_mask_grad` 非零才证明读取端真的在学习；**不得**用 dense 组的活动冒充（两组参数不相交）。optimizer 组审计行（`Optimizer group prompt_encoder`）给出入组参数数与实际 LR（应为 基础 LR×`PROMPT_ENCODER_LR_MULT`）。 |
@@ -40,7 +40,7 @@
 | `R3/roi_count` | rank-0 latest-forward 的 canvas RoI 数 | 应与该次正 RoI prompt 数一致；零首先排查采样或接线。 |
 | `R3/logit_abs_mean` | 最新 batch、所有 R3 ROI-local 128² logit 的 `mean(abs(z))` | 零终层初始化首步为零；非零只说明渲染器开始写画布。 |
 | `R3/foreground_ratio` | 最新 batch 中 `sigmoid(z)>=0.5` 的像素比例 | 只能用于发现全黑/全白塌缩，不能充当目标质量或 false-positive 安全结论。 |
-| `r3_canvas_bce` / `r3_canvas_dice` | positive RoI 的未加权 BCE 与 Dice loss；训练 detailed-loss 时间均值 | 二者相加后才乘固定 `CANVAS_RENDERER_LOSS_WEIGHT=0.05` 写入 `loss_canvas_renderer`。它们不含原有 `loss_shape_prior`。 |
+| `r3_canvas_bce` / `r3_canvas_dice` | positive RoI 的未加权 BCE 与 Dice loss；训练 detailed-loss 时间均值 | 二者相加后才乘固定 `CANVAS_RENDERER_LOSS_WEIGHT=0.05` 写入 `loss_canvas_renderer`。它们不含原有 `loss_shape_prior`，也**不覆盖推理时 unmatched detection RoI**。 |
 | `COARSE/r3_canvas_soft_iou` | 同一正 RoI 上 sigmoid canvas 与 128² target 的 soft IoU 的 latest-forward 均值 | 仅为训练内容遥测；不能与检测 RoI 的 matched canvas IoU 或 COCO mAP 混用。 |
 
 ## 4. P2BoundaryRefiner 字段
