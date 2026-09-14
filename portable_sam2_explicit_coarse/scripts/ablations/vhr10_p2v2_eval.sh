@@ -8,8 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${PROJECT_ROOT}/scripts/load_environment.sh"
 
-ARM="${1:?usage: vhr10_p2v2_eval.sh <p|pb|a0|a1|a2|a2e|a3|a3r|a4|r3|r3_udpr> <best|best_bbox|best_composite|last>}"
-KIND="${2:?usage: vhr10_p2v2_eval.sh <p|pb|a0|a1|a2|a2e|a3|a3r|a4|r3|r3_udpr> <best|best_bbox|best_composite|last>}"
+ARM="${1:?usage: vhr10_p2v2_eval.sh <p|pb|a0|a0_sg|a1|a2|a2e|a3|a3sg|a3sgt|a3r|a4|a4sg|a5sg|r3|r3_udpr> <best|best_bbox|best_composite|last>}"
+KIND="${2:?usage: vhr10_p2v2_eval.sh <p|pb|a0|a0_sg|a1|a2|a2e|a3|a3sg|a3sgt|a3r|a4|a4sg|a5sg|r3|r3_udpr> <best|best_bbox|best_composite|last>}"
 # Keep dev100 as the historical default.  Formal protocol callers must set
 # P2V2_EVAL_PROTOCOL explicitly, so a matrix300 result cannot silently
 # evaluate a same-named dev100 directory.
@@ -24,11 +24,16 @@ case "${ARM}" in
   p)  SUFFIX="p_point" ;;
   pb) SUFFIX="pb" ;;
   a0) SUFFIX="a0_pbm_d5b" ;;
+  a0_sg) SUFFIX="a0_sg" ;;
   a1) SUFFIX="a1_p2v1" ;;
   a2) SUFFIX="a2_r1" ;;
   a2e) SUFFIX="a2e_r1_esc030" ;;
   a3) SUFFIX="a3_pbm_udprk64" ;;
+  a3sg) SUFFIX="a3sg_pbm_sg_udprk64" ;;
+  a3sgt) SUFFIX="a3sgt_pbm_sg_udprk64ts" ;;
   a4) SUFFIX="a4_pbm_udprcgk64" ;;
+  a4sg) SUFFIX="a4sg_pbm_sg_udprcgk64" ;;
+  a5sg) SUFFIX="a5sg_pbm_sg_udprcgm64" ;;
   a3r) SUFFIX="a3_pbm_udprk64_maskramp100" ;;
   r3) SUFFIX="pb_r3" ;;
   r3_udpr) SUFFIX="pb_r3_udprk64" ;;

@@ -173,18 +173,35 @@ LR 5e-4 cosine、100 warmup steps、AMP、每 5 epoch 完整验证、early stopp
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh p
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh pb
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a0
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a0_sg
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a0_sg_densecap64
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a3
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a3sg
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a4
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a4sg
+DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh a5sg
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh r3
 DRY_RUN=1 bash scripts/ablations/vhr10_p2v2_matrix300.sh r3_udpr
 
 # 默认严格串行：P -> PB -> PBM(A0) -> PBM+UDPR(A3)
 bash scripts/ablations/vhr10_p2v2_matrix300_series.sh
 
-# A4 不改变默认矩阵；通过机制筛查后才显式作为独立臂启动。
+# A4 是 attached-A0 谱系；A4SG 是 A0-SG 谱系中仅在 A3SG 上增加 DCR gate 的
+# 对照。二者均显式启动，绝不插入默认队列。
 bash scripts/ablations/vhr10_p2v2_matrix300_series.sh a4
+bash scripts/ablations/vhr10_p2v2_matrix300_series.sh a4sg
+# A5SG is the A0-SG DCR-CM candidate.  It is opt-in and cleanly compares
+# against a0_sg; it does not restart or alter the default P/PB/A0/A3 series.
+bash scripts/ablations/vhr10_p2v2_matrix300_series.sh a5sg
 # R3 rows are opt-in: this does not alter or restart the frozen default matrix.
 bash scripts/ablations/vhr10_p2v2_matrix300_series.sh r3 r3_udpr
+# DenseCap is an opt-in, paired source-gradient-isolated comparison.  Both
+# rows are fresh joint training; only the second adds H_delta.  This is not
+# the separate frozen-A0 dev100 heat-start spike named densecap64.
+bash scripts/ablations/vhr10_p2v2_matrix300_series.sh a0_sg a0_sg_densecap64
+# Persist this pair behind any current 0--3 GPU job, with a lock and a fresh
+# DRY_RUN before the eventual launch.
+bash scripts/ablations/queue_vhr10_a0_sg_densecap.sh
 ```
 
 历史 full600 队列已删除；不要重新创建或启动 A0/full600。运行中的 A3/full600 输出 tag
@@ -205,6 +222,7 @@ P2V2_EVAL_PROTOCOL=matrix300 bash scripts/ablations/vhr10_p2v2_eval.sh a0 best_c
 P2V2_EVAL_PROTOCOL=matrix300 bash scripts/ablations/vhr10_p2v2_eval.sh a3 best
 P2V2_EVAL_PROTOCOL=matrix300 bash scripts/ablations/vhr10_p2v2_eval.sh a3 last
 P2V2_EVAL_PROTOCOL=matrix300 bash scripts/ablations/vhr10_p2v2_eval.sh a4 best
+P2V2_EVAL_PROTOCOL=matrix300 bash scripts/ablations/vhr10_p2v2_eval.sh a4sg best_composite
 ```
 
 `vhr10_p2v2_eval.sh` 默认仍是历史 `dev100`，因此 matrix300/full600 **必须**显式设置

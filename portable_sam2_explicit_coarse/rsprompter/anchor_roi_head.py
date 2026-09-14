@@ -210,6 +210,15 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                 losses["loss_decoder_tail"] = tail_loss
                 losses.update(tail_stats)
                 self.mask_head._last_uav_debug_stats = dict(tail_stats)
+            dense_capacity = getattr(self.mask_head, "dense_capacity_head", None)
+            if dense_capacity is not None:
+                # DDP ranks with no positive RoI must still touch every
+                # adapter parameter.  This mirrors the non-empty adapter
+                # auxiliary path without changing the scalar loss.
+                empty_adapter_loss = zero
+                for parameter in dense_capacity.parameters():
+                    empty_adapter_loss = empty_adapter_loss + parameter.sum() * 0.0
+                losses["loss_dense_capacity"] = empty_adapter_loss
             return dict(loss_mask=losses)
 
         prompt_rois = original_pos_rois
@@ -398,6 +407,30 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                     prompt_pos_priors=prompt_pos_priors,
                 )
                 mask_results["loss_shape_prior"] = {"loss_shape_prior": coarse_loss}
+                dense_capacity_logits = coarse_outputs.get("dense_capacity_logits")
+                dense_capacity_weight = float(
+                    getattr(self.mask_head, "dense_capacity_aux_weight", 0.0)
+                )
+                if dense_capacity_logits is not None and dense_capacity_weight > 0:
+                    if not hasattr(self, "_last_coarse_stats") or self._last_coarse_stats is None:
+                        self._last_coarse_stats = {}
+                    dense_capacity_loss, dense_capacity_stats = self.mask_head.coarse_mask_loss(
+                        dense_capacity_logits, sampling_results, batch_gt_instances,
+                        prompt_pos_priors=prompt_pos_priors,
+                    )
+                    # coarse_mask_loss already carries ShapePrior's configured
+                    # weight.  Re-scale it to the adapter's independently
+                    # recorded weight without introducing another loss type.
+                    dense_capacity_loss = dense_capacity_loss * (
+                        dense_capacity_weight / max(float(sp_weight), 1e-12)
+                    )
+                    mask_results["loss_dense_capacity"] = {
+                        "loss_dense_capacity": dense_capacity_loss
+                    }
+                    self._last_coarse_stats.update({
+                        f"dense_capacity_{key}": value.detach()
+                        for key, value in dense_capacity_stats.items()
+                    })
                 if not hasattr(self, "_last_coarse_stats") or self._last_coarse_stats is None:
                     self._last_coarse_stats = {}
                 raw_stats = {k: v.detach() for k, v in coarse_stats.items()}
@@ -548,6 +581,8 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             losses.update(mask_results["loss_mask"])
             if "loss_shape_prior" in mask_results:
                 losses.update(mask_results["loss_shape_prior"])
+            if "loss_dense_capacity" in mask_results:
+                losses.update(mask_results["loss_dense_capacity"])
             if "loss_canvas_renderer" in mask_results:
                 losses.update(mask_results["loss_canvas_renderer"])
             for loss_name in (

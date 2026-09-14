@@ -101,6 +101,7 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         # ===== 阶段2: shape prior =====
         shape_prior_cfg: Optional[Dict] = None,    # dict(enabled=True, context_source="visual", ...) 或 None
         shape_prior_loss_weight: float = 0.5,       # 辅助 dice_bce loss 权重
+        dense_capacity_cfg: Optional[Dict] = None,
         canvas_renderer_cfg: Optional[Dict] = None,
         p2_boundary_refiner_cfg: Optional[Dict] = None,
         decoder_tail_refiner_cfg: Optional[Dict] = None,
@@ -123,6 +124,13 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         self._decoder_tail_cfg = dict(decoder_tail_refiner_cfg or {})
         self._decoder_tail_cfg.setdefault("enabled", False)
         self.decoder_tail_enabled = bool(self._decoder_tail_cfg.pop("enabled"))
+        # tailstop: during training the returned mask predictions must be the
+        # UNREFINED decoder logits, so the base's final-mask objective is
+        # exactly A0-SG's; eval/inference still deploys the refined write.
+        self._decoder_tail_train_base_logits = (
+            self.decoder_tail_enabled
+            and self._decoder_tail_cfg.get("mode", "residual_v1") == "residual_v1_stop"
+        )
         self.decoder_tail_refiner = None
         self._last_tail_outputs = None
 
@@ -702,6 +710,47 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
             _sp_cfg = {k: v for k, v in shape_prior_cfg.items() if k not in _mh_keys}
             _sp_cfg.setdefault("roi_feat_channels", in_channels)
             self.shape_injector = ShapePriorInjector(**_sp_cfg)
+            # Dense-only residual capacity adapter.  It deliberately lives on
+            # the MaskHead rather than inside ShapePriorInjector: the latter
+            # remains the sole source for ShapePointMiner.  The adapter sees a
+            # detached RoI feature and is added to detached base logits, so
+            # neither its values nor its gradients can alter sparse points.
+            self.dense_capacity_cfg = dict(dense_capacity_cfg or {})
+            self.dense_capacity_enabled = bool(
+                self.dense_capacity_cfg.get("enabled", False)
+            )
+            if self.dense_capacity_enabled:
+                if not bool(shape_prior_cfg.get("use_shape_dense", True)):
+                    raise ValueError("dense_capacity_cfg requires shape dense delivery")
+                if self.dense_capacity_cfg.get("source_detach", True) is not True:
+                    raise ValueError("dense_capacity_cfg.source_detach must be True")
+                if self.dense_capacity_cfg.get("residual_zero_init", True) is not True:
+                    raise ValueError("dense_capacity_cfg.residual_zero_init must be True")
+                from .shape_prior import SmallMaskDecoder
+
+                mid_channels = int(self.dense_capacity_cfg.get("mid_channels", 256))
+                if mid_channels < 32 or mid_channels % 32 != 0:
+                    raise ValueError("dense_capacity_cfg.mid_channels must be >=32 and divisible by 32")
+                self.dense_capacity_aux_weight = float(
+                    self.dense_capacity_cfg.get("aux_weight", self.shape_prior_loss_weight)
+                )
+                if self.dense_capacity_aux_weight < 0:
+                    raise ValueError("dense_capacity_cfg.aux_weight must be non-negative")
+                self.dense_capacity_head = SmallMaskDecoder(
+                    in_ch=in_channels,
+                    mid_ch=mid_channels,
+                    out_ch=1,
+                    out_size=int(self.shape_injector.coarse_mask_output_size),
+                )
+                # Last convolution is the residual output.  This makes the
+                # enabled model an exact A0 forward at initialization.
+                last = self.dense_capacity_head.net[-1]
+                nn.init.zeros_(last.weight)
+                if last.bias is not None:
+                    nn.init.zeros_(last.bias)
+            else:
+                self.dense_capacity_aux_weight = 0.0
+                self.dense_capacity_head = None
             # 批次2 子任务4：shape dense gate 三模式（审查 2.1）。
             # legacy_unbounded=旧行为复现；fixed=固定 gate 消融；
             # global_sigmoid=canonical 有界 gate（默认 init=0.25）。
@@ -751,6 +800,10 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
                 self.register_buffer("shape_dense_alpha", torch.tensor(0.0))
         else:
             self.shape_injector = None
+            self.dense_capacity_cfg = {}
+            self.dense_capacity_enabled = False
+            self.dense_capacity_aux_weight = 0.0
+            self.dense_capacity_head = None
             self.register_parameter("shape_prompt_scale", None)
             self.register_parameter("shape_dense_alpha_raw", None)
             self.register_buffer("shape_dense_alpha", torch.tensor(0.0))
@@ -1003,9 +1056,14 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         )
         if self.decoder_tail_enabled:
             low_res_masks, iou_predictions, mask_tokens_out, upscaled_embedding = decoder_outputs
-            low_res_masks, self._last_tail_outputs = self.decoder_tail_refiner(
+            refined_low_res_masks, self._last_tail_outputs = self.decoder_tail_refiner(
                 low_res_masks, upscaled_embedding, mask_tokens_out
             )
+            if not (self._decoder_tail_train_base_logits and self.training):
+                # v1/DCR deploy the refined write everywhere; tailstop training
+                # keeps the unrefined decoder logits above so the base's
+                # final-mask objective stays exactly A0-SG's.
+                low_res_masks = refined_low_res_masks
             debug_stats.update({
                 "TAIL/selected_count": low_res_masks.new_tensor(float(self._last_tail_outputs["indices"].numel())),
                 "TAIL/selected_abs_logit": (
@@ -1131,7 +1189,26 @@ Verbatim-extracted from forward; operation order unchanged.
             # raw logits remain independently supervised by the C4 objective.
             if self.use_shape_dense:
                 dense_source_logits = shape_prior_mask_logits
+                if self.dense_capacity_head is not None:
+                    # Point mining continues to consume shape_prior_mask_logits.
+                    # The adapter is a dense-only residual: both operands are
+                    # isolated from the sparse source / RoI feature graph.
+                    dense_delta_logits = self.dense_capacity_head(x.detach())
+                    dense_source_logits = (
+                        shape_prior_mask_logits.detach() + dense_delta_logits
+                    )
+                    coarse_outputs["dense_capacity_logits"] = dense_source_logits
+                    coarse_outputs["dense_capacity_delta_logits"] = dense_delta_logits
+                    with torch.no_grad():
+                        delta = dense_delta_logits.detach().float()
+                        debug_stats.update({
+                            "DENSECAP/roi_count": delta.new_tensor(float(delta.shape[0])),
+                            "DENSECAP/delta_abs_mean": delta.abs().mean(),
+                            "DENSECAP/delta_nonzero_ratio": delta.ne(0).float().mean(),
+                        })
                 if self.canvas_renderer is not None:
+                    if self.dense_capacity_head is not None:
+                        raise RuntimeError("dense capacity adapter and R3 renderer are mutually exclusive")
                     if renderer_features is None or prompt_rois is None:
                         raise ValueError("R3 requires renderer_features and prompt_rois [N,5]")
                     dense_source_logits = self.canvas_renderer(renderer_features, prompt_rois)

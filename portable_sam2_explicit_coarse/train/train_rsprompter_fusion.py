@@ -770,6 +770,9 @@ _DENSE_RESIDUAL_MONITOR_KEYS = (
     "DENSE/canvas_std",
     "DENSE/canvas_min",
     "DENSE/canvas_max",
+    "DENSECAP/roi_count",
+    "DENSECAP/delta_abs_mean",
+    "DENSECAP/delta_nonzero_ratio",
     "GAUSSIAN/valid_ratio",
     "GAUSSIAN/foreground_area_ratio",
     "GAUSSIAN/edt_max",
@@ -878,6 +881,8 @@ _P2BR_R1_GRAD_FIELDS = (
 
 
 _PROMPT_PATHWAY_BRANCHES = ("dense", "p2br", "pe_mask_downscaling")
+_DENSECAP_GRAD_BRANCHES = ("trunk", "output")
+_DENSECAP_GRAD_TERMS = ("final_mask", "aux")
 
 
 def _prompt_pathway_parameters(model: torch.nn.Module) -> Dict[str, List[torch.nn.Parameter]]:
@@ -901,6 +906,11 @@ def _prompt_pathway_parameters(model: torch.nn.Module) -> Dict[str, List[torch.n
     if shape_injector is not None:
         dense_params.extend(
             parameter for parameter in shape_injector.parameters() if parameter.requires_grad
+        )
+    dense_capacity = getattr(mask_head, "dense_capacity_head", None)
+    if dense_capacity is not None:
+        dense_params.extend(
+            parameter for parameter in dense_capacity.parameters() if parameter.requires_grad
         )
     dense_gate = getattr(mask_head, "shape_dense_alpha_raw", None)
     if isinstance(dense_gate, torch.nn.Parameter) and dense_gate.requires_grad:
@@ -927,6 +937,157 @@ def _prompt_pathway_parameters(model: torch.nn.Module) -> Dict[str, List[torch.n
         "p2br": p2br_params,
         "pe_mask_downscaling": pe_md_params,
     }
+
+
+def _densecap_gradient_parameters(
+    model: torch.nn.Module,
+) -> Dict[str, List[torch.nn.Parameter]]:
+    """Split H_delta into its feature trunk and zero-initialized output conv.
+
+    The existing ``dense`` pathway audit deliberately remains aggregate so its
+    historical denominator is stable.  DenseCap needs a second, finer audit:
+    with a zero-initialized final convolution, a nonzero mask gradient can be
+    confined to the output bias while the preceding capacity trunk is still
+    blocked.  The split is observational only and never affects the graph.
+    """
+    model_core = model.module if hasattr(model, "module") else model
+    mask_head = getattr(getattr(model_core, "roi_head", None), "mask_head", None)
+    dense_capacity = getattr(mask_head, "dense_capacity_head", None)
+    if dense_capacity is None:
+        return {branch: [] for branch in _DENSECAP_GRAD_BRANCHES}
+    net = getattr(dense_capacity, "net", None)
+    if net is None or len(net) == 0:
+        raise RuntimeError("DenseCap adapter must expose a non-empty sequential net")
+    output_ids = {id(parameter) for parameter in net[-1].parameters()}
+    all_params = [
+        parameter for parameter in dense_capacity.parameters() if parameter.requires_grad
+    ]
+    output_params = [parameter for parameter in all_params if id(parameter) in output_ids]
+    trunk_params = [parameter for parameter in all_params if id(parameter) not in output_ids]
+    if not output_params:
+        raise RuntimeError("DenseCap adapter output convolution has no trainable parameters")
+    return {"trunk": trunk_params, "output": output_params}
+
+
+def _new_densecap_gradient_monitor() -> Dict[str, float]:
+    fields: Dict[str, float] = {}
+    for branch in _DENSECAP_GRAD_BRANCHES:
+        for term in _DENSECAP_GRAD_TERMS:
+            fields.update({
+                f"{branch}_{term}_grad_sq_sum": 0.0,
+                f"{branch}_{term}_grad_nonzero_param_count": 0.0,
+                f"{branch}_{term}_grad_param_count": 0.0,
+                f"{branch}_{term}_grad_probe_count": 0.0,
+            })
+        fields.update({
+            f"{branch}_update_sq": 0.0,
+            f"{branch}_update_param_count": 0.0,
+        })
+    return fields
+
+
+def _accumulate_densecap_gradient_term(
+    loss: Any,
+    term: str,
+    branch_params: Dict[str, List[torch.nn.Parameter]],
+    monitor: Dict[str, float],
+) -> None:
+    if not isinstance(loss, torch.Tensor) or not loss.requires_grad:
+        return
+    flat_params = [
+        parameter for branch in _DENSECAP_GRAD_BRANCHES for parameter in branch_params[branch]
+    ]
+    if not flat_params:
+        return
+    gradients = torch.autograd.grad(loss, flat_params, retain_graph=True, allow_unused=True)
+    offset = 0
+    for branch in _DENSECAP_GRAD_BRANCHES:
+        params = branch_params[branch]
+        branch_grads = gradients[offset:offset + len(params)]
+        offset += len(params)
+        monitor[f"{branch}_{term}_grad_probe_count"] += 1.0
+        monitor[f"{branch}_{term}_grad_param_count"] += float(len(params))
+        for gradient in branch_grads:
+            if gradient is None:
+                continue
+            grad_sq = gradient.detach().float().square().sum()
+            if not torch.isfinite(grad_sq):
+                continue
+            monitor[f"{branch}_{term}_grad_sq_sum"] += float(grad_sq.item())
+            if float(grad_sq.item()) > 0.0:
+                monitor[f"{branch}_{term}_grad_nonzero_param_count"] += 1.0
+
+
+def _accumulate_densecap_gradient_probe(
+    model: torch.nn.Module,
+    final_mask_loss: Any,
+    dense_capacity_loss: Any,
+    monitor: Dict[str, float],
+) -> None:
+    """Probe both DenseCap losses before the production backward pass."""
+    branch_params = _densecap_gradient_parameters(model)
+    _accumulate_densecap_gradient_term(
+        final_mask_loss, "final_mask", branch_params, monitor
+    )
+    _accumulate_densecap_gradient_term(
+        dense_capacity_loss, "aux", branch_params, monitor
+    )
+
+
+def _snapshot_densecap_gradient_parameters(model: torch.nn.Module) -> Dict[str, List[Tensor]]:
+    return {
+        branch: [parameter.detach().float().clone() for parameter in parameters]
+        for branch, parameters in _densecap_gradient_parameters(model).items()
+    }
+
+
+def _accumulate_densecap_gradient_updates(
+    model: torch.nn.Module,
+    snapshot: Dict[str, List[Tensor]],
+    monitor: Dict[str, float],
+) -> None:
+    for branch, parameters in _densecap_gradient_parameters(model).items():
+        before_values = snapshot.get(branch, [])
+        if len(before_values) != len(parameters):
+            raise RuntimeError(f"DenseCap parameter set changed during epoch: {branch}")
+        monitor[f"{branch}_update_param_count"] += float(len(parameters))
+        for before, parameter in zip(before_values, parameters):
+            delta_sq = (parameter.detach().float() - before).square().sum()
+            if torch.isfinite(delta_sq):
+                monitor[f"{branch}_update_sq"] += float(delta_sq.item())
+
+
+def _reduce_densecap_gradient_monitor(
+    monitor: Dict[str, float], device: torch.device, distributed: bool
+) -> Dict[str, float]:
+    keys = tuple(monitor)
+    packed = torch.tensor([monitor[key] for key in keys], dtype=torch.float64, device=device)
+    world_size = 1
+    if distributed and dist.is_initialized():
+        dist.all_reduce(packed, op=dist.ReduceOp.SUM)
+        world_size = dist.get_world_size()
+    values = {key: float(packed[index].item()) for index, key in enumerate(keys)}
+    result: Dict[str, float] = {}
+    for branch in _DENSECAP_GRAD_BRANCHES:
+        for term in _DENSECAP_GRAD_TERMS:
+            probes = values[f"{branch}_{term}_grad_probe_count"]
+            params = values[f"{branch}_{term}_grad_param_count"]
+            result[f"{branch}_{term}_grad_group_l2_rms"] = (
+                math.sqrt(values[f"{branch}_{term}_grad_sq_sum"] / probes)
+                if probes > 0 else 0.0
+            )
+            result[f"{branch}_{term}_grad_nonzero_param_ratio"] = (
+                values[f"{branch}_{term}_grad_nonzero_param_count"] / params
+                if params > 0 else 0.0
+            )
+            result[f"{branch}_{term}_grad_probe_count"] = probes / float(world_size)
+        update_params = values[f"{branch}_update_param_count"]
+        result[f"{branch}_parameter_update_group_l2_rms"] = (
+            math.sqrt(values[f"{branch}_update_sq"] / float(world_size))
+            if update_params > 0 else 0.0
+        )
+        result[f"{branch}_parameter_count"] = update_params / float(world_size)
+    return result
 
 
 def _new_prompt_pathway_monitor() -> Dict[str, float]:
@@ -1401,6 +1562,7 @@ def _load_init_checkpoint(
     exclude_prefixes: Tuple[str, ...] = (),
     expected_architecture: Optional[Dict] = None,
     allow_cross_arch: bool = False,
+    allowed_missing_prefixes: Tuple[str, ...] = (),
 ) -> Dict[str, object]:
     """Load matching tensors for initialization, with explicit legacy migration."""
     ckpt = torch.load(str(path), map_location="cpu", weights_only=False)
@@ -1439,6 +1601,16 @@ def _load_init_checkpoint(
         compatible[name] = value
 
     load_result = model_to_load.load_state_dict(compatible, strict=False)
+    if allowed_missing_prefixes:
+        illegal_missing = [
+            key for key in load_result.missing_keys
+            if not any(key.startswith(prefix) for prefix in allowed_missing_prefixes)
+        ]
+        if illegal_missing or shape_mismatch or unexpected:
+            raise RuntimeError(
+                "cross-architecture init whitelist violated: "
+                f"missing={illegal_missing}, shape_mismatch={shape_mismatch}, unexpected={unexpected}"
+            )
     _assert_no_mask_embedding_contract(model_to_load, "INIT_FROM checkpoint load")
     return {
         "loaded": len(compatible),
@@ -1763,6 +1935,8 @@ def main():
     parser.add_argument("--decoder-tail-lr-mult", type=float, default=1.0)
     parser.add_argument("--train-decoder-tail-only", action="store_true",
                         help="Freeze the A0 base and optimize only UDPR decoder_tail_refiner.")
+    parser.add_argument("--train-dense-capacity-only", action="store_true",
+                        help="Freeze A0 and optimize only the dense-only residual capacity head.")
     parser.add_argument("--grad-accum-steps", type=int, default=2)
     parser.add_argument("--max-scenes", type=int, default=1000, help="Maximum number of scenes for scene-specific alignment")
     parser.add_argument("--warmup-epochs", type=int, default=0, help="Number of warmup epochs for learning rate scheduling")
@@ -1988,6 +2162,7 @@ def main():
         for flag in (
             args.train_quality_head_only,
             args.train_decoder_tail_only,
+            args.train_dense_capacity_only,
         )
     )
     if exclusive_scopes > 1:
@@ -2023,6 +2198,22 @@ def main():
             raise RuntimeError(f"UDPR freeze contract violated: trainable={trainable}")
         if is_main:
             logger.info("Training scope: UDPR only; A0 base frozen (%d trainable tensors)", len(trainable))
+    if args.train_dense_capacity_only:
+        model.requires_grad_(False)
+        mask_head = model.roi_head.mask_head
+        dense_capacity = getattr(mask_head, "dense_capacity_head", None)
+        if dense_capacity is None or not getattr(mask_head, "dense_capacity_enabled", False):
+            raise RuntimeError("--train-dense-capacity-only requires dense_capacity_cfg.enabled=True")
+        dense_capacity.requires_grad_(True)
+        trainable = [name for name, param in model.named_parameters() if param.requires_grad]
+        required = "roi_head.mask_head.dense_capacity_head"
+        if not trainable or any(required not in name for name in trainable):
+            raise RuntimeError(f"Dense-capacity freeze contract violated: trainable={trainable}")
+        if is_main:
+            logger.info(
+                "Training scope: dense capacity only; A0 base and sparse point source frozen (%d trainable tensors)",
+                len(trainable),
+            )
 
     model_for_preproc = model.module if hasattr(model, "module") else model
     data_preprocessor = model_for_preproc.data_preprocessor
@@ -2582,12 +2773,16 @@ def main():
             for prefix in args.init_exclude_prefixes.split(",")
             if prefix.strip()
         )
+        allowed_missing_prefixes = ()
+        if args.train_dense_capacity_only:
+            allowed_missing_prefixes = ("roi_head.mask_head.dense_capacity_head.",)
         init_stats = _load_init_checkpoint(
             Path(args.init_from),
             model,
             exclude_prefixes=exclude_prefixes,
             expected_architecture=resolved_architecture,
             allow_cross_arch=args.allow_cross_arch_init,
+            allowed_missing_prefixes=allowed_missing_prefixes,
         )
         if is_main:
             logger.info(
@@ -2621,6 +2816,23 @@ def main():
                     "UDPR A0 heat-start must load an exact base and miss only newly "
                     f"introduced tail keys, missing={missing_keys} invalid={invalid_transfer}"
                 )
+        if args.train_dense_capacity_only:
+            missing_keys = tuple(init_stats.get("missing_keys", ()))
+            invalid_transfer = {
+                name: int(init_stats.get(name, 0))
+                for name in ("shape_mismatch", "unexpected", "migrated")
+                if int(init_stats.get(name, 0)) != 0
+            }
+            if not missing_keys or any(
+                not key.startswith("roi_head.mask_head.dense_capacity_head.")
+                for key in missing_keys
+            ) or invalid_transfer:
+                raise RuntimeError(
+                    "Dense-capacity A0 heat-start must load an exact base and miss only "
+                    f"new adapter keys, missing={missing_keys} invalid={invalid_transfer}"
+                )
+    elif args.train_dense_capacity_only:
+        raise RuntimeError("--train-dense-capacity-only requires --init-from an A0 checkpoint")
 
     if args.resume_from:
         ckpt = _load_checkpoint(
@@ -3000,6 +3212,11 @@ def main():
             # residual classifier itself remains in train mode.
             model.eval()
             _get_model_core(model).roi_head.mask_head.decoder_tail_refiner.train()
+        if args.train_dense_capacity_only:
+            # Frozen A0 BatchNorm / dropout state is part of the point-source
+            # identity contract.  Only the new residual adapter may be train.
+            model.eval()
+            _get_model_core(model).roi_head.mask_head.dense_capacity_head.train()
         if args.train_quality_head_only:
             _set_quality_head_only_train_mode(model)
         elif args.freeze_bn:
@@ -3013,7 +3230,10 @@ def main():
         p2br_r1_gradient_monitor = _new_p2br_r1_gradient_monitor()
         prompt_pathway_monitor = _new_prompt_pathway_monitor()
         prompt_pathway_snapshot = _snapshot_prompt_pathway_parameters(model)
+        densecap_gradient_monitor = _new_densecap_gradient_monitor()
+        densecap_gradient_snapshot = _snapshot_densecap_gradient_parameters(model)
         prompt_pathway_grad_probed = False
+        densecap_gradient_probed = False
         p2br_r1_gradient_probed = False
         num_batches = 0
         grad_accum = args.grad_accum_steps
@@ -3184,6 +3404,14 @@ def main():
                     model, loss_dict.get("loss_mask"), prompt_pathway_monitor
                 )
                 prompt_pathway_grad_probed = True
+            if not densecap_gradient_probed:
+                _accumulate_densecap_gradient_probe(
+                    model,
+                    loss_dict.get("loss_mask"),
+                    loss_dict.get("loss_dense_capacity"),
+                    densecap_gradient_monitor,
+                )
+                densecap_gradient_probed = True
             if not p2br_r1_gradient_probed:
                 p2br_r1_gradient_probed = _accumulate_p2br_r1_gradient_probe(
                     model,
@@ -3220,7 +3448,9 @@ def main():
                     and args.prompt_debug_stats_interval > 0
                     and global_step % args.prompt_debug_stats_interval == 0
                 ):
-                    enabled_prefixes.update({"SP", "COARSE", "JITTER", "GATE", "DENSE", "P2BR", "TAIL", "CONTEXT", "BOX"})
+                    enabled_prefixes.update(
+                        {"SP", "COARSE", "JITTER", "GATE", "DENSE", "DENSECAP", "P2BR", "TAIL", "CONTEXT", "BOX"}
+                    )
                 _log_uav_debug_stats(model, epoch, global_step, enabled_prefixes)
             scaler.scale(loss_for_backward).backward()
 
@@ -3287,6 +3517,12 @@ def main():
         prompt_pathway_epoch = _reduce_prompt_pathway_monitor(
             prompt_pathway_monitor, device=device, distributed=distributed
         )
+        _accumulate_densecap_gradient_updates(
+            model, densecap_gradient_snapshot, densecap_gradient_monitor
+        )
+        densecap_gradient_epoch = _reduce_densecap_gradient_monitor(
+            densecap_gradient_monitor, device=device, distributed=distributed
+        )
 
         if is_main:
             loss_str = []
@@ -3329,6 +3565,17 @@ def main():
                         dense_monitor_epoch.get("DENSE/canvas_min", float("nan")),
                         dense_monitor_epoch.get("DENSE/canvas_mean", float("nan")),
                         dense_monitor_epoch.get("DENSE/canvas_max", float("nan")),
+                    )
+                if "DENSECAP/roi_count" in dense_monitor_epoch:
+                    logger.info(
+                        "Epoch %d DenseCap residual: roi_count=%.3f "
+                        "delta_abs_mean=%.6f delta_nonzero_ratio=%.4f%%",
+                        epoch_number,
+                        dense_monitor_epoch["DENSECAP/roi_count"],
+                        dense_monitor_epoch.get("DENSECAP/delta_abs_mean", float("nan")),
+                        100.0 * dense_monitor_epoch.get(
+                            "DENSECAP/delta_nonzero_ratio", float("nan")
+                        ),
                     )
             if p2br_monitor_epoch:
                 logger.info(
@@ -3432,6 +3679,35 @@ def main():
                     "pe_mask_downscaling_final_mask_grad_probe_count"
                 ],
             )
+            if densecap_gradient_epoch["output_parameter_count"] > 0:
+                logger.info(
+                    "Epoch %d DenseCap gradient pathways: "
+                    "trunk final_mask_l2_rms=%.3e active=%.2f%% aux_l2_rms=%.3e "
+                    "aux_active=%.2f%% update_l2_rms=%.3e params=%.0f | "
+                    "output final_mask_l2_rms=%.3e active=%.2f%% aux_l2_rms=%.3e "
+                    "aux_active=%.2f%% update_l2_rms=%.3e params=%.0f",
+                    epoch_number,
+                    densecap_gradient_epoch["trunk_final_mask_grad_group_l2_rms"],
+                    100.0 * densecap_gradient_epoch[
+                        "trunk_final_mask_grad_nonzero_param_ratio"
+                    ],
+                    densecap_gradient_epoch["trunk_aux_grad_group_l2_rms"],
+                    100.0 * densecap_gradient_epoch[
+                        "trunk_aux_grad_nonzero_param_ratio"
+                    ],
+                    densecap_gradient_epoch["trunk_parameter_update_group_l2_rms"],
+                    densecap_gradient_epoch["trunk_parameter_count"],
+                    densecap_gradient_epoch["output_final_mask_grad_group_l2_rms"],
+                    100.0 * densecap_gradient_epoch[
+                        "output_final_mask_grad_nonzero_param_ratio"
+                    ],
+                    densecap_gradient_epoch["output_aux_grad_group_l2_rms"],
+                    100.0 * densecap_gradient_epoch[
+                        "output_aux_grad_nonzero_param_ratio"
+                    ],
+                    densecap_gradient_epoch["output_parameter_update_group_l2_rms"],
+                    densecap_gradient_epoch["output_parameter_count"],
+                )
             averaged_components = {
                 key: value / max(1, num_batches) for key, value in loss_meter.items()
             }

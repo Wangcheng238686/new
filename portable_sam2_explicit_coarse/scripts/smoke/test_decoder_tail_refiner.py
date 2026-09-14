@@ -84,6 +84,26 @@ def main() -> None:
     amp_loss.backward()
     assert amp.gate_head.weight.grad is not None
     assert float(amp.gate_head.weight.grad.abs().sum()) > 0.0
+
+    # A5 retains the exact zero-write initialization but replaces the A4
+    # residual BCE/L1 objective with a detached signed crossing margin.
+    a5 = DecoderTailPointRefiner(
+        num_points=4, mode="confidence_gated_margin", crossing_margin=0.10,
+    )
+    a5_logits = logits.detach().clone().requires_grad_(True)
+    a5_refined, a5_outputs = a5(a5_logits, upscaled, token)
+    assert torch.equal(a5_refined, a5_logits)
+    a5_loss, a5_stats = a5.point_loss(
+        a5_outputs, torch.tensor([[[0.0, 1.0], [1.0, 0.0]]])
+    )
+    assert torch.isclose(a5_stats["TAIL/crossing_margin"], torch.tensor(0.10))
+    assert float(a5_stats["TAIL/crossing_error_loss"]) > 0.0
+    a5_loss.backward()
+    assert a5.delta_head.weight.grad is not None
+    assert float(a5.delta_head.weight.grad.abs().sum()) > 0.0
+    # The crossing auxiliary must not backpropagate through the base logit
+    # anchor.  (The ordinary final-mask path is tested separately.)
+    assert a5_logits.grad is None
     print("UDPR tensor smoke: PASS")
 
 

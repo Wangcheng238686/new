@@ -34,6 +34,30 @@ class _MaskHeadPromptHelpers:
         )
         mask_h, mask_w = self._pe_mask_input_size()
         transform = str(self.dense_prompt_cfg.get("transform", "raw_logits"))
+        if transform in ("signed_binary", "signed_edt_confidence"):
+            from .dense_prompt_utils import signed_edt_confidence_prompt
+
+            signed_prompt, signed_valid = signed_edt_confidence_prompt(
+                roi_mask_logits,
+                tau=float(self.dense_prompt_cfg.get("signed_tau", 0.5)),
+                omega=float(self.dense_prompt_cfg.get("signed_omega", 8.0)),
+                edt_gamma=float(
+                    self.dense_prompt_cfg.get("signed_edt_gamma", 4.0)
+                ),
+                use_edt=(transform == "signed_edt_confidence"),
+            )
+            signed_canvas = paste_roi_to_full_canvas(
+                signed_prompt, boxes, mask_h, mask_w,
+                image_size=(
+                    self.prompt_encoder_image_size,
+                    self.prompt_encoder_image_size,
+                ),
+                outside_fill_logit=float(
+                    self.dense_prompt_cfg.get("outside_fill_logit", 0.0)
+                ),
+            )
+            stats = {"signed_empty_rois": int((~signed_valid).sum().item())}
+            return signed_canvas, signed_valid, stats
         if transform == "gaussian_edt":
             return gaussian_prompt_from_roi_coarse(
                 roi_mask_logits,

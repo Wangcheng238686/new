@@ -65,7 +65,12 @@ def main():
     p.add_argument("--val-current", required=True); p.add_argument("--val-forced", required=True)
     p.add_argument("--output-dir", required=True); p.add_argument("--match-iou", type=float, default=.5)
     p.add_argument("--steps", type=int, default=400); p.add_argument("--lr", type=float, default=.03)
-    p.add_argument("--threshold", type=float, default=.5); p.add_argument("--seed", type=int, default=44)
+    p.add_argument("--threshold", type=float, default=.5)
+    p.add_argument("--threshold-mode", choices=("fixed", "train_positive_rate"), default="fixed",
+                   help="fixed uses --threshold. train_positive_rate derives a score cutoff "
+                        "from train-only scores so its selected fraction equals the train "
+                        "Oracle-positive fraction over all proposals; validation labels are never read.")
+    p.add_argument("--seed", type=int, default=44)
     a = p.parse_args()
     if not 0 < a.threshold < 1 or not 0 < a.match_iou <= 1: raise SystemExit("invalid threshold/match-iou")
     tc, tf, vc, vf, out = (Path(x).resolve() for x in (a.train_current, a.train_forced, a.val_current, a.val_forced, a.output_dir))
@@ -86,12 +91,22 @@ def main():
                       torch.cat((vs, row_permute(vx[:, scalar_dim:], seed=a.seed + 1)), 1)),
     }
     out.mkdir(parents=True)
-    summary = dict(protocol="fit train-only Oracle labels; val threshold fixed before labels; all val proposals selectable", threshold=a.threshold, match_iou=a.match_iou, train=dict(matched=int(tm_match.sum()), total=len(tm_match)), val=dict(matched=int(vm_match.sum()), total=len(vm_match)), arms={})
+    summary = dict(protocol="fit train-only Oracle labels; all val proposals selectable", threshold_mode=a.threshold_mode, threshold=a.threshold, match_iou=a.match_iou, train=dict(matched=int(tm_match.sum()), total=len(tm_match), oracle_positive=int(ty.sum())), val=dict(matched=int(vm_match.sum()), total=len(vm_match)), arms={})
     for name, (train_x, val_x) in variants.items():
         model = fit_balanced_linear(train_x[tm_match], ty[tm_match], steps=a.steps, lr=a.lr, seed=a.seed)
-        score = model.score(val_x); selected = set(torch.where(score >= a.threshold)[0].tolist())
-        _write(out, name, vc, vdt, vfdt, selected, dict(readout_feature_set=name, train_only=True, threshold=a.threshold))
-        summary["arms"][name] = dict(auc_matched=float(binary_auc(score[vm_match], vy[vm_match])), selected=len(selected), selected_fraction=len(selected) / max(len(score), 1))
+        if a.threshold_mode == "fixed":
+            threshold = float(a.threshold)
+        else:
+            # The selection budget is wholly determined on train: labels set
+            # only the expected positive rate, and the score quantile is
+            # computed over all train proposals so unmatched rows remain part
+            # of the deployed operating point.
+            train_score = model.score(train_x)
+            rate = float(ty.sum()) / max(len(ty), 1)
+            threshold = float(torch.quantile(train_score, 1.0 - rate).item())
+        score = model.score(val_x); selected = set(torch.where(score >= threshold)[0].tolist())
+        _write(out, name, vc, vdt, vfdt, selected, dict(readout_feature_set=name, train_only=True, threshold=threshold, threshold_mode=a.threshold_mode))
+        summary["arms"][name] = dict(auc_matched=float(binary_auc(score[vm_match], vy[vm_match])), threshold=threshold, selected=len(selected), selected_fraction=len(selected) / max(len(score), 1))
     (out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary, indent=2))
 

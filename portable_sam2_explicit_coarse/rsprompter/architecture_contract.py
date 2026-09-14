@@ -63,6 +63,7 @@ def architecture_id(model_config: Mapping[str, Any]) -> str:
     refiner = bool(head.get("p2_boundary_refiner_cfg", {}).get("enabled", False))
     tail = bool(head.get("decoder_tail_refiner_cfg", {}).get("enabled", False))
     renderer = bool(head.get("canvas_renderer_cfg", {}).get("enabled", False))
+    dense_capacity = bool(head.get("dense_capacity_cfg", {}).get("enabled", False))
     if not coarse:
         known = {
             ("aggregator", "roi_local", 32): "b0_aggregator_mlp",
@@ -132,10 +133,15 @@ def architecture_id(model_config: Mapping[str, Any]) -> str:
     )
     if renderer:
         base = f"{base}_r3"
+    if dense_capacity:
+        cap_cfg = head["dense_capacity_cfg"]
+        base = f"{base}_densecapres{int(cap_cfg.get('mid_channels', 0))}"
     if tail:
         tail_cfg = head["decoder_tail_refiner_cfg"]
         tail_k = int(tail_cfg.get("num_points", 0))
         # A3/v1 has no mode key by design, preserving its historic semantic ID.
+        if tail_cfg.get("mode", "residual_v1") == "confidence_gated_margin":
+            return f"{base}_udprcgm{tail_k}"
         if tail_cfg.get("mode", "residual_v1") == "confidence_gated":
             return f"{base}_udprcgk{tail_k}"
         return f"{base}_udprk{tail_k}"

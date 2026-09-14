@@ -2,8 +2,8 @@
 
 Run with ``torchrun --standalone --nproc_per_node=2``.  Rank 0 supplies one
 positive RoI; rank 1 follows the no-positive-RoI branch.  Both must complete
-the identical collectives and report the same global telemetry for both A3
-and A4/DCR modes.
+the identical collectives and report the same global telemetry for A3, A4/DCR
+and A5/DCR-CM modes.
 """
 import os
 import sys
@@ -20,7 +20,7 @@ from rsprompter.decoder_tail_refiner import DecoderTailPointRefiner
 def main() -> None:
     dist.init_process_group("gloo")
     rank = dist.get_rank()
-    for mode in ("residual_v1", "confidence_gated"):
+    for mode in ("residual_v1", "confidence_gated", "confidence_gated_margin"):
         module = DecoderTailPointRefiner(num_points=4, mode=mode)
         if rank == 0:
             logits = torch.tensor([[[[-1.0, 0.1], [0.1, 2.0]]]])
@@ -30,8 +30,13 @@ def main() -> None:
         else:
             _, stats = module.empty_point_loss(torch.zeros(()))
         fields = ["TAIL/selected_bce"]
-        if mode == "confidence_gated":
+        if mode in {"confidence_gated", "confidence_gated_margin"}:
             fields += ["TAIL/gate_bce", "TAIL/keep_loss", "TAIL/gate_mean"]
+        if mode == "confidence_gated_margin":
+            fields += [
+                "TAIL/crossing_error_loss", "TAIL/correct_margin_keep_loss",
+                "TAIL/crossing_error_violation", "TAIL/correct_margin_violation",
+            ]
         for field in fields:
             gathered = [torch.zeros_like(stats[field]) for _ in range(dist.get_world_size())]
             dist.all_gather(gathered, stats[field])

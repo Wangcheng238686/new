@@ -6,11 +6,11 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ARM="${1:?usage: vhr10_p2v2_matrix300.sh <p|pb|a0|a1|a2|a2e|a3|a3r|a4|r3|r3_udpr>}"
+ARM="${1:?usage: vhr10_p2v2_matrix300.sh <p|pb|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3sg|a3sgt|a3r|a4|a4sg|a5sg|r3|r3_udpr>}"
 case "${ARM}" in
-  p|pb|a0|a1|a2|a2e|a3|a3r|a4|r3|r3_udpr) ;;
+  p|pb|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3sg|a3sgt|a3r|a4|a4sg|a5sg|r3|r3_udpr) ;;
   *)
-    echo "Unknown matrix300 arm ${ARM}; expected p, pb, a0, a1, a2, a2e, a3, a3r, a4, r3, or r3_udpr" >&2
+    echo "Unknown matrix300 arm ${ARM}; expected p, pb, a0, a0_sg, a0_sg_densecap64, a1, a2, a2e, a3, a3sg, a3sgt, a3r, a4, a4sg, a5sg, r3, or r3_udpr" >&2
     exit 2
     ;;
 esac

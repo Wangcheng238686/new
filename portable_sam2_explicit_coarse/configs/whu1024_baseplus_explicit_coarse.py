@@ -36,6 +36,33 @@ if _canvas_renderer_enabled:
         aligned=True,
         loss_weight=_canvas_renderer_loss_weight,
     )
+
+# Dense-only residual capacity adapter.  It remains absent from every legacy
+# resolved config unless explicitly enabled, preserving old checkpoints and
+# matrix rows byte-for-byte.
+_dense_capacity_raw = os.environ.get("DENSE_CAPACITY_HEAD_ENABLED", "0")
+if _dense_capacity_raw not in {"0", "1"}:
+    raise ValueError("DENSE_CAPACITY_HEAD_ENABLED must be 0 or 1")
+_dense_capacity_enabled = _dense_capacity_raw == "1"
+if _dense_capacity_enabled and _mode != "points_box_dense":
+    raise ValueError("DENSE_CAPACITY_HEAD_ENABLED requires points_box_dense mode")
+if _dense_capacity_enabled and _canvas_renderer_enabled:
+    raise ValueError("Dense capacity adapter and R3 renderer are mutually exclusive")
+_dense_capacity_cfg = {}
+if _dense_capacity_enabled:
+    _dense_capacity_mid = int(os.environ.get("DENSE_CAPACITY_MID_CHANNELS", "256"))
+    _dense_capacity_aux = float(os.environ.get("DENSE_CAPACITY_AUX_WEIGHT", "0.10"))
+    if _dense_capacity_mid < 32 or _dense_capacity_mid % 32 != 0:
+        raise ValueError("DENSE_CAPACITY_MID_CHANNELS must be >=32 and divisible by 32")
+    if _dense_capacity_aux < 0:
+        raise ValueError("DENSE_CAPACITY_AUX_WEIGHT must be non-negative")
+    _dense_capacity_cfg["dense_capacity_cfg"] = dict(
+        enabled=True,
+        mid_channels=_dense_capacity_mid,
+        aux_weight=_dense_capacity_aux,
+        source_detach=True,
+        residual_zero_init=True,
+    )
 _p2_boundary_refiner = (
     os.environ.get("P2_BOUNDARY_REFINER_ENABLED", "0") == "1"
 )
@@ -194,7 +221,7 @@ if _decoder_tail_enabled:
     # Keep absence of these keys as the v1 checkpoint contract.  Only the
     # explicit A4/DCR mode materializes new architecture-affecting fields.
     _decoder_tail_mode = os.environ.get("DECODER_TAIL_MODE", "residual_v1")
-    if _decoder_tail_mode == "confidence_gated":
+    if _decoder_tail_mode in {"confidence_gated", "confidence_gated_margin"}:
         _decoder_tail_gate_init_prob = float(os.environ.get("DECODER_TAIL_GATE_INIT_PROB", "0.1"))
         _decoder_tail_gate_loss_weight = float(os.environ.get("DECODER_TAIL_GATE_LOSS_WEIGHT", "1.0"))
         _decoder_tail_keep_loss_weight = float(os.environ.get("DECODER_TAIL_KEEP_LOSS_WEIGHT", "0.05"))
@@ -203,14 +230,26 @@ if _decoder_tail_enabled:
         if _decoder_tail_gate_loss_weight < 0 or _decoder_tail_keep_loss_weight < 0:
             raise ValueError("DECODER_TAIL gate/keep loss weights must be non-negative")
         _decoder_tail_cfg.update(
-            mode="confidence_gated",
+            mode=_decoder_tail_mode,
             gate_init_prob=_decoder_tail_gate_init_prob,
             gate_loss_weight=_decoder_tail_gate_loss_weight,
             keep_loss_weight=_decoder_tail_keep_loss_weight,
         )
+        if _decoder_tail_mode == "confidence_gated_margin":
+            _decoder_tail_crossing_margin = float(os.environ.get("DECODER_TAIL_CROSSING_MARGIN", "0.10"))
+            if _decoder_tail_crossing_margin < 0:
+                raise ValueError("DECODER_TAIL_CROSSING_MARGIN must be non-negative")
+            _decoder_tail_cfg["crossing_margin"] = _decoder_tail_crossing_margin
+    elif _decoder_tail_mode == "residual_v1_stop":
+        # tailstop: same v1 module/params, but every tail input is detached
+        # and the training-time final-mask loss consumes the unrefined
+        # decoder output (routed in sam2_mask_head).  Materializing `mode`
+        # only here keeps legacy arms' configs (and fingerprints) unchanged.
+        _decoder_tail_cfg.update(mode=_decoder_tail_mode)
     elif _decoder_tail_mode != "residual_v1":
         raise ValueError(
-            "DECODER_TAIL_MODE must be residual_v1 or confidence_gated, got "
+            "DECODER_TAIL_MODE must be residual_v1, residual_v1_stop, "
+            "confidence_gated, or confidence_gated_margin, got "
             f"{_decoder_tail_mode!r}"
         )
 
@@ -244,6 +283,7 @@ model = dict(
             **_roi_sam_override,
             shape_base_dense_mode="no_mask",
             shape_prior_loss_weight=_shape_loss_weight,
+            **_dense_capacity_cfg,
             shape_prior_cfg=dict(
                 enabled=True,
                 img_size=1024,

@@ -18,21 +18,24 @@ class DecoderTailPointRefiner(nn.Module):
                  token_dim: int = 256, hidden_dim: int = 128,
                  point_loss_weight: float = 1.0, delta_logit_max: float = 2.0,
                  mode: str = "residual_v1", gate_init_prob: float = 0.1,
-                 gate_loss_weight: float = 1.0, keep_loss_weight: float = 0.05) -> None:
+                 gate_loss_weight: float = 1.0, keep_loss_weight: float = 0.05,
+                 crossing_margin: float = 0.10) -> None:
         super().__init__()
         if num_points < 0 or hidden_dim <= 0 or point_loss_weight < 0 or delta_logit_max <= 0:
             raise ValueError("UDPR requires non-negative K/loss and positive hidden/delta sizes")
-        if mode not in {"residual_v1", "confidence_gated"}:
+        if mode not in {"residual_v1", "residual_v1_stop", "confidence_gated", "confidence_gated_margin"}:
             raise ValueError(f"Unsupported UDPR mode={mode!r}")
-        if not 0.0 < gate_init_prob < 1.0 or gate_loss_weight < 0 or keep_loss_weight < 0:
+        if (not 0.0 < gate_init_prob < 1.0 or gate_loss_weight < 0
+                or keep_loss_weight < 0 or crossing_margin < 0):
             raise ValueError("UDPR confidence-gate probabilities/weights are invalid")
         self.num_points, self.point_loss_weight = int(num_points), float(point_loss_weight)
         self.delta_logit_max = float(delta_logit_max)
         self.mode = str(mode)
         self.gate_loss_weight = float(gate_loss_weight)
         self.keep_loss_weight = float(keep_loss_weight)
+        self.crossing_margin = float(crossing_margin)
         input_dim = int(feature_channels) + int(token_dim) + 4  # z, x, y, |z|
-        if self.mode == "residual_v1":
+        if self.mode in {"residual_v1", "residual_v1_stop"}:
             # Keep the v1 module and parameter names byte-for-byte compatible
             # with existing A3 checkpoints.
             self.mlp = nn.Sequential(nn.LayerNorm(input_dim), nn.Linear(input_dim, int(hidden_dim)), nn.GELU(), nn.Linear(int(hidden_dim), 1))
@@ -67,7 +70,8 @@ class DecoderTailPointRefiner(nn.Module):
         indices, selected_abs = self._select(logits)
         k = indices.shape[1]
         if k == 0:
-            return logits, {"indices": indices, "delta": logits.new_zeros((n, 0)), "selected_abs": selected_abs,
+            return (logits.detach() if self.mode == "residual_v1_stop" else logits), {
+                "indices": indices, "delta": logits.new_zeros((n, 0)), "selected_abs": selected_abs,
                             "refined_selected_logits": logits.new_zeros((n, 0)),
                             "base_selected_logits": logits.new_zeros((n, 0)),
                             "base_logits_detached": logits[:, 0].detach()}
@@ -77,9 +81,31 @@ class DecoderTailPointRefiner(nn.Module):
         selected_logits = flat_logits.gather(1, indices)
         yy = (indices // w).to(dtype=logits.dtype) / max(1, h - 1)
         xx = (indices % w).to(dtype=logits.dtype) / max(1, w - 1)
-        attrs = torch.stack((selected_logits, xx, yy, selected_logits.abs()), dim=-1)
+        if self.mode == "confidence_gated_margin":
+            # The A5 auxiliary is explicitly a residual-only correction
+            # objective.  Its candidate state is read-only; the ordinary
+            # final-mask loss remains the route that jointly trains SAM2.
+            tail_logits = selected_logits.detach()
+            feat, token = feat.detach(), token.detach()
+        elif self.mode == "residual_v1_stop":
+            # tailstop: every tail input is read-only, so delta is a function
+            # of detached state plus tail parameters ONLY — neither the tail
+            # point loss nor any loss on the refined logits can reach the
+            # decoder/trunk through this module.  The returned tensor is built
+            # on a detached copy of the native grid, so even a loss placed
+            # directly on the refiner's output stays tail-local.  The
+            # training-time final-mask loss must additionally consume the
+            # unrefined decoder output (routed in sam2_mask_head); this
+            # detach alone does not make the base objective A0-SG-identical.
+            flat_logits = flat_logits.detach()
+            selected_logits = selected_logits.detach()
+            tail_logits = selected_logits
+            feat, token = feat.detach(), token.detach()
+        else:
+            tail_logits = selected_logits
+        attrs = torch.stack((tail_logits, xx, yy, tail_logits.abs()), dim=-1)
         point_features = torch.cat((feat, token, attrs), dim=-1)
-        if self.mode == "residual_v1":
+        if self.mode in {"residual_v1", "residual_v1_stop"}:
             raw_delta = self.delta_logit_max * torch.tanh(self.mlp(point_features).squeeze(-1))
             gate = torch.ones_like(raw_delta)
             gate_logits = None
@@ -166,16 +192,17 @@ class DecoderTailPointRefiner(nn.Module):
             "TAIL/correct_flip_fraction": zero,
             "TAIL/destroy_fraction": zero,
         }
-        if self.mode == "confidence_gated":
+        if self.mode in {"confidence_gated", "confidence_gated_margin"}:
             gate_counts, gate_sums, _ = self._global_gate_terms(zero, zero, zero, zero, zero)
             # An empty local rank must expose the same DDP-global mechanism
             # telemetry as a rank holding positive RoIs; otherwise training
             # logs depend on which rank happened to be selected for output.
-            telemetry = self._global_cg_telemetry(zero.new_zeros(16))
+            telemetry = self._global_cg_telemetry(zero.new_zeros(19))
             total, pos_count, error_count, correct_count, all_error = telemetry[:5]
             changed_count, direction_count, flip_count, destroy_count, open_count = telemetry[5:10]
             gate_sum, gate_error_sum, gate_correct_sum = telemetry[10:13]
             applied_sum, applied_error_sum, applied_correct_sum = telemetry[13:16]
+            raw_sum, raw_error_sum, raw_correct_sum = telemetry[16:19]
             total_safe = total.clamp_min(1.0)
             error_safe = error_count.clamp_min(1.0)
             correct_safe = correct_count.clamp_min(1.0)
@@ -200,15 +227,33 @@ class DecoderTailPointRefiner(nn.Module):
                 "TAIL/applied_delta_abs": applied_sum / total_safe,
                 "TAIL/applied_delta_error_abs": applied_error_sum / error_safe,
                 "TAIL/applied_delta_correct_abs": applied_correct_sum / correct_safe,
+                "TAIL/raw_delta_abs": raw_sum / total_safe,
+                "TAIL/raw_delta_error_abs": raw_error_sum / error_safe,
+                "TAIL/raw_delta_correct_abs": raw_correct_sum / correct_safe,
                 "TAIL/keep_loss": gate_sums[2] / gate_counts[1].clamp_min(1.0),
                 "TAIL/net_flip_fraction": (flip_count - destroy_count) / total_safe,
                 "TAIL/gate_open_fraction_q50": open_count / total_safe,
             })
+            if self.mode == "confidence_gated_margin":
+                # Must exactly mirror the two additional A5 collectives in
+                # the non-empty path; otherwise rank-local empty RoIs would
+                # desynchronize the process group.
+                margin_counts, margin_sums, _ = self._global_gate_terms(
+                    zero, zero, zero, zero, zero,
+                )
+                violation = self._global_cg_telemetry(zero.new_zeros(2))
+                stats.update({
+                    "TAIL/crossing_margin": zero.new_tensor(self.crossing_margin),
+                    "TAIL/crossing_error_loss": margin_sums[0] / margin_counts[0].clamp_min(1.0),
+                    "TAIL/correct_margin_keep_loss": margin_sums[1] / margin_counts[1].clamp_min(1.0),
+                    "TAIL/crossing_error_violation": violation[0] / error_safe,
+                    "TAIL/correct_margin_violation": violation[1] / correct_safe,
+                })
         return zero, stats
 
     def point_loss(self, tail_outputs: Dict[str, Tensor], targets: Tensor) -> Tuple[Tensor, Dict[str, Tensor]]:
         """DDP-correct, positive/negative-balanced BCE over selected points."""
-        if self.mode == "confidence_gated":
+        if self.mode in {"confidence_gated", "confidence_gated_margin"}:
             return self._confidence_gated_point_loss(tail_outputs, targets)
         return self._v1_point_loss(tail_outputs, targets)
 
@@ -278,8 +323,9 @@ class DecoderTailPointRefiner(nn.Module):
         selected_logits = tail_outputs["refined_selected_logits"]
         selected_targets = targets.reshape(targets.shape[0], -1).gather(1, indices).to(selected_logits.dtype)
         base_selected_logits = tail_outputs["base_selected_logits"]
-        gate, gate_logits, applied_delta = (
-            tail_outputs["gate"], tail_outputs["gate_logits"], tail_outputs["delta"]
+        gate, gate_logits, applied_delta, raw_delta = (
+            tail_outputs["gate"], tail_outputs["gate_logits"], tail_outputs["delta"],
+            tail_outputs["raw_delta"],
         )
         target_binary = selected_targets > 0.5
         base_binary = base_selected_logits >= 0.0
@@ -351,11 +397,15 @@ class DecoderTailPointRefiner(nn.Module):
             applied_delta.detach().abs().sum(),
             (applied_delta.detach().abs() * selected_error).sum(),
             (applied_delta.detach().abs() * selected_correct).sum(),
+            raw_delta.detach().abs().sum(),
+            (raw_delta.detach().abs() * selected_error).sum(),
+            (raw_delta.detach().abs() * selected_correct).sum(),
         )))
         total, pos_count, error_count, correct_count, all_error = telemetry[:5]
         changed_count, direction_count, flip_count, destroy_count, open_count = telemetry[5:10]
         gate_sum, gate_error_sum, gate_correct_sum = telemetry[10:13]
         applied_sum, applied_error_sum, applied_correct_sum = telemetry[13:16]
+        raw_sum, raw_error_sum, raw_correct_sum = telemetry[16:19]
         total_safe = total.clamp_min(1.0)
         error_safe, correct_safe = error_count.clamp_min(1.0), correct_count.clamp_min(1.0)
         stats = {
@@ -377,13 +427,55 @@ class DecoderTailPointRefiner(nn.Module):
             "TAIL/applied_delta_abs": applied_sum / total_safe,
             "TAIL/applied_delta_error_abs": applied_error_sum / error_safe,
             "TAIL/applied_delta_correct_abs": applied_correct_sum / correct_safe,
+            "TAIL/raw_delta_abs": raw_sum / total_safe,
+            "TAIL/raw_delta_error_abs": raw_error_sum / error_safe,
+            "TAIL/raw_delta_correct_abs": raw_correct_sum / correct_safe,
             "TAIL/keep_loss": keep_global,
             "TAIL/net_flip_fraction": (flip_count - destroy_count) / total_safe,
             "TAIL/gate_open_fraction_q50": open_count / total_safe,
         }
-        total_loss = (
-            self.point_loss_weight * ref_loss
-            + self.gate_loss_weight * gate_loss
-            + self.keep_loss_weight * keep_loss
-        )
+        if self.mode == "confidence_gated_margin":
+            # A5 replaces A4's refined-logit BCE and correct-point L1 keep
+            # with a decision-boundary objective.  The pre-tail logit is a
+            # detached anchor, so this auxiliary trains only the tail write
+            # (the ordinary final-mask loss still trains the full model).
+            signed_target = selected_targets.mul(2.0).sub(1.0)
+            anchored_refined = base_selected_logits + applied_delta
+            shortfall = F.relu(self.crossing_margin - signed_target * anchored_refined)
+            crossing_sum = (shortfall * selected_error).sum()
+            correct_margin_sum = (shortfall * selected_correct).sum()
+            margin_counts, margin_sums, margin_world = self._global_gate_terms(
+                crossing_sum, correct_margin_sum, correct_margin_sum,
+                selected_error.sum(), selected_correct.sum(),
+            )
+            crossing_loss = (
+                crossing_sum * (margin_world / margin_counts[0].clamp_min(1.0))
+                if margin_counts[0] > 0 else crossing_sum * 0.0
+            )
+            correct_margin_loss = (
+                correct_margin_sum * (margin_world / margin_counts[1].clamp_min(1.0))
+                if margin_counts[1] > 0 else correct_margin_sum * 0.0
+            )
+            violation = self._global_cg_telemetry(torch.stack((
+                (shortfall.detach().gt(0) & selected_error).sum().to(selected_logits.dtype),
+                (shortfall.detach().gt(0) & selected_correct).sum().to(selected_logits.dtype),
+            )))
+            stats.update({
+                "TAIL/crossing_margin": selected_logits.new_tensor(self.crossing_margin),
+                "TAIL/crossing_error_loss": margin_sums[0] / margin_counts[0].clamp_min(1.0),
+                "TAIL/correct_margin_keep_loss": margin_sums[1] / margin_counts[1].clamp_min(1.0),
+                "TAIL/crossing_error_violation": violation[0] / error_safe,
+                "TAIL/correct_margin_violation": violation[1] / correct_safe,
+            })
+            total_loss = (
+                self.point_loss_weight * crossing_loss
+                + self.gate_loss_weight * gate_loss
+                + self.keep_loss_weight * correct_margin_loss
+            )
+        else:
+            total_loss = (
+                self.point_loss_weight * ref_loss
+                + self.gate_loss_weight * gate_loss
+                + self.keep_loss_weight * keep_loss
+            )
         return total_loss, stats

@@ -22,7 +22,7 @@ MAINLINE = ROOT.parent                      # repo root (repo/)
 sys.path.insert(0, str(MAINLINE))
 sys.path.insert(0, str(MAINLINE / "portable_sam2_explicit_coarse" / "inference"))
 
-ARMS = ["p", "pb", "a0", "a1", "a2", "a2e", "a3", "a3r", "a4", "r3", "r3_udpr"]
+ARMS = ["p", "pb", "a0", "a0_sg", "a0_sg_densecap64", "a1", "a2", "a2e", "a3", "a3sg", "a3sgt", "a3r", "a4", "a4sg", "a5sg", "r3", "r3_udpr", "densecap64"]
 
 # Every config input read by the VHR-10 inheritance chain.  ``build`` clears
 # these before applying an arm dump, so one arm (or the caller's terminal)
@@ -48,8 +48,9 @@ CONFIG_ENV_KEYS = {
     "DECODER_TAIL_REFINER_ENABLED", "DECODER_TAIL_NUM_POINTS", "DECODER_TAIL_HIDDEN_DIM",
     "DECODER_TAIL_POINT_LOSS_WEIGHT", "DECODER_TAIL_DELTA_LOGIT_MAX",
     "DECODER_TAIL_MODE", "DECODER_TAIL_GATE_INIT_PROB", "DECODER_TAIL_GATE_LOSS_WEIGHT",
-    "DECODER_TAIL_KEEP_LOSS_WEIGHT",
+    "DECODER_TAIL_KEEP_LOSS_WEIGHT", "DECODER_TAIL_CROSSING_MARGIN",
     "CANVAS_RENDERER_ENABLED", "CANVAS_RENDERER_LOSS_WEIGHT",
+    "DENSE_CAPACITY_HEAD_ENABLED", "DENSE_CAPACITY_MID_CHANNELS", "DENSE_CAPACITY_AUX_WEIGHT",
     "MASK_LOSS_RAMP_EPOCHS", "MASK_LOSS_RAMP_START",
 }
 
@@ -123,12 +124,12 @@ def dry_run(arm: str, extra_env: Optional[Dict[str, str]] = None) -> str:
 
 def preflight_errors() -> list[str]:
     errors = []
-    for arm in ("a0", "a3", "a4", "r3", "r3_udpr"):
+    for arm in ("a0", "a3", "a3sg", "a3sgt", "a4", "a4sg", "a5sg", "r3", "r3_udpr"):
         clean_env, polluted_env = arm_env(arm), arm_env(arm, POLLUTION)
         clean_cfg, polluted_cfg = config_only(clean_env), config_only(polluted_env)
         if clean_cfg != polluted_cfg:
             errors.append(f"{arm}: polluted shell changed resolved model_config")
-        if arm in {"a3", "a4", "r3", "r3_udpr"}:
+        if arm in {"a3", "a3sg", "a3sgt", "a4", "a4sg", "a5sg", "r3", "r3_udpr"}:
             expected = {
                 "DECODER_TAIL_LR_MULT": "1.0", "ROI_SAM_ENABLED": "0",
                 "SHAPE_CONTEXT_FUSION": "roi_only", "SHAPE_DENSE_TEMPERATURE": "1.0",
@@ -142,6 +143,17 @@ def preflight_errors() -> list[str]:
             for required in ("init=none", "resume=none", "tail_only=0/lr_mult=1.0"):
                 if required not in text:
                     errors.append(f"{arm}: dry-run lacks {required!r}: {text}")
+    # The production dense-capacity row must remain a fresh, jointly trained
+    # A0 comparison.  ``densecap64`` is intentionally the separate frozen
+    # heat-start feasibility spike and is not a substitute for this contract.
+    formal_env = arm_env("a0_sg_densecap64")
+    if formal_env.get("INIT_FROM"):
+        errors.append("a0_sg_densecap64: formal row must not heat-start")
+    if formal_env.get("DENSE_CAPACITY_TRAIN_ONLY"):
+        errors.append("a0_sg_densecap64: formal row must not be adapter-only")
+    control_env = arm_env("a0_sg")
+    if control_env.get("SHAPE_DENSE_DETACH") != "1" or formal_env.get("SHAPE_DENSE_DETACH") != "1":
+        errors.append("a0_sg pair: both rows must detach the dense source")
     return errors
 
 
@@ -202,10 +214,18 @@ def check_arm(arm: str, model, cfg) -> list:
                  "R3 loss weight != 0.05")
         else:
             want(renderer is None, "legacy arm unexpectedly has R3 renderer")
-        if arm in {"a0", "r3"}:
+        if arm in {"a0", "a0_sg", "a0_sg_densecap64", "r3", "densecap64"}:
             want(refiner is None, "refiner should be absent")
             want(not head.decoder_tail_enabled, "UDPR should be disabled")
-        elif arm in {"a3", "a3r", "a4", "r3_udpr"}:
+            if arm in {"a0_sg_densecap64", "densecap64"}:
+                cap = getattr(head, "dense_capacity_head", None)
+                want(cap is not None and bool(getattr(head, "dense_capacity_enabled", False)),
+                     "dense capacity head missing")
+                want(int(head.dense_capacity_cfg.get("mid_channels", -1)) == 256,
+                     "dense capacity width != 256")
+                want(bool(head.dense_capacity_cfg.get("source_detach", False)),
+                     "dense capacity source_detach must be true")
+        elif arm in {"a3", "a3sg", "a3sgt", "a3r", "a4", "a4sg", "a5sg", "r3_udpr"}:
             want(refiner is None, "P2 refiner should be absent")
             want(head.decoder_tail_enabled, "UDPR should be enabled")
             tcfg = head._decoder_tail_cfg
@@ -215,16 +235,29 @@ def check_arm(arm: str, model, cfg) -> list:
                  "UDPR point loss weight != 1")
             want(abs(float(tcfg.get("delta_logit_max", -1)) - 2.0) < 1e-9,
                  "UDPR delta cap != 2")
-            if arm in {"a3", "a3r", "r3_udpr"}:
+            if arm in {"a3", "a3sg", "a3r", "r3_udpr"}:
                 want("mode" not in tcfg, "v1 A3 must not materialize a mode key")
+            elif arm == "a3sgt":
+                want(tcfg.get("mode") == "residual_v1_stop", "a3sgt mode != residual_v1_stop")
+                want("gate_init_prob" not in tcfg and "crossing_margin" not in tcfg,
+                     "a3sgt must not materialize gate/margin keys")
+                want(bool(getattr(head, "_decoder_tail_train_base_logits", False)),
+                     "a3sgt must route training final-mask loss to unrefined logits")
             else:
-                want(tcfg.get("mode") == "confidence_gated", "DCR mode != confidence_gated")
+                expected_mode = "confidence_gated_margin" if arm == "a5sg" else "confidence_gated"
+                want(tcfg.get("mode") == expected_mode, f"DCR mode != {expected_mode}")
                 want(abs(float(tcfg.get("gate_init_prob", -1)) - 0.1) < 1e-9,
                      "DCR gate init != 0.1")
                 want(abs(float(tcfg.get("gate_loss_weight", -1)) - 1.0) < 1e-9,
                      "DCR gate loss != 1")
                 want(abs(float(tcfg.get("keep_loss_weight", -1)) - 0.05) < 1e-9,
                      "DCR keep loss != 0.05")
+                if arm == "a5sg":
+                    want(abs(float(tcfg.get("crossing_margin", -1)) - 0.10) < 1e-9,
+                         "A5 crossing margin != 0.10")
+            if arm != "a3sgt":
+                want(not getattr(head, "_decoder_tail_train_base_logits", True),
+                     f"{arm} must keep the v1 refined-output training route")
         else:
             want(refiner is not None, "refiner missing")
             rcfg = head.p2_boundary_refiner_cfg
@@ -275,17 +308,25 @@ def main() -> int:
         del model
 
     print("\n===== pairwise model_config diffs (ablation feasibility) =====")
-    pairs = [("p", "pb"), ("pb", "a0"), ("a0", "a1"), ("a1", "a2"), ("a2", "a2e"), ("a0", "a3"), ("a3", "a3r"), ("a3", "a4"), ("pb", "r3"), ("r3", "r3_udpr")]
+    pairs = [("p", "pb"), ("pb", "a0"), ("a0", "a0_sg"), ("a0_sg", "a0_sg_densecap64"), ("a0", "a1"), ("a1", "a2"), ("a2", "a2e"), ("a0", "a3"), ("a0_sg", "a3sg"), ("a3sg", "a3sgt"), ("a0_sg", "a3sgt"), ("a3", "a3r"), ("a3", "a4"), ("a3sg", "a4sg"), ("a0_sg", "a5sg"), ("a4sg", "a5sg"), ("pb", "r3"), ("r3", "r3_udpr")]
     expected = {
         ("p", "pb"): {"explicit_prompt_mode"},
         ("pb", "a0"): {"explicit_prompt_mode", "train_mask_downscaling",
                        "use_shape_dense"},  # use_shape_dense derives from mode
+        ("a0", "a0_sg"): {"detach_input"},
+        ("a0_sg", "a0_sg_densecap64"): {"dense_capacity_cfg"},
         ("a0", "a1"): {"enabled"},
         ("a1", "a2"): {"loss_mode", "correction_margin", "keep_loss_weight"},
         ("a2", "a2e"): {"beta", "delta_logit_max"},
         ("a0", "a3"): {"decoder_tail_refiner_cfg"},
+        ("a0_sg", "a3sg"): {"decoder_tail_refiner_cfg"},
+        ("a3sg", "a3sgt"): {"mode"},  # tailstop: single-variable isolation
+        ("a0_sg", "a3sgt"): {"decoder_tail_refiner_cfg"},
         ("a3", "a3r"): set(),  # trainer-side knob only: model identical
         ("a3", "a4"): {"gate_init_prob", "gate_loss_weight", "keep_loss_weight", "mode"},
+        ("a3sg", "a4sg"): {"gate_init_prob", "gate_loss_weight", "keep_loss_weight", "mode"},
+        ("a0_sg", "a5sg"): {"decoder_tail_refiner_cfg"},
+        ("a4sg", "a5sg"): {"crossing_margin", "mode"},
         ("pb", "r3"): {"explicit_prompt_mode", "train_mask_downscaling", "use_shape_dense", "canvas_renderer_cfg"},
         ("r3", "r3_udpr"): {"decoder_tail_refiner_cfg"},
     }

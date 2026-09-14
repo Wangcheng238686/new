@@ -10,7 +10,7 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ARM="${1:?usage: vhr10_p2v2_dev.sh <p|pb|a0|a1|a2|a2e|a3|a3r|a4|r3|r3_udpr|udpr64>}"
+ARM="${1:?usage: vhr10_p2v2_dev.sh <p|pb|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3sg|a3sgt|a3r|a4|a4sg|a5sg|r3|r3_udpr|udpr64|densecap64>}"
 shift || true
 
 # Protocol entries share the same architecture/arm block below, so the
@@ -154,12 +154,17 @@ unset P2_BOUNDARY_REFINER_CORRECTION_MARGIN P2_BOUNDARY_REFINER_KEEP_LOSS_WEIGHT
 export DECODER_TAIL_REFINER_ENABLED=0
 export CANVAS_RENDERER_ENABLED=0
 export CANVAS_RENDERER_LOSS_WEIGHT=0.05
+export DENSE_CAPACITY_HEAD_ENABLED=0
+export DENSE_CAPACITY_MID_CHANNELS=256
+export DENSE_CAPACITY_AUX_WEIGHT=0.10
+unset DENSE_CAPACITY_TRAIN_ONLY
 export DECODER_TAIL_LR_MULT=1.0
 # Enabling the module and restricting optimization to it are independent
 # choices.  A3 is a normal single-stage A0+UDPR arm; udpr64 remains the
 # frozen-A0 mechanism-screening heat start.
 unset DECODER_TAIL_TRAIN_ONLY DECODER_TAIL_MODE DECODER_TAIL_GATE_INIT_PROB \
   DECODER_TAIL_GATE_LOSS_WEIGHT DECODER_TAIL_KEEP_LOSS_WEIGHT \
+  DECODER_TAIL_CROSSING_MARGIN \
   DECODER_TAIL_NUM_POINTS DECODER_TAIL_HIDDEN_DIM \
   DECODER_TAIL_POINT_LOSS_WEIGHT DECODER_TAIL_DELTA_LOGIT_MAX
 
@@ -189,6 +194,25 @@ case "${ARM}" in
     export P2_BOUNDARY_REFINER_ENABLED=0
     export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
     export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a0_pbm_d5b}"
+    ;;
+  a0_sg)
+    # Source-gradient-isolated A0 control.  It is the mandatory companion to
+    # the dense-capacity arm, whose dense source is internally detached.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export SHAPE_DENSE_DETACH=1
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a0_sg}"
+    ;;
+  a0_sg_densecap64)
+    # Formal single-variable comparison against a0_sg: same dense-source
+    # detach, all weights trained from scratch, plus only H_delta.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export SHAPE_DENSE_DETACH=1
+    export DENSE_CAPACITY_HEAD_ENABLED=1
+    export DENSE_CAPACITY_MID_CHANNELS=256
+    export DENSE_CAPACITY_AUX_WEIGHT=0.10
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a0_sg_densecapres256}"
     ;;
   a1)
     export P2_BOUNDARY_REFINER_ENABLED=1
@@ -234,6 +258,21 @@ case "${ARM}" in
     export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
     export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3_pbm_udprk64}"
     ;;
+  a3sg)
+    # A3 on the a0_sg dense base: same UDPR decoder-tail as a3, but the
+    # dense-source gradient is isolated (SHAPE_DENSE_DETACH=1, the only
+    # difference vs a3).  This isolates UDPR's clean gain on the
+    # gradient-isolated dense base for the final method row.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export DECODER_TAIL_REFINER_ENABLED=1
+    export DECODER_TAIL_NUM_POINTS=64
+    export DECODER_TAIL_HIDDEN_DIM=128
+    export DECODER_TAIL_POINT_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
+    export SHAPE_DENSE_DETACH=1
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3sg_pbm_sg_udprk64}"
+    ;;
   a4)
     # DCR/UDPR-CG: relative to A3, retain the same uncertainty Top-K and
     # residual budget but authorize residual writes with correction confidence.
@@ -249,6 +288,64 @@ case "${ARM}" in
     export DECODER_TAIL_GATE_LOSS_WEIGHT=1.0
     export DECODER_TAIL_KEEP_LOSS_WEIGHT=0.05
     export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a4_pbm_udprcgk64}"
+    ;;
+  a3sgt)
+    # tailstop: a3sg + full gradient isolation at the UDPR tail boundary.
+    # Relative to a3sg the ONLY model difference is DECODER_TAIL_MODE=
+    # residual_v1_stop: (1) all tail inputs (upscaled feature, mask token,
+    # selected logits) are detached, so neither the tail point loss nor any
+    # refined-logit loss reaches the decoder/trunk; (2) the training-time
+    # final-mask loss consumes the UNREFINED decoder output, making the base
+    # objective exactly A0-SG's (bbox preserved by construction, not hope).
+    # Inference/eval still deploys the refined write z' = z + delta.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export DECODER_TAIL_REFINER_ENABLED=1
+    export DECODER_TAIL_NUM_POINTS=64
+    export DECODER_TAIL_HIDDEN_DIM=128
+    export DECODER_TAIL_POINT_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
+    export DECODER_TAIL_MODE=residual_v1_stop
+    export SHAPE_DENSE_DETACH=1
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3sgt_pbm_sg_udprk64ts}"
+    ;;
+  a4sg)
+    # DCR on precisely the A0-SG dense base.  Relative to a3sg, these four
+    # confidence-gate knobs are the only model differences; do not fold this
+    # arm into the attached A0 -> A3 -> A4 historical lineage.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export DECODER_TAIL_REFINER_ENABLED=1
+    export DECODER_TAIL_NUM_POINTS=64
+    export DECODER_TAIL_HIDDEN_DIM=128
+    export DECODER_TAIL_POINT_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
+    export DECODER_TAIL_MODE=confidence_gated
+    export DECODER_TAIL_GATE_INIT_PROB=0.1
+    export DECODER_TAIL_GATE_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_KEEP_LOSS_WEIGHT=0.05
+    export SHAPE_DENSE_DETACH=1
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a4sg_pbm_sg_udprcgk64}"
+    ;;
+  a5sg)
+    # A5SG is A0-SG plus one DCR-CM module.  It preserves A4SG's candidate
+    # set, head, gate, cap and all base protocol knobs; only the residual
+    # objective changes from refined BCE + L1 keep to detached signed
+    # crossing margin + correct-side margin keep.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export DECODER_TAIL_REFINER_ENABLED=1
+    export DECODER_TAIL_NUM_POINTS=64
+    export DECODER_TAIL_HIDDEN_DIM=128
+    export DECODER_TAIL_POINT_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
+    export DECODER_TAIL_MODE=confidence_gated_margin
+    export DECODER_TAIL_GATE_INIT_PROB=0.1
+    export DECODER_TAIL_GATE_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_KEEP_LOSS_WEIGHT=0.05
+    export DECODER_TAIL_CROSSING_MARGIN=0.10
+    export SHAPE_DENSE_DETACH=1
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a5sg_pbm_sg_udprcgm64}"
     ;;
   a3r)
     # A3 + smooth mask-loss ramp (2026-09-10, user-directed): mask-family
@@ -305,8 +402,20 @@ case "${ARM}" in
     export INIT_FROM="${UDPR_INIT_FROM:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10_p2v2_dev100_a0_pbm_d5b_tr1.0_va1.0/best_model_epoch36.pth}"
     export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_udprk64_a0init}"
     ;;
+  densecap64)
+    # Stage-1 feasibility spike, deliberately outside matrix300.  Base A0 is
+    # frozen; only a zero-initialized dense-only residual head is optimized.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export DENSE_CAPACITY_HEAD_ENABLED=1
+    export DENSE_CAPACITY_MID_CHANNELS=256
+    export DENSE_CAPACITY_AUX_WEIGHT=0.10
+    export DENSE_CAPACITY_TRAIN_ONLY=1
+    export INIT_FROM="${DENSECAP_INIT_FROM:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10_p2v2_matrix300_a0_pbm_d5b_tr1.0_va1.0/last_model_epoch300.pth}"
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_densecap64_a0e300init}"
+    ;;
   *)
-    echo "Unknown arm ${ARM}; expected p, pb, a0, a1, a2, a2e, a3, a3r, a4, r3, r3_udpr, or udpr64" >&2
+    echo "Unknown arm ${ARM}; expected p, pb, a0, a0_sg, a0_sg_densecap64, a1, a2, a2e, a3, a3sg, a3sgt, a3r, a4, a4sg, a5sg, r3, r3_udpr, udpr64, or densecap64" >&2
     exit 2
     ;;
 esac
@@ -324,7 +433,7 @@ source "${SCRIPT_DIR}/vhr10_fi_overlay.sh"
 # scripts/smoke/verify_p2v2_arms.py so model-construction checks replay the
 # REAL arm env rather than a hand-copied one.
 if [ "${DEV_DUMP_ENV:-0}" = "1" ]; then
-  env | grep -E '^(NECK_TYPE|PROMPT_ROUTE|EXPLICIT_PROMPT_MODE|P2_BOUNDARY_REFINER_[A-Z_]+|DECODER_TAIL_[A-Z_]+|CANVAS_RENDERER_[A-Z_]+|INIT_FROM|SAM_IMAGE_EMBED_STRIDE|SEGM_SCORE_MODE|VAL_SHARD_ACROSS_RANKS|RCNN_SAMPLER_NUM|MASK_LOSS_RAMP_[A-Z_]+|ROI_SAM_[A-Z_]+|COARSE_MASK_OUTPUT_SIZE|POINT_(WARMUP_[A-Z_]+|NO_POINT_EPOCHS|ONE_PAIR_EPOCHS|FULL_START_EPOCH)|SHAPE_[A-Z0-9_]+|PROMPT_ENCODER_[A-Z_]+|FINAL_MASK_[A-Z_]+|MAX_EPOCHS|BATCH_SIZE|GRAD_ACCUM_STEPS|NPROC_PER_NODE|VAL_EVERY_N_EPOCHS|EARLY_STOPPING_[A-Z_]+|SAVE_LAST_MODEL|RUN_TAG|CUDA_VISIBLE_DEVICES)=' | sort
+  env | grep -E '^(NECK_TYPE|PROMPT_ROUTE|EXPLICIT_PROMPT_MODE|P2_BOUNDARY_REFINER_[A-Z_]+|DECODER_TAIL_[A-Z_]+|CANVAS_RENDERER_[A-Z_]+|DENSE_CAPACITY_[A-Z_]+|INIT_FROM|SAM_IMAGE_EMBED_STRIDE|SEGM_SCORE_MODE|VAL_SHARD_ACROSS_RANKS|RCNN_SAMPLER_NUM|MASK_LOSS_RAMP_[A-Z_]+|ROI_SAM_[A-Z_]+|COARSE_MASK_OUTPUT_SIZE|POINT_(WARMUP_[A-Z_]+|NO_POINT_EPOCHS|ONE_PAIR_EPOCHS|FULL_START_EPOCH)|SHAPE_[A-Z0-9_]+|PROMPT_ENCODER_[A-Z_]+|FINAL_MASK_[A-Z_]+|MAX_EPOCHS|BATCH_SIZE|GRAD_ACCUM_STEPS|NPROC_PER_NODE|VAL_EVERY_N_EPOCHS|EARLY_STOPPING_[A-Z_]+|SAVE_LAST_MODEL|RUN_TAG|CUDA_VISIBLE_DEVICES)=' | sort
   exit 0
 fi
 

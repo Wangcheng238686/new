@@ -77,6 +77,11 @@ def parse_args() -> argparse.Namespace:
                              "from the model's dense clamp_range (8.0 for the "
                              "current recipe) so the GT canvas matches the "
                              "learned canvas distribution; falls back to 4.0.")
+    parser.add_argument("--gt-roi-grid", type=int, default=0,
+                        help="Optional matched-GT source grid before the production "
+                             "bilinear paste. 0 keeps the historical full PE-grid "
+                             "GT oracle; e.g. 64/128 isolates ROI coarse resolution "
+                             "without changing prompts, support, gate, or decoder.")
     parser.add_argument(
         "--canvas-modes", nargs="+",
         choices=("learned", "support_matched", "full_gt"),
@@ -167,6 +172,8 @@ def main() -> int:
             args.logit_span = 4.0
         print(f"[startup] logit_span derived from model clamp_range: "
               f"{args.logit_span}", flush=True)
+    if args.gt_roi_grid < 0:
+        raise SystemExit("--gt-roi-grid must be 0 or a positive integer")
     mask_hw = head._pe_mask_input_size()
 
     def gt_cache(data_samples):
@@ -223,7 +230,7 @@ def main() -> int:
     def run_pass(canvas_mode, forced_alpha, *, standard_inference=False):
         state = {"ids": None, "boxes": None, "labels": None, "gts": None,
                  "label_queue": None, "label_cursor": 0, "canvas_hw": mask_hw,
-                 "pre_prompt": None, "feature_rows": []}
+                 "pre_prompt_chunks": [], "feature_rows": []}
         stats = {"roi_n": 0, "iou_sum": 0.0, "iou_vals": [],
                  "canvas_min": float("inf"), "canvas_max": float("-inf"),
                  "coarse_dice_sum": 0.0, "coarse_n": 0,
@@ -308,8 +315,12 @@ def main() -> int:
             if not (raw.shape[0] == canvas.shape[0] == x.shape[0] == boxes.shape[0]
                     == labels.shape[0] == ids.shape[0]):
                 raise RuntimeError("pre-PromptEncoder feature rows are not aligned")
-            state["pre_prompt"] = tuple(value.detach().cpu() for value in
-                                         (x, raw, canvas, boxes, labels, ids))
+            # ``predict_mask`` can split proposal rows into decoder chunks.
+            # Keep every chunk in forward order: retaining only the latest
+            # chunk made the collector compare the last chunk against a full
+            # image's final detections and fail its own alignment contract.
+            state["pre_prompt_chunks"].append(tuple(value.detach().cpu() for value in
+                                                    (x, raw, canvas, boxes, labels, ids)))
             return output
 
         def pe_pre_hook(module, fn_args, kwargs):
@@ -368,6 +379,25 @@ def main() -> int:
                 if canvas_mode == "learned":
                     continue
                 gt_logits = gt_occ * args.logit_span - (1.0 - gt_occ) * args.logit_span
+                if args.gt_roi_grid:
+                    # Match the production source geometry: GT is cropped in
+                    # the proposal frame, nearest-rasterised at the candidate
+                    # coarse resolution, then bilinearly resized into the
+                    # *same* floor/ceil PE support used by raw A0 logits.
+                    # This is a resolution ceiling, not a new canvas encoding.
+                    roi_target = _roi_target_grid(
+                        masks_t[best], boxes[i], args.gt_roi_grid
+                    )
+                    if roi_target is None:
+                        raise RuntimeError("matched GT produced an empty ROI crop")
+                    roi_logits = (
+                        roi_target.to(device=device, dtype=learned.dtype) * 2.0 - 1.0
+                    ) * args.logit_span
+                    gt_logits = learned.clone()
+                    gt_logits[sy1:sy2, sx1:sx2] = F.interpolate(
+                        roi_logits[None, None], size=(sy2 - sy1, sx2 - sx1),
+                        mode="bilinear", align_corners=False,
+                    )[0, 0]
                 if canvas_mode == "support_matched":
                     delivered = learned.clone()
                     delivered[sy1:sy2, sx1:sx2] = gt_logits[sy1:sy2, sx1:sx2]
@@ -428,6 +458,7 @@ def main() -> int:
                         {"inputs": imgs, "data_samples": data_samples}, training=False
                     )
                     state["gts"] = gt_cache(processed["data_samples"])
+                    state["pre_prompt_chunks"] = []
                     outputs = model.predict(
                         processed["inputs"], processed["data_samples"], rescale=False
                     )
@@ -446,9 +477,11 @@ def main() -> int:
                         dt = _extract_instances_numpy(pred, shape)
                         image_id = int(meta.get("image_id", meta.get("scene_id", position)))
                         if args.export_pre_prompt_features:
-                            payload = state["pre_prompt"]
-                            if payload is None:
+                            chunks = state["pre_prompt_chunks"]
+                            if not chunks:
                                 raise RuntimeError("feature hook did not run before prediction")
+                            payload = tuple(torch.cat([chunk[i] for chunk in chunks], dim=0)
+                                            for i in range(6))
                             x, raw, canvas, pboxes, plabels, pids = payload
                             take = pids.eq(position)
                             if int(take.sum()) != len(dt["bboxes"]):
@@ -559,6 +592,7 @@ def main() -> int:
                 "processed_image_ids": sorted(item["image_id"] for item in images),
                 "ground_truth_instances": len(gt_records), "predicted_instances": len(dt_records),
                 "canvas_mode": canvas_mode, "gate_alpha": cell["gate_alpha"],
+                "gt_roi_grid": int(args.gt_roi_grid),
                 "detector_sha256": cell["detector_sha256"], "output_sha256": cell["output_sha256"],
                 "metrics": metrics}
             _write_json(artifact_dir / "gt_records.json", gt_records)
@@ -662,6 +696,7 @@ def main() -> int:
         "match_iou": args.match_iou,
         "matching_protocol": "per-ROI argmax, same-class, many-to-one by design",
         "logit_span": args.logit_span,
+        "gt_roi_grid": int(args.gt_roi_grid),
         "canvas_binarization_logit": 0.0,
         "canvas_frame": list(mask_hw),
         "outside_fill_logit": (

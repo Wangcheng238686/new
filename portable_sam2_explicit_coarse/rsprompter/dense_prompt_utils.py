@@ -5,6 +5,7 @@
 """
 from typing import Dict, Tuple
 
+import numpy
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -57,6 +58,66 @@ def transform_coarse_prompt(
             f"Unknown dense_prompt transform: {transform!r}. "
             "Expected 'raw_logits' or 'confidence_signed'."
         )
+
+
+def signed_edt_confidence_prompt(
+    coarse_logits: Tensor,
+    *,
+    tau: float = 0.5,
+    omega: float = 8.0,
+    edt_gamma: float = 4.0,
+    use_edt: bool = True,
+) -> Tuple[Tensor, Tensor]:
+    """Shape-preserving signed EDT-confidence canvas (design doc 2026-09-11).
+
+    Per ROI instance, on DETACHED logits:
+      M = sigmoid(z) >= tau;  D = exact EDT inside a 1-px padded background;
+      A = M.sum();  Dmax = D.max();
+      G = exp(-((D - Dmax)^2) / (A / edt_gamma))          (use_edt=True)
+      Q = +omega * G  where M == 1,  -omega  where M == 0 (use_edt=False: G == 1)
+
+    use_edt=False is the "signed_binary" cell (B); use_edt=True is the main
+    candidate (E).  Instances with empty foreground are returned as an
+    all-zero canvas with valid=False so the existing
+    ``replace_invalid_dense_with_base`` restores the exact no-mask base.
+    Non-differentiable by construction: the input is detached first.
+    """
+    from scipy.ndimage import distance_transform_edt as _edt
+
+    if coarse_logits.dim() != 4 or coarse_logits.shape[1] != 1:
+        raise ValueError(
+            "signed_edt_confidence_prompt expects [N,1,h,w], got "
+            f"{tuple(coarse_logits.shape)}"
+        )
+    if not 0.0 < float(tau) < 1.0:
+        raise ValueError(f"tau must be in (0,1), got {tau}")
+    if float(omega) <= 0 or float(edt_gamma) <= 0:
+        raise ValueError("omega and edt_gamma must be positive")
+
+    z = coarse_logits.detach()
+    n, _, h, w = z.shape
+    hard = (torch.sigmoid(z) >= float(tau)).to(torch.bool)
+    prompt = torch.zeros_like(z)
+    valid = torch.ones(n, device=z.device, dtype=torch.bool)
+    omega = float(omega)
+    denom_scale = float(edt_gamma)
+    hard_np = hard[:, 0].cpu().numpy()
+    for i in range(n):
+        m = hard_np[i]
+        area = int(m.sum())
+        if area == 0:
+            valid[i] = False
+            continue
+        if use_edt:
+            padded = numpy.pad(m, 1, mode="constant", constant_values=False)
+            dist = _edt(padded)[1:-1, 1:-1]
+            dmax = float(dist.max())
+            g = numpy.exp(-((dist - dmax) ** 2) * denom_scale / float(area))
+            out = numpy.where(m, omega * g, -omega)
+        else:
+            out = numpy.where(m, omega, -omega)
+        prompt[i, 0] = torch.from_numpy(out.astype(numpy.float32)).to(z.device)
+    return prompt, valid
 
 
 def gaussian_prompt_from_roi_coarse(
