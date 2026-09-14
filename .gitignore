@@ -24,3 +24,4 @@ portable_sam2_explicit_coarse/configs/environment.local.sh
 # remain explicitly tracked.
 *.log
 portable_sam2_explicit_coarse/logs/**/*.png
+portable_sam2_explicit_coarse/refactor_golden/
