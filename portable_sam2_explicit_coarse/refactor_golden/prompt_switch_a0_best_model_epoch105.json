@@ -1,0 +1,48 @@
+{
+  "checkpoint": "/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10_p2v2_matrix300_a0_pbm_d5b_tr1.0_va1.0/best_model_epoch105.pth",
+  "weights": "model",
+  "cells": {
+    "baseline": {
+      "batches": 65,
+      "images": 130,
+      "metrics": {
+        "segm/mAP": 0.6446441381148553,
+        "segm/mAP_50": 0.9300990084075518,
+        "segm/AR@100": 0.6830722818888367
+      }
+    },
+    "drop_box": {
+      "batches": 65,
+      "images": 130,
+      "metrics": {
+        "segm/mAP": 0.6134340481852505,
+        "segm/mAP_50": 0.923520828199994,
+        "segm/AR@100": 0.6563353762220382
+      }
+    },
+    "drop_dense": {
+      "batches": 65,
+      "images": 130,
+      "metrics": {
+        "segm/mAP": 0.5807866191310779,
+        "segm/mAP_50": 0.8865279203136114,
+        "segm/AR@100": 0.6288294369499211
+      }
+    },
+    "drop_both": {
+      "batches": 65,
+      "images": 130,
+      "metrics": {
+        "segm/mAP": 0.44807705849613666,
+        "segm/mAP_50": 0.7645398982600119,
+        "segm/AR@100": 0.5150955123075903
+      }
+    }
+  },
+  "delta_vs_baseline": {
+    "drop_box": -0.031210089929604834,
+    "drop_dense": -0.06385751898377745,
+    "drop_both": -0.19656707961871867
+  },
+  "note": "frozen-weight prompt-switch: points/detections/ranking unchanged; characterises this weight's prompt dependence, NOT a training ablation"
+}

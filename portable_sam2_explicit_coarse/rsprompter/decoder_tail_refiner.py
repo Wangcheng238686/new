@@ -19,11 +19,12 @@ class DecoderTailPointRefiner(nn.Module):
                  point_loss_weight: float = 1.0, delta_logit_max: float = 2.0,
                  mode: str = "residual_v1", gate_init_prob: float = 0.1,
                  gate_loss_weight: float = 1.0, keep_loss_weight: float = 0.05,
-                 crossing_margin: float = 0.10) -> None:
+                 crossing_margin: float = 0.10, boundary_logit: float = 0.0) -> None:
         super().__init__()
         if num_points < 0 or hidden_dim <= 0 or point_loss_weight < 0 or delta_logit_max <= 0:
             raise ValueError("UDPR requires non-negative K/loss and positive hidden/delta sizes")
-        if mode not in {"residual_v1", "residual_v1_stop", "confidence_gated", "confidence_gated_margin"}:
+        if mode not in {"residual_v1", "residual_v1_stop", "residual_v1_stop_margin",
+                        "confidence_gated", "confidence_gated_margin"}:
             raise ValueError(f"Unsupported UDPR mode={mode!r}")
         if (not 0.0 < gate_init_prob < 1.0 or gate_loss_weight < 0
                 or keep_loss_weight < 0 or crossing_margin < 0):
@@ -34,8 +35,9 @@ class DecoderTailPointRefiner(nn.Module):
         self.gate_loss_weight = float(gate_loss_weight)
         self.keep_loss_weight = float(keep_loss_weight)
         self.crossing_margin = float(crossing_margin)
+        self.boundary_logit = float(boundary_logit)
         input_dim = int(feature_channels) + int(token_dim) + 4  # z, x, y, |z|
-        if self.mode in {"residual_v1", "residual_v1_stop"}:
+        if self.mode in {"residual_v1", "residual_v1_stop", "residual_v1_stop_margin"}:
             # Keep the v1 module and parameter names byte-for-byte compatible
             # with existing A3 checkpoints.
             self.mlp = nn.Sequential(nn.LayerNorm(input_dim), nn.Linear(input_dim, int(hidden_dim)), nn.GELU(), nn.Linear(int(hidden_dim), 1))
@@ -87,7 +89,7 @@ class DecoderTailPointRefiner(nn.Module):
             # final-mask loss remains the route that jointly trains SAM2.
             tail_logits = selected_logits.detach()
             feat, token = feat.detach(), token.detach()
-        elif self.mode == "residual_v1_stop":
+        elif self.mode in {"residual_v1_stop", "residual_v1_stop_margin"}:
             # tailstop: every tail input is read-only, so delta is a function
             # of detached state plus tail parameters ONLY — neither the tail
             # point loss nor any loss on the refined logits can reach the
@@ -105,7 +107,7 @@ class DecoderTailPointRefiner(nn.Module):
             tail_logits = selected_logits
         attrs = torch.stack((tail_logits, xx, yy, tail_logits.abs()), dim=-1)
         point_features = torch.cat((feat, token, attrs), dim=-1)
-        if self.mode in {"residual_v1", "residual_v1_stop"}:
+        if self.mode in {"residual_v1", "residual_v1_stop", "residual_v1_stop_margin"}:
             raw_delta = self.delta_logit_max * torch.tanh(self.mlp(point_features).squeeze(-1))
             gate = torch.ones_like(raw_delta)
             gate_logits = None
@@ -192,6 +194,8 @@ class DecoderTailPointRefiner(nn.Module):
             "TAIL/correct_flip_fraction": zero,
             "TAIL/destroy_fraction": zero,
         }
+        if self.mode == "residual_v1_stop_margin":
+            stats["TAIL/boundary_margin_violation"] = zero
         if self.mode in {"confidence_gated", "confidence_gated_margin"}:
             gate_counts, gate_sums, _ = self._global_gate_terms(zero, zero, zero, zero, zero)
             # An empty local rank must expose the same DDP-global mechanism
@@ -255,6 +259,8 @@ class DecoderTailPointRefiner(nn.Module):
         """DDP-correct, positive/negative-balanced BCE over selected points."""
         if self.mode in {"confidence_gated", "confidence_gated_margin"}:
             return self._confidence_gated_point_loss(tail_outputs, targets)
+        if self.mode == "residual_v1_stop_margin":
+            return self._stop_margin_point_loss(tail_outputs, targets)
         return self._v1_point_loss(tail_outputs, targets)
 
     def _v1_point_loss(self, tail_outputs: Dict[str, Tensor], targets: Tensor) -> Tuple[Tensor, Dict[str, Tensor]]:
@@ -311,6 +317,76 @@ class DecoderTailPointRefiner(nn.Module):
             selected_error.sum().to(dtype=selected_logits.dtype).clamp_min(1.0),
             "TAIL/correct_flip_fraction": correct_flip.float().mean(),
             "TAIL/destroy_fraction": destroy.float().mean(),
+        }
+
+    def _stop_margin_point_loss(self, tail_outputs: Dict[str, Tensor], targets: Tensor) -> Tuple[Tensor, Dict[str, Tensor]]:
+        """Threshold-anchored one-sided margin over selected points.
+
+        Evidence base: the a3sgt tail-write oracle probe showed the deployed
+        binarisation boundary (logit(mask_thr_binary), e.g. -0.4055 at 0.4)
+        is the anchor a tail write must target — writes anchored at logit 0
+        cannot delete false-positive area.  The loss is zero for a point
+        already beyond boundary +/- margin on the correct side, and pushes
+        wrong-side points toward that target; the tail container (stop mode)
+        guarantees none of this reaches the base.
+        """
+        indices, delta = tail_outputs["indices"], tail_outputs["delta"]
+        if indices.numel() == 0:
+            return self.empty_point_loss(targets.sum() * 0.0)
+        selected_logits = tail_outputs["refined_selected_logits"]
+        selected_targets = targets.reshape(targets.shape[0], -1).gather(1, indices).to(selected_logits.dtype)
+        signed = selected_targets.mul(2.0).sub(1.0)
+        violation = F.relu(self.crossing_margin - signed * (selected_logits - self.boundary_logit))
+        pos = selected_targets > 0.5
+        neg = ~pos
+        pos_sum, neg_sum = (violation * pos).sum(), (violation * neg).sum()
+        global_counts, global_sums, world = self._global_tail_bce(
+            pos_sum, neg_sum, pos.sum(), neg.sum()
+        )
+        pos_term = pos_sum * (world / global_counts[0].clamp_min(1.0)) if global_counts[0] > 0 else pos_sum * 0.0
+        neg_term = neg_sum * (world / global_counts[1].clamp_min(1.0)) if global_counts[1] > 0 else neg_sum * 0.0
+        loss = (pos_term + neg_term) / (global_counts > 0).sum().to(selected_logits.dtype).clamp_min(1.0)
+        active = (global_counts > 0).to(selected_logits.dtype)
+        violation_global = (
+            global_sums[0] / global_counts[0].clamp_min(1.0)
+            + global_sums[1] / global_counts[1].clamp_min(1.0)
+        ) / active.sum().clamp_min(1.0)
+        # Mechanism telemetry mirrors the v1 contract (detached), plus the
+        # boundary-anchored violation; BCE is retained as a comparability
+        # diagnostic against a3sgt's logged scale.
+        base_selected_logits = tail_outputs["base_selected_logits"]
+        bce = F.binary_cross_entropy_with_logits(selected_logits.detach(), selected_targets, reduction="none")
+        pos_bce, neg_bce = (bce * pos).sum(), (bce * neg).sum()
+        _, bce_sums, _ = self._global_tail_bce(pos_bce, neg_bce, pos.sum() * 0.0, neg.sum() * 0.0)
+        bce_global = (
+            bce_sums[0] / global_counts[0].clamp_min(1.0)
+            + bce_sums[1] / global_counts[1].clamp_min(1.0)
+        ) / active.sum().clamp_min(1.0)
+        target_binary = selected_targets > 0.5
+        base_binary = base_selected_logits >= 0.0
+        refined_binary = selected_logits.detach() >= 0.0
+        selected_error = base_binary != target_binary
+        all_base_binary = tail_outputs["base_logits_detached"] >= 0.0
+        all_error_count = (all_base_binary != (targets > 0.5)).sum()
+        changed = delta.detach().abs() > 1e-6
+        correct_direction = (delta.detach() > 0.0) == target_binary
+        correct_flip = selected_error & (refined_binary == target_binary)
+        destroy = (~selected_error) & (refined_binary != target_binary)
+        return self.point_loss_weight * loss, {
+            "TAIL/selected_count": selected_logits.new_tensor(float(indices.numel())),
+            "TAIL/selected_pos": pos.sum().to(dtype=selected_logits.dtype),
+            "TAIL/selected_bce": bce_global, "TAIL/delta_abs": delta.detach().abs().mean(),
+            "TAIL/delta_max": delta.detach().abs().max(),
+            "TAIL/selected_error_fraction": selected_error.float().mean(),
+            "TAIL/selected_error_coverage": selected_error.sum().to(dtype=selected_logits.dtype) /
+            all_error_count.to(dtype=selected_logits.dtype).clamp_min(1.0),
+            "TAIL/changed_fraction": changed.float().mean(),
+            "TAIL/error_direction_agreement": (selected_error & changed & correct_direction).sum().to(dtype=selected_logits.dtype) /
+            selected_error.sum().to(dtype=selected_logits.dtype).clamp_min(1.0),
+            "TAIL/correct_flip_fraction": correct_flip.float().mean(),
+            "TAIL/destroy_fraction": destroy.float().mean(),
+            "TAIL/boundary_margin_violation": violation_global,
+            "TAIL/boundary_logit": selected_logits.new_tensor(self.boundary_logit),
         }
 
     def _confidence_gated_point_loss(

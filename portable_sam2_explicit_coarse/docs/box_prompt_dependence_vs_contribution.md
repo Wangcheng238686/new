@@ -205,6 +205,26 @@ inference_{best,best_bbox,best_composite,last}_vhr10/`。
 bootstrap）、`diagnostics/a3sgt_tail_write_oracle_thr_20260914/`（含 gt_cap_thr
 的 7 cell 复跑——五个共享 cell 与首轮逐位一致——+ 3 bootstrap）。
 
+**Checkpoint 稳健性复核（2026-09-14，bestC E225 重跑同款 7-cell oracle；独立
+审计 PASS）**：针对"探针结论是否 last-E300 特异"的方法学质疑，在 a3sgt
+best_composite E225（更好权重：no_write 基座 0.6487 vs last 0.6375）复跑全部
+cell。结果与 last 逐项复现：gt_cap_thr **+0.0268 [+0.0223, +0.0319]**（last：
++0.0267 [+0.0206, +0.0323]）；已学写入 +0.0074 [+0.0030, +0.0132]；授权余量
++0.0025（跨零）；sham −0.0029；锚 0 错配写 −0.0020（连符号都不保）。p0 与
+bestC 生产推理逐位一致（0.6560）。**写入价值空间与标定结论在 checkpoint
+选择上稳健**——写入占比 40.0%→40.8%（18287/45696 vs 18805/46080），基座更好
+时边界可修错误密度几乎不变。
+
+口径边界（审计要求注明）：① E225 与 E300 来自同一训练轨迹（相关权重），
+本节证明的是"同谱系内权重选择不敏感"，不是跨训练的普适稳健性——后者另有
+跨谱系迁移证据：a3sgtm 热启动筛查把 margin 损失装到**不同冻结基座** a0_sg
+E300 上（dev100，E32 best：segm 0.6650 vs 基座 0.6483 = +0.0167，bbox 0.7348
+逐位不变；`ablations/vhr10_p2v2_dev100_a3sgtm_pbm_sg_udprk64tsm_a0sg_e300init_
+tr1.0_va1.0/inference_best_vhr10/`）；② 两轮探针共用同一 130 图验证集，两个
+CI 只量化图级重采样，互为 checkpoint 复现证据、不构成独立数据集级确认。
+工件：`diagnostics/a3sgt_tail_write_oracle_bestC225_20260914/`（7 cell + 3
+bootstrap）。
+
 **A3 双 seed 同口径对照（复现细节，2026-09-11 21:08 推理批）**：
 bestS：0.6930(E45)/0.6808(E75)（差 −0.012，尖峰换位）；last：0.6696/0.6659（−0.0037）；
 last 的 AP75 0.7295/0.7254（−0.004，AP75 集中机制复现）；bbox bestS 0.6508/0.6936（seed44

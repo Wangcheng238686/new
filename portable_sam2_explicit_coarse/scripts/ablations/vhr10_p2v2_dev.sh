@@ -10,7 +10,7 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ARM="${1:?usage: vhr10_p2v2_dev.sh <p|pb|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3sg|a3sgt|a3r|a4|a4sg|a5sg|r3|r3_udpr|udpr64|densecap64>}"
+ARM="${1:?usage: vhr10_p2v2_dev.sh <p|pb|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3r|a4|a4sg|a5sg|r3|r3_udpr|udpr64|densecap64>}"
 shift || true
 
 # Protocol entries share the same architecture/arm block below, so the
@@ -27,10 +27,44 @@ unset RCNN_SAMPLER_NUM
 unset MASK_LOSS_RAMP_EPOCHS MASK_LOSS_RAMP_START
 P2V2_PROTOCOL="${P2V2_PROTOCOL:-dev100}"
 case "${P2V2_PROTOCOL}" in
+  dev30)
+    # Tail-screen protocol for heat-start K sweeps (2026-09-14): frozen-base
+    # tail-only heads converge by ~E15-30 (a3sgtm screen: violation flat from
+    # E12, val plateau from E15), so a 30-epoch horizon with val every 2
+    # captures the plateau at ~1/3 of dev100's cost.  Same LR family and
+    # selection policy as dev100; NOT a matrix/full600-grade protocol.
+    P2V2_TAG_PREFIX="vhr10_p2v2_dev30"
+    export MAX_EPOCHS=30
+    export VAL_EVERY_N_EPOCHS=2
+    export EARLY_STOPPING_PATIENCE=9999
+    export EARLY_STOPPING_START_EPOCH=9999
+    export EARLY_STOPPING_MIN_DELTA=5e-4
+    export EARLY_STOPPING_SMOOTH_WINDOW=5
+    export SAVE_BBOX_BEST_METRIC=""
+    export SAVE_COMPOSITE_BEST=0
+    export SAVE_COMPOSITE_WEIGHTS="0.5*bbox/mAP_75+0.5*segm/mAP_75"
+    ;;
   dev100)
     P2V2_TAG_PREFIX="vhr10_p2v2_dev100"
     export MAX_EPOCHS=100
     export VAL_EVERY_N_EPOCHS=1
+    export EARLY_STOPPING_PATIENCE=9999
+    export EARLY_STOPPING_START_EPOCH=9999
+    export EARLY_STOPPING_MIN_DELTA=5e-4
+    export EARLY_STOPPING_SMOOTH_WINDOW=5
+    export SAVE_BBOX_BEST_METRIC=""
+    export SAVE_COMPOSITE_BEST=0
+    export SAVE_COMPOSITE_WEIGHTS="0.5*bbox/mAP_75+0.5*segm/mAP_75"
+    ;;
+  ksweep40)
+    # Dedicated K-sensitivity protocol (2026-09-14): tail-only heat-start
+    # arms (a3m/a3sgtm family).  40 epochs sits past the observed tail
+    # convergence plateau (~E15-30 in both prior screens); val every 2 keeps
+    # best-tracking dense enough for selection without dev100's per-epoch
+    # cost.  Selection/eval knobs mirror dev100.
+    P2V2_TAG_PREFIX="vhr10_p2v2_ksweep40"
+    export MAX_EPOCHS=40
+    export VAL_EVERY_N_EPOCHS=2
     export EARLY_STOPPING_PATIENCE=9999
     export EARLY_STOPPING_START_EPOCH=9999
     export EARLY_STOPPING_MIN_DELTA=5e-4
@@ -85,7 +119,7 @@ esac
 
 # A-series arms are fresh, isolated comparisons, not continuations.  Prevent a
 # caller's shell state from changing initialization or output ownership.
-unset RESUME_FROM INIT_FROM CHECKPOINT_DIR RUN_TAG
+unset RESUME_FROM INIT_FROM CHECKPOINT_DIR RUN_TAG DECOUPLED_AUX_GRAD_CLIP
 # Same-run crash recovery (e.g. server restart): the unset above stays intact
 # so stale shell state can never silently turn a fresh arm into a resume;
 # operators must opt in EXPLICITLY via RESUME_OWN pointing at the same run
@@ -164,7 +198,7 @@ export DECODER_TAIL_LR_MULT=1.0
 # frozen-A0 mechanism-screening heat start.
 unset DECODER_TAIL_TRAIN_ONLY DECODER_TAIL_MODE DECODER_TAIL_GATE_INIT_PROB \
   DECODER_TAIL_GATE_LOSS_WEIGHT DECODER_TAIL_KEEP_LOSS_WEIGHT \
-  DECODER_TAIL_CROSSING_MARGIN \
+  DECODER_TAIL_CROSSING_MARGIN DECODER_TAIL_BOUNDARY_LOGIT \
   DECODER_TAIL_NUM_POINTS DECODER_TAIL_HIDDEN_DIM \
   DECODER_TAIL_POINT_LOSS_WEIGHT DECODER_TAIL_DELTA_LOGIT_MAX
 
@@ -309,6 +343,88 @@ case "${ARM}" in
     export SHAPE_DENSE_DETACH=1
     export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3sgt_pbm_sg_udprk64ts}"
     ;;
+  a3sgtm)
+    # tailstop + threshold-anchored one-sided margin point loss.  Relative to
+    # a3sgt the ONLY model differences are the point-loss form and its two
+    # constants: the margin target anchors at the DEPLOYED binarisation logit
+    # log(0.4/0.6) = -0.405465 (mask_thr_binary=0.4 in
+    # rsprompter_anchor_satS_v11_sam2_large_full.py test_cfg; sam2_mask_head
+    # cross-validates at runtime).  Evidence: a3sgt tail-write oracle
+    # gt_cap_thr +0.0267 CI[+0.0206,+0.0323]; v1 BCE/A5 logit-0 anchors are
+    # mis-calibrated against the 0.4 threshold.  This entry is the heat-start
+    # feasibility variant: A0-SG matrix300 E300 base frozen via
+    # DECODER_TAIL_TRAIN_ONLY, only the zero-init tail trains.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export DECODER_TAIL_REFINER_ENABLED=1
+    export DECODER_TAIL_NUM_POINTS=64
+    export DECODER_TAIL_HIDDEN_DIM=128
+    export DECODER_TAIL_POINT_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
+    export DECODER_TAIL_MODE=residual_v1_stop_margin
+    export DECODER_TAIL_CROSSING_MARGIN=0.10
+    export DECODER_TAIL_BOUNDARY_LOGIT=-0.4054651081081644
+    export SHAPE_DENSE_DETACH=1
+    export DECODER_TAIL_NUM_POINTS="${A3SGTM_NUM_POINTS:-64}"
+    if [ "${A3SGTM_HEATSTART:-0}" = "1" ]; then
+      # 2026-09-14 feasibility variant: A0-SG matrix300 E300 base frozen,
+      # only the zero-init tail trains (screen result: segm 0.6650/bbox
+      # 0.7348 at E32 vs base 0.6483).  The matrix300 row is from scratch.
+      export DECODER_TAIL_TRAIN_ONLY=1
+      export INIT_FROM="${A3SGTM_INIT_FROM:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10_p2v2_matrix300_a0_sg_tr1.0_va1.0/last_model_epoch300.pth}"
+      export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3sgtm_pbm_sg_udprk${DECODER_TAIL_NUM_POINTS}tsm_a0sg_e300init}"
+    else
+      export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3sgtm_pbm_sg_udprk${DECODER_TAIL_NUM_POINTS}tsm}"
+    fi
+    ;;
+  a3m)
+    # A0-ATTACHED lineage + threshold-anchored margin tail (K sweep platform
+    # 2026-09-14): base = A0 PBM (SHAPE_DENSE_DETACH unset, unlike a3sgtm's
+    # sg lineage).  Heat-start variant freezes A0 matrix300 E300 and trains
+    # only the zero-init margin tail; K via A3M_NUM_POINTS.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export DECODER_TAIL_REFINER_ENABLED=1
+    export DECODER_TAIL_NUM_POINTS="${A3M_NUM_POINTS:-64}"
+    export DECODER_TAIL_HIDDEN_DIM=128
+    export DECODER_TAIL_POINT_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
+    export DECODER_TAIL_MODE=residual_v1_stop_margin
+    export DECODER_TAIL_CROSSING_MARGIN=0.10
+    export DECODER_TAIL_BOUNDARY_LOGIT=-0.4054651081081644
+    if [ "${A3M_HEATSTART:-0}" = "1" ]; then
+      export DECODER_TAIL_TRAIN_ONLY=1
+      export INIT_FROM="${A3M_INIT_FROM:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10_p2v2_matrix300_a0_pbm_d5b_tr1.0_va1.0/last_model_epoch300.pth}"
+      export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3m_pbm_udprk${DECODER_TAIL_NUM_POINTS}tsm_a0_e300init}"
+    else
+      export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3m_pbm_udprk${DECODER_TAIL_NUM_POINTS}tsm}"
+    fi
+    ;;
+  a3sgtm-dclip)
+    # a3sgtm + decoupled auxiliary grad clipping.  Model config is IDENTICAL
+    # to a3sgtm (same fingerprint); the ONLY difference is the trainer-side
+    # clip decomposition (base alone at 0.5, bit-matching aux-free arms, +
+    # each aux head at its own 0.5).  Root cause 2026-09-14: the single
+    # global clip let the tail's gradients usurp the base's 0.5 budget
+    # (auditor-measured tail EMA share 32% at E220, clip active every step),
+    # systematically undertraining the base in every aux-head arm (coupled
+    # a3sgtm control row finished at segm 0.6236 / bbox 0.7101 vs a0_sg
+    # 0.6475/0.7346).  This arm is the fix's matrix300 row; the coupled run
+    # under the plain a3sgtm tag is retained as its paired control.
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export DECODER_TAIL_REFINER_ENABLED=1
+    export DECODER_TAIL_NUM_POINTS=64
+    export DECODER_TAIL_HIDDEN_DIM=128
+    export DECODER_TAIL_POINT_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
+    export DECODER_TAIL_MODE=residual_v1_stop_margin
+    export DECODER_TAIL_CROSSING_MARGIN=0.10
+    export DECODER_TAIL_BOUNDARY_LOGIT=-0.4054651081081644
+    export SHAPE_DENSE_DETACH=1
+    export DECOUPLED_AUX_GRAD_CLIP=1
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3sgtm_dclip_pbm_sg_udprk64tsm}"
+    ;;
   a4sg)
     # DCR on precisely the A0-SG dense base.  Relative to a3sg, these four
     # confidence-gate knobs are the only model differences; do not fold this
@@ -415,7 +531,7 @@ case "${ARM}" in
     export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_densecap64_a0e300init}"
     ;;
   *)
-    echo "Unknown arm ${ARM}; expected p, pb, a0, a0_sg, a0_sg_densecap64, a1, a2, a2e, a3, a3sg, a3sgt, a3r, a4, a4sg, a5sg, r3, r3_udpr, udpr64, or densecap64" >&2
+    echo "Unknown arm ${ARM}; expected p, pb, a0, a0_sg, a0_sg_densecap64, a1, a2, a2e, a3, a3m, a3sg, a3sgt, a3sgtm, a3sgtm-dclip, a3r, a4, a4sg, a5sg, r3, r3_udpr, udpr64, or densecap64" >&2
     exit 2
     ;;
 esac
@@ -433,7 +549,7 @@ source "${SCRIPT_DIR}/vhr10_fi_overlay.sh"
 # scripts/smoke/verify_p2v2_arms.py so model-construction checks replay the
 # REAL arm env rather than a hand-copied one.
 if [ "${DEV_DUMP_ENV:-0}" = "1" ]; then
-  env | grep -E '^(NECK_TYPE|PROMPT_ROUTE|EXPLICIT_PROMPT_MODE|P2_BOUNDARY_REFINER_[A-Z_]+|DECODER_TAIL_[A-Z_]+|CANVAS_RENDERER_[A-Z_]+|DENSE_CAPACITY_[A-Z_]+|INIT_FROM|SAM_IMAGE_EMBED_STRIDE|SEGM_SCORE_MODE|VAL_SHARD_ACROSS_RANKS|RCNN_SAMPLER_NUM|MASK_LOSS_RAMP_[A-Z_]+|ROI_SAM_[A-Z_]+|COARSE_MASK_OUTPUT_SIZE|POINT_(WARMUP_[A-Z_]+|NO_POINT_EPOCHS|ONE_PAIR_EPOCHS|FULL_START_EPOCH)|SHAPE_[A-Z0-9_]+|PROMPT_ENCODER_[A-Z_]+|FINAL_MASK_[A-Z_]+|MAX_EPOCHS|BATCH_SIZE|GRAD_ACCUM_STEPS|NPROC_PER_NODE|VAL_EVERY_N_EPOCHS|EARLY_STOPPING_[A-Z_]+|SAVE_LAST_MODEL|RUN_TAG|CUDA_VISIBLE_DEVICES)=' | sort
+  env | grep -E '^(NECK_TYPE|PROMPT_ROUTE|EXPLICIT_PROMPT_MODE|P2_BOUNDARY_REFINER_[A-Z_]+|DECODER_TAIL_[A-Z_]+|DECOUPLED_AUX_GRAD_CLIP|CANVAS_RENDERER_[A-Z_]+|DENSE_CAPACITY_[A-Z_]+|INIT_FROM|SAM_IMAGE_EMBED_STRIDE|SEGM_SCORE_MODE|VAL_SHARD_ACROSS_RANKS|RCNN_SAMPLER_NUM|MASK_LOSS_RAMP_[A-Z_]+|ROI_SAM_[A-Z_]+|COARSE_MASK_OUTPUT_SIZE|POINT_(WARMUP_[A-Z_]+|NO_POINT_EPOCHS|ONE_PAIR_EPOCHS|FULL_START_EPOCH)|SHAPE_[A-Z0-9_]+|PROMPT_ENCODER_[A-Z_]+|FINAL_MASK_[A-Z_]+|MAX_EPOCHS|BATCH_SIZE|GRAD_ACCUM_STEPS|NPROC_PER_NODE|VAL_EVERY_N_EPOCHS|EARLY_STOPPING_[A-Z_]+|SAVE_LAST_MODEL|RUN_TAG|CUDA_VISIBLE_DEVICES)=' | sort
   exit 0
 fi
 

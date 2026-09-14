@@ -129,7 +129,8 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         # exactly A0-SG's; eval/inference still deploys the refined write.
         self._decoder_tail_train_base_logits = (
             self.decoder_tail_enabled
-            and self._decoder_tail_cfg.get("mode", "residual_v1") == "residual_v1_stop"
+            and self._decoder_tail_cfg.get("mode", "residual_v1")
+            in {"residual_v1_stop", "residual_v1_stop_margin"}
         )
         self.decoder_tail_refiner = None
         self._last_tail_outputs = None
@@ -1550,6 +1551,16 @@ Verbatim-extracted from forward; operation order unchanged.
             align_corners=False,
         )[:, 0]
         threshold = float(rcnn_test_cfg.mask_thr_binary)
+        if (self.decoder_tail_enabled and not getattr(self, "_tail_boundary_checked", False)
+                and self._decoder_tail_cfg.get("mode") == "residual_v1_stop_margin"):
+            expected = float(torch.log(torch.tensor(threshold / (1.0 - threshold))).item())
+            if abs(self.decoder_tail_refiner.boundary_logit - expected) > 1e-4:
+                raise RuntimeError(
+                    "stop-margin boundary_logit "
+                    f"{self.decoder_tail_refiner.boundary_logit:.6f} != deployed "
+                    f"binarisation logit {expected:.6f} (mask_thr_binary={threshold})"
+                )
+            self._tail_boundary_checked = True
         if threshold >= 0:
             return mask_probs >= threshold
         return (mask_probs * 255).to(torch.uint8)

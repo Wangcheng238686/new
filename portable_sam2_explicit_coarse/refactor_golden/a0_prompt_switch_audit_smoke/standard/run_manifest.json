@@ -1,0 +1,41 @@
+{
+  "checkpoint": "/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10_p2v2_matrix300_a0_pbm_d5b_tr1.0_va1.0/last_model_epoch300.pth",
+  "weights": "model",
+  "dataset": {
+    "data_root": "/data/wangcheng/dataset/NWPU VHR-10 dataset",
+    "ann_file": "coco_split/NWPU_instances_val.json",
+    "image_subdir": "positive image set",
+    "image_size": [
+      1024,
+      1024
+    ],
+    "batch_size": 2,
+    "single_class": false,
+    "num_classes": 10
+  },
+  "processed_images": 2,
+  "processed_image_ids": [
+    29,
+    376
+  ],
+  "ground_truth_instances": 16,
+  "predicted_instances": 16,
+  "frozen_weights": true,
+  "prompt_switch_mode": "standard",
+  "detector_sha256": "5d896423d694ccc52427bbf8560583eb944a89a0df7a1911469f015d36b725f2",
+  "output_sha256": "0cecbe32957a1b0b8d87e0123ca5d5f7cad14d32578772ebdf24807ebddb45b9",
+  "metrics": {
+    "segm/mAP": 0.5965841584158416,
+    "segm/mAP_50": 1.0,
+    "segm/mAP_75": 0.5,
+    "segm/mAP_s": -1.0,
+    "segm/mAP_m": 0.6007920792079208,
+    "segm/mAP_l": 0.7999999999999999,
+    "segm/AR@1": 0.14871794871794872,
+    "segm/AR@10": 0.5743589743589743,
+    "segm/AR@100": 0.6166666666666667,
+    "segm/AR_s": -1.0,
+    "segm/AR_m": 0.625,
+    "segm/AR_l": 0.8
+  }
+}

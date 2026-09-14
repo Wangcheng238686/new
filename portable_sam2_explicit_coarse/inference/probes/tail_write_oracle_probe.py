@@ -87,6 +87,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-batches", type=int, default=0, help="0 means full split")
     p.add_argument("--match-iou", type=float, default=0.5)
     p.add_argument("--margin", type=float, default=0.10)
+    p.add_argument("--num-points", type=int, default=0,
+                   help="override the tail selection budget K at frozen weights "
+                        "(0 = checkpoint value). Selection is a stable |z| rank, "
+                        "so smaller K is an exact prefix; larger K evaluates the "
+                        "trained MLP on points it never trained on (extrapolation, "
+                        "flagged in the payload).")
+    p.add_argument("--cells", nargs="+", default=None,
+                   help="subset of cells to run (default: all). Useful for K sweeps.")
     p.add_argument("--output-dir", required=True)
     return p.parse_args()
 
@@ -131,10 +139,14 @@ def main() -> int:
         raise RuntimeError(f"strict checkpoint load failed: {strict}")
     device = torch.device(a.device); model.to(device).eval()
     head = model.roi_head.mask_head
-    if not (head.decoder_tail_enabled and getattr(head, "_decoder_tail_train_base_logits", False)):
-        raise RuntimeError("probe is defined on a residual_v1_stop (a3sgt) checkpoint")
-    if str(head._decoder_tail_cfg.get("mode")) != "residual_v1_stop":
-        raise RuntimeError(f"unexpected tail mode {head._decoder_tail_cfg.get('mode')!r}")
+    _tail_mode = str(head._decoder_tail_cfg.get("mode", "residual_v1_stop"))
+    if not (head.decoder_tail_enabled
+            and getattr(head, "_decoder_tail_train_base_logits", False)
+            and _tail_mode in {"residual_v1_stop", "residual_v1_stop_margin"}):
+        raise RuntimeError(
+            f"probe requires a tailstop-family checkpoint "
+            f"(residual_v1_stop[_margin]); got mode={_tail_mode!r}"
+        )
     out = Path(a.output_dir).expanduser().resolve()
     if out.exists():
         raise RuntimeError(f"refusing to overwrite existing output directory: {out}")
@@ -145,6 +157,11 @@ def main() -> int:
     original_predict = model.roi_head.predict_mask
     original_tail = head.decoder_tail_refiner.forward
     cap = float(head.decoder_tail_refiner.delta_logit_max)
+    trained_k = int(head.decoder_tail_refiner.num_points)
+    if a.num_points:
+        if a.num_points < 1:
+            raise SystemExit("--num-points must be >= 1")
+        head.decoder_tail_refiner.num_points = int(a.num_points)
     rcnn_test_cfg = getattr(model.roi_head, "test_cfg", None) or {}
     thr = float(rcnn_test_cfg.get("mask_thr_binary", 0.5))
     if not 0.0 < thr < 1.0:
@@ -264,6 +281,9 @@ def main() -> int:
         payload = {"checkpoint": str(ckpt_path), "weights": a.weights, "dataset": dict(contract),
                    "mode": "standard" if unhooked else mode, "frozen_weights": True,
                    "margin": a.margin, "match_iou": a.match_iou, "delta_logit_max": cap,
+                   "num_points": int(head.decoder_tail_refiner.num_points),
+                   "trained_num_points": trained_k,
+                   "selection_is_extrapolation": bool(a.num_points and a.num_points > trained_k),
                    "mask_thr_binary": thr, "boundary_logit": boundary,
                    "processed_images": len(images),
                    "processed_image_ids": sorted(x["image_id"] for x in images),
@@ -280,9 +300,12 @@ def main() -> int:
                 "mechanism": payload["mechanism"], "images": len(images)}
 
     standard = run_pass("p0", unhooked=True)
-    cells = {"p0": run_pass("p0"), "no_write": run_pass("no_write"),
-             "gt_auth": run_pass("gt_auth"), "inv_auth": run_pass("inv_auth"),
-             "gt_cap": run_pass("gt_cap"), "gt_cap_thr": run_pass("gt_cap_thr")}
+    all_cells = ["p0", "no_write", "gt_auth", "inv_auth", "gt_cap", "gt_cap_thr"]
+    selected = [c for c in (a.cells or all_cells) if c != "standard"]
+    unknown = set(a.cells or []) - set(all_cells)
+    if unknown:
+        raise SystemExit(f"unknown cells {sorted(unknown)}")
+    cells = {name: run_pass(name) for name in selected}
     if cells["p0"]["output_sha256"] != standard["output_sha256"]:
         raise RuntimeError("passive P0 hook is not bitwise identical to unhooked standard")
     for name, cell in cells.items():

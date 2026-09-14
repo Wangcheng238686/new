@@ -1,0 +1,89 @@
+{
+  "checkpoint": "/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10_p2v2_matrix300_a0_pbm_d5b_tr1.0_va1.0/last_model_epoch300.pth",
+  "weights": "model",
+  "standard_inference": {
+    "mode": "standard",
+    "unhooked": true,
+    "batches": 65,
+    "images": 130,
+    "metrics": {
+      "segm/mAP": 0.6330742602020943,
+      "segm/mAP_50": 0.9311927439122836,
+      "segm/mAP_75": 0.667059852165323,
+      "segm/AR@100": 0.6752664147094829
+    },
+    "detector_sha256": "9ff86618e0f22f870b3ad2b6c4506252f1a71e8c51076f3972696f71207462f4",
+    "output_sha256": "b32c85a6f74e284c810c92f99f348408368a277f85f787cfa57aec03d160816c",
+    "artifact_dir": "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/refactor_golden/a0_prompt_switch_audit_last_v2/standard",
+    "canonical_records_exact": true,
+    "canonical_dir": "/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10_p2v2_matrix300_a0_pbm_d5b_tr1.0_va1.0/inference_a0_pbm_d5b_last_model_epoch300_vhr10"
+  },
+  "cells": {
+    "baseline": {
+      "mode": "baseline",
+      "unhooked": false,
+      "batches": 65,
+      "images": 130,
+      "metrics": {
+        "segm/mAP": 0.6330742602020943,
+        "segm/mAP_50": 0.9311927439122836,
+        "segm/mAP_75": 0.667059852165323,
+        "segm/AR@100": 0.6752664147094829
+      },
+      "detector_sha256": "9ff86618e0f22f870b3ad2b6c4506252f1a71e8c51076f3972696f71207462f4",
+      "output_sha256": "b32c85a6f74e284c810c92f99f348408368a277f85f787cfa57aec03d160816c",
+      "artifact_dir": "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/refactor_golden/a0_prompt_switch_audit_last_v2/baseline"
+    },
+    "drop_box": {
+      "mode": "drop_box",
+      "unhooked": false,
+      "batches": 65,
+      "images": 130,
+      "metrics": {
+        "segm/mAP": 0.6213649611051085,
+        "segm/mAP_50": 0.9317893362081119,
+        "segm/mAP_75": 0.6297912293425175,
+        "segm/AR@100": 0.6633422929317089
+      },
+      "detector_sha256": "9ff86618e0f22f870b3ad2b6c4506252f1a71e8c51076f3972696f71207462f4",
+      "output_sha256": "c86bc91425e9cd8db8f69151cc80f920aad9bfa599ff04c73d24e834355ad98c",
+      "artifact_dir": "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/refactor_golden/a0_prompt_switch_audit_last_v2/drop_box"
+    },
+    "drop_dense": {
+      "mode": "drop_dense",
+      "unhooked": false,
+      "batches": 65,
+      "images": 130,
+      "metrics": {
+        "segm/mAP": 0.6155965353799594,
+        "segm/mAP_50": 0.9247565798076476,
+        "segm/mAP_75": 0.6268435113152993,
+        "segm/AR@100": 0.6589125095164854
+      },
+      "detector_sha256": "9ff86618e0f22f870b3ad2b6c4506252f1a71e8c51076f3972696f71207462f4",
+      "output_sha256": "297fe34beb311e42cf4277392fddbc6e454c90a354e177850d51eafd4b677cb1",
+      "artifact_dir": "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/refactor_golden/a0_prompt_switch_audit_last_v2/drop_dense"
+    },
+    "drop_both": {
+      "mode": "drop_both",
+      "unhooked": false,
+      "batches": 65,
+      "images": 130,
+      "metrics": {
+        "segm/mAP": 0.5720219774602463,
+        "segm/mAP_50": 0.9006387446509747,
+        "segm/mAP_75": 0.5899801029585771,
+        "segm/AR@100": 0.6218026844220934
+      },
+      "detector_sha256": "9ff86618e0f22f870b3ad2b6c4506252f1a71e8c51076f3972696f71207462f4",
+      "output_sha256": "998abd1058cf0a2b711002433dba688ebb45e5eee6e7f6ff2ef5edb982de8856",
+      "artifact_dir": "/home/wangcheng2021/project/new/portable_sam2_explicit_coarse/refactor_golden/a0_prompt_switch_audit_last_v2/drop_both"
+    }
+  },
+  "delta_vs_baseline": {
+    "drop_box": -0.011709299096985815,
+    "drop_dense": -0.017477724822134943,
+    "drop_both": -0.06105228274184804
+  },
+  "note": "frozen-weight prompt-switch: only PromptEncoder box/mask inputs are switched; detector_sha256 must remain invariant. It characterises this weight's prompt dependence, NOT a training ablation. When --output-dir is supplied, artifacts are COCO xywh records consumable by tools/bootstrap_paired_map.py."
+}

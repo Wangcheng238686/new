@@ -575,6 +575,39 @@ def _get_model_core(model: torch.nn.Module) -> torch.nn.Module:
     return model.module if hasattr(model, "module") else model
 
 
+# Zero-init residual auxiliary heads whose gradients were side-loaded into
+# the single global grad-norm clip.  Audit 2026-09-14: with the legacy clip
+# these heads usurp the base's budget (tail EMA clipped-grad L2 0.158 of the
+# 0.5 norm at E220 while a0_sg saturates it base-only at 0.458), imposing a
+# one-directional, time-varying downscale of base gradients from step 1 --
+# the mechanism behind the persistent bbox deficits of every auxiliary-head
+# arm (a3sg/a3sgt/a3sgtm/densecapres256) while the coupling-free tail-only
+# heat-start passes both gates.  P2/renderer lineages keep the legacy clip.
+_AUX_CLIP_MODULE_PREFIXES = (
+    "roi_head.mask_head.decoder_tail_refiner.",
+    "roi_head.mask_head.dense_capacity_head.",
+)
+
+
+def _partition_aux_clip_params(model: torch.nn.Module):
+    """Split parameters into (base, aux_groups) for decoupled grad clipping.
+
+    aux_groups has one entry per aux module actually present.  Params whose
+    grad is None (e.g. the frozen base in tail-only mode) are skipped by
+    clip_grad_norm_ itself, matching legacy semantics of clipping
+    ``model.parameters()`` over whichever params carry grads.
+    """
+    named = list(_get_model_core(model).named_parameters())
+    groups = [
+        [param for name, param in named if name.startswith(prefix)]
+        for prefix in _AUX_CLIP_MODULE_PREFIXES
+    ]
+    groups = [group for group in groups if group]
+    aux_ids = {id(param) for group in groups for param in group}
+    base = [param for _, param in named if id(param) not in aux_ids]
+    return base, groups
+
+
 def _assert_no_mask_embedding_contract(
     model: torch.nn.Module, context: str
 ) -> None:
@@ -1933,6 +1966,10 @@ def main():
     parser.add_argument("--p2-boundary-refiner-lr-mult", type=float, default=1.0)
     parser.add_argument("--quality-head-lr-mult", type=float, default=1.0)
     parser.add_argument("--decoder-tail-lr-mult", type=float, default=1.0)
+    parser.add_argument("--decoupled-aux-clip", action="store_true",
+                        help="clip base params and each aux head separately at "
+                             "max_norm 0.5 instead of one global clip; keeps the "
+                             "base's clip semantics bit-identical to aux-free arms")
     parser.add_argument("--train-decoder-tail-only", action="store_true",
                         help="Freeze the A0 base and optimize only UDPR decoder_tail_refiner.")
     parser.add_argument("--train-dense-capacity-only", action="store_true",
@@ -3197,6 +3234,16 @@ def main():
     # Validation order is deterministic within a run. Cache compact GT RLE
     # records after the first validation instead of rebuilding them every epoch.
     cached_val_gt_records: Optional[List[dict]] = None
+    decoupled_clip_partition = None
+    if args.decoupled_aux_clip:
+        decoupled_clip_partition = _partition_aux_clip_params(model)
+        if is_main:
+            logger.info(
+                "Clip decomposition ON: base %d tensors at max_norm 0.5 + aux groups %s",
+                len(decoupled_clip_partition[0]),
+                [len(group) for group in decoupled_clip_partition[1]],
+            )
+
     for epoch in range(start_epoch, args.epochs):
         epoch_number = epoch + 1
         _set_model_current_epoch(model, epoch_number)
@@ -3457,7 +3504,13 @@ def main():
             # Step optimizer every grad_accum batches or at the last batch
             if (batch_idx + 1) % grad_accum == 0 or (batch_idx + 1) == train_batches_limit:
                 scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
+                if decoupled_clip_partition is not None:
+                    base_clip_params, aux_clip_groups = decoupled_clip_partition
+                    torch.nn.utils.clip_grad_norm_(base_clip_params, 0.5)
+                    for aux_clip_group in aux_clip_groups:
+                        torch.nn.utils.clip_grad_norm_(aux_clip_group, 0.5)
+                else:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
                 scaler.step(optimizer)
                 scaler.update()
                 ema_update_steps += 1

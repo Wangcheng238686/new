@@ -246,10 +246,27 @@ if _decoder_tail_enabled:
         # decoder output (routed in sam2_mask_head).  Materializing `mode`
         # only here keeps legacy arms' configs (and fingerprints) unchanged.
         _decoder_tail_cfg.update(mode=_decoder_tail_mode)
+    elif _decoder_tail_mode == "residual_v1_stop_margin":
+        # tailstop container + threshold-anchored one-sided margin point
+        # loss (oracle gt_cap_thr evidence: +0.0267 CI[+0.0206,+0.0323]).
+        # The boundary MUST be the deployed binarisation logit
+        # log(mask_thr_binary/(1-mask_thr_binary)) = -0.4055 for thr=0.4
+        # (configs/rsprompter_anchor_satS_v11_sam2_large_full.py test_cfg);
+        # sam2_mask_head cross-validates it against rcnn_test_cfg at runtime.
+        if "DECODER_TAIL_BOUNDARY_LOGIT" not in os.environ:
+            raise ValueError("residual_v1_stop_margin requires DECODER_TAIL_BOUNDARY_LOGIT")
+        _boundary = float(os.environ["DECODER_TAIL_BOUNDARY_LOGIT"])
+        _margin = float(os.environ.get("DECODER_TAIL_CROSSING_MARGIN", "0.10"))
+        if not -8.0 < _boundary < 8.0 or _margin < 0:
+            raise ValueError("UDPR stop-margin boundary/margin out of range")
+        _decoder_tail_cfg.update(
+            mode=_decoder_tail_mode, crossing_margin=_margin, boundary_logit=_boundary
+        )
     elif _decoder_tail_mode != "residual_v1":
         raise ValueError(
             "DECODER_TAIL_MODE must be residual_v1, residual_v1_stop, "
-            "confidence_gated, or confidence_gated_margin, got "
+            "residual_v1_stop_margin, confidence_gated, or "
+            "confidence_gated_margin, got "
             f"{_decoder_tail_mode!r}"
         )
 
