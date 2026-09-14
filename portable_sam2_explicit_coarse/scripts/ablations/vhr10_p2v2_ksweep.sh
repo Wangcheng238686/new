@@ -39,13 +39,14 @@ if [ ! -f "${INIT_FROM}" ]; then
   exit 1
 fi
 export A3M_INIT_FROM="${INIT_FROM}"
+export A3M_INIT_LABEL="${A3M_INIT_LABEL:-a0_e300init}"
 export P2V2_PROTOCOL=ksweep40
 
 for K in "$@"; do
   case "${K}" in
     ''|*[!0-9]*) echo "ERROR: K must be a positive integer, got '${K}'" >&2; exit 2 ;;
   esac
-  TAG="vhr10_p2v2_ksweep40_a3m_pbm_udprk${K}tsm_a0_e300init_tr1.0_va1.0"
+  TAG="vhr10_p2v2_ksweep40_a3m_pbm_udprk${K}tsm_${A3M_INIT_LABEL}_tr1.0_va1.0"
   if [ -n "$(ls -A "${PORTABLE_SAM2_CHECKPOINT_ROOT:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse}/ablations/${TAG}" 2>/dev/null)" ]; then
     echo "=== K=${K}: checkpoint dir already non-empty, SKIPPING (delete to redo) ==="
     continue
@@ -58,7 +59,7 @@ for K in "$@"; do
   echo "===== a3m K=${K}: eval $(date) ====="
   for kind in best last; do
     ( cd "${REPO_ROOT}" && P2V2_EVAL_PROTOCOL=ksweep40 \
-        A3M_SUFFIX="a3m_pbm_udprk${K}tsm_a0_e300init" \
+        A3M_SUFFIX="a3m_pbm_udprk${K}tsm_${A3M_INIT_LABEL}" \
         bash scripts/ablations/vhr10_p2v2_eval.sh a3m "${kind}" ) \
       || echo "K=${K} eval ${kind} FAILED (non-fatal)"
   done
@@ -70,9 +71,10 @@ import glob, json, os
 root = os.environ.get("PORTABLE_SAM2_CHECKPOINT_ROOT",
                       "/data/wangcheng/checkpoint/portable_sam2_explicit_coarse")
 rows = []
-for d in sorted(glob.glob(f"{root}/ablations/vhr10_p2v2_ksweep40_a3m_pbm_udprk*tsm_a0_e300init_tr1.0_va1.0")):
+for d in sorted(glob.glob(f"{root}/ablations/vhr10_p2v2_ksweep40_a3m_pbm_udprk*tsm_*_tr1.0_va1.0")):
     k = d.split("udprk")[1].split("tsm")[0]
-    entry = {"K": int(k)}
+    label = d.split("tsm_")[1].split("_tr1.0")[0]
+    entry = {"K": int(k), "base": label}
     for kind in ("best", "last"):
         mfile = f"{d}/inference_{kind}_vhr10/metrics.json"
         if os.path.exists(mfile):
@@ -81,10 +83,10 @@ for d in sorted(glob.glob(f"{root}/ablations/vhr10_p2v2_ksweep40_a3m_pbm_udprk*t
     if entry.get("best") or entry.get("last"):
         rows.append(entry)
 rows.sort(key=lambda r: r["K"])
-print(f"{'K':>4} | {'best segm/bbox':>17} | {'last segm/bbox':>17}")
+print(f"{'base':>14} {'K':>4} | {'best segm/bbox':>17} | {'last segm/bbox':>17}")
 for r in rows:
     b = "%+.4f/%+.4f" % r["best"][:2] if r.get("best") else "(pending)"
     l = "%+.4f/%+.4f" % r["last"][:2] if r.get("last") else "(pending)"
-    print(f"{r['K']:>4} | {b:>17} | {l:>17}")
+    print(f"{r['base']:>14} {r['K']:>4} | {b:>17} | {l:>17}")
 print("NOTE: within-machine deltas only (K vs K); cross-machine offsets apply.")
 PY

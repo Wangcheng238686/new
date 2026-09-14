@@ -395,7 +395,7 @@ case "${ARM}" in
     if [ "${A3M_HEATSTART:-0}" = "1" ]; then
       export DECODER_TAIL_TRAIN_ONLY=1
       export INIT_FROM="${A3M_INIT_FROM:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10_p2v2_matrix300_a0_pbm_d5b_tr1.0_va1.0/last_model_epoch300.pth}"
-      export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3m_pbm_udprk${DECODER_TAIL_NUM_POINTS}tsm_a0_e300init}"
+      export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3m_pbm_udprk${DECODER_TAIL_NUM_POINTS}tsm_${A3M_INIT_LABEL:-a0_e300init}}"
     else
       export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3m_pbm_udprk${DECODER_TAIL_NUM_POINTS}tsm}"
     fi
