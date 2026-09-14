@@ -67,8 +67,9 @@ error/correct 两类点分别归一化后等权的 `BCEWithLogits(g,e)`（`q=sig
 - A3/v1 的 `decoder_tail_refiner_cfg` **不写** `mode` 及任何 gate 字段，仍使用原始
   `_udprk64` ID；不得以 A4 代码重写其 checkpoint/配置语义。
 - `vhr10_p2v2_dev.sh`、`vhr10_p2v2_full600.sh`、`vhr10_p2v2_matrix300.sh` 均通过同一
-  arm 定义接线。A4 不自动插入当前的 matrix300 串行队列，避免改变正在运行的
-  P→PB→A0→A3-v1 比较。
+  arm 定义接线。attached 谱系的 `a4` 不自动插入当前的 matrix300 串行队列，避免改变
+  P→PB→A0→A3-v1 比较；`a4sg` 则是 source-gradient-isolated 谱系的显式 DCR 对照，
+  严格用于 `a3sg→a4sg`，不与 `a4` 交叉归因。
 
 ## 观测、判定与停止条件
 
@@ -84,7 +85,59 @@ error/correct 两类点分别归一化后等权的 `BCEWithLogits(g,e)`（`q=sig
 不改善，则停止扩展该模块；若机制成立但 A4 仍未优于 A0/A3，则只能把它记录为阴性
 消融，不能作为论文主贡献。
 
+## 冻结输入可读性审计（2026-09-13）
+
+> 坐标更正：早期 E101 probe 曾错误用 ROI-crop GT 对齐 full-image native logits，全部旧
+> input/action 数值作废；下列仅采信 contract-fixed v4。
+
+以 A4SG E101 `last_checkpoint.pth` 严格加载、冻结前向完成 train-520 拟合与 held-out
+val-130 盲评。I0 为生产 tail 的精确点输入
+`[upscaled32, mask_token256, z, x, y, |z|]`；I1 仅加 detached 对齐 3×3 native-logit
+patch；sham 将同一 I1 readout 的 patch 在各 RoI 内半网格置换。GT 仅在 forward 后标记
+matched positive proposal 的 pre-tail hard-label error，未进入模型输入或选择。
+
+| 读出器 | held-out error AUC |
+|---|---:|
+| I0 | 0.63359 |
+| I1 | 0.63486 |
+| I1 + spatial sham | 0.63032 |
+
+500 次图像级 paired bootstrap 的 `I1-I0` 为 `[+0.00021,+0.00228]`，仍未达到预注册的
+下界 `>+0.01`，且 `I1-sham=[-0.00028,+0.00864]` 跨零。故裁决为 **FAIL**：不得以当前的
+detached 3×3 native-logit patch 作为 A5 输入扩展，也不得将其作为 raw residual 不稳定的
+归因或修复。该阴性结果不评估 DCR 的最终 mAP 效用，也不否定更大邻域/box-relative geometry
+等尚未经过独立信息门的来源。
+
 ## 当前状态
 
-本文档定义的是待运行的 A4，不包含任何精度收益声明。正在运行的 matrix300 A3 是
-UDPR-v1，对其参数、架构 ID 和行为零改动。
+本文档不包含任何精度收益声明。A4SG 是 source-gradient-isolated DCR 对照；其训练和既有
+checkpoint 语义未被本冻结审计改动。
+
+## contract-fixed v4 行动分解裁决
+
+在相同冻结 forward 的 130 val 图像中，selected error coverage 为 35.35%。对 selected
+pre-tail error，current `q*d` 的 crossing 为 0.278%；只纠正符号为 0.407%，只移除 gate
+而保留 raw 符号为 0.373%，二者同时为 0.603%，但 `delta_logit_max=2` 内的 GT 可达性为
+89.04%。`cap-both` 的 500 次图像级 CI 为 `[85.30%,91.23%]`。这说明候选与 cap 有大量
+可达空间，首要失败是 residual BCE 未学习跨零幅度；oracle 仅是机制上限，不构成 mAP 声明。
+
+下一步唯一允许的 A5SG 变量是：以 detached pre-tail `z0` 的 signed crossing-margin loss
+替换 residual BCE，并以 correct-side margin keep 替换全 correct `L1` keep；K64、输入、gate、
+shared trunk、cap、A0-SG dense/box 与训练协议均保持不变。若该臂仍失败，再单独审计共享 trunk
+梯度冲突；本轮不得加入 3×3、box geometry、trunk split 或增大 cap。
+
+## A5SG 实施冻结（2026-09-13）
+
+`a5sg` 是 A0-SG 上的 DCR-CM（decision-crossing margin）正式 matrix300 臂，tag 为
+`_a5sg_pbm_sg_udprcgm64`，architecture ID 后缀为 `_udprcgm64`。它保留 A4SG 的 K64、
+hidden128、`delta_logit_max=2.0`、q 初始化 0.1、gate BCE 权重 1.0、keep 权重 0.05、
+全网络训练和所有 PBM/A0-SG 协议；唯一模型配置差异为
+`mode=confidence_gated_margin,crossing_margin=0.10`。
+
+对 selected error，A5 优化
+`relu(0.10 - y * (stopgrad(z0) + q*delta))`；对 selected correct，使用相同的 correct-side
+shortfall 作为 keep。前者替换 A4 的 refined-point BCE，后者替换 A4 的 `abs(q*delta)` keep，
+故不是增加第四个 residual loss。为保证此 auxiliary 的归因，A5 的 tail feature、mask token 和
+pre-tail logit state 对该辅助均 detach；普通 full-mask loss 仍沿原有模型路径联合训练 A0-SG
+及 tail。`selected_bce` 在 A5 仅记录，不反传。新增 `TAIL/crossing_*` 与
+`TAIL/correct_margin_*` 遥测见 `DEBUG_FIELDS.md`。

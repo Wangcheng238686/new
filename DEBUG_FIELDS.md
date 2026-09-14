@@ -16,6 +16,7 @@
 | `DDP parameter-sync audit after first nonzero-LR update` | 仅 DDP 训练；首次计划学习率非零的 optimizer update 后，逐 trainable tensor 比较各 rank 参数与跨-rank 均值的最大绝对偏差 | 训练接线自检。正常应为 `0` 或仅有极小浮点误差；明显非零时，该次多卡实验不可用于比较。 |
 | `TAIL/*` | UDPR 启用时的 latest-forward/selected-point loss 字段；前者由 `PROMPT_DEBUG_STATS_INTERVAL` 输出，后者也进入 epoch detailed losses | 仅说明 tail 的选点和残差/监督实际发生；不能替代 paired validation 效用。 |
 | `R3/*` / `r3_canvas_*` | R3 启用时的 latest-forward canvas 快照与 positive-RoI auxiliary loss；前者是 rank-0 latest-forward，后者是 trainer detailed losses | 接线和内容质量诊断；不代表 unmatched proposal 安全性或验证集收益。 |
+| `DENSECAP/*` / `loss_dense_capacity` | Dense-only residual adapter 启用时的 latest-forward residual 快照、跨 DDP epoch 均值，以及既有 coarse BCE+Dice 的 adapter loss | 仅验证 residual 实际写入及辅助监督接线；不能替代 points-hash、support-canvas IoU 或 paired mAP 验收。 |
 
 `loss_mask` 指最终 SAM2 MaskDecoder 的 mask loss；它不包含 `loss_shape_prior` 或
 `loss_p2_boundary_refiner`。因此 pathway 的 gradient 字段可区分最终任务训练与辅助 loss 训练。
@@ -30,6 +31,8 @@
 | `DENSE/source_delta_ratio` / `applied_delta_ratio` | 对应 norm 除以 `||base_dense||₂` | `applied_delta_ratio>0` 才证明 dense 注入非空；过大不等于更好。 |
 | `dense_final_mask_grad_group_l2_rms` | 每 rank 首个有限训练 batch 上，`loss_mask` 对 ShapePriorInjector + trainable dense gate 的参数组 L2 范数；跨 rank 后取 RMS。probe 使用未 scale、未 accumulation-divide 的 local `loss_mask` | D1/A0 dense 行的代理。**当前不含 R3 CanvasRenderer 参数**：R3 行的该字段低或仅 gate 非零，不能据此推断 renderer 没有 final-mask 梯度；须配合 R3 独立审计或后续 renderer telemetry。 |
 | `dense_final_mask_grad_nonzero_param_ratio` | 获得有限、非零 `loss_mask` 梯度的参数 tensor 数 / probe 参数 tensor 数 | 诊断是否只激活局部参数；不是元素级比例。 |
+| `DENSECAP/roi_count` / `delta_abs_mean` / `delta_nonzero_ratio` | 以 `PROMPT_DEBUG_STATS_INTERVAL` 输出 rank-0 latest-forward；并在每 epoch 输出全部 DDP rank、所有有效 forward 的算术均值。分别为 adapter canvas RoI 数、`mean(abs(H_delta))` 与非零 residual 像素比例 | step 0 三者应为 `N/0/0`；非零只表示 adapter 写入 dense logits，不表示 mAP 增益。阶段一还必须独立检查 point source 恒等与冻结 buffer 不漂移。 |
+| `Epoch N DenseCap gradient pathways` | adapter 启用时，每 rank 首个有限 batch 分别对 `loss_mask`（`final_mask_*`）和 `loss_dense_capacity`（`aux_*`）作 `autograd.grad`，再跨 DDP 对各参数组 L2² 汇总取 RMS；`update_l2_rms` 是对应组的完整 epoch 参数净变化、再跨 rank 取 RMS。`trunk` 为末层卷积之前全部 H_delta 参数，`output` 为零初始化末层卷积的 weight/bias。 | **仅为分层梯度归因，绝不加入训练 loss。** 若 `output final_mask` 非零但 `trunk final_mask` 为零，说明 final-mask 梯度仍被零输出层阻断；只有 `trunk aux` 非零亦只证明 coarse auxiliary 正在打开该路径，不能替代 mAP。`params` 与 `active` 均为 tensor 数口径，不是元素比例。 |
 | `dense_parameter_update_group_l2_rms` | 各 rank 的 epoch 前后同一组参数总 L2 差，再跨 rank 取 RMS | 包含 optimizer 的全部更新效应（含 weight decay）；须与 final-mask gradient 联合解读。 |
 | `pe_mask_downscaling_*`（同构三件套） | PromptEncoder mask 下采样卷积栈（`PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING=1` 时 10 张量/4,684 参数；否则该分支为空、字段恒 0）的 final-mask 梯度 group-L2 RMS / 非零比例 / epoch 前后更新 group-L2 RMS；与 `dense`/`p2br` 分支同构同分母 | D5-B 的 PE 适配独立验收：`update_group_l2_rms>0` 且 `final_mask_grad` 非零才证明读取端真的在学习；**不得**用 dense 组的活动冒充（两组参数不相交）。optimizer 组审计行（`Optimizer group prompt_encoder`）给出入组参数数与实际 LR（应为 基础 LR×`PROMPT_ENCODER_LR_MULT`）。 |
 
@@ -88,14 +91,25 @@
 | `TAIL/gate_bce` | 对 error/correct 两类分别按**跨 DDP 全局计数**归一化、再等权平均的 `BCEWithLogits(g,e)`，其中 `q=sigmoid(g)` | 衡量纠错授权监督是否可学习；以 logits-space BCE 保证 AMP 安全，不等同于完整训练总 loss。 |
 | `TAIL/applied_delta_abs` | selected 点 `mean(abs(q*delta))` | A4 的实际写回幅度；等价于 A4 的 `TAIL/delta_abs`，保留前者以明确与 raw residual 的区别。 |
 | `TAIL/applied_delta_error_abs` / `TAIL/applied_delta_correct_abs` | 分别在写回前错误/正确的 selected 点上取 `mean(abs(q*delta))` | 后者应低于前者，才支持 DCR 在抑制正确低置信像素的无谓改写。 |
+| `TAIL/raw_delta_abs` | selected 点的 `mean(abs(delta_raw))`；`delta_raw=delta_logit_max*tanh(delta_head)`，即 gate 乘法之前的残差 | 与 `applied_delta_abs` 共同定位幅度瓶颈：raw 已小表示 delta head 未形成修正；raw 大而 applied 小表示 gate 抑制写入。A3/v1 不产生该字段。 |
+| `TAIL/raw_delta_error_abs` / `TAIL/raw_delta_correct_abs` | 分别在写回前错误/正确的 selected 点上取 `mean(abs(delta_raw))` | 与对应 applied 三件套使用同一跨 DDP 全局分母；用于判断 gate 是否只在正确点抑制原始残差，而不是以 raw head 的类别差异冒充 DCR 授权。 |
 | `TAIL/keep_loss` | correct selected 点的跨 DDP 全局 `mean(abs(q*delta))` | A4 total loss 中、尚未乘 `KEEP_LOSS_WEIGHT` 的 keep 项；读它时同时检查权重固定为 `0.05`。 |
 | `TAIL/net_flip_fraction` | `correct_flip_fraction - destroy_fraction` | 写回跨阈值后的净局部收益；不能替代 validation mAP。 |
 | `TAIL/gate_open_fraction_q50` | selected 点中 `q >= 0.5` 的比例 | 仅作分布辅助观察；DCR 没有硬阈值或二元 open/close 路径。 |
+| `TAIL/crossing_margin` | A5SG 固定的 logits-space signed margin（本配方 `0.10`） | 配方常数；不是扫描维度。margin loss 的 pre-tail `z0` 和 tail 输入均 detach，因此该 auxiliary 不向 A0-SG/SAM2 基座反传。 |
+| `TAIL/crossing_error_loss` / `TAIL/crossing_error_violation` | selected pre-tail error 上 `mean(relu(m-y*(stopgrad(z0)+q*delta)))`，及该 shortfall 大于零的比例；均跨 DDP error 计数归一 | A5 的纠错主目标及未完成跨界+margin 的错误占比。下降或 violation 降低才表明 residual 在兑现 crossing 目标；不等于 mAP。 |
+| `TAIL/correct_margin_keep_loss` / `TAIL/correct_margin_violation` | selected pre-tail correct 上同一 signed-margin shortfall 的 DDP 均值/违反率 | A5 对 A4 `mean(abs(q*delta))` keep 的替换：只在正确点离开正确侧或小于 margin 时惩罚，不把安全修正压回零。 |
 
-`TAIL/selected_bce`、A4 的 `gate_bce`/`keep_loss` 与所有 A4 decision telemetry 的单 batch
+`TAIL/selected_bce` 在 A5 仅作为 detached 可比监测值、**不进入 A5 loss**；A4 的 `gate_bce`/`keep_loss` 与所有 A4/A5 decision telemetry 的单 batch
 值按上表跨 DDP 聚合；`delta_max` 是 rank-local latest-forward 辅助值。其 epoch `detailed
 losses` 仍是 rank-0 的时间均值，而非严格的全局 epoch 加权均值。所有这些字段仅用于
 接线/机制诊断，不能代替完整 validation paired bootstrap。
+
+A3SGT（`residual_v1_stop`）沿用上表全部 v1 字段与聚合口径，无新增字段；模式差异只在
+梯度管线：tail 输入与返回网格全部 detach，训练期 full-mask loss 由 mask head 路由到
+未细化 logits（eval/推理仍输出 z′）。因此 a3sgt 日志里 `TAIL/*` 的解读方式与 a3/a3sg
+完全一致；其 `loss_mask` 轨迹应与 a0_sg 同构（基座目标一致），这是该臂的机制 sanity
+之一。
 
 ## 6. 共同字段与 D1/D2 判读
 
@@ -121,3 +135,14 @@ D2 通过前至少应同时观察到：P2 support/delta 非零、`p2br_final_mas
 2026-09 起合并为单轨：训练侧强版（自定义 maxDets 主 AP 重算 + rles 快速通路）上收至
 portable_sam2_explicit_coarse/utils/coco_eval_utils.py，trainer、checkpoint 推理与探针共用。
 checkpoint 推理/探针只走默认 maxDets 路径，行为与其历史输出一致；自定义 maxDets 行为仅训练侧调用。
+
+## 冻结 selective-write probe 输出
+
+`tail_input_readability_probe.py --attach-zero-tail` 的 `write_selectivity` 不是训练遥测：在
+预测恒等的 A0SG 前向后才用 GT 构造 selected-point error。`score` 是 train-only 线性读出器，
+`uncertainty` 为同一 K 内最小 `|z|`，`random` 为确定性逐图对照；`error_coverage` 的分母是
+K 候选池 error。它们不进入 forward、loss、optimizer 或 checkpoint。
+
+`tail_gradient_alignment_probe.py` 的 `energy_weighted_cosine` 为固定若干训练 batch 上，
+`loss_mask` 与 `loss_decoder_tail` 对 **decoder-tail 参数**梯度的总内积除以总 L2 能量积；负值才
+证明两者在该参数组净相消。该值是只读诊断，不是训练日志字段，也不能据此证明 tail 有可用错误定位信息。

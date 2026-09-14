@@ -125,6 +125,18 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
   所有 DDP rank 的有效 `alpha`、注入前/后的 delta norm 及相对 base norm 的 ratio。
   `alpha` 非零只表示门已打开，`applied_delta_ratio` 非零才表示 coarse dense prompt
   实际改变了送入 MaskDecoder 的 dense embedding；
+- `dense_capacity_cfg.enabled=True` 是 dense-only residual adapter：原
+  ShapePrior logits 仍是 2P2N 的唯一 source；adapter 仅以 `stopgrad(raw_logits) +
+  H_delta(stopgrad(roi_feature))` 生成 dense canvas 的 logits。其末端为零初始化，启用时
+  step-0 前向恒等；`DENSE_CAPACITY_TRAIN_ONLY=1` 令整套 A0 eval/frozen、仅 adapter train，
+ 以阻止 BatchNorm buffer 或梯度改变 point source。冻结 heat-start `densecap64` 不属于
+  默认 matrix300；正式矩阵须成对显式指定 `a0_sg a0_sg_densecap64`，二者同设
+  `SHAPE_DENSE_DETACH=1`，仅后者新增 H_delta；
+- DenseCap 训练的 `Epoch N DenseCap gradient pathways` 是纯观测：将 H_delta 拆为
+  `trunk` 与零初始化末层 `output`，分别记录最终 `loss_mask` 和既有 coarse
+  `loss_dense_capacity` 的首个有限 batch 梯度及完整 epoch 更新量；它不改变 loss、
+  optimizer、模型 contract 或已启动矩阵臂。该字段专门排查输出 bias 单独活跃、而
+  trunk 尚未由零输出层打开的情况；定义见 `DEBUG_FIELDS.md`；
 - C4 默认使用可学习 `global_sigmoid` 系数；C4-densefix 使用固定 `alpha=0.5`。
   densefix-unfreeze 在此基础上将
   `prompt_encoder_cfg.train_mask_downscaling=True` 写入 `cfg.model`，仅解冻
@@ -184,6 +196,8 @@ final-mask 坐标契约，M0→C1、M1→C2 才是在相同 full-image 契约下
 | `DEBUG_FIELDS.md` | 训练机制日志字段字典；定义 latest-forward、DDP epoch 统计和 pathway gradient/update probe 的分母与判读。 |
 | `portable_sam2_explicit_coarse/docs/whu_fi_dev_results_20260906.md` | WHU fi 开发结果台账：14 次训练曲线与证据路径；§0 补充 627 图评估的 P→PB→PBM 平均递增暂定结论、稳定性边界与 E14/末轮区别。 |
 | `portable_sam2_explicit_coarse/docs/d5_review_handoff.md` | 2026-09-06 阶段诊断复审与跨-agent交接：核实证据边界、提出 P2-off 的 D5-A/B dense 适配及 PE 独立更新验收；属于待实施建议，不表示脚本已落地或训练已启动。 |
+| `portable_sam2_explicit_coarse/docs/a0_signed_edt_confidence_canvas_design.md` | A0 shape-preserving signed EDT-confidence dense canvas 的实施规格与冻结裁决：区分 SAMRefiner 论文与源码语义，记录 R/B/E/C/GT 格、A0-D/A0-E 梯度分解及严格门失败；probe 已实现，但该模块不进入训练。 |
+| `portable_sam2_explicit_coarse/docs/dense_capacity_stage1_design.md` | Dense-only residual capacity adapter 的阶段一冻结 A0 可行性规格：点 source/梯度隔离、A0 E300 heat-start 白名单、验收门与正式矩阵前置条件。 |
 | `portable_sam2_explicit_coarse/docs/a0_two_site_oracle_design.md` | 以 NWPU A0 最佳权重为共同冻结底座的双位置 Oracle 设计：canvas 输入端的 GT-content×gate 格，与不加新 prompt token 的 SAM2 decoder-tail PointRend-style uncertainty-point 格；明确 GT 仅作 Oracle/训练 target，均尚未实现候选模型。 |
 | `portable_sam2_explicit_coarse/docs/a0_coarse_to_mining_oracle.md` | A0 原设计链路的四格冻结 Oracle：只在现有 `ShapePointMiner` 和/或生产 dense-canvas 变换的上游以匹配 GT coarse 取代 raw coarse，分离更准 coarse 对点挖掘与 dense 消费的可达上限；完全不训练或改 detector。 |
 | `portable_sam2_explicit_coarse/docs/a0_dense_gate_selector_oracle.md` | A0 learned-canvas 的逐实例 dense-gate 上限审计：只在两份同冻结前向的 mask 记录之间事后选择，GT 不进入前向；以逐图同数量随机 selector 和十类 paired bootstrap 作为进入可学习 gate 的双对照。 |
@@ -478,9 +492,10 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `paper_promptminer_rd_p2_whu_full_fast.sh` | WHU fast-150 论文运行入口（test segm/mAP 0.7342）。 |
 | `test_only_from_ckpt.sh` | 给定 checkpoint 仅做 test 评估。 |
 | `vhr10_fast400.sh` 等 5 个 | VHR-10 薄入口，见 `scripts/_run_vhr10.sh`。 |
-| `vhr10_p2v2_dev.sh` / `vhr10_p2v2_dev_series.sh` / `vhr10_p2v2_eval.sh` | NWPU 受控训练、串行总入口与 strict post-run 评估入口。既有 A0–A4 行不变；新增 `r3`（PB+R3）与 `r3_udpr`（PB+R3+UDPR），两者须显式指定，不插入既有默认 matrix300 队列。 |
+| `vhr10_p2v2_dev.sh` / `vhr10_p2v2_dev_series.sh` / `vhr10_p2v2_eval.sh` | NWPU 受控训练、串行总入口与 strict post-run 评估入口。attached 谱系为 `a0→a3→a4`；source-gradient-isolated 谱系为 `a0_sg→a3sg→a4sg`，其中 `a3sg→a4sg` 只改 DCR gate。`r3/r3_udpr`、`a4sg` 与 DenseCap 正式对 `a0_sg/a0_sg_densecap64` 都须显式指定，不插入既有默认 matrix300 队列。 |
 | `vhr10_udpr_k64.sh` | NWPU 独立 UDPR-K64 热启动入口：从固定 A0 best 权重跨架构初始化，强制只训练 decoder tail；不属于 P2-v2 A0/A1/A2 主线。 |
 | `queue_vhr10_a2_a3.sh` | 本地持久队列：仅在 GPU 0–3 均无 compute PID 后，经 A2/A3 DRY_RUN 再严格前台串行启动 `a2 a3`；`flock` 防止同一 checkpoint 目录的重复队列。A2 明确为默认 R1，非 A2e。 |
+| `queue_vhr10_a0_sg_densecap.sh` | DenseCap 正式成对矩阵的本地持久队列：仅在 GPU 0–3 均空闲后，先对 `a0_sg` 与 `a0_sg_densecap64` 做 matrix300 DRY_RUN，再按该顺序严格串行启动；`flock` 防重复。 |
 | `eval_test_raw.sh` / `eval_test_winner.sh` / `eval_vhr10_final.sh` | checkpoint 的 raw/EMA 评估 wrapper。 |
 
 `scripts/smoke/`：
@@ -495,6 +510,8 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `test_decoder_tail_refiner.py` | UDPR/DCR 张量回归：v1 与 DCR 零初始化恒等、stable tie-break、DCR gate/residual 首步梯度和第二步 shared-trunk 梯度。 |
 | `test_decoder_tail_ddp_empty_rank.py` | CPU/Gloo 双 rank 回归：一张 rank 无正 RoI 时仍与有 RoI rank 对齐 A3 的 BCE 或 A4/DCR 的 BCE+gate+telemetry collectives，且二者得到相同 global telemetry。 |
 | `check_udpr_a0_equivalence.py` | 用真实验证 batch 依次重建 A0 与零初始化 UDPR/DCR（`--tail-mode`），严格核验 heat-init missing-key 白名单及最终 bbox/label/score/mask prediction SHA256 恒等。 |
+| `test_dense_capacity_adapter.py` | Dense-only residual adapter 的 CPU 张量契约：零初始化 identity，以及 adapter 梯度不泄漏到冻结 RoI/point source。 |
+| `preflight_densecap64_step0.py` | 从同一 A0 checkpoint 构建 A0/densecap64，严格审计 adapter-key heat-start 白名单、真实 RoI residual、PE point slots、dense canvas 与完整 prediction 的逐位 step-0 恒等。 |
 
 ### 4.7 工具与通用函数
 
@@ -502,8 +519,9 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 |---|---|
 | `tools/mask_to_coco_whu512.py` | 将 WHU 二值 mask 转为 COCO polygon 标注；属于数据准备工具，不是训练必需步骤。 |
 | `tools/eval_boundary_ap.py` / `tools/eval_vhr10_original_scale.py` / `tools/visualize_instances.py` / `tools/smoke_test_components.py` | 评估与可视化工具。 |
-| `inference/probes/canvas_accuracy_probe.py` | 冻结 checkpoint 的 dense-canvas 信息质量与消费敏感性探针：按推理期 IoU 匹配实例 GT，在全图 PE canvas 上测 learned→GT logit 混合，并交叉 `current/forced alpha`；先以 unhooked 标准推理逐图 hash 断言 `blend=0,current` 逐位一致，再要求所有画布干预保持检测输出不变。可选 `--export-pre-prompt-features` 仅在 output 工件中导出 PromptEncoder 前的 RoI/coarse/canvas 行特征并逐 proposal 对齐 DT；不改模型张量。`blend=1,alpha=1` 是 GT 画布与全开 gate 的定位格，不是可部署模型或训练消融。 |
+| `inference/probes/canvas_accuracy_probe.py` | 冻结 checkpoint 的 dense-canvas 信息质量与消费敏感性探针：按推理期 IoU 匹配实例 GT，在全图 PE canvas 上测 learned→GT logit 混合，并交叉 `current/forced alpha`；先以 unhooked 标准推理逐图 hash 断言 `blend=0,current` 逐位一致，再要求所有画布干预保持检测输出不变。可选 `--export-pre-prompt-features` 导出 PromptEncoder 前的 RoI/coarse/canvas 行特征并逐 proposal 对齐 DT；`--gt-roi-grid=64|128` 先按训练同构 crop+nearest 栅格化 matched GT、再走生产 bilinear paste，用于 source-resolution ceiling，不改模型张量。 |
 | `inference/probes/dense_gate_selector_oracle.py` | 纯 records 后处理的 A0 instance-selective dense-gate Oracle：current/forced-alpha 输出的检测字段逐条恒等后，GT 仅用于匹配后 mask-IoU 选择；输出 Oracle、每图同数量随机对照与完整 selector audit，绝不运行或改写模型前向。 |
+| `inference/probes/prompt_switch_probe.py` | 冻结权重的 prompt 依赖审计：只在 PromptEncoder 调用处移除 box token 和/或 dense mask 输入；先以 unhooked standard 断言 hooked baseline 完整输出恒等，再断言每个干预的 detector hash 不变。可选导出 COCO records/manifest，供 image-paired bootstrap；依赖性不等同训练消融。 |
 | `inference/probes/dense_gate_readability.py` | 不构建模型的 pre-PromptEncoder gate 特征/线性 readout 核心：严格定义 raw coarse、canvas、几何、类别、检测分数与对齐 RoI appearance 的两级特征，包含训练集专用 balanced logistic、行置乱控制与无 sklearn 的 tie-aware AUC。冻结 collector 只可调用此核心，不能在 val 上拟合。 |
 | `inference/probes/run_dense_gate_readout.py` | GPU-free readout 裁决器：消费 train/val 的 current/forced-alpha 冻结工件与 pre-PE 特征，GT 只生成训练 Oracle 标签和 val AUC；固定阈值将全体 val proposal 选择为 raw/full/appearance-row-permuted 三臂 records，供十类 paired bootstrap 评测。 |
 | `scripts/smoke/run_a0_dense_gate_readability.sh` | 不排队、不后台启动的 A0 single-GPU 冻结 readout 入口：先导出 train-520/val-130 current/alpha=1 pre-PE 工件，再 train-only 拟合并对 full 对 raw/permuted 做 500 次十类 paired bootstrap；仅应在用户显式释放单卡后运行。 |
@@ -511,6 +529,7 @@ checkpoint。训练脚本、推理脚本都不得根据 checkpoint 文件名反�
 | `inference/probes/p2_coarse_gate_probe.py` | P2 第一门的只读自然输出审计：从 `coarse_outputs` 显式取 raw/refined（第一个 forward 返回槽是 refined，不能误作 raw），分别经生产 canvas renderer 与 GT 后验同类匹配比较；以图像级 paired bootstrap 裁决 coarse 与 support-canvas 内容门，并断言观察 hook 不改变最终输出 hash。 |
 | `inference/probes/p2_support_decomposition_oracle.py` | 冻结 A0 的 P2-style support reachability Oracle：从 A2 checkpoint 固化 raw-boundary S4/support-reject 几何，GT 只对同类 IoU 匹配 ROI 的 raw 错误像素作反事实修正；四臂只切 dense canvas 来源，导出完整 COCO records 供 paired bootstrap。 |
 | `inference/probes/p2_error_readability_probe.py` | 冻结 A0 的视觉源可读性门：同一 train-520→val-130 linear-readout 协议可选择 detector P2，或**自定义 PAFPN 之前**的 SAM2 native `image_embedding`、high-res `s0+s1`、二者融合；每项均有 raw-only 与 ROI-permuted 对照，固定写入预算统计带外错误的 recall/precision 与 raw-sign flip coarse-IoU。它不改模型 tensor 或 checkpoint。 |
+| `inference/probes/tail_input_readability_probe.py` | 冻结 A4 tail 输入可读性审计：在 train-520 拟合线性 error readout、在 held-out val-130 报告图像级 paired-bootstrap AUC；比较实际 tail 点输入 I0、I0 加 detached 对齐 3×3 native-logit patch 的 I1，以及将同一 I1 readout 的 patch 做半网格空间置换的 sham。GT 只在模型 forward 后形成 pre-tail error 标签，不进入模型，也不写 checkpoint。 |
 | `inference/probes/`（其余） | 审计探针（通路审计、P2 oracle、E0、点可学性、P2 可视化），手动调用；P2 通路审计结论见 `docs/p2_decoder_side_findings.md`。 |
 | `utils/__init__.py` | 通用工具包标记。 |
 | `utils/coco_eval_utils.py` | 构造 COCO GT/DT 并执行 bbox/segm COCOeval；支持 bbox score 和 mask score 两种评估分数。 |
@@ -722,7 +741,9 @@ bash scripts/reproduce_legacy_segm.sh
 | `P2_BOUNDARY_REFINER_LR_MULT` | refiner 独立参数组学习率倍率，默认 `1.0`，weight decay 继承 `0.05`。 |
 | `DECODER_TAIL_REFINER_ENABLED` | 默认 `0`；UDPR/DCR 路线设为 `1`，此时解析其 `NUM_POINTS/HIDDEN_DIM/POINT_LOSS_WEIGHT/DELTA_LOGIT_MAX` 至 `cfg.model` 与新架构指纹。关闭时不写入模型配置，以保持历史 A0/P2 架构键不变。 |
 | `DECODER_TAIL_MODE` | 未设置或 `residual_v1` 保持 A3 的旧配置字段/架构 ID；`confidence_gated` 显式启用 A4/DCR，并将 `GATE_INIT_PROB/GATE_LOSS_WEIGHT/KEEP_LOSS_WEIGHT` 写入配置、产生 `_udprcgkK` ID。 |
+| `DECODER_TAIL_MODE=confidence_gated_margin` | A5SG/DCR-CM；继承 A4 的 gate/head/forward，只以 detached tail state 的 signed crossing-margin 取代 refined BCE 与 L1 keep。必须显式给出 `DECODER_TAIL_CROSSING_MARGIN`（matrix300 固定 `0.10`），architecture ID 为 `_udprcgmK`。 |
 | `DECODER_TAIL_GATE_INIT_PROB` / `DECODER_TAIL_GATE_LOSS_WEIGHT` / `DECODER_TAIL_KEEP_LOSS_WEIGHT` | A4/DCR 专用，首配方固定 `0.1/1.0/0.05`；gate 是连续残差幅度，不是阈值式稀疏开关。 |
+| `DECODER_TAIL_CROSSING_MARGIN` | 仅 `confidence_gated_margin` 读取；A5SG 固定 logits margin `0.10`，作为预注册配方常量而非扫参。 |
 | `DECODER_TAIL_LR_MULT` | UDPR 参数组 LR 倍率，默认 `1.0`；仅 `--train-decoder-tail-only` 路线使用。 |
 | `CANVAS_RENDERER_ENABLED` | 默认 `0`；`1` 才将 R3 P3/P4 renderer 配置写入 `cfg.model` 并生成 `_r3` architecture ID。关闭时该键缺失，旧臂 config/fingerprint 不变。 |
 | `CANVAS_RENDERER_LOSS_WEIGHT` | R3 positive-RoI Dice+BCE 的总权重，默认且 matrix300 固定为 `0.05`。 |
@@ -803,6 +824,89 @@ bash scripts/reproduce_legacy_segm.sh
 处理本项目的新增或改动时，它负责默认执行上述同步流程。
 
 ## 8. 文档同步记录
+
+- 2026-09-12：补齐并复核 DenseCap 阶段一的真实 step-0 launch gate。新增
+  `scripts/smoke/preflight_densecap64_step0.py`，其不依赖随机 probe，而在同一真实
+  validation batch 上比对 A0 与 densecap64 的 detector、2P2N point slots、送入 PE 的
+  dense canvas 与最终 prediction；heat-start 只接受完整
+  `roi_head.mask_head.dense_capacity_head.*` 缺失白名单。修复脚本 root/path 和 state-dict
+  全路径前缀后，A0 matrix300 E300-last 在 GPU0 上通过：18 adapter missing、0 unexpected、
+  real-RoI residual=0 且全项 bitwise 恒等。此为启动前接线验收，不是训练或 mAP 结果；
+  matrix300 既有 default queue 未修改。
+
+- 2026-09-12：将 DenseCap 正式比较登记为 matrix300 的显式成对臂 `a0_sg` 与
+  `a0_sg_densecap64`，不插入无参数默认队列。两臂均从头联合训练 300 epoch、同设
+  `SHAPE_DENSE_DETACH=1`，从而抵消 DenseCap dense source 强制 detach 对原 coarse head
+  final-mask 梯度的影响；只有后者构造 `dense_capacity_cfg`。同步让 `DENSECAP/*` 进入
+  rank-0 snapshot 与跨 DDP epoch monitor，并更新 arm contract audit；尚无正式指标。
+
+- 2026-09-12：新增 opt-in 持久队列 `queue_vhr10_a0_sg_densecap.sh`，它只在本机四卡
+  无 compute PID 后，重放两臂 matrix300 DRY_RUN 并顺序启动 `a0_sg`、
+  `a0_sg_densecap64`；无参 matrix300 series 仍为 `p pb a0 a3`。
+
+- 2026-09-12：当前工作树通过 `scripts/smoke/check_forward_equivalence.py` 严格重建并加载
+  历史 A0 matrix300 E300-last 的 665 个 model keys；固定 validation batch 的双次前向
+  bbox/label/score/mask hash 逐位恒等，golden 记录为
+  `refactor_golden/a0_matrix300_current_code_forward.json`。此为 checkpoint 推理兼容性门，
+  不等同于训练过程跨代码版本的完全等价证明。
+
+- 2026-09-12：新增 `docs/differentiable_point_mining_design.md`，冻结后续可微点挖掘的
+  设计，不实施任何代码。推荐路线为候选集上的 Straight-Through Gumbel 2P2N selector；
+  它保持 hard P 基线和原生 PromptEncoder 的前向点语义，计划先以 P-hard→P-ST 做单变量
+  dev 筛选，DenseCap/R3/UDPR 均不混入。
+
+- 2026-09-11：接线 Dense-only Residual Capacity Adapter 的阶段一冻结可行性 arm
+  `densecap64`。新 `SmallMaskDecoder(mid=256)` 仅向 dense canvas 写入零初始化 residual，
+  原 ShapePrior logits 与 2P2N point 路径保持分离；adapter 输入、base logits 均 detach。
+  配置进入 `cfg.model`/architecture contract；A0 E300 heat-start 的 state-dict 白名单仅允许
+  adapter keys 缺失，训练器同时冻结参数及 eval-mode buffers。新增 CPU identity/gradient
+  smoke、arm contract audit 与 `docs/dense_capacity_stage1_design.md`。既有 P/PB/A0/A3、
+  R3、matrix300 allowlist 和无参默认队列均未改变；训练启动状态与结果须以该设计文档的
+  run record 为准，不能由此条目推断任何有效性结论。
+
+- 2026-09-12：在上述真实 step-0 gate 通过后，启动 isolated dev100 `densecap64` 阶段一训练，
+  输出目录为
+  `/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/vhr10_p2v2_dev100_densecap64_a0e300init_tr1.0_va1.0/`。
+  启动日志确认 A0 E300 heat-start `loaded=665, missing=18, unexpected=0, shape_mismatch=0`；
+  仅 18 个 adapter tensors（2,658,049 parameters）可训练，首个非零 LR update 的 DDP
+  参数同步最大偏差为 `0.000e+00`。这是接线与运行健康记录，不构成性能结论。
+
+- 2026-09-11：完成 matrix300 A0-last 的 dense 路线全链裁决，详见
+  `docs/a0_dense_route_verdict_20260911.md`。instance gate 的 E300 GT Oracle 对
+  current/full/random 的三项十类 500 次 CI 都为正，但 train-520-only → val-130 readout
+  的 raw/full/permuted selector mAP 均不超过 current，故停止该模块，不进 dev100。新增
+  `canvas_accuracy_probe.py --gt-roi-grid` 的 chunk-safe feature collector 与 GT64/128
+  source-resolution ceiling；GT128 0.647944 相对 GT64 0.648166 的 200 次 CI
+  `[-0.000944,+0.000772]`，也停止 64→128 臂。
+  结果不新增 loss、不修改 checkpoint、训练配置、既有矩阵或生产模型；若继续 dense，唯一
+  下一门是固定 64-grid、原 BCE+Dice 的 ShapePrior source-capacity feasibility spike。
+
+- 2026-09-11：完成 A0-last 的全量只读 prompt-switch 复核（NWPU validation 130 图）。
+  unhooked standard 与 hooked baseline 的完整输出 SHA256 恒等，且 standard、baseline、
+  drop_box、drop_dense、drop_both 的 detector SHA256 恒等；standard COCO records 与既有
+  生产 inference records 精确一致。十类 image-paired bootstrap 确认相对 baseline 的
+  Δsegm/mAP：drop_box −0.01171，95% CI [−0.02195,−0.00139]（500）；drop_dense
+  −0.01748，[−0.03058,−0.00460]（200）；drop_both −0.06105，[−0.08990,−0.03493]
+  （200），seed44。结果仅表示冻结 A0 权重对提示的分布偏移依赖，不能替代训练期 box
+  dropout 的因果消融；它反证“dense 未被消费”的前提，后续 dense 主线仍应优先改善内容。
+  工件写入未跟踪 `portable_sam2_explicit_coarse/refactor_golden/a0_prompt_switch_audit_last/`，
+  未改模型、checkpoint、训练配置或既有矩阵。
+
+- 2026-09-11：升级 `inference/probes/prompt_switch_probe.py` 为只读 prompt-switch
+  审计器：新增 unhooked 标准前向、hooked baseline full-output SHA256 恒等断言、四格
+  bbox/label/score/proposal-order detector hash 不变量，以及可选 COCO records/manifest
+  导出。导出工件可直接交给 `tools/bootstrap_paired_map.py` 做 image-paired bootstrap。
+  未改模型、checkpoint、训练配置或既有实验；A0 dense-vs-box 文档中的历史单点结果
+  保留，待空闲 GPU 的正式 full-run CI 复核后才可升级为稳定性结论。
+
+- 2026-09-11：新增 `docs/a0_signed_edt_confidence_canvas_design.md`，冻结 A0 dense
+  表示的后续候选与实施门。经 SAMRefiner 论文、官方源码和独立对抗审计确认：论文的
+  radial Gaussian 与官方代码的 shape-preserving EDT-depth confidence 不同；官方输出是
+  前景正 depth response 加背景恒定负值，现有 `gaussian_edt` 的全图正 center-area
+  Gaussian 不能冒充 signed 复现。文档因此预注册 proposal-local signed EDT-confidence、
+  冻结 R/B/E/C 四格及 GT-oracle 门；训练必须通过 A0（raw attached）→A0-D（raw
+  detached）→A0-E（EDT detached）分离梯度路径和表示。此次仅新增设计/交接文档，未改
+  模型、配置、wrapper、日志字段或既有实验。
 
 - 2026-09-11：完成 R3 matrix300 last E300 与冻结 canvas probe 诊断，结果写入
   `docs/r3_matrix300_results.md`。R3 last segm/bbox mAP 为 0.6273/0.7127，低于
@@ -1246,3 +1350,123 @@ bootstrap 的唯一输入）；④ 结论效力排序：同机同 seed 配对 > 
   aligned−raw recall/precision/coarse-IoU CI 为 `[-0.01534,+0.00180]`、
   `[-0.01118,+0.00114]`、`[-0.00252,+0.00067]`，故 gate fail。停止该 frozen-linear、
   10%预算下的 native high-res pre-PE 来源路线；不外推为所有非线性 SAM2 high-res 模块无效。
+
+## 2026-09-12：DenseCap 分层梯度遥测与可恢复续训
+
+- 为审计 `a0_sg_densecapres256` 的零初始化 H_delta 是否只由输出 bias 活跃，训练器新增
+  纯观测 `Epoch N DenseCap gradient pathways`：将 adapter 分为 trunk 与末层 output，分别
+  记录 `loss_mask` 和已有 `loss_dense_capacity` 的首次有限 batch DDP 梯度 RMS/tensor
+  active ratio，以及完整 epoch 更新 RMS；不新增 loss、参数、optimizer group 或矩阵变量。
+- 该臂在完成 E50 后因 GPU0 外部显存竞争中断；恢复统一使用同输出目录的
+  `last_checkpoint.pth`，严格加载模型与完整 optimizer/scheduler/AMP/EMA 状态，从 E51 继续，
+  不重跑或覆盖已完成 E1--E50 的训练历史。字段定义和解释边界已同步至 `DEBUG_FIELDS.md`。
+
+## 2026-09-13：A4SG 的 source-gradient-isolated DCR 对照
+
+- 新增显式 matrix300 臂 `a4sg`：它完整继承 `a3sg` 的 raw dense、`SHAPE_DENSE_DETACH=1`、
+  K64/hidden128/cap2.0 UDPR-v1 与全训练协议，只增加 DCR 的
+  `mode=confidence_gated, gate_init=0.1, gate_loss=1.0, keep_loss=0.05`。因此
+  `a0_sg→a3sg` 归因原始 UDPR，`a3sg→a4sg` 归因 DCR gate；不得用 attached 基座的 `a4`
+  替代后者。
+- `matrix300.sh`、`matrix300_series.sh`、post-run evaluator 和 arm smoke 均登记该臂；
+  smoke 对解析后 `model_config` 强制验证两条 pairwise diff。它不加入无参默认序列
+  `p pb a0 a3`，不会重跑或干扰已有矩阵行；尚未启动或产生指标。
+
+## 2026-09-13：DCR raw-residual 幅度遥测与 A4SG 恢复
+
+- 在正在运行的 A4SG 于 E99 安全停下并落盘 `last_checkpoint.pth` 后，新增仅观测的
+  `TAIL/raw_delta_abs`、`raw_delta_error_abs`、`raw_delta_correct_abs`。三者均为 gate
+  乘法前 `delta_raw` 的绝对幅度，并与既有 applied 三件套共享 selected Top-K、错误/正确
+  分组及跨 DDP 全局分母；不改变 forward、loss、参数、optimizer 或 checkpoint 语义。
+  该补充区分 delta head 自身幅度不足与 confidence gate 抑制写入。恢复必须使用同目录
+  `last_checkpoint.pth`，恢复完整 model/optimizer/scheduler/AMP/EMA 状态，不能新建或
+  覆盖历史 E1--E99 记录。
+
+## 2026-09-13：冻结 A4 tail 输入可读性审计
+
+- 新增 `inference/probes/tail_input_readability_probe.py` 和 CPU invariant smoke。它以
+  A4 checkpoint 严格加载后冻结运行 train-520 与 held-out val-130；GT 只在 forward 后为
+  matched positive proposal 的 selected native 点形成 pre-tail hard-label error 标签。
+  I0 是生产 tail 的精确输入，I1 只增加 detached、对齐的 3×3 native-logit patch；sham 使用
+  同一 I1 readout、但将 patch 在每个 ROI 内半网格置换。线性 readout 仅在 train 拟合，结论
+  由 val 图像级 paired-bootstrap AUC 的 I1−I0 与 I1−sham CI 同时裁决；探针无反向、无模型
+  更新、不修改 checkpoint 或正在运行的 A4SG。
+- 完成 A4SG E101 checkpoint 的全量 train-520/val-130 审计：I0/I1/sham 的 held-out error
+  AUC 为 `0.64777/0.64706/0.56537`；500 次图像级 bootstrap 的 `I1-I0`
+  CI 为 `[-0.00240,+0.00129]`，未过 `>+0.01` 的增量门，故停止“当前 3×3 detached
+  native-logit patch”输入路线。`I1-sham=[+0.04257,+0.11330]` 只证明 patch 中有空间对齐
+  信号，不能替代对 I0 的增量证据；完整产物位于 diagnostics/a4sg_tail_input_readability_e101_20260913。
+- 同日独立复核发现上述早期 probe 将 ROI-crop GT 错配到 A4SG 的 full-image native logits，故其
+  数值全部作废；collector 已改为严格复刻 `get_full_image_targets` 的 full-image nearest resize。
+  contract-fixed v4 的 130 图审计与 500 paired bootstrap 表明：3×3 patch 仍未过 +0.01 增量门；
+  selected error coverage=35.35%，current/sign/gate/both crossing 为
+  0.278%/0.407%/0.373%/0.603%，而 cap=2 的可达性为89.04%、cap−both CI
+  `[85.30%,91.23%]`。唯一下一步为 A5SG signed crossing-margin residual loss；不加入新输入、
+  trunk split 或 cap 调参。产物位于 diagnostics/a4sg_tail_action_decomposition_e101_v4_contractfix_20260913。
+
+## 2026-09-13：A5SG / DCR-CM matrix300 接线
+
+- 新增显式 `a5sg` matrix300 arm、strict evaluator suffix 和 arm smoke。它以 `a0_sg` 为唯一
+  matrix 对照：同一 PBM、`SHAPE_DENSE_DETACH=1`、PE adaptation、K64/hidden128/cap2、gate
+  head、数据/seed/300 epoch/selection protocol；只增加 decoder-tail DCR-CM 配置。
+- A5 以 `mode=confidence_gated_margin,crossing_margin=0.10` 替换 A4 residual BCE 和 L1
+  keep，不叠加 loss；margin auxiliary 的 tail 输入与 pre-tail anchor detach，普通 full-mask
+  loss 仍联合更新全模型。新增 DDP telemetry `TAIL/crossing_*` 和 `TAIL/correct_margin_*`，具体
+  分母与判读同步于 `DEBUG_FIELDS.md`。CPU tensor smoke、A5 matrix300 dry-run 和随后独立接线
+  审计是启动前门，不代表训练或 mAP 结果。
+
+## 2026-09-13：冻结 A0SG selective-write 可读性门
+
+- `inference/probes/tail_input_readability_probe.py` 可用 `--attach-zero-tail` 在严格加载的
+  tail-off A0SG checkpoint 上临时安装零初始化 DCR tail，仅捕获生产 K=64 不确定点，不能写回
+  logits。checkpoint 缺失键只允许该临时 tail 参数；配套 equivalence guard 必须先验证完整预测
+  hash 恒等。
+- 探针仅在 train-520 拟合线性 error scorer，val-130 只读评估。固定 Top-M（4/8/16）输出
+  score、uncertainty、deterministic-random 的 error precision / coverage 与图像级 bootstrap。
+  M=8 的进入条件固定为 score precision >=0.65，且相对两个对照的 precision CI 下界均大于零；
+  未过门不得训练 selective-write tail。
+
+## 2026-09-13：A5 tail 梯度对齐只读审计
+
+- 新增 `inference/probes/tail_gradient_alignment_probe.py`：以 A5 checkpoint 的固定训练 batch
+  分别计算生产 `loss_mask` 与 `loss_decoder_tail` 对 decoder-tail 参数的梯度 L2、内积和
+  energy-weighted cosine。探针不建立 optimizer、不执行 backward/step、不写 checkpoint；它只
+  判断 tail 内部 auxiliary 与 final-mask 是否相消，不能推翻已失败的冻结 error-readability 门。
+  为使单卡只读审计不构建 64-RoI 的基座反传图，模型除 decoder-tail 外均显式冻结；两个损失对
+  tail 参数的导数保持原生产 forward 定义。
+- A5SG 最后 checkpoint 的 train-520 前 16 batch 审计严格加载成功：tail 上 `loss_mask` /
+  `loss_decoder_tail` 的 RMS L2 为 `0.06834/1.79746`，energy-weighted cosine=`+0.03151`，
+  6/16 batch cosine 为负。裁决为**无净相消、但 auxiliary 明显量级主导且逐 batch 不稳定**；
+  这只解释 A5 的优化噪声，不能推翻 A0SG frozen selective-write gate fail，故不得以 loss
+  reweight 启动该路线。
+
+## 2026-09-13：A0SG decoder-feedback 二次边界重解码冻结探针
+
+- 新增 `inference/probes/decoder_feedback_redecode_probe.py`。它先完整运行生产 A0SG 得到
+  P0；`feedback` 仅将 detached 的原生 P0 256×256 logits 再送入冻结 PromptEncoder 形成第二遍
+  dense embedding，并复用第一遍已编码的 sparse token、image embedding 与 high-res feature 调用
+  同一冻结 MaskDecoder。`sham_shift` 只把每 ROI feedback 在原生网格平移半幅，作为空间对照。
+  不重挖点、不改变框/检测、无 GT 前向、无反向、无 loss/optimizer/checkpoint 写入。
+- 探针必须导出 standard/P0/feedback/sham 的逐图 COCO records；passive P0 输出 hash 必须与无钩
+  standard 逐位一致，所有干预格 detector hash 必须一致。训练门预注册为 feedback−P0 的图像级
+  paired-bootstrap segm/mAP CI 下界大于零且 AP75 不为负；在该门未通过前不得登记新的训练矩阵臂。
+- 完整 NWPU-130 审计以 A0SG `best_composite_model_epoch225.pth` 为严格冻结底座完成：standard 与
+  passive P0 prediction hash 完全一致，三格 detector hash 一致；feedback 的每批输入均为原生、单通道、
+  detached 256×256 decoder logits，未发生隐式 resize 或重挖点。P0/feedback/sham 的 segm mAP 为
+  `0.651335/0.650830/0.395666`。500 次图像级 paired bootstrap 的 feedback−P0 点估计
+  `−0.000505`、CI `[-0.004538,+0.002832]`，AP75 为 `0.702898→0.704719`，故未通过净增益门；
+  sham−P0 为 `−0.255669`、CI `[-0.296007,-0.207299]`。这证明冻结 decoder 对 feedback 的
+  空间对应强依赖，但 raw output-logit feedback 不产生可判定的总体收益；不得据此启动 A6SG 训练，
+  也不得外推为 decoder-feedback 边界路线整体不可用。完整 records 与 bootstrap 位于
+  `diagnostics/dfbr_a0sg_e225_full_20260913/`。
+- 复审上述 raw feedback 输入发现其框外为 P0 的强负整图 logits，而 A0SG 生产 coarse canvas 的框外
+  是 `outside_fill_logit=0`；尽管两者之后均受 decoder-grid box support 限制，差异会先经过
+  PromptEncoder mask-downscaling，不能当作相同 canvas 边界条件。故 probe 增加描述性 raw 格之外的
+  contract-matched `feedback_boxed` 与 `sham_boxed`：进入 PE 前仅将框外恢复为同一生产 fill，框内
+  保持 detached 原始 z0；sham 先做半网格平移、再施加同一 fill。该格的预注册训练门为
+  feedback_boxed−P0 mAP CI 下界>0、AP75 非负且相对 sham_boxed 同向。完整 NWPU-130 五格与
+  500 image-bootstrap 已完成：feedback_boxed mAP=`0.651260` 对 P0=`0.651335`，点估计
+  `−0.000075`、CI `[-0.002665,+0.003002]`，AP75=`0.704719`；sham_boxed mAP=`0.433094`，
+  相对 P0 CI `[-0.256843,-0.177019]`。因此 box-boundary mismatch 已被排除、正确空间对应被强力
+  验证，但 detached self-feedback 仍未过净增益门；不启动训练臂。完整产物为
+  `diagnostics/dfbr_a0sg_e225_boxed_full_20260913/`。

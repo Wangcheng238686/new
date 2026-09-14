@@ -54,12 +54,17 @@ oracle（`r3_canvas_oracle_matrix300.md`）已证 decoder 会把更好的画布�
 缺口是内容：learned 画布 IoU 0.782，过 +0.005 采纳线需 ≈0.87；coarse 源自身
 ~0.81 当量，传输损耗仅 ~0.02。候选方向（按证据强度排序）：
 
-1. **coarse 源内改良**（R3 教训：换源 0.7614 更差，源内改良优于换源）：
-   `COARSE_MASK_OUTPUT_SIZE` 64→128 / coarse 头容量 / 监督信号质量。
-2. **训练-推理分布对齐**：训练正例多为 GT 框、推理画布渲染在 RPN 框上
-   （0.81→0.782 的内容落差）——box-jitter 化的正例采样可直接收窄。
-3. 门控协同在收敛段已死（E300 gate 全开 −0.0029），E105 型"早开大门"协同
-   不可在终盘兑现，不作为独立方向。
+1. **固定 64-grid 的 coarse source capacity feasibility spike**：R3 教训表明另换源更差，
+   而 GT64 仍有 +0.0151 上限；保持 proposal geometry、64-grid target、BCE+Dice、
+   paste 与 decoder 不变，仅扩大 `SmallMaskDecoder` 的中间容量，先盲评 val support-canvas
+   IoU，再决定是否有资格训练 A0-Capacity64。
+2. `COARSE_MASK_OUTPUT_SIZE=64→128` 已由 GT64/GT128 同支持域冻结 Oracle 否决：
+   GT128−GT64=-0.000221，CI `[-0.000944,+0.000772]`，不作为训练臂。
+3. 当前训练和测试均使用 proposal prompt boxes（不是 GT-box→RPN-box mismatch），故
+   box-jitter 若研究只能视为独立正则候选，不能包装成 dense 分布对齐修复；E300 全局 gate
+   全开为 −0.0029，实例 gate 的 train-only readout 亦失败，二者均不作为独立方向。
+
+完整 A0-last gate/readout 与 GT64/128 裁决见 `a0_dense_route_verdict_20260911.md`。
 
 ## 工件
 
@@ -71,4 +76,29 @@ oracle（`r3_canvas_oracle_matrix300.md`）已证 decoder 会把更好的画布�
 | 运行日志 | 本会话后台任务 stdout（2026-09-11 16:04–16:08，GPU0 空闲窗口） |
 
 注意（判读边界）：drop_* 是分布偏移干预（训练从未见过缺模态输入），数值是
-依赖性上界口径，不是模态信息量；单 seed 单权重，不做显著性宣称。
+依赖性上界口径，不是模态信息量；下文 bootstrap CI 只量化这 130 张图的抽样不确定性，
+不覆盖训练 seed 或权重选择，不能外推为多训练重复的显著性宣称。
+
+## 复核升级（已完成：A0-last 全量只读 audit）
+
+2026-09-11，以 E300 last、NWPU validation 130 图完成正式复核。新增的 unhooked
+standard pass 与 hooked baseline 的完整输出 SHA256 完全相同（`b32c…816c`）；并且
+standard、baseline、drop_box、drop_dense、drop_both 五格的 detector SHA256 均为
+`9ff8…62f4`。同时，standard 的 COCO records 与原生产 inference records 精确相同。
+因此以下差异只来自 PromptEncoder 的 box/dense 输入切换，不混入 proposal、类别、分数、
+排序或评测图像集合的变化。
+
+| 对比（treatment − baseline） | 点估计 ΔmAP | image-paired 95% CI | 重采样 |
+|---|---:|---:|---:|
+| drop_box | −0.01171 | [−0.02195, −0.00139] | 500, seed44 |
+| drop_dense | −0.01748 | [−0.03058, −0.00460] | 200, seed44 |
+| drop_both | −0.06105 | [−0.08990, −0.03493] | 200, seed44 |
+
+三个 CI 都不跨零，故 E300 的“dense 实际被读取、box 为辅、联合移除显著塌缩”可作为该
+**冻结权重的提示依赖性**结论；其强弱仍不得解释为模态信息量或训练期因果贡献。尤其，
+`drop_dense` 的稳定负效应不支持把 training-time box dropout 包装成“使 dense 生效”的
+机制；若将来做 dropout，只能以独立的鲁棒性/缺提示训练实验立项。
+
+复核工件位于 `refactor_golden/a0_prompt_switch_audit_last/`：各 cell 的 COCO records、
+manifest、`summary.json`，及三个 `bootstrap_drop_*.json`。该 probe 不修改模型、训练配置、
+checkpoint 或既有矩阵结果。
