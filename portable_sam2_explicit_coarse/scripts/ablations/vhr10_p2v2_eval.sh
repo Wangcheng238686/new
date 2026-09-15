@@ -30,7 +30,7 @@ case "${ARM}" in
   a1) SUFFIX="a1_p2v1" ;;
   a2) SUFFIX="a2_r1" ;;
   a2e) SUFFIX="a2e_r1_esc030" ;;
-  a3) SUFFIX="a3_pbm_udprk64" ;;
+  a3) SUFFIX="${A3_SUFFIX:-a3_pbm_udprk64}" ;;  # K sweep: A3_SUFFIX=a3_pbm_udprk${K}
   a3sg) SUFFIX="a3sg_pbm_sg_udprk64" ;;
   a3sgt) SUFFIX="a3sgt_pbm_sg_udprk64ts" ;;
   a3sgtm) SUFFIX="${A3SGTM_SUFFIX:-a3sgtm_pbm_sg_udprk64tsm}" ;;
