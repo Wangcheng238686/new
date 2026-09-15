@@ -52,7 +52,9 @@ UDPR decoder-tail 读取的不确定性点数 K（DECODER_TAIL_NUM_POINTS）此�
 ### 2c. 输出目录
 `${PORTABLE_SAM2_CHECKPOINT_ROOT}/ablations/vhr10_p2v2_ksweep40_a3m_pbm_udprk<K>tsm_<label>_tr1.0_va1.0/`
 （含 `inference_{best,last}_vhr10/`：metrics.json + dt/gt_records + run_manifest）。
-30 ckpt 完整 COCO 复评表（单卡统一重跑）：machine2 本机 `/tmp/ksweep_fulleval_coco.tsv`。
+30 ckpt 完整 COCO 复评表（单卡统一重跑）：数据盘
+`${PORTABLE_SAM2_CHECKPOINT_ROOT}/ablations/ksweep_fulleval_coco_20260915.tsv`
+（30 行 × 21 列；2026-09-15 由 GPU1 单卡重评导出）。
 
 ### 2d. 训练日志（evidence，带 PID）
 - 基座 last：`vhr10_p2v2_ksweep40_a3m_pbm_udprk{16,32,64,128,256}tsm_a0_e300init_tr1.0_va1.0_20260915_{001700_pid1621176, 010615_pid1643378, 015610_pid1666193, 024420_pid1687591, 033517_pid1710504}.log`
