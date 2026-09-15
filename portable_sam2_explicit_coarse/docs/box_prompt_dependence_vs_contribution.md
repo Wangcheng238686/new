@@ -132,6 +132,14 @@ seed44，130 图十类合同）**：
 processed_image_ids。工件：`diagnostics/matrix_chain_bootstrap_20260913/`
 （含三份 bootstrap JSON 与三臂 dt_records 物化目录）。
 
+**UDPR K 值敏感性（进行中，专档 `docs/k_sensitivity_results.md`）**：选择规则
+与论文辩护框架已预注册（`docs/k_selection_preregistration.md`：平台口径 argmax +
+最小合格 K 入选 + 平衡性三论）。三层证据：L1 冻结曲线（饱和 @64–128，K64=渐近
+94%）、L2 远端三基座热启动（饱和 @128，K64 噪声带内）、L3 从头协议（主判读）——
+L3 首行 EXP-0001（K32 vs K64 锚点）：平台 −0.0096、last −0.0115 CI[−0.0267,
++0.0021] P=0.060、AP75 −0.0182——**K32 掉出平坦带，左边界钉在 64，入选 K=64
+加强**；K128（决策关键行）/K16/K256 待跑。全部数据、窗口轨迹与工件路径见专档。
+
 **A3SGT（UDPR 尾部完全梯度隔离 / tailstop，2026-09-14 完赛 + 四权重推理）**：
 预注册问题 = v1(a3sg) 的 segm +0.012 是否来自 tail 部署期写入（相对 a0_sg 的
 bbox −0.022/composite −0.005 是否可以用梯度隔离消除）。设计/判定门见
