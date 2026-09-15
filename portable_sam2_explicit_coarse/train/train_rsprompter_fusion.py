@@ -3287,11 +3287,17 @@ def main():
         train_batches_limit = len(train_loader)
         if args.max_train_batches > 0:
             train_batches_limit = min(train_batches_limit, args.max_train_batches)
+        # SEGMENT_TIMING=1: per-micro-batch phase timers (prep/fwd/item/bwd),
+        # averaged and logged every 50 steps.  Zero overhead when disabled.
+        _seg_timing = os.environ.get("SEGMENT_TIMING", "0") == "1"
+        _seg_sum = {"prep": 0.0, "fwd": 0.0, "item": 0.0, "bwd": 0.0, "total": 0.0}
+        _seg_n = 0
         optimizer.zero_grad(set_to_none=True)
         for batch_idx, batch in enumerate(train_loader):
             if args.max_train_batches > 0 and batch_idx >= args.max_train_batches:
                 break
 
+            _seg_t0 = time.perf_counter() if _seg_timing else 0.0
             imgs = batch["imgs"].to(device)
             img_metas = batch["img_metas"]
             gt_bboxes = [b.to(device) for b in batch["gt_bboxes"]]
@@ -3355,6 +3361,7 @@ def main():
             imgs = processed["inputs"]
             data_samples = processed["data_samples"]
 
+            _seg_t1 = time.perf_counter() if _seg_timing else 0.0
             model_inputs = imgs
 
             with torch.amp.autocast("cuda", enabled=amp_enabled):
@@ -3397,6 +3404,10 @@ def main():
                 current_group_size = max(1, group_end - group_start)
                 loss_for_backward = loss / float(current_group_size)
 
+            _seg_t2 = time.perf_counter() if _seg_timing else 0.0
+            if _seg_timing:
+                _seg_sum["prep"] += _seg_t1 - _seg_t0
+                _seg_sum["fwd"] += _seg_t2 - _seg_t1
             # Record detailed losses
             for k, v in loss_dict.items():
                 if isinstance(v, torch.Tensor):
@@ -3499,7 +3510,28 @@ def main():
                         {"SP", "COARSE", "JITTER", "GATE", "DENSE", "DENSECAP", "P2BR", "TAIL", "CONTEXT", "BOX"}
                     )
                 _log_uav_debug_stats(model, epoch, global_step, enabled_prefixes)
+            _seg_t3 = time.perf_counter() if _seg_timing else 0.0
+            if _seg_timing:
+                _seg_sum["item"] += _seg_t3 - _seg_t2
             scaler.scale(loss_for_backward).backward()
+            if _seg_timing:
+                _seg_t3b = time.perf_counter()
+                _seg_sum["bwd"] += _seg_t3b - _seg_t3
+                _seg_sum["total"] += _seg_t3b - _seg_t0
+                _seg_n += 1
+                if is_main and _seg_n % 100 == 0:
+                    logger.info(
+                        "TRAIN/TIME (avg %d micro-steps) prep=%.3fs fwd=%.3fs "
+                        "item=%.3fs bwd=%.3fs total=%.3fs",
+                        _seg_n,
+                        _seg_sum["prep"] / _seg_n,
+                        _seg_sum["fwd"] / _seg_n,
+                        _seg_sum["item"] / _seg_n,
+                        _seg_sum["bwd"] / _seg_n,
+                        _seg_sum["total"] / _seg_n,
+                    )
+                    _seg_sum = {k: 0.0 for k in _seg_sum}
+                    _seg_n = 0
 
             # Step optimizer every grad_accum batches or at the last batch
             if (batch_idx + 1) % grad_accum == 0 or (batch_idx + 1) == train_batches_limit:
