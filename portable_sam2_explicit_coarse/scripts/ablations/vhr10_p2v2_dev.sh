@@ -546,6 +546,14 @@ if [ "${SEED:-44}" != "44" ]; then
   export RUN_TAG="${RUN_TAG}_seed${SEED}"
 fi
 
+# GPU-form replicate suffix (2026-09-15, EXP-0002): a same-seed relaunch of an
+# arm in a different launch FORM (a3 4x1x2 aligned with a3r while the historical
+# a3 row ran 1x1x8) must not write into the existing lineage's checkpoint/log
+# dirs; RUN_FORM_SUFFIX lands in RUN_TAG only, never in the built model.
+if [ -n "${RUN_FORM_SUFFIX:-}" ]; then
+  export RUN_TAG="${RUN_TAG}_${RUN_FORM_SUFFIX}"
+fi
+
 source "${SCRIPT_DIR}/vhr10_fi_overlay.sh"
 
 # Debug hook for audits: dump the fully-resolved arm environment (common
