@@ -283,14 +283,18 @@ case "${ARM}" in
     # all A0 parameters and the zero-initialized tail share the same one-stage
     # 100ep schedule, so its result is comparable to A0/A1/A2 under one
     # protocol and usable as the formal-training feasibility gate.
+    # K parameterization (2026-09-15, main-regime K screen): default stays 64
+    # byte-identical to the historical lineage; A3_NUM_POINTS=<k> gives the
+    # dev100 K-sensitivity arms their own udprk<k> tag (frozen-base sweep
+    # saturated at 128; this screen tests the main joint-training regime).
     export P2_BOUNDARY_REFINER_ENABLED=0
     export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
     export DECODER_TAIL_REFINER_ENABLED=1
-    export DECODER_TAIL_NUM_POINTS=64
+    export DECODER_TAIL_NUM_POINTS="${A3_NUM_POINTS:-64}"
     export DECODER_TAIL_HIDDEN_DIM=128
     export DECODER_TAIL_POINT_LOSS_WEIGHT=1.0
     export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
-    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3_pbm_udprk64}"
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3_pbm_udprk${DECODER_TAIL_NUM_POINTS}}"
     ;;
   a3sg)
     # A3 on the a0_sg dense base: same UDPR decoder-tail as a3, but the
