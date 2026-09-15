@@ -112,7 +112,23 @@ bs2（每样本更慢）；向量化（收益不足）；OMP 线程（381s vs 38
   +UDPR 38217 参数 / D5-B 4684 参数）。
 - 噪声标尺：0.008（项目内训练噪声尺度）；单 seed，不做跨 seed 归因声明。
 
+## 7. 种子复刻臂（seed 45，GPU3，2026-09-16 03:27 自主拉起）
+
+主 run（seed 44）之外的同配置独立复刻，用户第三张卡预算授权。**唯一差异 = seed
+44→45**；其余逐项同 §3/§4（fp32、bs1、150ep、A3 全制式）。单卡形态
+1 rank × bs1 × accum8 = 有效 8，2943 micro/epoch ÷ 8 = **368 优化步/epoch，
+与主 run 调度逐点一致**（= machine2 matrix300 的单卡等价形态）。契约校验 OK。
+
+- 目的：matrix300 文档遗留的"bbox 缺口家族归因待 seed 复刻判定"在 WHU 主表数字上
+  直接闭环；主 run 出头条，本臂提供跨种子证据。
+- 日志：`logs/ablations/whu1024_a3_pbm_udprk64_full_fast_s45_tr1.0_va1.0_20260916_032727_pid2444880.log`
+- checkpoint：`/data1/.../ablations/whu1024_a3_pbm_udprk64_full_fast_s45_tr1.0_va1.0/`
+- 判读：与主 run 同 §5 口径；跨臂只做"同向/噪声带内"描述性对比，
+  **不做 cherry-pick**（两臂各自按 segm-best 出 test，报双双落点）。
+- ETA：单卡吞吐实测后回填（初速 ~1.8s/micro，估 5-6.5 天，完赛 ~9/21-23）。
+
 ## 6. 下游联动清单（出数后）
+
 
 - 论文主表 Ours-WHU 行替换 + 消融表是否补 WHU 版（UDPR 增益当前仅 NWPU 证据）
 - `WHU1024_EXPERIMENT_TRACKING.md` Ours 节更新（先补登 fast150 的 76.4/73.4 口径）
