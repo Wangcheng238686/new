@@ -14,9 +14,9 @@ fi
 
 for arm in "${ARMS[@]}"; do
   case "${arm}" in
-    p|pb|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3r|a4|a4sg|a5sg|r3|r3_udpr) ;;
+    p|pb|b|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3r|a4|a4sg|a5sg|r3|r3_udpr) ;;
     *)
-      echo "Unknown matrix300 arm ${arm}; expected p, pb, a0, a0_sg, a0_sg_densecap64, a1, a2, a2e, a3, a3m, a3sg, a3sgt, a3sgtm, a3sgtm-dclip, a3r, a4, a4sg, a5sg, r3, or r3_udpr" >&2
+      echo "Unknown matrix300 arm ${arm}; expected p, pb, b, a0, a0_sg, a0_sg_densecap64, a1, a2, a2e, a3, a3m, a3sg, a3sgt, a3sgtm, a3sgtm-dclip, a3r, a4, a4sg, a5sg, r3, or r3_udpr" >&2
       exit 2
       ;;
   esac

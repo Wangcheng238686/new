@@ -10,7 +10,7 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ARM="${1:?usage: vhr10_p2v2_dev.sh <p|pb|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3r|a4|a4sg|a5sg|r3|r3_udpr|udpr64|densecap64>}"
+ARM="${1:?usage: vhr10_p2v2_dev.sh <p|pb|b|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3r|a4|a4sg|a5sg|r3|r3_udpr|udpr64|densecap64>}"
 shift || true
 
 # Protocol entries share the same architecture/arm block below, so the
@@ -213,6 +213,19 @@ case "${ARM}" in
     export PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING=0
     export PROMPT_ENCODER_LR_MULT=0.0
     export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_p_point}"
+    ;;
+  b)
+    # Box-only prompt baseline: the third corner of the sparse-prompt
+    # modality triangle (p / b / pb).  Relative to pb the ONLY model
+    # difference is EXPLICIT_PROMPT_MODE box vs points_box -- the miner and
+    # its SP telemetry still run, the PromptEncoder receives boxes only
+    # (points=None).  md=0 + pe_lr_mult=0.0 for the same DDP reason as p/pb.
+    export EXPLICIT_PROMPT_MODE=box
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING=0
+    export PROMPT_ENCODER_LR_MULT=0.0
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_b_box}"
     ;;
   pb)
     # Point+Box baseline: isolates the box-token gain (pb - p) and the
@@ -535,7 +548,7 @@ case "${ARM}" in
     export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_densecap64_a0e300init}"
     ;;
   *)
-    echo "Unknown arm ${ARM}; expected p, pb, a0, a0_sg, a0_sg_densecap64, a1, a2, a2e, a3, a3m, a3sg, a3sgt, a3sgtm, a3sgtm-dclip, a3r, a4, a4sg, a5sg, r3, r3_udpr, udpr64, or densecap64" >&2
+    echo "Unknown arm ${ARM}; expected p, pb, b, a0, a0_sg, a0_sg_densecap64, a1, a2, a2e, a3, a3m, a3sg, a3sgt, a3sgtm, a3sgtm-dclip, a3r, a4, a4sg, a5sg, r3, r3_udpr, udpr64, or densecap64" >&2
     exit 2
     ;;
 esac

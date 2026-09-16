@@ -22,7 +22,7 @@ MAINLINE = ROOT.parent                      # repo root (repo/)
 sys.path.insert(0, str(MAINLINE))
 sys.path.insert(0, str(MAINLINE / "portable_sam2_explicit_coarse" / "inference"))
 
-ARMS = ["p", "pb", "a0", "a0_sg", "a0_sg_densecap64", "a1", "a2", "a2e", "a3", "a3sg", "a3sgt", "a3sgtm", "a3sgtm-dclip", "a3r", "a4", "a4sg", "a5sg", "r3", "r3_udpr", "densecap64"]
+ARMS = ["p", "pb", "b", "a0", "a0_sg", "a0_sg_densecap64", "a1", "a2", "a2e", "a3", "a3sg", "a3sgt", "a3sgtm", "a3sgtm-dclip", "a3r", "a4", "a4sg", "a5sg", "r3", "r3_udpr", "densecap64"]
 
 # Every config input read by the VHR-10 inheritance chain.  ``build`` clears
 # these before applying an arm dump, so one arm (or the caller's terminal)
@@ -188,6 +188,14 @@ def check_arm(arm: str, model, cfg) -> list:
         want(head.shape_dense_alpha_raw is None, "dense gate param should not exist")
         want(head.p2_boundary_refiner is None, "refiner should be absent")
         want(md_train == 0 and pe_train == 0, f"PE trainable {pe_train} != 0 (DDP-unused!)")
+    elif arm == "b":
+        want(head.explicit_prompt_mode == "box", "mode != box")
+        want(not head.explicit_use_point_prompt and head.explicit_use_box_prompt
+             and not head.explicit_use_dense_prompt, "prompt flags wrong")
+        want(not head.use_shape_dense, "use_shape_dense should be False")
+        want(head.shape_dense_alpha_raw is None, "dense gate param should not exist")
+        want(head.p2_boundary_refiner is None, "refiner should be absent")
+        want(md_train == 0 and pe_train == 0, f"PE trainable {pe_train} != 0 (DDP-unused!)")
     elif arm == "pb":
         want(head.explicit_prompt_mode == "points_box", "mode != points_box")
         want(head.explicit_use_point_prompt and head.explicit_use_box_prompt
@@ -316,9 +324,11 @@ def main() -> int:
         del model
 
     print("\n===== pairwise model_config diffs (ablation feasibility) =====")
-    pairs = [("p", "pb"), ("pb", "a0"), ("a0", "a0_sg"), ("a0_sg", "a0_sg_densecap64"), ("a0", "a1"), ("a1", "a2"), ("a2", "a2e"), ("a0", "a3"), ("a0_sg", "a3sg"), ("a3sg", "a3sgt"), ("a3sgt", "a3sgtm"), ("a3sgtm", "a3sgtm-dclip"), ("a0_sg", "a3sgt"), ("a3", "a3r"), ("a3", "a4"), ("a3sg", "a4sg"), ("a0_sg", "a5sg"), ("a4sg", "a5sg"), ("pb", "r3"), ("r3", "r3_udpr")]
+    pairs = [("p", "pb"), ("b", "pb"), ("b", "p"), ("pb", "a0"), ("a0", "a0_sg"), ("a0_sg", "a0_sg_densecap64"), ("a0", "a1"), ("a1", "a2"), ("a2", "a2e"), ("a0", "a3"), ("a0_sg", "a3sg"), ("a3sg", "a3sgt"), ("a3sgt", "a3sgtm"), ("a3sgtm", "a3sgtm-dclip"), ("a0_sg", "a3sgt"), ("a3", "a3r"), ("a3", "a4"), ("a3sg", "a4sg"), ("a0_sg", "a5sg"), ("a4sg", "a5sg"), ("pb", "r3"), ("r3", "r3_udpr")]
     expected = {
         ("p", "pb"): {"explicit_prompt_mode"},
+        ("b", "pb"): {"explicit_prompt_mode"},  # box-only: remove the point pathway's consumption
+        ("b", "p"): {"explicit_prompt_mode"},
         ("pb", "a0"): {"explicit_prompt_mode", "train_mask_downscaling",
                        "use_shape_dense"},  # use_shape_dense derives from mode
         ("a0", "a0_sg"): {"detach_input"},
