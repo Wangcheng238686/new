@@ -110,6 +110,8 @@ segm–bbox 无损；跨层非调参；**过选点有早期稳定性与 AP75 代
 
 工件：`ablations/vhr10_p2v2_matrix300_a3_pbm_udprk128_tr1.0_va1.0/
 inference_*`；`diagnostics/a3k_l3_bootstraps_20260916/`。
+三 K × 四权重完整 COCO 指标表（全字段）见专档
+`docs/k_sensitivity_full_coco.md`。
 
 ## 登记与审计链
 
