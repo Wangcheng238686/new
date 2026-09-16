@@ -20,7 +20,8 @@ from rsprompter.decoder_tail_refiner import DecoderTailPointRefiner
 def main() -> None:
     dist.init_process_group("gloo")
     rank = dist.get_rank()
-    for mode in ("residual_v1", "confidence_gated", "confidence_gated_margin"):
+    for mode in ("residual_v1", "residual_v1_stop_margin", "residual_v1_margin",
+                 "confidence_gated", "confidence_gated_margin"):
         module = DecoderTailPointRefiner(num_points=4, mode=mode)
         if rank == 0:
             logits = torch.tensor([[[[-1.0, 0.1], [0.1, 2.0]]]])

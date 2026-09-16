@@ -22,7 +22,7 @@ MAINLINE = ROOT.parent                      # repo root (repo/)
 sys.path.insert(0, str(MAINLINE))
 sys.path.insert(0, str(MAINLINE / "portable_sam2_explicit_coarse" / "inference"))
 
-ARMS = ["p", "pb", "b", "a0", "a0_sg", "a0_sg_densecap64", "a1", "a2", "a2e", "a3", "a3sg", "a3sgt", "a3sgtm", "a3sgtm-dclip", "a3r", "a4", "a4sg", "a5sg", "r3", "r3_udpr", "densecap64"]
+ARMS = ["p", "pb", "b", "a0", "a0_sg", "a0_sg_densecap64", "a1", "a2", "a2e", "a3", "a3sg", "a3sgt", "a3sgtm", "a3sgtm-dclip", "a3sgm", "a3r", "a4", "a4sg", "a5sg", "r3", "r3_udpr", "densecap64"]
 
 # Every config input read by the VHR-10 inheritance chain.  ``build`` clears
 # these before applying an arm dump, so one arm (or the caller's terminal)
@@ -233,7 +233,7 @@ def check_arm(arm: str, model, cfg) -> list:
                      "dense capacity width != 256")
                 want(bool(head.dense_capacity_cfg.get("source_detach", False)),
                      "dense capacity source_detach must be true")
-        elif arm in {"a3", "a3sg", "a3sgt", "a3sgtm", "a3sgtm-dclip", "a3r", "a4", "a4sg", "a5sg", "r3_udpr"}:
+        elif arm in {"a3", "a3sg", "a3sgt", "a3sgtm", "a3sgtm-dclip", "a3sgm", "a3r", "a4", "a4sg", "a5sg", "r3_udpr"}:
             want(refiner is None, "P2 refiner should be absent")
             want(head.decoder_tail_enabled, "UDPR should be enabled")
             tcfg = head._decoder_tail_cfg
@@ -251,14 +251,19 @@ def check_arm(arm: str, model, cfg) -> list:
                      "a3sgt must not materialize gate/margin keys")
                 want(bool(getattr(head, "_decoder_tail_train_base_logits", False)),
                      "a3sgt must route training final-mask loss to unrefined logits")
-            elif arm in {"a3sgtm", "a3sgtm-dclip"}:
-                want(tcfg.get("mode") == "residual_v1_stop_margin", "a3sgtm mode wrong")
+            elif arm in {"a3sgtm", "a3sgtm-dclip", "a3sgm"}:
+                want(tcfg.get("mode") == ("residual_v1_margin" if arm == "a3sgm" else "residual_v1_stop_margin"),
+                     f"{arm} mode wrong")
                 want(abs(float(tcfg.get("boundary_logit", 9e9)) - (-0.4054651081)) < 1e-6,
                      "a3sgtm boundary != logit(0.4)")
                 want(abs(float(tcfg.get("crossing_margin", -1)) - 0.10) < 1e-9,
                      "a3sgtm margin != 0.10")
-                want(bool(getattr(head, "_decoder_tail_train_base_logits", False)),
-                     "a3sgtm must keep the tailstop base routing")
+                if arm in {"a3sgtm", "a3sgtm-dclip"}:
+                    want(bool(getattr(head, "_decoder_tail_train_base_logits", False)),
+                         "a3sgtm must keep the tailstop base routing")
+                else:  # a3sgm: coupled -- training deploys refined z' (co-adaptation)
+                    want(not getattr(head, "_decoder_tail_train_base_logits", True),
+                         "a3sgm must keep the coupled refined-output route")
             else:
                 expected_mode = "confidence_gated_margin" if arm == "a5sg" else "confidence_gated"
                 want(tcfg.get("mode") == expected_mode, f"DCR mode != {expected_mode}")
@@ -271,7 +276,7 @@ def check_arm(arm: str, model, cfg) -> list:
                 if arm == "a5sg":
                     want(abs(float(tcfg.get("crossing_margin", -1)) - 0.10) < 1e-9,
                          "A5 crossing margin != 0.10")
-            if arm not in {"a3sgt", "a3sgtm", "a3sgtm-dclip"}:
+            if arm not in {"a3sgt", "a3sgtm", "a3sgtm-dclip", "a3sgm"}:
                 want(not getattr(head, "_decoder_tail_train_base_logits", True),
                      f"{arm} must keep the v1 refined-output training route")
         else:
@@ -324,7 +329,7 @@ def main() -> int:
         del model
 
     print("\n===== pairwise model_config diffs (ablation feasibility) =====")
-    pairs = [("p", "pb"), ("b", "pb"), ("b", "p"), ("pb", "a0"), ("a0", "a0_sg"), ("a0_sg", "a0_sg_densecap64"), ("a0", "a1"), ("a1", "a2"), ("a2", "a2e"), ("a0", "a3"), ("a0_sg", "a3sg"), ("a3sg", "a3sgt"), ("a3sgt", "a3sgtm"), ("a3sgtm", "a3sgtm-dclip"), ("a0_sg", "a3sgt"), ("a3", "a3r"), ("a3", "a4"), ("a3sg", "a4sg"), ("a0_sg", "a5sg"), ("a4sg", "a5sg"), ("pb", "r3"), ("r3", "r3_udpr")]
+    pairs = [("p", "pb"), ("b", "pb"), ("b", "p"), ("pb", "a0"), ("a0", "a0_sg"), ("a0_sg", "a0_sg_densecap64"), ("a0", "a1"), ("a1", "a2"), ("a2", "a2e"), ("a0", "a3"), ("a0_sg", "a3sg"), ("a3sg", "a3sgt"), ("a3sgt", "a3sgtm"), ("a3sgtm", "a3sgtm-dclip"), ("a3sgtm-dclip", "a3sgm"), ("a0_sg", "a3sgt"), ("a3", "a3r"), ("a3", "a4"), ("a3sg", "a4sg"), ("a0_sg", "a5sg"), ("a4sg", "a5sg"), ("pb", "r3"), ("r3", "r3_udpr")]
     expected = {
         ("p", "pb"): {"explicit_prompt_mode"},
         ("b", "pb"): {"explicit_prompt_mode"},  # box-only: remove the point pathway's consumption
@@ -341,6 +346,7 @@ def main() -> int:
         ("a3sg", "a3sgt"): {"mode"},  # tailstop: single-variable isolation
         ("a3sgt", "a3sgtm"): {"mode", "crossing_margin", "boundary_logit"},  # loss form + anchor only
         ("a3sgtm", "a3sgtm-dclip"): set(),  # trainer-side clip knob only: model identical (a3/a3r precedent)
+        ("a3sgtm-dclip", "a3sgm"): {"mode"},  # the isolation switch: coupled vs stop margin
         ("a0_sg", "a3sgt"): {"decoder_tail_refiner_cfg"},
         ("a3", "a3r"): set(),  # trainer-side knob only: model identical
         ("a3", "a4"): {"gate_init_prob", "gate_loss_weight", "keep_loss_weight", "mode"},

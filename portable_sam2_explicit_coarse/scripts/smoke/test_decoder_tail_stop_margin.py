@@ -73,6 +73,28 @@ def main() -> None:
     out, _ = fresh(base, torch.randn(2, 32, 16, 16), torch.randn(2, 1, 256))
     assert torch.equal(out, base)
 
+    # Coupled twin (residual_v1_margin): identical forward VALUES, live
+    # gradients (the co-adaptation channel), same loss.
+    coupled = DecoderTailPointRefiner(
+        num_points=8, mode="residual_v1_margin",
+        crossing_margin=0.10, boundary_logit=BOUNDARY,
+    )
+    coupled.load_state_dict(refiner.state_dict())
+    c_logits = torch.randn(3, 1, 16, 16, requires_grad=True)
+    c_up = torch.randn(3, 32, 16, 16, requires_grad=True)
+    c_tok = torch.randn(3, 1, 256, requires_grad=True)
+    r_stop, o_stop = refiner(c_logits, c_up, c_tok)
+    r_coup, o_coup = coupled(c_logits, c_up, c_tok)
+    assert r_stop.shape == r_coup.shape
+    # same weights + same inputs -> same delta values (grad plumbing only)
+    assert torch.allclose(o_stop["delta"].detach(), o_coup["delta"].detach(), atol=1e-6)
+    c_loss, _ = coupled.point_loss(o_coup, targets)
+    (c_loss + r_coup.sum() * 0.01).backward()
+    assert c_logits.grad is not None and float(c_logits.grad.abs().sum()) > 0.0, \
+        "coupled mode MUST flow gradients into decoder logits"
+    assert c_up.grad is not None and float(c_up.grad.abs().sum()) > 0.0
+    assert c_tok.grad is not None and float(c_tok.grad.abs().sum()) > 0.0
+
     print("test_decoder_tail_stop_margin: PASS")
 
 

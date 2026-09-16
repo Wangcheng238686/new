@@ -6,11 +6,11 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ARM="${1:?usage: vhr10_p2v2_matrix300.sh <p|pb|b|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3r|a4|a4sg|a5sg|r3|r3_udpr>}"
+ARM="${1:?usage: vhr10_p2v2_matrix300.sh <p|pb|b|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3sgm|a3r|a4|a4sg|a5sg|r3|r3_udpr>}"
 case "${ARM}" in
-  p|pb|b|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3r|a4|a4sg|a5sg|r3|r3_udpr) ;;
+  p|pb|b|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3sgm|a3r|a4|a4sg|a5sg|r3|r3_udpr) ;;
   *)
-    echo "Unknown matrix300 arm ${ARM}; expected p, pb, b, a0, a0_sg, a0_sg_densecap64, a1, a2, a2e, a3, a3m, a3sg, a3sgt, a3sgtm, a3sgtm-dclip, a3r, a4, a4sg, a5sg, r3, or r3_udpr" >&2
+    echo "Unknown matrix300 arm ${ARM}; expected p, pb, b, a0, a0_sg, a0_sg_densecap64, a1, a2, a2e, a3, a3m, a3sg, a3sgt, a3sgtm, a3sgtm-dclip, a3sgm, a3r, a4, a4sg, a5sg, r3, or r3_udpr" >&2
     exit 2
     ;;
 esac

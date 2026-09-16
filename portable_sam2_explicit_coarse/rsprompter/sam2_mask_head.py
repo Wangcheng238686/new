@@ -131,7 +131,7 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
             self.decoder_tail_enabled
             and self._decoder_tail_cfg.get("mode", "residual_v1")
             in {"residual_v1_stop", "residual_v1_stop_margin"}
-        )
+        )  # residual_v1_margin stays coupled: full-mask loss on refined z' (co-adaptation channel)
         self.decoder_tail_refiner = None
         self._last_tail_outputs = None
 
@@ -1552,7 +1552,8 @@ Verbatim-extracted from forward; operation order unchanged.
         )[:, 0]
         threshold = float(rcnn_test_cfg.mask_thr_binary)
         if (self.decoder_tail_enabled and not getattr(self, "_tail_boundary_checked", False)
-                and self._decoder_tail_cfg.get("mode") == "residual_v1_stop_margin"):
+                and self._decoder_tail_cfg.get("mode")
+                in {"residual_v1_stop_margin", "residual_v1_margin"}):
             expected = float(torch.log(torch.tensor(threshold / (1.0 - threshold))).item())
             if abs(self.decoder_tail_refiner.boundary_logit - expected) > 1e-4:
                 raise RuntimeError(

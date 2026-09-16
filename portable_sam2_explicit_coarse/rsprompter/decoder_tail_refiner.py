@@ -24,7 +24,7 @@ class DecoderTailPointRefiner(nn.Module):
         if num_points < 0 or hidden_dim <= 0 or point_loss_weight < 0 or delta_logit_max <= 0:
             raise ValueError("UDPR requires non-negative K/loss and positive hidden/delta sizes")
         if mode not in {"residual_v1", "residual_v1_stop", "residual_v1_stop_margin",
-                        "confidence_gated", "confidence_gated_margin"}:
+                        "residual_v1_margin", "confidence_gated", "confidence_gated_margin"}:
             raise ValueError(f"Unsupported UDPR mode={mode!r}")
         if (not 0.0 < gate_init_prob < 1.0 or gate_loss_weight < 0
                 or keep_loss_weight < 0 or crossing_margin < 0):
@@ -37,7 +37,8 @@ class DecoderTailPointRefiner(nn.Module):
         self.crossing_margin = float(crossing_margin)
         self.boundary_logit = float(boundary_logit)
         input_dim = int(feature_channels) + int(token_dim) + 4  # z, x, y, |z|
-        if self.mode in {"residual_v1", "residual_v1_stop", "residual_v1_stop_margin"}:
+        if self.mode in {"residual_v1", "residual_v1_stop", "residual_v1_stop_margin",
+                         "residual_v1_margin"}:
             # Keep the v1 module and parameter names byte-for-byte compatible
             # with existing A3 checkpoints.
             self.mlp = nn.Sequential(nn.LayerNorm(input_dim), nn.Linear(input_dim, int(hidden_dim)), nn.GELU(), nn.Linear(int(hidden_dim), 1))
@@ -90,6 +91,7 @@ class DecoderTailPointRefiner(nn.Module):
             tail_logits = selected_logits.detach()
             feat, token = feat.detach(), token.detach()
         elif self.mode in {"residual_v1_stop", "residual_v1_stop_margin"}:
+            # (residual_v1_margin deliberately NOT here: it stays coupled)
             # tailstop: every tail input is read-only, so delta is a function
             # of detached state plus tail parameters ONLY — neither the tail
             # point loss nor any loss on the refined logits can reach the
@@ -107,7 +109,8 @@ class DecoderTailPointRefiner(nn.Module):
             tail_logits = selected_logits
         attrs = torch.stack((tail_logits, xx, yy, tail_logits.abs()), dim=-1)
         point_features = torch.cat((feat, token, attrs), dim=-1)
-        if self.mode in {"residual_v1", "residual_v1_stop", "residual_v1_stop_margin"}:
+        if self.mode in {"residual_v1", "residual_v1_stop", "residual_v1_stop_margin",
+                         "residual_v1_margin"}:
             raw_delta = self.delta_logit_max * torch.tanh(self.mlp(point_features).squeeze(-1))
             gate = torch.ones_like(raw_delta)
             gate_logits = None
@@ -194,8 +197,21 @@ class DecoderTailPointRefiner(nn.Module):
             "TAIL/correct_flip_fraction": zero,
             "TAIL/destroy_fraction": zero,
         }
-        if self.mode == "residual_v1_stop_margin":
-            stats["TAIL/boundary_margin_violation"] = zero
+        if self.mode in {"residual_v1_stop_margin", "residual_v1_margin"}:
+            # Margin modes take TWO _global_tail_bce collectives on non-empty
+            # ranks (violation terms, then the detached BCE diagnostic), and
+            # report selected_bce from call-2 sums over call-1 counts while
+            # boundary_margin_violation is call-1's normalized sum.  Mirror
+            # both the collective count and that field semantics here so an
+            # empty rank neither desyncs the group nor misreports the fields
+            # (audited 2026-09-16; desync would be a loud crash).
+            _bce_counts, bce_sums, _ = self._global_tail_bce(zero, zero, zero, zero)
+            _active = (global_counts > 0).to(zero.dtype)
+            stats["TAIL/selected_bce"] = (
+                bce_sums[0] / global_counts[0].clamp_min(1.0)
+                + bce_sums[1] / global_counts[1].clamp_min(1.0)
+            ) / _active.sum().clamp_min(1.0)
+            stats["TAIL/boundary_margin_violation"] = global_bce
         if self.mode in {"confidence_gated", "confidence_gated_margin"}:
             gate_counts, gate_sums, _ = self._global_gate_terms(zero, zero, zero, zero, zero)
             # An empty local rank must expose the same DDP-global mechanism
@@ -259,7 +275,9 @@ class DecoderTailPointRefiner(nn.Module):
         """DDP-correct, positive/negative-balanced BCE over selected points."""
         if self.mode in {"confidence_gated", "confidence_gated_margin"}:
             return self._confidence_gated_point_loss(tail_outputs, targets)
-        if self.mode == "residual_v1_stop_margin":
+        if self.mode in {"residual_v1_stop_margin", "residual_v1_margin"}:
+            # Same boundary-anchored loss; the modes differ only in forward
+            # gradient plumbing (stop detaches inputs, v1_margin stays coupled).
             return self._stop_margin_point_loss(tail_outputs, targets)
         return self._v1_point_loss(tail_outputs, targets)
 

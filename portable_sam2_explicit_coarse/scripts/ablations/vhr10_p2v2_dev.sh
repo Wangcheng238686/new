@@ -10,7 +10,7 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ARM="${1:?usage: vhr10_p2v2_dev.sh <p|pb|b|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3r|a4|a4sg|a5sg|r3|r3_udpr|udpr64|densecap64>}"
+ARM="${1:?usage: vhr10_p2v2_dev.sh <p|pb|b|a0|a0_sg|a0_sg_densecap64|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3sgm|a3r|a4|a4sg|a5sg|r3|r3_udpr|udpr64|densecap64>}"
 shift || true
 
 # Protocol entries share the same architecture/arm block below, so the
@@ -417,6 +417,31 @@ case "${ARM}" in
       export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3m_pbm_udprk${DECODER_TAIL_NUM_POINTS}tsm}"
     fi
     ;;
+  a3sgm)
+    # Coupled margin tail on the A0-SG base + decoupled aux clip.  The
+    # evidence matrix's untried cell: every prior tail variant lacked at
+    # least one proven positive (a3sg: BCE loss + coupled clip; a3sgtm*:
+    # isolation).  Here the margin loss's gradients flow trunk-ward (the
+    # co-adaptation channel, a3's +0.012~0.035 dividend) and the full-mask
+    # loss consumes the REFINED z' (v1 semantics); the decoupled clip
+    # removes the budget-theft tax (root-cause fix; hypothesis: it also
+    # rescues coupled-margin training where A5's coupled-clip run collapsed).
+    # Relative to a3sgtm-dclip the ONLY model difference is the isolation
+    # switch (mode residual_v1_margin vs residual_v1_stop_margin).
+    export P2_BOUNDARY_REFINER_ENABLED=0
+    export P2_BOUNDARY_REFINER_LOSS_MODE=boundary
+    export DECODER_TAIL_REFINER_ENABLED=1
+    export DECODER_TAIL_NUM_POINTS=64
+    export DECODER_TAIL_HIDDEN_DIM=128
+    export DECODER_TAIL_POINT_LOSS_WEIGHT=1.0
+    export DECODER_TAIL_DELTA_LOGIT_MAX=2.0
+    export DECODER_TAIL_MODE=residual_v1_margin
+    export DECODER_TAIL_CROSSING_MARGIN=0.10
+    export DECODER_TAIL_BOUNDARY_LOGIT=-0.4054651081081644
+    export SHAPE_DENSE_DETACH=1
+    export DECOUPLED_AUX_GRAD_CLIP=1
+    export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_a3sgm_pbm_sg_udprk64tm}"
+    ;;
   a3sgtm-dclip)
     # a3sgtm + decoupled auxiliary grad clipping.  Model config is IDENTICAL
     # to a3sgtm (same fingerprint); the ONLY difference is the trainer-side
@@ -548,7 +573,7 @@ case "${ARM}" in
     export RUN_TAG="${RUN_TAG:-${P2V2_TAG_PREFIX}_densecap64_a0e300init}"
     ;;
   *)
-    echo "Unknown arm ${ARM}; expected p, pb, b, a0, a0_sg, a0_sg_densecap64, a1, a2, a2e, a3, a3m, a3sg, a3sgt, a3sgtm, a3sgtm-dclip, a3r, a4, a4sg, a5sg, r3, r3_udpr, udpr64, or densecap64" >&2
+    echo "Unknown arm ${ARM}; expected p, pb, b, a0, a0_sg, a0_sg_densecap64, a1, a2, a2e, a3, a3m, a3sg, a3sgt, a3sgtm, a3sgtm-dclip, a3sgm, a3r, a4, a4sg, a5sg, r3, r3_udpr, udpr64, or densecap64" >&2
     exit 2
     ;;
 esac

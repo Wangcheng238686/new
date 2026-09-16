@@ -8,8 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${PROJECT_ROOT}/scripts/load_environment.sh"
 
-ARM="${1:?usage: vhr10_p2v2_eval.sh <p|pb|b|a0|a0_sg|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3r|a4|a4sg|a5sg|r3|r3_udpr> <best|best_bbox|best_composite|last>}"
-KIND="${2:?usage: vhr10_p2v2_eval.sh <p|pb|b|a0|a0_sg|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3r|a4|a4sg|a5sg|r3|r3_udpr> <best|best_bbox|best_composite|last>}"
+ARM="${1:?usage: vhr10_p2v2_eval.sh <p|pb|b|a0|a0_sg|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3sgm|a3r|a4|a4sg|a5sg|r3|r3_udpr> <best|best_bbox|best_composite|last>}"
+KIND="${2:?usage: vhr10_p2v2_eval.sh <p|pb|b|a0|a0_sg|a1|a2|a2e|a3|a3m|a3sg|a3sgt|a3sgtm|a3sgtm-dclip|a3sgm|a3r|a4|a4sg|a5sg|r3|r3_udpr> <best|best_bbox|best_composite|last>}"
 # Keep dev100 as the historical default.  Formal protocol callers must set
 # P2V2_EVAL_PROTOCOL explicitly, so a matrix300 result cannot silently
 # evaluate a same-named dev100 directory.
@@ -36,6 +36,7 @@ case "${ARM}" in
   a3sgt) SUFFIX="a3sgt_pbm_sg_udprk64ts" ;;
   a3sgtm) SUFFIX="${A3SGTM_SUFFIX:-a3sgtm_pbm_sg_udprk64tsm}" ;;
   a3sgtm-dclip) SUFFIX="${A3SGTM_SUFFIX:-a3sgtm_dclip_pbm_sg_udprk64tsm}" ;;
+  a3sgm) SUFFIX="a3sgm_pbm_sg_udprk64tm" ;;
   a3m) SUFFIX="${A3M_SUFFIX:-a3m_pbm_udprk64tsm}" ;;  # heat-start: A3M_SUFFIX=a3m_pbm_udprk${K}tsm_a0_e300init
   # variants: heat-start A3SGTM_SUFFIX=a3sgtm_pbm_sg_udprk64tsm_a0sg_e300init;
   #           decoupled-clip A3SGTM_SUFFIX=a3sgtm_pbm_sg_udprk64tsm_dclip

@@ -246,7 +246,7 @@ if _decoder_tail_enabled:
         # decoder output (routed in sam2_mask_head).  Materializing `mode`
         # only here keeps legacy arms' configs (and fingerprints) unchanged.
         _decoder_tail_cfg.update(mode=_decoder_tail_mode)
-    elif _decoder_tail_mode == "residual_v1_stop_margin":
+    elif _decoder_tail_mode in ("residual_v1_stop_margin", "residual_v1_margin"):
         # tailstop container + threshold-anchored one-sided margin point
         # loss (oracle gt_cap_thr evidence: +0.0267 CI[+0.0206,+0.0323]).
         # The boundary MUST be the deployed binarisation logit
