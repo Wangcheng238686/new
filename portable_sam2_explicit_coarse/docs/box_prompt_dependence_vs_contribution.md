@@ -183,6 +183,50 @@ last 权重 train 520 图上扫 {0.40–0.65} 取 argmax（标定源），val 13
 | bestC(E290) | 0.6357 | 0.9163 | 0.6799 | 0.6750 | 0.7123 | 0.6740 |
 | last(E300) | 0.6341 | 0.9161 | 0.6781 | 0.6736 | 0.7127 | 0.6734 |
 
+**双口径总清单（2026-09-17 终版：12 臂 × 4 权重 × 双口径，全部来自推理产物）**：
+
+| 臂 | 权重 | segm@0.4 | AP50 | AP75 | sAR100 | segm@cal | 阈值 | bbox | comp@0.4 | comp@cal |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| B 纯框 | best | 0.6486 | 0.9345 | 0.6963 | 0.6868 | 0.6584 | 0.55 | 0.7089 | 0.6788 | 0.6836 |
+| B 纯框 | best_bbox | 0.6454 | 0.9375 | 0.6816 | 0.6853 | 0.6525 | 0.55 | 0.7214 | 0.6834 | 0.6869 |
+| B 纯框 | best_composite | 0.6454 | 0.9375 | 0.6816 | 0.6853 | 0.6525 | 0.55 | 0.7214 | 0.6834 | 0.6869 |
+| B 纯框 | last | 0.6345 | 0.9217 | 0.6720 | 0.6751 | 0.6435 | 0.55 | 0.7140 | 0.6743 | 0.6788 |
+| A3sgt | best | 0.6560 | 0.9388 | 0.7023 | 0.6942 | — | — | 0.7240 | 0.6900 | — |
+| A3sgt | best_bbox | 0.6439 | 0.9405 | 0.6883 | 0.6826 | — | — | 0.7274 | 0.6857 | — |
+| A3sgt | best_composite | 0.6560 | 0.9388 | 0.7023 | 0.6942 | — | — | 0.7240 | 0.6900 | — |
+| A3sgt | last | 0.6437 | 0.9374 | 0.6842 | 0.6817 | — | — | 0.7225 | 0.6831 | — |
+| A3sgtm-dclip | best | 0.6573 | 0.9190 | 0.7171 | 0.6960 | — | — | 0.7041 | 0.6807 | — |
+| A3sgtm-dclip | best_bbox | 0.6504 | 0.9280 | 0.6878 | 0.6896 | — | — | 0.7182 | 0.6843 | — |
+| A3sgtm-dclip | best_composite | 0.6565 | 0.9341 | 0.7032 | 0.6924 | — | — | 0.7156 | 0.6861 | — |
+| A3sgtm-dclip | last | 0.6499 | 0.9316 | 0.6961 | 0.6890 | — | — | 0.7154 | 0.6827 | — |
+| **A3sgm** | best | 0.6933 | 0.9540 | 0.7752 | 0.7306 | — | — | 0.6878 | 0.6905 | — |
+| **A3sgm** | best_bbox | 0.6828 | 0.9453 | 0.7461 | 0.7184 | — | — | 0.7343 | 0.7085 | — |
+| **A3sgm** | best_composite | 0.6828 | 0.9453 | 0.7461 | 0.7184 | — | — | 0.7343 | 0.7085 | — |
+| **A3sgm** | last | 0.6816 | 0.9465 | 0.7492 | 0.7174 | — | — | 0.7317 | 0.7067 | — |
+
+（两阶段热启动 dev100：best(E32) 0.6650/0.7348 comp 0.6999、last(E33) 0.6640/0.7348 comp 0.6994；耦合 A3sgtm 无四权重推理，bestS 训练验证口径 0.6543。尾臂 segm@cal=—：自标定于 0.4，margin 锚定守卫强制部署一致。）
+
+**推理产物指引（人工核查用；CKROOT=`/data/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations`）**：
+
+| 臂 | run 目录（CKROOT 下） | 0.4 口径推理目录（每权重一个） | 标定口径 |
+|---|---|---|---|
+| P | `vhr10_p2v2_matrix300_p_point_tr1.0_va1.0` | `inference_p_{best,best_bbox,best_composite,last}_vhr10` | `diagnostics/nontail_calibrated_reeval_20260917/worker_p.log` + `full_calib_metrics.json["p\|<kind>"]` |
+| B | `vhr10_p2v2_matrix300_b_box_tr1.0_va1.0` | `inference_b_{best,best_bbox,best_composite,last}_vhr10` | 同上 `worker_b.log` + `["b\|<kind>"]` |
+| PB | `vhr10_p2v2_matrix300_pb_tr1.0_va1.0` | `inference_{best,best_bbox,best_composite,last}_vhr10` | `worker_pb.log` + `["pb\|<kind>"]` |
+| A0 | `vhr10_p2v2_matrix300_a0_pbm_d5b_tr1.0_va1.0` | `inference_a0_*_vhr10` | `worker_a0.log` + `["a0\|<kind>"]` |
+| A0-sg | `vhr10_p2v2_matrix300_a0_sg_tr1.0_va1.0` | `inference_a0_sg_*_vhr10` | `worker_a0sg.log` + `["a0_sg\|<kind>"]` |
+| R3 | `vhr10_p2v2_matrix300_pb_r3_tr1.0_va1.0` | `inference_pb_r3_*_vhr10` | `worker_r3.log` + `["r3\|<kind>"]` |
+| A3 | `vhr10_p2v2_matrix300_a3_pbm_udprk64_tr1.0_va1.0` | `inference_a3_*_vhr10` | —（尾臂自标定 0.4） |
+| A3-s45 | `vhr10_p2v2_matrix300_a3_pbm_udprk64_seed45_tr1.0_va1.0` | `inference_a3seed45_*_vhr10` | — |
+| A3sg | `vhr10_p2v2_matrix300_a3sg_pbm_sg_udprk64_tr1.0_va1.0` | `inference_a3sg_*_vhr10` | — |
+| A3sgt | `vhr10_p2v2_matrix300_a3sgt_pbm_sg_udprk64ts_tr1.0_va1.0` | `inference_a3sgt_*_vhr10` | — |
+| A3sgtm 耦合 | `vhr10_p2v2_matrix300_a3sgtm_pbm_sg_udprk64tsm_tr1.0_va1.0` | 无（未做） | — |
+| A3sgtm-dclip | `vhr10_p2v2_matrix300_a3sgtm_dclip_pbm_sg_udprk64tsm_tr1.0_va1.0` | `inference_{best,best_bbox,best_composite,last}_vhr10` | — |
+| **A3sgm** | `vhr10_p2v2_matrix300_a3sgm_pbm_sg_udprk64tm_tr1.0_va1.0` | `inference_{best,best_bbox,best_composite,last}_vhr10` | — |
+| 热启动（两阶段） | `vhr10_p2v2_dev100_a3sgtm_pbm_sg_udprk64tsm_a0sg_e300init_tr1.0_va1.0` | `inference_best_vhr10`、`inference_lastckpt_vhr10` | — |
+
+每推理目录内：`metrics.json`（完整 COCO）、`predictions.json`（逐检测记录）、`run_manifest.json`（指纹/合同/图像集）。标定口径的 train-split 扫描原始输出在同目录 `calib_<arm>_train.txt`（6 阈值点全字段）。探针：`inference/probes/mask_threshold_sweep.py <ckpt> <thrs> [train|validation]`。
+
 读表要点（2026-09-17 更新）：① 全矩阵冠军 = **a3sgm**（last comp 0.7067 / bestC 0.7085，双门通过）；② 单阶段旧冠军 = A3（0.6994），两阶段 = 热启动
 （0.6999，bbox 逐位保持）；② 提示模态三角 b>p（+0.010）、互补仅 +0.004；
 ③ dense 轴只有梯度隔离接法为正（A0-sg +0.008/+0.013），渲染器/容量为负；
