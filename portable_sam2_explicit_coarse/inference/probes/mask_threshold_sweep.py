@@ -10,12 +10,19 @@ from utils.coco_eval_utils import VHR10_CATEGORIES, build_coco_gt_and_dt, run_co
 
 ckpt_path = sys.argv[1]
 thresholds = [float(x) for x in sys.argv[2].split(',')]
+split = sys.argv[3] if len(sys.argv) > 3 else "validation"
 ckpt = _load_checkpoint(Path(ckpt_path)); snap = _snapshot(ckpt)
 ns = SimpleNamespace(checkpoint=ckpt_path, config=None, split="validation", data_root=None,
                      ann_file=None, image_subdir=None, image_size=None, batch_size=2,
                      sam2_repo=None, sam2_ckpt=None, weights="model")
 cfg, _ = _resolve_model_config(ns, snap)
 contract = _resolve_dataset_contract(ns, snap)
+if split == "train":
+    # Protocol-clean threshold calibration source: tune on the train split,
+    # report on validation.  Same data root / image subdir, ann swap only.
+    contract = dict(contract)
+    contract["ann_file"] = str(contract["ann_file"]).replace("_val", "_train")
+ns.split = split
 out = {}
 for thr in thresholds:
     c = copy.deepcopy(cfg)
