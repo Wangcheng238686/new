@@ -127,6 +127,12 @@ bs2（每样本更慢）；向量化（收益不足）；OMP 线程（381s vs 38
   **不做 cherry-pick**（两臂各自按 segm-best 出 test，报双双落点）。
 - ETA：单卡吞吐实测后回填（初速 ~1.8s/micro，估 5-6.5 天，完赛 ~9/21-23）。
 
+**终止记录（2026-09-17 11:20，用户指令）**：复刻臂于 E39 中途终止（SIGTERM，
+无残留进程，GPU3 释放）。终止前成绩：segm best 0.6660、E38 处 bbox best 仍在
+刷新——跨种子一致性证据（与主 run best 0.6686 差 0.0026，远小于 0.008 噪声标尺）
+已经取得并在案。全部产物保留：四别名 best ckpt + last_checkpoint.pth（如需续跑
+`RESUME_OWN` 指向 last_checkpoint.pth 即可）；日志完整。
+
 ## 6. 下游联动清单（出数后）
 
 
