@@ -55,5 +55,7 @@ for thr in thresholds:
     m = run_coco_eval(g, d, iou_type="segm")
     out[thr] = (m["segm/mAP"], m["segm/mAP_75"])
     print(f"thr={thr:.2f} segm/mAP={m['segm/mAP']:.4f} AP75={m['segm/mAP_75']:.4f}", flush=True)
+    import json as _json
+    print("FULL_METRICS " + _json.dumps({k: float(v) for k, v in m.items()}), flush=True)
     del model; torch.cuda.empty_cache()
 print(json.dumps({str(k): v for k, v in out.items()}))
