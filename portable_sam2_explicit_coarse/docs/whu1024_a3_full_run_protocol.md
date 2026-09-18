@@ -212,3 +212,7 @@ e98 −0.012、A3-E73 −0.025。§8 中"+0.034 口径 → test≈0.697"的外�
 - 论文主表 Ours-WHU 行替换 + 消融表是否补 WHU 版（UDPR 增益当前仅 NWPU 证据）
 - `WHU1024_EXPERIMENT_TRACKING.md` Ours 节更新（先补登 fast150 的 76.4/73.4 口径）
 - Boundary AP 附录、参数量附录、pred.segm.json 重落盘
+
+**终止记录（2026-09-18 11:1x，用户指令）**：GPU3 的 A3 尾段续跑（E109 起）与
+GPU1/2 的 cur150（P2BRR×当前代码×150ep，E1 未完成）双双终止，产物保留
+（A3：best 0.6691@E73 + test 预读 §9；cur150：仅日志）。三卡全部释放。
