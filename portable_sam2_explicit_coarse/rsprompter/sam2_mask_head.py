@@ -855,8 +855,13 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         self.loss_mask = MODELS.build(loss_mask)
         self.class_agnostic = class_agnostic
         if self.decoder_tail_enabled:
-            if self.final_mask_coordinate_mode != "full_image" or self.roi_sam_enabled:
-                raise ValueError("UDPR requires full_image native-mask semantics, not ROI-SAM")
+            if self.roi_sam_enabled:
+                raise ValueError("UDPR cannot be combined with ROI-SAM")
+            # full_image keeps the historical contract (per-RoI decodes read as
+            # global-canvas masks).  roi_local + tail is supported: the tail
+            # refines per-RoI local logits and its point loss consumes GT crops
+            # on the decoder's native ROI grid, built at the roi-head loss site
+            # (the historical 28x28 final-mask loss contract is untouched).
             if not self.class_agnostic:
                 raise ValueError("UDPR v1 requires class_agnostic=True")
             if self.quality_head_enabled:
@@ -1518,6 +1523,21 @@ Verbatim-extracted from forward; operation order unchanged.
         activate_map: bool = False,
     ) -> Tensor:
         if self.final_mask_coordinate_mode == "roi_local":
+            if (self.decoder_tail_enabled and not getattr(self, "_tail_boundary_checked", False)
+                    and self._decoder_tail_cfg.get("mode")
+                    in {"residual_v1_stop_margin", "residual_v1_margin"}):
+                # Mirrors the full_image branch's one-time anchor check; the
+                # margin must anchor at this config's deployed binarisation
+                # logit, which the roi_local paste path binarises with.
+                _thr = float(rcnn_test_cfg.mask_thr_binary)
+                _expected = float(torch.log(torch.tensor(_thr / (1.0 - _thr))).item())
+                if abs(self.decoder_tail_refiner.boundary_logit - _expected) > 1e-4:
+                    raise RuntimeError(
+                        "stop-margin boundary_logit "
+                        f"{self.decoder_tail_refiner.boundary_logit:.6f} != deployed "
+                        f"binarisation logit {_expected:.6f} (mask_thr_binary={_thr})"
+                    )
+                self._tail_boundary_checked = True
             return super()._predict_by_feat_single(
                 mask_preds=mask_preds,
                 bboxes=bboxes,

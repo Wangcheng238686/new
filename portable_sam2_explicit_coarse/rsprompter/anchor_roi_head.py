@@ -320,8 +320,21 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         )
         tail_outputs = mask_results.get("tail_outputs")
         if tail_outputs is not None:
+            if self.mask_head.final_mask_coordinate_mode == "full_image":
+                tail_targets = mask_loss_and_target["mask_targets"]
+            else:
+                # roi_local keeps the historical 28x28 final-mask targets; the
+                # tail's selected-point indices live on the decoder's native
+                # ROI grid, so its point loss needs per-RoI GT crops at that
+                # native resolution (reusing the C2-R target builder).
+                tail_targets = self.mask_head.get_coarse_targets(
+                    sampling_results,
+                    batch_gt_instances,
+                    mask_size=tail_outputs["base_logits_detached"].shape[-2:],
+                    prompt_pos_priors=prompt_pos_priors,
+                )
             tail_loss, tail_stats = self.mask_head.decoder_tail_refiner.point_loss(
-                tail_outputs, mask_loss_and_target["mask_targets"]
+                tail_outputs, tail_targets
             )
             mask_results["loss_mask"]["loss_decoder_tail"] = tail_loss
             mask_results["loss_mask"].update(tail_stats)

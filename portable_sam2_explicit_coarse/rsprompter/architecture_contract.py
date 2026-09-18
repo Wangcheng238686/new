@@ -108,8 +108,11 @@ def architecture_id(model_config: Mapping[str, Any]) -> str:
         and dense_transform == "raw_logits"
         and dense_detach
     ):
-        return "r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64"
-    if (
+        # These legacy RD/G branches predate the decoder tail; resolve as base
+        # IDs so the renderer/dense-capacity/tail suffixes below still apply
+        # (a tail-enabled RD model must not share an ID with the tail-less one).
+        base = "r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64"
+    elif (
         neck_name == "pafpn"
         and mode == "points_box_dense"
         and stride == 16
@@ -117,20 +120,21 @@ def architecture_id(model_config: Mapping[str, Any]) -> str:
         and dense_transform == "gaussian_edt"
         and dense_detach
     ):
-        return "r1_c4_g_pafpn_coarse_points_box_gaussian_emb64"
-    known = {
-        ("aggregator", "points", 32, False): "c1_aggregator_coarse_points",
-        ("pafpn", "points", 32, False): "c2_pafpn_coarse_points",
-        ("pafpn", "points_box", 32, False): "c3_pafpn_coarse_points_box",
-        ("pafpn", "points_box_dense", 32, False): "c4_pafpn_coarse_points_box_dense",
-        ("pafpn", "points_box", 16, False): "r1_c3_pafpn_coarse_points_box_emb64",
-        ("pafpn", "points_box_dense", 16, False): "r1_c4_pafpn_coarse_points_box_dense_emb64",
-        ("pafpn", "points_box_dense", 16, True): "c5v2_pafpn_coarse_p2_boundary_refiner_emb64",
-    }
-    base = known.get(
-        (neck_name, mode, stride, refiner),
-        f"{neck_name}_coarse_{mode}_emb{1024 // stride}_p2br{int(refiner)}",
-    )
+        base = "r1_c4_g_pafpn_coarse_points_box_gaussian_emb64"
+    else:
+        known = {
+            ("aggregator", "points", 32, False): "c1_aggregator_coarse_points",
+            ("pafpn", "points", 32, False): "c2_pafpn_coarse_points",
+            ("pafpn", "points_box", 32, False): "c3_pafpn_coarse_points_box",
+            ("pafpn", "points_box_dense", 32, False): "c4_pafpn_coarse_points_box_dense",
+            ("pafpn", "points_box", 16, False): "r1_c3_pafpn_coarse_points_box_emb64",
+            ("pafpn", "points_box_dense", 16, False): "r1_c4_pafpn_coarse_points_box_dense_emb64",
+            ("pafpn", "points_box_dense", 16, True): "c5v2_pafpn_coarse_p2_boundary_refiner_emb64",
+        }
+        base = known.get(
+            (neck_name, mode, stride, refiner),
+            f"{neck_name}_coarse_{mode}_emb{1024 // stride}_p2br{int(refiner)}",
+        )
     if renderer:
         base = f"{base}_r3"
     if dense_capacity:
