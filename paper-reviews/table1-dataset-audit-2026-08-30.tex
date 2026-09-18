@@ -1,0 +1,56 @@
+\documentclass[11pt,a4paper]{ctexart}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{amssymb}
+\usepackage[hidelinks]{hyperref}
+\title{表 I 数据集条目核对记录}
+\date{2026-08-30}
+\begin{document}
+\maketitle
+
+\section*{核对范围}
+核对 \texttt{main5.tex} 表 I 的数据源、视角、卫星--无人机配对、多无人机观测、相机参数、辅助/三维实例标注、目标视角实例标注与主要任务。``Camera $K/T$'' 按表注释严格理解为每视角内参和度量外参均可用；仅提供 GPS、高度、姿态、FOV，或仅能从模拟器重新导出的情形，记为不完整。
+
+\section*{确定需要修改}
+\begin{longtable}{p{0.18\linewidth}p{0.28\linewidth}p{0.44\linewidth}}
+\toprule
+条目 & 问题 & 建议修改 \\
+\midrule
+SkyScenes & 官方项目说明该数据集含 UAV 斜视图的稠密语义、实例与深度标注。表中 ``Target Inst.'' 标为不可用，与表注释中 ``overhead/aerial target view'' 的定义冲突。受控高度、俯仰角、天气和时段变化不等同于同一关联场景的多 UAV 观测。 & 将 ``Target Inst.'' 改为 \checkmark，``Multi-UAV'' 改为 \texttimes；保留 ``S--U Pair'' 为 \texttimes 和 ``Camera $K/T$'' 为 $\triangle$。 \\
+UEMM-Air & 官方仓库明确列出 instance segmentation 数据与任务；该数据的目标视角是 UAV。表中 ``Target Inst.'' 标为不可用不准确。六条配对的\emph{模态}流不等同于多 UAV 视角。 & 将 ``Target Inst.'' 改为 \checkmark，``Multi-UAV'' 改为 \texttimes；保留 ``S--U Pair'' 为 \texttimes。若未发现发布的完整每视角 $K/T$，``Camera $K/T$'' 维持 $\triangle$。 \\
+\bottomrule
+\end{longtable}
+
+\section*{应收紧或确认的条目}
+\begin{longtable}{p{0.18\linewidth}p{0.28\linewidth}p{0.44\linewidth}}
+\toprule
+条目 & 核对结论 & 建议 \\
+\midrule
+UrbanScene3D & 原论文说明其可生成 2D/3D bounding boxes、深度和 3D mesh/point-cloud segmentation；官方仓库说明合成序列给出 UE 世界坐标路径，真实场景需要另行相机标定。表中的完整 $K/T$ \checkmark 过强；不同观测模式也不必然构成固定的多 UAV 关联组。 & ``Camera $K/T$'' 改为 $\triangle$，``Multi-UAV'' 建议改为 $\triangle$。``Aux./3D Inst.'' 保持 \checkmark，``Target Inst.'' 保持 \texttimes，除非论文准备把可由模拟器再渲染得到的 2D 实例图也计为已发布目标标注。 \\
+GTA-UAV & Game4Loc 发布 GPS、飞行高度、姿态、FOV、相机姿态等 metadata，并通过地面覆盖 IoU 建立正/半正卫星--无人机匹配；这不是严格一对一的场景组。 & 当前 ``S--U Pair'' 与 ``Camera $K/T$'' 均标为 $\triangle$ 是谨慎且合适的。按表注中严格的关联组定义，``Multi-UAV'' 也建议由 \checkmark 改为 $\triangle$。 \\
+DenseUAV & 官方数据含 GPS（经纬度和高度）及卫星/UAV 图像；未核实到可直接下载的完整每视角内外参。 & ``Camera $K/T$'' 保持 $\triangle$。``Multi-UAV'' 的 \checkmark 需在正文中理解为同一地点的多高度/多观测 UAV 样本，而非固定同步多相机阵列。 \\
+University-1652 & 含卫星、合成 drone、地面三个平台，任务是 drone-view target localization 与 drone navigation；未见完整每视角 $K/T$。 & 当前 Hybrid、S/U/G、S--U Pair \checkmark、Multi-UAV \checkmark、Camera $K/T$ \texttimes、Target Inst.\ \texttimes 与任务定位总体一致。 \\
+WHU Building & 官方数据包含航空与卫星子集，并提供建筑矢量/栅格标注；其多源子集并非配对卫星--无人机数据。 & 当前 A/S、Target Inst.\ \checkmark 和其余配对/相机参数列为 \texttimes 基本合适。建议在正文或表注中避免把 WHU 泛称为严格的实例分割基准，因为常用版本也常被用于 building extraction。 \\
+\bottomrule
+\end{longtable}
+
+\section*{其余条目}
+iSAID 的 aerial、目标视角实例标注与实例分割任务正确；SpaceNet Buildings 的卫星图像与建筑足迹多边形正确；xBD 的时相卫星图像、建筑多边形与损伤评估任务正确，$\triangle$ 合理地表达其卫星 metadata 并非完整 $K/T$。SynRS3D 的单目合成卫星影像、语义/高度/建筑变化任务以及无实例标注正确。SynSU-Build 各字段与本文数据描述一致。
+
+\section*{核对来源}
+\begin{itemize}
+\item SkyScenes project page: \url{https://hoffman-group.github.io/SkyScenes/}
+\item UEMM-Air official repository: \url{https://github.com/1e12Leon/UEMM-Air}
+\item UrbanScene3D paper and repository: \url{https://arxiv.org/abs/2107.04286}; \url{https://github.com/Linxius/UrbanScene3D}
+\item Game4Loc/GTA-UAV paper: \url{https://ojs.aaai.org/index.php/AAAI/article/download/32409/34564}
+\item DenseUAV paper and repository: \url{https://arxiv.org/abs/2201.09201}; \url{https://github.com/Dmmm1997/DenseUAV}
+\item University-1652 paper: \url{https://arxiv.org/abs/2002.12186}
+\item iSAID paper: \url{https://openaccess.thecvf.com/content_CVPRW_2019/papers/DOAI/Zamir_iSAID_A_Large-scale_Dataset_for_Instance_Segmentation_in_Aerial_Images_CVPRW_2019_paper.pdf}
+\item SpaceNet Buildings: \url{https://spacenet.ai/spacenet-buildings-dataset-v1/}
+\item xBD paper: \url{https://arxiv.org/abs/1911.09296}
+\item WHU Building Dataset: \url{https://gpcv.whu.edu.cn/data/building_dataset.html}
+\item SynRS3D official repository: \url{https://github.com/JTRNEO/SynRS3D}
+\end{itemize}
+
+\end{document}

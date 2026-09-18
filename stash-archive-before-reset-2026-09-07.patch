@@ -1,0 +1,1575 @@
+diff --git a/main5.aux b/main5.aux
+index fd77391..04007eb 100644
+--- a/main5.aux
++++ b/main5.aux
+@@ -1,8 +1,10 @@
+ \relax 
+-\citation{ref_university,ref_unigeo}
++\citation{ref_sgbeyv,ref_crffnet}
++\citation{ref_university,ref_denseuav,ref_unigeo}
++\citation{ref_sgbeyv,ref_crffnet}
+ \citation{ref_sam2}
++\citation{ref_sam}
+ \@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{}\protected@file@percent }
+-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-A}}Contributions}{1}{}\protected@file@percent }
+ \citation{ref_synthinel}
+ \citation{ref_urbanscene3d}
+ \citation{ref_skyscenes}
+@@ -10,12 +12,12 @@
+ \citation{ref_synrs3d}
+ \citation{ref_gtauav}
+ \citation{ref_maskrcnn}
+-\citation{ref_cascade,ref_htc}
++\citation{ref_cascade}
++\citation{ref_htc}
+ \citation{ref_hqisnet}
+ \citation{ref_pointrend}
+ \citation{ref_p2pformer}
+ \citation{ref_mask2former}
+-\citation{ref_sam}
+ \citation{ref_samrsapp}
+ \citation{ref_samrs}
+ \citation{ref_rsprompter}
+@@ -24,13 +26,10 @@
+ \citation{ref_cascadepsp}
+ \citation{ref_segrefiner}
+ \citation{ref_samrefiner}
+-\citation{ref_isaid}
+-\citation{ref_whu}
+-\citation{ref_spacenet}
+-\citation{ref_xbd}
+ \citation{ref_university}
+-\citation{ref_transgeo}
+ \citation{ref_denseuav}
++\citation{ref_transgeo}
++\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-A}}Contributions}{2}{}\protected@file@percent }
+ \@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{2}{}\protected@file@percent }
+ \newlabel{sec:related}{{II}{2}{}{section.2}{}}
+ \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Synthetic Data for Remote Sensing}{2}{}\protected@file@percent }
+@@ -66,8 +65,10 @@
+ \@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-A}1}Overall Architecture}{4}{}\protected@file@percent }
+ \@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-A}2}Proposal-Conditioned Coarse Shape}{4}{}\protected@file@percent }
+ \newlabel{eq:coarse_logits}{{1}{4}{}{equation.1}{}}
+-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-A}3}P2 Boundary Calibration}{4}{}\protected@file@percent }
++\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-A}3}P2 Boundary Refinement}{4}{}\protected@file@percent }
+ \newlabel{eq:p2_support}{{2}{4}{}{equation.2}{}}
++\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Architecture of PromptMiner-SAM2. The SAM2 Hiera backbone feeds a PAFPN, RPN, and RoI heads for proposal discovery. For each mask RoI, the coarse-mask decoder predicts proposal-conditioned shape logits. P2BoundaryRefiner uses high-resolution $P_2$ features only in a predicted boundary neighborhood to produce refined logits. The resulting foreground--background points, proposal box, and dense mask are encoded as native SAM2 prompts; together with the SAM2 image embedding and high-resolution features, they are decoded into the final instance mask.}}{5}{}\protected@file@percent }
++\newlabel{fig:single_architecture}{{2}{5}{}{figure.2}{}}
+ \newlabel{eq:p2_bands}{{3}{5}{}{equation.3}{}}
+ \newlabel{eq:p2_fusion}{{5}{5}{}{equation.5}{}}
+ \newlabel{eq:p2_refinement}{{6}{5}{}{equation.6}{}}
+@@ -75,71 +76,87 @@
+ \newlabel{eq:p2_loss}{{8}{5}{}{equation.8}{}}
+ \@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-A}4}Explicit Prompt Mining and Decoding}{5}{}\protected@file@percent }
+ \newlabel{eq:point_mining_score}{{9}{5}{}{equation.9}{}}
+-\newlabel{eq:dense_canvas}{{10}{5}{}{equation.10}{}}
+-\newlabel{eq:dense_prompt_gate}{{11}{5}{}{equation.11}{}}
+-\citation{ref_cvt}
++\newlabel{eq:dense_canvas}{{10}{6}{}{equation.10}{}}
++\newlabel{eq:dense_prompt_gate}{{11}{6}{}{equation.11}{}}
+ \@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-A}5}Training Objective}{6}{}\protected@file@percent }
+ \newlabel{eq:coarse_loss}{{12}{6}{}{equation.12}{}}
+ \newlabel{eq:single_loss}{{13}{6}{}{equation.13}{}}
+ \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}GeoViewMiner-SAM2}{6}{}\protected@file@percent }
+ \newlabel{sec:dual_method}{{\mbox  {IV-B}}{6}{}{subsection.4.2}{}}
+-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}1}Geometric Conditions and UAV BEV Construction}{6}{}\protected@file@percent }
+-\newlabel{eq:cvt_qkv}{{14}{6}{}{equation.14}{}}
+-\newlabel{eq:uav_bev}{{15}{6}{}{equation.15}{}}
+-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}2}Ground-Referenced ROI Candidate Retrieval}{6}{}\protected@file@percent }
++\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Architecture of GeoViewMiner-SAM2. The satellite view is processed by the trainable encoder $E$ and PAFPN--RPN/RoI pathway. Five UAV views with renderer-provided camera parameters are processed by an independent frozen Hiera encoder; their multi-scale features are fused by the Cross-View Transformer (CVT) into a ground-aligned BEV feature. Zero-initialized residual paths inject this feature into the $P_2$ and $P_3$ pyramid levels before RPN and RoI processing. CD, BF, PE, and D denote the coarse-mask decoder, boundary refiner, prompt encoder, and mask decoder of the shared satellite-view pathway.}}{6}{}\protected@file@percent }
++\newlabel{fig:dual_architecture}{{3}{6}{}{figure.3}{}}
++\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}1}Ground-Grid Projection and Local UAV Aggregation}{6}{}\protected@file@percent }
++\newlabel{eq:ground_projection}{{14}{6}{}{equation.14}{}}
+ \citation{ref_whu,ref_p2pformer}
+-\newlabel{eq:roi_coordinate_chain}{{16}{7}{}{equation.16}{}}
+-\newlabel{eq:candidate_score}{{18}{7}{}{equation.18}{}}
+-\newlabel{eq:uav_roi}{{21}{7}{}{equation.21}{}}
+-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}3}BBox and Mask ROI Residual Fusion}{7}{}\protected@file@percent }
+-\newlabel{eq:dual_residual}{{23}{7}{}{equation.23}{}}
+-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}4}Learning Objective}{7}{}\protected@file@percent }
++\citation{ref_nwpu,ref_rsprompter}
++\citation{ref_nwpu_instance}
++\citation{ref_rsprompter}
++\citation{ref_maskrcnn}
++\citation{ref_msrcnn}
++\citation{ref_htc}
++\citation{ref_condinst}
++\citation{ref_solov2}
++\citation{ref_rtmdet}
++\citation{ref_yolo11}
++\citation{ref_mask2former}
++\citation{ref_maskdino}
++\citation{ref_catnet}
++\citation{ref_rsiisn}
++\citation{ref_rs4d}
++\citation{ref_p2pformer}
++\citation{ref_rsprompter}
++\newlabel{eq:local_uav_attention}{{15}{7}{}{equation.15}{}}
++\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}2}Zero-Initialized Pyramid Fusion}{7}{}\protected@file@percent }
++\newlabel{eq:dual_residual}{{16}{7}{}{equation.16}{}}
++\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}3}Learning Objective}{7}{}\protected@file@percent }
+ \@writefile{toc}{\contentsline {section}{\numberline {V}Experiments}{7}{}\protected@file@percent }
+ \newlabel{sec:experiments}{{V}{7}{}{section.5}{}}
+ \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Datasets and Comparison Protocol}{7}{}\protected@file@percent }
+ \newlabel{sec:experimental_datasets}{{\mbox  {V-A}}{7}{}{subsection.5.1}{}}
++\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Evaluation Metrics}{7}{}\protected@file@percent }
++\newlabel{sec:evaluation_metrics}{{\mbox  {V-B}}{7}{}{subsection.5.2}{}}
+ \citation{ref_maskrcnn}
+ \citation{ref_msrcnn}
+ \citation{ref_htc}
+-\citation{ref_scnet}
+ \citation{ref_condinst}
+ \citation{ref_solov2}
++\citation{ref_rtmdet}
++\citation{ref_yolo11}
+ \citation{ref_mask2former}
++\citation{ref_maskdino}
+ \citation{ref_catnet}
+-\citation{ref_hqisnet}
+-\citation{ref_rsprompter}
+-\citation{ref_mcsamseg}
++\citation{ref_rsiisn}
+ \citation{ref_rs4d}
+ \citation{ref_p2pformer}
+-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Evaluation Metrics}{8}{}\protected@file@percent }
+-\newlabel{sec:evaluation_metrics}{{\mbox  {V-B}}{8}{}{subsection.5.2}{}}
+-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Implementation Details and Main Results}{8}{}\protected@file@percent }
+-\newlabel{sec:implementation_results}{{\mbox  {V-C}}{8}{}{subsection.5.3}{}}
+-\newlabel{sec:whu}{{\mbox  {V-C}}{8}{}{subsection.5.3}{}}
++\citation{ref_rsprompter}
++\citation{ref_maskrcnn}
++\citation{ref_msrcnn}
+ \citation{ref_htc}
+-\citation{ref_scnet}
+ \citation{ref_condinst}
++\citation{ref_mask2former}
+ \citation{ref_catnet}
+-\citation{ref_hqisnet}
+ \citation{ref_p2pformer}
+-\citation{ref_mask2former}
+-\citation{ref_maskrcnn}
+-\citation{ref_msrcnn}
+ \citation{ref_rsprompter}
+-\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Comparison with Instance Segmentation Methods on the WHU Building Benchmark}}{9}{}\protected@file@percent }
+-\newlabel{tab:whu}{{III}{9}{}{table.3}{}}
+-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Ablation Studies}{9}{}\protected@file@percent }
+-\newlabel{sec:ablations}{{\mbox  {V-D}}{9}{}{subsection.5.4}{}}
+-\@writefile{toc}{\contentsline {section}{\numberline {VI}Discussion}{9}{}\protected@file@percent }
+-\newlabel{sec:discussion}{{VI}{9}{}{section.6}{}}
+-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-A}}Interpretation of the Single-Stream Results}{9}{}\protected@file@percent }
+-\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Comparison of Single- and Dual-Stream Methods on the SynSU-Build Test Set}}{10}{}\protected@file@percent }
+-\newlabel{tab:synsu_dual}{{IV}{10}{}{table.4}{}}
+-\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Ablation of Explicit Prompt Modalities and P2 Boundary Refinement on the WHU Building Benchmark}}{10}{}\protected@file@percent }
+-\newlabel{tab:single_ablation}{{V}{10}{}{table.5}{}}
++\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Comparison of Instance Segmentation Methods on NWPU VHR-10}}{8}{}\protected@file@percent }
++\newlabel{tab:nwpu}{{III}{8}{}{table.3}{}}
++\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Experimental Configuration and Main Results}{8}{}\protected@file@percent }
++\newlabel{sec:implementation_results}{{\mbox  {V-C}}{8}{}{subsection.5.3}{}}
++\newlabel{sec:whu}{{\mbox  {V-C}}{8}{}{subsection.5.3}{}}
++\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Comparison with Instance Segmentation Methods on the WHU Building Benchmark}}{9}{}\protected@file@percent }
++\newlabel{tab:whu}{{IV}{9}{}{table.4}{}}
++\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Qualitative comparison on representative WHU Building test images. From left to right: input image, ground truth (GT), CATNet (a), CondInst (b), HTC (c), Mask R-CNN (d), MS R-CNN (e), YOLO11-seg (f), and PromptMiner-SAM2 (ours).}}{9}{}\protected@file@percent }
++\newlabel{fig:whu_qualitative}{{4}{9}{}{figure.4}{}}
++\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Comparison of Single- and Dual-Stream Methods on the SynSU-Build Test Set}}{9}{}\protected@file@percent }
++\newlabel{tab:synsu_dual}{{V}{9}{}{table.5}{}}
++\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Ablation of Explicit Prompt Modalities and P2 Boundary Refinement on the WHU Building Benchmark}}{10}{}\protected@file@percent }
++\newlabel{tab:single_ablation}{{VI}{10}{}{table.6}{}}
++\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Ablation Studies}{10}{}\protected@file@percent }
++\newlabel{sec:ablations}{{\mbox  {V-D}}{10}{}{subsection.5.4}{}}
++\@writefile{toc}{\contentsline {section}{\numberline {VI}Discussion}{10}{}\protected@file@percent }
++\newlabel{sec:discussion}{{VI}{10}{}{section.6}{}}
++\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-A}}Interpretation of the Single-Stream Results}{10}{}\protected@file@percent }
+ \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-B}}Interpretation of the Cross-View Comparison}{10}{}\protected@file@percent }
+-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-C}}Design Rationale}{10}{}\protected@file@percent }
+-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-D}}Limitations}{10}{}\protected@file@percent }
++\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-C}}Limitations}{10}{}\protected@file@percent }
+ \bibstyle{IEEEtran}
+ \bibcite{ref_sam}{1}
+ \bibcite{ref_sam2}{2}
+@@ -153,35 +170,41 @@
+ \bibcite{ref_msrcnn}{10}
+ \bibcite{ref_cascade}{11}
+ \bibcite{ref_hqisnet}{12}
+-\bibcite{ref_scnet}{13}
+-\bibcite{ref_condinst}{14}
+-\bibcite{ref_solov2}{15}
+-\bibcite{ref_catnet}{16}
+-\bibcite{ref_mask2former}{17}
+-\bibcite{ref_htc}{18}
+-\bibcite{ref_mcsamseg}{19}
+-\bibcite{ref_p2pformer}{20}
+-\bibcite{ref_rs4d}{21}
+-\bibcite{ref_transgeo}{22}
+-\bibcite{ref_denseuav}{23}
+-\bibcite{ref_university}{24}
+-\bibcite{ref_pointrend}{25}
+-\bibcite{ref_cascadepsp}{26}
+-\bibcite{ref_segrefiner}{27}
+-\bibcite{ref_samrefiner}{28}
+-\bibcite{ref_worldpartition}{29}
+-\bibcite{ref_citysample}{30}
+-\bibcite{ref_urbanscene3d}{31}
+-\bibcite{ref_uemmair}{32}
++\bibcite{ref_condinst}{13}
++\bibcite{ref_solov2}{14}
++\bibcite{ref_catnet}{15}
++\bibcite{ref_mask2former}{16}
++\bibcite{ref_rtmdet}{17}
++\bibcite{ref_maskdino}{18}
++\bibcite{ref_yolo11}{19}
++\bibcite{ref_rsiisn}{20}
++\bibcite{ref_htc}{21}
++\bibcite{ref_mcsamseg}{22}
++\bibcite{ref_p2pformer}{23}
++\bibcite{ref_rs4d}{24}
++\bibcite{ref_transgeo}{25}
++\bibcite{ref_denseuav}{26}
++\bibcite{ref_university}{27}
++\bibcite{ref_pointrend}{28}
++\bibcite{ref_cascadepsp}{29}
++\bibcite{ref_segrefiner}{30}
++\bibcite{ref_samrefiner}{31}
++\bibcite{ref_worldpartition}{32}
++\bibcite{ref_citysample}{33}
++\bibcite{ref_urbanscene3d}{34}
++\bibcite{ref_uemmair}{35}
++\bibcite{ref_synrs3d}{36}
++\bibcite{ref_synthinel}{37}
++\bibcite{ref_skyscenes}{38}
+ \@writefile{toc}{\contentsline {section}{\numberline {VII}Conclusion}{11}{}\protected@file@percent }
+ \newlabel{sec:conclusion}{{VII}{11}{}{section.7}{}}
+ \@writefile{toc}{\contentsline {section}{References}{11}{}\protected@file@percent }
+-\bibcite{ref_synrs3d}{33}
+-\bibcite{ref_synthinel}{34}
+-\bibcite{ref_skyscenes}{35}
+-\bibcite{ref_gtauav}{36}
+-\bibcite{ref_whu}{37}
+-\bibcite{ref_unigeo}{38}
+-\bibcite{ref_cvt}{39}
+-\bibcite{ref_sgbeyv}{40}
++\bibcite{ref_gtauav}{39}
++\bibcite{ref_whu}{40}
++\bibcite{ref_nwpu}{41}
++\bibcite{ref_nwpu_instance}{42}
++\bibcite{ref_unigeo}{43}
++\bibcite{ref_cvt}{44}
++\bibcite{ref_sgbeyv}{45}
++\bibcite{ref_crffnet}{46}
+ \gdef \@abspage@last{12}
+diff --git a/main5.fdb_latexmk b/main5.fdb_latexmk
+index 1104d81..be551a5 100644
+--- a/main5.fdb_latexmk
++++ b/main5.fdb_latexmk
+@@ -1,10 +1,7 @@
+ # Fdb version 4
+-["pdflatex"] 1787497173.01588 "/home/wangcheng/project/new/main5.tex" "main5.pdf" "main5" 1787497174.35997 0
+-  "/home/wangcheng/project/new/main5.tex" 1787497171.13315 77774 d0ad8d014f925f088d649dd65597e8a4 ""
++["pdflatex"] 1788159414.50481 "main5.tex" "main5.pdf" "main5" 1788159415.92605 0
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
+-  "/home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/courier/pcrr7t.tfm" 1136768653 960 379cc0019370a9e0208a0a3f949f847a ""
+-  "/home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/courier/pcrr8r.tfm" 1136768653 1292 bd42be2f344128bff6d35d98474adfe3 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/symbol/psyr.tfm" 1136768653 1408 5937f58aa508ea2cea4901c07d10f5fe ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmb7t.tfm" 1136768653 2172 fd0c924230362ff848a33632ed45dc23 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmb8r.tfm" 1136768653 4524 6bce29db5bc272ba5f332261583fee9c ""
+@@ -57,13 +54,11 @@
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb" 1248133631 32716 08e384dc442464e7285e891af9f45947 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb" 1248133631 32626 4f5c1b83753b1dd3a97d1b399a005b4b ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb" 1248133631 34694 ad62b13721ee8eda1dcc8993c8bd7041 ""
+-  "/home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb" 1136849748 45758 19968a0990191524e34e1994d4a31cb6 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/times/utmb8a.pfb" 1136849748 44729 811d6c62865936705a31c797a1d5dada ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb" 1136849748 44656 0cbca70e0534538582128f6b54593cca ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/times/utmr8a.pfb" 1136849748 46026 6dab18b61c907687b520c72847215a68 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/times/utmri8a.pfb" 1136849748 45458 a3faba884469519614ca56ba5f6b1de1 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/zapfding/uzdr.pfb" 1136849748 45955 6dfcb282cf470ceb18d57d017b7898d6 ""
+-  "/home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/courier/pcrr7t.vf" 1136768653 1344 6ff472164bf9de0fb2e864b28ac156d9 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmb7t.vf" 1136768653 1372 788387fea833ef5963f4c5bffe33eb89 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmbi7t.vf" 1136768653 1384 6ac0f8b839230f5d9389287365b243c0 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmr7t.vf" 1136768653 1380 0ea3a3370054be6da6acd929ec569f06 ""
+@@ -108,7 +103,6 @@
+   "/home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msb.cfg" 1772226603 5594 992ef5c3f8fd1168bb7101a957333065 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-ptm.cfg" 1772226603 12427 a6802929d6bd2a4ba6d4f5db602da2b4 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/tex/latex/multirow/multirow.sty" 1731446765 6696 886c9f3087d0b973ed2c19aa79cb3023 ""
+-  "/home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ot1pcr.fd" 1137110629 985 1ed784d7bfe47179f3550d2303b073f8 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ot1ptm.fd" 1137110629 961 15056f4a61917ceed3a44e4ac11fcc52 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/pifont.sty" 1586716065 2283 62e73848f29fd8cd37fb7974c7cf2221 ""
+   "/home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/upsy.fd" 1137110629 148 2da0acd77cba348f34823f44cabf0058 ""
+@@ -122,9 +116,12 @@
+   "/home/wangcheng/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1784797699 5573048 a1fe2de5e9add9c7ebf1208dee71728d ""
+   "/home/wangcheng/texlive/2026/texmf-var/web2c/pdftex/pdflatex.fmt" 1784797815 3656561 c09cff72596497c453183c95b32acbe2 ""
+   "/home/wangcheng/texlive/2026/texmf.cnf" 1784797691.20691 595 22764776a8c7d1278ee86322c9675b97 ""
+-  "main5.aux" 1787497174.23319 10094 579fc4982c107688cde6247e6e7b2cf7 "pdflatex"
+-  "main5.tex" 1787497171.13315 77774 d0ad8d014f925f088d649dd65597e8a4 ""
+-  "采样示例图.pdf" 1785509315.64294 563837 abbde3372760c0f5a9fc4c179af08467 ""
++  "grid.png" 1788155099.84959 4021363 827aea96680359afd255606a5a6c17a4 ""
++  "main5.aux" 1788159415.73597 12287 bd86cbae11c68b3233780a4ad9942617 "pdflatex"
++  "main5.tex" 1788159382.45311 73335 f57b0f4c7bbe57769bae0bd526e0a9b2 ""
++  "单流模型.pdf" 1788006282.06132 545903 09739ebe7f1980db1d6eb076ae0170c7 ""
++  "双流模型.pdf" 1788006281.94532 647261 5f77995cee4afce37d29df365bf7efe4 ""
++  "采样示例图.pdf" 1787572002.00614 563837 abbde3372760c0f5a9fc4c179af08467 ""
+   (generated)
+   "main5.aux"
+   "main5.log"
+diff --git a/main5.fls b/main5.fls
+index e3a532a..15b6e3b 100644
+--- a/main5.fls
++++ b/main5.fls
+@@ -2,7 +2,7 @@ PWD /home/wangcheng/project/new
+ INPUT /home/wangcheng/texlive/2026/texmf.cnf
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/web2c/texmf.cnf
+ INPUT /home/wangcheng/texlive/2026/texmf-var/web2c/pdftex/pdflatex.fmt
+-INPUT /home/wangcheng/project/new/main5.tex
++INPUT main5.tex
+ OUTPUT main5.log
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/ieeetran/IEEEtran.cls
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/ieeetran/IEEEtran.cls
+@@ -149,36 +149,6 @@ INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/latexconfig/epstopdf-sys
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-ptm.cfg
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-ptm.cfg
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-ptm.cfg
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmr9.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-cmr.cfg
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-cmr.cfg
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-cmr.cfg
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmr6.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmmi9.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmmi6.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmsy9.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmsy6.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex9.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsa.fd
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsa.fd
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsa.fd
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam10.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msa.cfg
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msa.cfg
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msa.cfg
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam7.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam5.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsb.fd
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsb.fd
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsb.fd
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msb.cfg
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msb.cfg
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msb.cfg
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm7.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm5.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmrc7t.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmb7t.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmb7t.tfm
+@@ -209,16 +179,40 @@ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmri8r.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmb7t.vf
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmb8r.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmrc7t.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-cmr.cfg
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-cmr.cfg
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-cmr.cfg
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsa.fd
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsa.fd
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsa.fd
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam7.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msa.cfg
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msa.cfg
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msa.cfg
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam5.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsb.fd
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsb.fd
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsb.fd
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm7.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msb.cfg
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msb.cfg
++INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msb.cfg
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm5.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/zapfding/pzdr.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmr8.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmr6.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmmi8.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmmi6.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmsy8.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmsy6.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex8.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam10.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam7.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm7.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/zapfding/pzdr.tfm
+ INPUT ./采样示例图.pdf
+ INPUT ./采样示例图.pdf
+@@ -233,18 +227,35 @@ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmb7t.vf
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmb8r.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam10.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
++INPUT ./单流模型.pdf
++INPUT ./单流模型.pdf
++INPUT ./单流模型.pdf
++INPUT ./单流模型.pdf
++INPUT ./单流模型.pdf
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmbx10.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmbx7.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmbx5.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ot1pcr.fd
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ot1pcr.fd
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ot1pcr.fd
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/courier/pcrr7t.tfm
++INPUT ./双流模型.pdf
++INPUT ./双流模型.pdf
++INPUT ./双流模型.pdf
++INPUT ./双流模型.pdf
++INPUT ./双流模型.pdf
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmbx8.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmbx6.tfm
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/courier/pcrr7t.vf
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/courier/pcrr8r.tfm
++INPUT ./grid.png
++INPUT ./grid.png
++INPUT ./grid.png
++INPUT ./grid.png
++INPUT ./grid.png
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmr9.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmmi9.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmsy9.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex9.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmbx9.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam10.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmri7t.vf
++INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmri8r.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmb7t.vf
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmb8r.tfm
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmr7t.vf
+@@ -269,7 +280,6 @@ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cms
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb
+-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/times/utmb8a.pfb
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb
+ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/times/utmr8a.pfb
+diff --git a/main5.log b/main5.log
+index 4c995a6..84252d1 100644
+--- a/main5.log
++++ b/main5.log
+@@ -1,10 +1,9 @@
+-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.7.23)  23 AUG 2026 22:59
++This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.7.23)  31 AUG 2026 14:56
+ entering extended mode
+  restricted \write18 enabled.
+- file:line:error style messages enabled.
+  %&-line parsing enabled.
+-**/home/wangcheng/project/new/main5.tex
+-(/home/wangcheng/project/new/main5.tex
++**main5.tex
++(./main5.tex
+ LaTeX2e <2026-06-01>
+ L3 programming layer <2026-06-18>
+ (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/ieeetran/IEEEtran.cls
+@@ -18,7 +17,8 @@ Document Class: IEEEtran 2015/08/26 V1.8b by Michael Shell
+ \@IEEEtrantmpcountB=\count277
+ \@IEEEtrantmpcountC=\count278
+ \@IEEEtrantmptoksA=\toks17
+-LaTeX Font Info:    Trying to load font information for OT1+ptm on input line 503.
++LaTeX Font Info:    Trying to load font information for OT1+ptm on input line 5
++03.
+ (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ot1ptm.fd
+ File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
+ )
+@@ -26,7 +26,8 @@ File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
+ -- Using PDF output.
+ \@IEEEnormalsizeunitybaselineskip=\dimen153
+ -- This is a 10 point document.
+-LaTeX Encoding Info:    Redeclaring text command \textunderscore (encoding ?) on input line 937.
++LaTeX Encoding Info:    Redeclaring text command \textunderscore (encoding ?) o
++n input line 937.
+ \CLASSINFOnormalsizebaselineskip=\dimen154
+ \CLASSINFOnormalsizeunitybaselineskip=\dimen155
+ \IEEEnormaljot=\dimen156
+@@ -34,42 +35,52 @@ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <5> not available
+ (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <5> not available
+ (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
++
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7> not available
+ (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <7> not available
+ (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
++
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <8> not available
+ (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <8> not available
+ (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
++
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <9> not available
+ (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <9> not available
+ (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
++
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10> not available
+ (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <10> not available
+ (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
++
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <11> not available
+ (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <11> not available
+ (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
++
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
+ (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <12> not available
+ (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
++
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <17> not available
+ (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <17> not available
+ (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
++
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <20> not available
+ (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <20> not available
+ (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
++
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <24> not available
+ (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
+ LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <24> not available
+ (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
++
+ \IEEEquantizedlength=\dimen157
+ \IEEEquantizedlengthdiff=\dimen158
+ \IEEEquantizedtextheightdiff=\dimen159
+@@ -111,14 +122,17 @@ Package: amsmath 2026/05/19 v2.18d AMS math features
+ For additional information on amsmath, use the `?' option.
+ (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsmath/amstext.sty
+ Package: amstext 2024/11/17 v2.01 AMS text
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsmath/amsgen.sty
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsmath/amsgen.sty
+ File: amsgen.sty 1999/11/30 v2.0 generic functions
+ \@emptytoks=\toks18
+ \ex@=\dimen174
+-)) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsmath/amsbsy.sty
++))
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsmath/amsbsy.sty
+ Package: amsbsy 1999/11/29 v1.2d Bold Symbols
+ \pmbraise@=\dimen175
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsmath/amsopn.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsmath/amsopn.sty
+ Package: amsopn 2022/04/08 v2.04 operator names
+ )
+ \inf@bad=\count291
+@@ -168,18 +182,22 @@ LaTeX Info: Redefining \Relbar on input line 970.
+ \mathdisplay@stack=\toks22
+ LaTeX Info: Redefining \[ on input line 2965.
+ LaTeX Info: Redefining \] on input line 2966.
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/amsfonts.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/amsfonts.sty
+ Package: amsfonts 2013/01/14 v3.01 Basic AMSFonts support
+ \symAMSa=\mathgroup4
+ \symAMSb=\mathgroup5
+ LaTeX Font Info:    Redeclaring math symbol \hbar on input line 98.
+ LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
+ (Font)                  U/euf/m/n --> U/euf/b/n on input line 106.
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/algorithms/algorithmic.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/algorithms/algorithmic.sty
+ Package: algorithmic 2009/08/24 v0.1 Document Style `algorithmic'
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/base/ifthen.sty
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/base/ifthen.sty
+ Package: ifthen 2024/03/16 v1.1e Standard LaTeX ifthen package (DPC)
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics/keyval.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics/keyval.sty
+ Package: keyval 2026-05-17 v1.15 key=value parser (DPC)
+ \KV@toks@=\toks23
+ )
+@@ -189,9 +207,12 @@ Package: keyval 2026-05-17 v1.15 key=value parser (DPC)
+ \c@ALC@depth=\count306
+ \ALC@tlm=\skip55
+ \algorithmicindent=\skip56
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/algorithms/algorithm.sty
+-Package: algorithm 2009/08/24 v0.1 Document Style `algorithm' - floating environment
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/float/float.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/algorithms/algorithm.sty
++Package: algorithm 2009/08/24 v0.1 Document Style `algorithm' - floating enviro
++nment
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/float/float.sty
+ Package: float 2001/11/08 v1.3d Float enhancements (AL)
+ \c@float@type=\count307
+ \float@exts=\toks24
+@@ -201,7 +222,8 @@ Package: float 2001/11/08 v1.3d Float enhancements (AL)
+ )
+ \@float@every@algorithm=\toks26
+ \c@algorithm=\count308
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/tools/array.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/tools/array.sty
+ Package: array 2026/02/24 v2.7b Tabular extension package (FMi)
+ \col@sep=\dimen183
+ \ar@mcellbox=\box59
+@@ -210,9 +232,11 @@ Package: array 2026/02/24 v2.7b Tabular extension package (FMi)
+ \extratabsurround=\skip57
+ \backup@length=\skip58
+ \ar@cellbox=\box60
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/subfig/subfig.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/subfig/subfig.sty
+ Package: subfig 2005/06/28 ver: 1.3 subfig package
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/caption/caption3.sty
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/caption/caption3.sty
+ Package: caption3 2023/07/31 v2.4d caption3 kernel (AR)
+ \caption@tempdima=\dimen185
+ \captionmargin=\dimen186
+@@ -224,7 +248,17 @@ Package: caption3 2023/07/31 v2.4d caption3 kernel (AR)
+ \caption@hangindent=\dimen192
+ Package caption Info: Unknown document class (or package),
+ (caption)             standard defaults will be used.
+-Package caption Info: \@makecaption = \long macro:#1#2->\ifx \@captype \@IEEEtablestring \footnotesize \bgroup \par \centering \@IEEEtabletopskipstrut {\normalfont \footnotesize #1}\\{\normalfont \footnotesize \scshape #2}\par \addvspace {0.5\baselineskip }\egroup \@IEEEtablecaptionsepspace \else \@IEEEfigurecaptionsepspace \setbox \@tempboxa \hbox {\normalfont \footnotesize {#1.}\nobreakspace \nobreakspace #2}\ifdim \wd \@tempboxa >\hsize \setbox \@tempboxa \hbox {\normalfont \footnotesize {#1.}\nobreakspace \nobreakspace }\parbox [t]{\hsize }{\normalfont \footnotesize \noindent \unhbox \@tempboxa #2}\else \ifCLASSOPTIONconference \hbox to\hsize {\normalfont \footnotesize \hfil \box \@tempboxa \hfil }\else \hbox to\hsize {\normalfont \footnotesize \box \@tempboxa \hfil }\fi \fi \fi  on input line 1175.
++Package caption Info: \@makecaption = \long macro:#1#2->\ifx \@captype \@IEEEta
++blestring \footnotesize \bgroup \par \centering \@IEEEtabletopskipstrut {\norma
++lfont \footnotesize #1}\\{\normalfont \footnotesize \scshape #2}\par \addvspace
++ {0.5\baselineskip }\egroup \@IEEEtablecaptionsepspace \else \@IEEEfigurecaptio
++nsepspace \setbox \@tempboxa \hbox {\normalfont \footnotesize {#1.}\nobreakspac
++e \nobreakspace #2}\ifdim \wd \@tempboxa >\hsize \setbox \@tempboxa \hbox {\nor
++malfont \footnotesize {#1.}\nobreakspace \nobreakspace }\parbox [t]{\hsize }{\n
++ormalfont \footnotesize \noindent \unhbox \@tempboxa #2}\else \ifCLASSOPTIONcon
++ference \hbox to\hsize {\normalfont \footnotesize \hfil \box \@tempboxa \hfil }
++\else \hbox to\hsize {\normalfont \footnotesize \box \@tempboxa \hfil }\fi \fi 
++\fi  on input line 1175.
+ )
+ \c@KVtest=\count309
+ \sf@farskip=\skip59
+@@ -239,35 +273,46 @@ Package caption Info: \@makecaption = \long macro:#1#2->\ifx \@captype \@IEEEtab
+ \c@lotdepth=\count315
+ \sf@top=\skip62
+ \sf@bottom=\skip63
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/base/textcomp.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/base/textcomp.sty
+ Package: textcomp 2024/04/24 v2.1b Standard LaTeX package
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/sttools/stfloats.sty
+-Package: stfloats 2025/06/18 v3.4 Improve float mechanism and baselineskip settings
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/sttools/stfloats.sty
++Package: stfloats 2025/06/18 v3.4 Improve float mechanism and baselineskip sett
++ings
+ \@dblbotnum=\count316
+ \c@dblbotnumber=\count317
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/url/url.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/url/url.sty
+ \Urlmuskip=\muskip18
+ Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics/graphicx.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics/graphicx.sty
+ Package: graphicx 2026-05-17 v1.2e Enhanced LaTeX Graphics (DPC,SPQR)
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics/graphics.sty
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics/graphics.sty
+ Package: graphics 2026-05-17 v1.4h Standard LaTeX Graphics (DPC,SPQR)
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics/trig.sty
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics/trig.sty
+ Package: trig 2023/12/02 v1.11 sin cos tan (DPC)
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
+ File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
+ )
+ Package graphics Info: Driver file: pdftex.def on input line 106.
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics-def/pdftex.def
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics-def/pdftex.def
+ File: pdftex.def 2025/09/29 v1.2d Graphics/color driver for pdftex
+ ))
+ \Gin@req@height=\dimen194
+ \Gin@req@width=\dimen195
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/cite/cite.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/cite/cite.sty
+ LaTeX Info: Redefining \cite on input line 302.
+ LaTeX Info: Redefining \nocite on input line 332.
+ Package: cite 2015/02/27  v 5.5
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/booktabs/booktabs.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/booktabs/booktabs.sty
+ Package: booktabs 2020/01/12 v1.61803398 Publication quality tables
+ \heavyrulewidth=\dimen196
+ \lightrulewidth=\dimen197
+@@ -286,19 +331,23 @@ Package: booktabs 2020/01/12 v1.61803398 Publication quality tables
+ \@thisruleclass=\count320
+ \@lastruleclass=\count321
+ \@thisrulewidth=\dimen264
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/multirow/multirow.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/multirow/multirow.sty
+ Package: multirow 2024/11/12 v2.9 Span multiple rows of a table
+ \multirow@colwidth=\skip64
+ \multirow@cntb=\count322
+ \multirow@dima=\skip65
+ \bigstrutjot=\dimen265
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/xcolor/xcolor.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/xcolor/xcolor.sty
+ Package: xcolor 2024/09/29 v3.02 LaTeX color extensions (UK)
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics-cfg/color.cfg
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics-cfg/color.cfg
+ File: color.cfg 2016/01/02 v1.6 sample color configuration
+ )
+ Package xcolor Info: Driver file: pdftex.def on input line 274.
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics/mathcolor.ltx)
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/graphics/mathcolor.ltx)
+ Package xcolor Info: Model `cmy' substituted by `cmy0' on input line 1349.
+ Package xcolor Info: Model `hsb' substituted by `rgb' on input line 1353.
+ Package xcolor Info: Model `RGB' extended on input line 1365.
+@@ -308,20 +357,28 @@ Package xcolor Info: Model `tHsb' substituted by `hsb' on input line 1369.
+ Package xcolor Info: Model `HSB' substituted by `hsb' on input line 1370.
+ Package xcolor Info: Model `Gray' substituted by `gray' on input line 1371.
+ Package xcolor Info: Model `wave' substituted by `hsb' on input line 1372.
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/amssymb.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/amssymb.sty
+ Package: amssymb 2013/01/14 v3.01 AMS font symbols
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/pifont.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/pifont.sty
+ Package: pifont 2020/03/25 PSNFSS-v9.3 Pi font support (SPQR) 
+ LaTeX Font Info:    Trying to load font information for U+pzd on input line 63.
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/upzd.fd
++
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/upzd.fd
+ File: upzd.fd 2001/06/04 font definitions for U/pzd.
+ )
+ LaTeX Font Info:    Trying to load font information for U+psy on input line 64.
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/upsy.fd
++
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/upsy.fd
+ File: upsy.fd 2001/06/04 font definitions for U/psy.
+-)) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/microtype.sty
++))
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/microtype.sty
+ Package: microtype 2026/03/01 v3.2d Micro-typographical refinements (RS)
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/etoolbox/etoolbox.sty
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/etoolbox/etoolbox.sty
+ Package: etoolbox 2025/10/02 v2.5m e-TeX tools for LaTeX (JAW)
+ \etb@tempcnta=\count323
+ )
+@@ -337,8 +394,11 @@ LaTeX Info: Redefining \textls on input line 1449.
+ LaTeX Info: Redefining \microtypecontext on input line 2053.
+ LaTeX Info: Redefining \textmicrotypecontext on input line 2070.
+ \MT@listname@count=\count325
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/microtype-pdftex.def
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/microtype-pdftex.d
++ef
+ File: microtype-pdftex.def 2026/03/01 v3.2d Definitions specific to pdftex (RS)
++
+ LaTeX Info: Redefining \lsstyle on input line 944.
+ LaTeX Info: Redefining \lslig on input line 944.
+ \MT@outer@space=\skip66
+@@ -348,7 +408,9 @@ Package microtype Info: Loading configuration file microtype.cfg.
+ File: microtype.cfg 2026/03/01 v3.2d microtype main configuration file (RS)
+ )
+ LaTeX Info: Redefining \microtypesetup on input line 3065.
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/l3backend/l3backend-pdftex.d
++ef
+ File: l3backend-pdftex.def 2026-02-18 L3 backend support: PDF output (pdfTeX)
+ \l__color_backend_stack_int=\count326
+ ) (./main5.aux)
+@@ -386,11 +448,16 @@ Package caption Info: End \AtBeginDocument code.
+ \MPnumerator=\count331
+ \makeMPintoPDFobject=\count332
+ \everyMPtoPDFconversion=\toks31
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.s
++ty
+ Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+-Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+-File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
++Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
++85.
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
++File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
++e
+ ))
+ LaTeX Info: Redefining \microtypecontext on input line 21.
+ Package microtype Info: Applying patch `item' on input line 21.
+@@ -411,52 +478,102 @@ Package microtype Info: No adjustment of interword spacing.
+ Package microtype Info: No adjustment of character kerning.
+  (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-ptm.cfg
+ File: mt-ptm.cfg 2006/04/20 v1.7 microtype config. file: Times (RS)
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-cmr.cfg
+-File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman (RS)
+-)
+-LaTeX Font Info:    Trying to load font information for U+msa on input line 34.
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsa.fd
+-File: umsa.fd 2013/01/14 v3.01 AMS symbols A
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msa.cfg
+-File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
+ )
+-LaTeX Font Info:    Trying to load font information for U+msb on input line 34.
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsb.fd
+-File: umsb.fd 2013/01/14 v3.01 AMS symbols B
+-) (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msb.cfg
+-File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
+-) [1{/home/wangcheng/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/home/wangcheng/texlive/2026/texmf-dist/fonts/enc/dvips/base/8r.enc}
++[1{/home/wangcheng/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/
++home/wangcheng/texlive/2026/texmf-dist/fonts/enc/dvips/base/8r.enc}
+ 
+ 
+ ]
+-Underfull \hbox (badness 3291) in paragraph at lines 66--67
++Underfull \hbox (badness 3291) in paragraph at lines 137--141
+ []\OT1/ptm/b/n/10 (+20) GeoViewMiner-SAM2, a geometry-guided dual-
+  []
+ 
+-[2]
+-<采样示例图.pdf, id=14, 482.30086pt x 291.9969pt>
++[2] (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-cmr.cfg
++File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman 
++(RS)
++)
++LaTeX Font Info:    Trying to load font information for U+msa on input line 250
++.
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsa.fd
++File: umsa.fd 2013/01/14 v3.01 AMS symbols A
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msa.cfg
++File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
++)
++LaTeX Font Info:    Trying to load font information for U+msb on input line 250
++.
++
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsb.fd
++File: umsb.fd 2013/01/14 v3.01 AMS symbols B
++)
++(/home/wangcheng/texlive/2026/texmf-dist/tex/latex/microtype/mt-msb.cfg
++File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
++)
++<采样示例图.pdf, id=13, 482.30086pt x 291.9969pt>
+ File: 采样示例图.pdf Graphic file (type pdf)
+ <use 采样示例图.pdf>
+-Package pdftex.def Info: 采样示例图.pdf  used on input line 145.
++Package pdftex.def Info: 采样示例图.pdf  used on input line 293.
+ (pdftex.def)             Requested size: 252.0pt x 152.56549pt.
+- [3 <./采样示例图.pdf>]
+-Underfull \hbox (badness 1371) in paragraph at lines 178--178
+-[]|\OT1/ptm/m/n/8 (+20) Target cov-er-age / nom-i-nal
++
++[3 <./采样示例图.pdf>]
++Underfull \hbox (badness 1895) in paragraph at lines 353--359
++\OT1/ptm/m/n/10 (+20) satellite-view instance-segmentation path-way de-fined fo
++r
++ []
++
++<单流模型.pdf, id=50, 499.53726pt x 273.3663pt>
++File: 单流模型.pdf Graphic file (type pdf)
++<use 单流模型.pdf>
++Package pdftex.def Info: 单流模型.pdf  used on input line 381.
++(pdftex.def)             Requested size: 516.0pt x 282.39217pt.
++
++Underfull \hbox (badness 1960) in paragraph at lines 399--402
++ \OT1/ptm/m/it/10 (+20) 2) Proposal-Conditioned Coarse Shape: [][] \OT1/ptm/m/n
++/10 (+20) The Ex-plicit
+  []
+ 
+ 
+-Underfull \hbox (badness 1960) in paragraph at lines 204--205
+- \OT1/ptm/m/it/10 (+20) 2) Proposal-Conditioned Coarse Shape: [][] \OT1/ptm/m/n/10 (+20) The Ex-plicit
++Underfull \hbox (badness 1394) in paragraph at lines 413--418
++ \OT1/ptm/m/it/10 (+20) 3) P2 Bound-ary Re-fine-ment: [][] \OT1/ptm/m/n/10 (+20
++) The coarse de-coder in-
+  []
+ 
+-[4]
+-Underfull \vbox (badness 3281) has occurred while \output is active []
++[4] [5 <./单流模型.pdf>]
++Underfull \hbox (badness 2359) in paragraph at lines 570--577
++[]\OT1/ptm/m/n/10 (+20) GeoViewMiner-SAM2 re-tains the PromptMiner-SAM2
++ []
++
++<双流模型.pdf, id=168, 337.86526pt x 280.23093pt>
++File: 双流模型.pdf Graphic file (type pdf)
++<use 双流模型.pdf>
++Package pdftex.def Info: 双流模型.pdf  used on input line 580.
++(pdftex.def)             Requested size: 252.0pt x 209.01389pt.
++[6 <./双流模型.pdf>] [7]
++<grid.png, id=325, 2352.79pt x 843.15pt>
++File: grid.png Graphic file (type png)
++<use grid.png>
++Package pdftex.def Info: grid.png  used on input line 851.
++(pdftex.def)             Requested size: 516.0pt x 184.91463pt.
++
++Underfull \vbox (badness 10000) has occurred while \output is active []
++
++ [8]
++
++LaTeX Warning: Text page 9 contains only floats.
++
++
++Overfull \vbox (10.68388pt too high) has occurred while \output is active []
++
++
++
++LaTeX Warning: Text page 9 contains only floats.
++
++
++Overfull \vbox (10.68388pt too high) has occurred while \output is active []
++
+ 
+- [5] [6] [7]
+-LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 450.
+- (/home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ot1pcr.fd
+-File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
+-) [8] [9] [10] [11] [12
++[9 <./grid.png (PNG copy)>] [10] [11] [12
+ 
+ ] (./main5.aux)
+  ***********
+@@ -465,18 +582,40 @@ L3 programming layer <2026-06-18>
+  ***********
+  ) 
+ Here is how much of TeX's memory you used:
+- 8703 strings out of 467168
+- 140912 string characters out of 5406823
+- 617905 words of memory out of 5000000
+- 37397 multiletter control sequences out of 15000+600000
+- 699410 words of font info for 414 fonts, out of 8000000 for 9000
++ 8700 strings out of 467168
++ 140810 string characters out of 5406823
++ 625480 words of memory out of 5000000
++ 37387 multiletter control sequences out of 15000+600000
++ 700306 words of font info for 420 fonts, out of 8000000 for 9000
+  1145 hyphenation exceptions out of 8191
+- 57i,11n,65p,1878b,326s stack positions out of 10000i,1000n,20000p,200000b,200000s
+-</home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/times/utmri8a.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/urw/zapfding/uzdr.pfb>
+-Output written on main5.pdf (12 pages, 887900 bytes).
++ 57i,11n,65p,1002b,321s stack positions out of 10000i,1000n,20000p,200000b,200000s
++</home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx1
++0.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/c
++mex10.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/
++cm/cmmi10.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfo
++nts/cm/cmmi5.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/am
++sfonts/cm/cmmi6.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public
++/amsfonts/cm/cmmi7.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/pub
++lic/amsfonts/cm/cmmi8.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/type1/
++public/amsfonts/cm/cmr10.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/typ
++e1/public/amsfonts/cm/cmr5.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts/t
++ype1/public/amsfonts/cm/cmr6.pfb></home/wangcheng/texlive/2026/texmf-dist/fonts
++/type1/public/amsfonts/cm/cmr7.pfb></home/wangcheng/texlive/2026/texmf-dist/fon
++ts/type1/public/amsfonts/cm/cmr8.pfb></home/wangcheng/texlive/2026/texmf-dist/f
++onts/type1/public/amsfonts/cm/cmsy10.pfb></home/wangcheng/texlive/2026/texmf-di
++st/fonts/type1/public/amsfonts/cm/cmsy6.pfb></home/wangcheng/texlive/2026/texmf
++-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></home/wangcheng/texlive/2026/te
++xmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></home/wangcheng/texlive/2026
++/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></home/wangcheng/tex
++live/2026/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></home/wangcheng/texlive/
++2026/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></home/wangcheng/texlive/2026
++/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></home/wangcheng/texlive/2026/texm
++f-dist/fonts/type1/urw/times/utmri8a.pfb></home/wangcheng/texlive/2026/texmf-di
++st/fonts/type1/urw/zapfding/uzdr.pfb>
++Output written on main5.pdf (12 pages, 6068080 bytes).
+ PDF statistics:
+- 189 PDF objects out of 1000 (max. 8388607)
+- 103 compressed objects within 2 object streams
++ 434 PDF objects out of 1000 (max. 8388607)
++ 126 compressed objects within 2 object streams
+  0 named destinations out of 1000 (max. 500000)
+- 74246 words of extra memory for PDF output out of 74296 (max. 10000000)
++ 77845 words of extra memory for PDF output out of 89155 (max. 10000000)
+ 
+diff --git a/main5.pdf b/main5.pdf
+index 821409f..c5ec412 100644
+Binary files a/main5.pdf and b/main5.pdf differ
+diff --git a/main5.synctex.gz b/main5.synctex.gz
+deleted file mode 100644
+index 9a7eab4..0000000
+Binary files a/main5.synctex.gz and /dev/null differ
+diff --git a/main5.tex b/main5.tex
+index 34dcf15..9a6d9ac 100644
+--- a/main5.tex
++++ b/main5.tex
+@@ -842,6 +842,19 @@ highest bbox AP$_{50}$, bbox AP$_{75}$, and mask AP$_{75}$. Compared with RSProm
+ PromptMiner-SAM2 is higher by 1.0, 2.4, and 2.6 percentage points in mask AP, AP$_{50}$, and
+ AP$_{75}$, respectively.
+ 
++Figure~\ref{fig:whu_qualitative} presents qualitative comparisons on representative WHU test
++images. The methods are evaluated on the same input images, with the reference masks shown in
++the GT column.
++
++\begin{figure*}[!t]
++\centering
++\includegraphics[width=\textwidth]{grid.png}
++\caption{Qualitative comparison on representative WHU Building test images. From left to right:
++input image, ground truth (GT), CATNet (a), CondInst (b), HTC (c), Mask R-CNN (d), MS R-CNN
++(e), YOLO11-seg (f), and PromptMiner-SAM2 (ours).}
++\label{fig:whu_qualitative}
++\end{figure*}
++
+ \noindent\textit{SynSU-Build comparison.}
+ Table~\ref{tab:synsu_dual} compares satellite-view-only methods with the proposed single- and
+ dual-stream models on SynSU-Build. Every comparison method and PromptMiner-SAM2 uses only the
+@@ -893,24 +906,24 @@ explicit prompt. The remaining variants add the dense coarse-mask prompt and P2
+ refinement in turn. The full-model row is the PromptMiner-SAM2 result reported in
+ Table~\ref{tab:whu}.
+ 
+-\begin{table*}[!t]
++\begin{table}[!t]
+ \caption{Ablation of Explicit Prompt Modalities and P2 Boundary Refinement on the WHU Building Benchmark}
+ \label{tab:single_ablation}
+ \centering
+ \footnotesize
+-\begin{tabular}{lcccccc}
++\begin{tabular}{lcccc}
+ \toprule
+-\multirow{2}{*}{Variant} & \multicolumn{3}{c}{Bounding Box} & \multicolumn{3}{c}{Instance Mask} \\
+-\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+-& AP & AP$_{50}$ & AP$_{75}$ & AP & AP$_{50}$ & AP$_{75}$ \\
++\multirow{2}{*}{Variant} & Bbox & \multicolumn{3}{c}{Instance Mask} \\
++\cmidrule(lr){3-5}
++& AP & AP & AP$_{50}$ & AP$_{75}$ \\
+ \midrule
+-Point & 0.747 & 0.940 & 0.852 & 0.719 & 0.936 & 0.830 \\
+-Point $+$ Box & 0.748 & 0.941 & 0.853 & 0.727 & 0.939 & 0.842 \\
+-Point $+$ Box $+$ Mask & 0.748 & \textbf{0.942} & 0.854 & 0.730 & 0.941 & 0.849 \\
+-\textbf{Point $+$ Box $+$ Mask $+$ P2 (Full)} & \textbf{0.749} & \textbf{0.942} & \textbf{0.855} & \textbf{0.735} & \textbf{0.944} & \textbf{0.855} \\
++Point & 0.747 & 0.719 & 0.936 & 0.830 \\
++Point $+$ Box & 0.748 & 0.727 & 0.939 & 0.842 \\
++Point $+$ Box $+$ Mask & 0.748 & 0.730 & 0.941 & 0.849 \\
++\textbf{Point $+$ Box $+$ Mask $+$ P2 (Full)} & \textbf{0.749} & \textbf{0.735} & \textbf{0.944} & \textbf{0.855} \\
+ \bottomrule
+ \end{tabular}
+-\end{table*}
++\end{table}
+ 
+ Across the ablation variants in Table~\ref{tab:single_ablation}, mask scores increase as prompt
+ modalities and P2BoundaryRefiner are added. Adding the box prompt raises segm AP from 0.719 to
+diff --git a/portable_sam2_explicit_coarse/configs/environment2.sh b/portable_sam2_explicit_coarse/configs/environment2.sh
+index 026deff..7e43f66 100644
+--- a/portable_sam2_explicit_coarse/configs/environment2.sh
++++ b/portable_sam2_explicit_coarse/configs/environment2.sh
+@@ -32,6 +32,9 @@ export PYTHON="${PYTHON:-/data/wangcheng/envs/cvt2/bin/python}"
+ export SAM2_REPO="${SAM2_REPO:-${PORTABLE_SAM2_REPOSITORY_ROOT}/sam2}"
+ export SAM2_CKPT="${SAM2_CKPT:-/data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt}"
+ export WHU1024_DATA_ROOT="${WHU1024_DATA_ROOT:-/data/wangcheng/dataset/WHU}"
++# NWPU VHR-10 (10-class instance segmentation; root dir name contains spaces).
++# coco_split/NWPU_instances_{train,val}.json + "positive image set/" images.
++export VHR10_DATA_ROOT="${VHR10_DATA_ROOT:-/data1/wangcheng/dataset/NWPU VHR-10 dataset}"
+ 
+ # Writable output and temporary roots.
+ export PORTABLE_SAM2_CHECKPOINT_ROOT="${PORTABLE_SAM2_CHECKPOINT_ROOT:-/data/wangcheng/checkpoint/portable_sam2_explicit_coarse}"
+diff --git a/portable_sam2_explicit_coarse/data/loader.py b/portable_sam2_explicit_coarse/data/loader.py
+index 4ff6dcd..207a47d 100644
+--- a/portable_sam2_explicit_coarse/data/loader.py
++++ b/portable_sam2_explicit_coarse/data/loader.py
+@@ -344,6 +344,9 @@ def create_test_loader(
+     batch_size: int = 1,
+     num_workers: int = 4,
+     seed: int = 42,
++    single_class: bool = True,
++    enable_category_mapping: bool = False,
++    category_mapping: Optional[dict] = None,
+ ):
+     """Build a WHU-COCO test loader for standalone test-set evaluation.
+ 
+@@ -351,6 +354,8 @@ def create_test_loader(
+     branch) but points at the held-out test split: no augmentation, no subset
+     sampling, deterministic order.  The collate function matches the val/train
+     loaders so existing predict/COCO-eval code is reused unchanged.
++    Multi-class runs (e.g. NWPU VHR-10) pass ``single_class=False`` plus a
++    ``category_mapping``; defaults keep the historical WHU behavior.
+     """
+     generator = torch.Generator()
+     generator.manual_seed(int(seed))
+@@ -360,9 +365,9 @@ def create_test_loader(
+         ann_file=ann_file,
+         image_subdir=image_subdir,
+         image_size=image_size,
+-        single_class=True,
+-        enable_category_mapping=False,
+-        category_mapping=None,
++        single_class=single_class,
++        enable_category_mapping=enable_category_mapping,
++        category_mapping=category_mapping,
+         flip_prob=0.0,
+         vflip_prob=0.0,
+         gaussian_noise_prob=0.0,
+diff --git a/portable_sam2_explicit_coarse/inference/infer_from_checkpoint.py b/portable_sam2_explicit_coarse/inference/infer_from_checkpoint.py
+index 11da23c..53c0663 100755
+--- a/portable_sam2_explicit_coarse/inference/infer_from_checkpoint.py
++++ b/portable_sam2_explicit_coarse/inference/infer_from_checkpoint.py
+@@ -461,6 +461,16 @@ def _resolve_dataset_contract(
+     if len(image_size) != 2:
+         raise ValueError(f"image_size must contain two integers, got {image_size!r}")
+     batch_size = args.batch_size or training_args.get("val_batch_size") or 1
++    category_names = data_config.get("category_names")
++    if not category_names:
++        env_names = os.environ.get("DATASET_CATEGORY_NAMES", "").strip()
++        if env_names:
++            category_names = [
++                part.strip() for part in env_names.split(",") if part.strip()
++            ]
++    category_mapping = data_config.get("category_mapping")
++    if not isinstance(category_mapping, Mapping) or not category_mapping:
++        category_mapping = None
+     return {
+         "data_root": str(data_root),
+         "ann_file": str(ann_file),
+@@ -468,6 +478,12 @@ def _resolve_dataset_contract(
+         "image_size": [int(image_size[0]), int(image_size[1])],
+         "batch_size": int(batch_size),
+         "single_class": bool(data_config.get("single_class", True)),
++        "category_names": list(category_names) if category_names else None,
++        "category_mapping": (
++            {int(k): int(v) for k, v in category_mapping.items()}
++            if category_mapping
++            else None
++        ),
+     }
+ 
+ 
+@@ -476,9 +492,15 @@ def _build_loader(contract: Mapping[str, Any], num_workers: int) -> DataLoader:
+     from data.whu_instance_dataset import WHUCocoInstanceDataset
+ 
+     single_class = bool(contract["single_class"])
+-    # Multi-class runs (iSAID) train with canonical ids 1..15 -> labels 0..14;
+-    # the loader must apply the same mapping so GT labels match the head.
+-    category_mapping = None if single_class else {i: i - 1 for i in range(1, 16)}
++    # Multi-class runs (iSAID 15 classes / NWPU VHR-10 10 classes) train with
++    # canonical COCO ids -> labels 0..N-1; the loader must apply the same
++    # mapping so GT labels match the head. Prefer the checkpoint's saved
++    # mapping; fall back to the historical iSAID 1..15 mapping.
++    category_mapping = contract.get("category_mapping")
++    if single_class:
++        category_mapping = None
++    elif not category_mapping:
++        category_mapping = {i: i - 1 for i in range(1, 16)}
+     dataset = WHUCocoInstanceDataset(
+         data_root=contract["data_root"],
+         ann_file=contract["ann_file"],
+@@ -809,11 +831,13 @@ def main() -> None:
+     if not args.no_eval and total_gt > 0:
+         from utils.coco_eval_utils import build_coco_gt_and_dt, run_coco_eval
+ 
++        eval_category_names = contract.get("category_names")
+         coco_gt, coco_segm_dt = build_coco_gt_and_dt(
+             all_gt,
+             all_dt,
+             all_metas,
+             score_key=segm_score_key,
++            category_names=eval_category_names,
+         )
+         metrics.update(run_coco_eval(coco_gt, coco_segm_dt, iou_type="segm"))
+         _, coco_bbox_dt = build_coco_gt_and_dt(
+@@ -821,6 +845,7 @@ def main() -> None:
+             all_dt,
+             all_metas,
+             score_key="scores",
++            category_names=eval_category_names,
+         )
+         metrics.update(run_coco_eval(coco_gt, coco_bbox_dt, iou_type="bbox"))
+     elif not args.no_eval:
+diff --git a/portable_sam2_explicit_coarse/scripts/ablations/_run_ablation.sh b/portable_sam2_explicit_coarse/scripts/ablations/_run_ablation.sh
+index 1e61161..8d02ad2 100755
+--- a/portable_sam2_explicit_coarse/scripts/ablations/_run_ablation.sh
++++ b/portable_sam2_explicit_coarse/scripts/ablations/_run_ablation.sh
+@@ -111,6 +111,10 @@ case "${PROMPT_ROUTE}" in
+ esac
+ 
+ export NECK_TYPE
++# Data root for the trainer / contract validator. Defaults to the WHU-1024
++# root so every existing WHU wrapper is unchanged; NWPU VHR-10 launchers set
++# TRAIN_DATA_ROOT explicitly.
++TRAIN_DATA_ROOT="${TRAIN_DATA_ROOT:-${WHU1024_DATA_ROOT}}"
+ export FINAL_MASK_COORDINATE_MODE
+ export ROI_SAM_ENABLED ROI_SAM_SAMPLING_RATIO
+ SHAPE_DENSE_TRANSFORM="${SHAPE_DENSE_TRANSFORM:-raw_logits}"
+@@ -363,7 +367,7 @@ VALIDATE_ARGS=(
+   --train-subset-ratio "${TRAIN_SUBSET_RATIO}"
+   --val-subset-ratio "${VAL_SUBSET_RATIO}"
+   --subset-seed "${SUBSET_SEED}"
+-  --data-root "${WHU1024_DATA_ROOT}"
++  --data-root "${TRAIN_DATA_ROOT}"
+ )
+ if [ "${CHECK_DATA:-0}" = "1" ]; then
+   VALIDATE_ARGS+=(--check-data)
+@@ -379,7 +383,7 @@ CMD=(
+   "--master_port=${MASTER_PORT}"
+   train/train_rsprompter_fusion.py
+   --config "${CONFIG_PATH}"
+-  --data-root "${WHU1024_DATA_ROOT}"
++  --data-root "${TRAIN_DATA_ROOT}"
+   --use-whu-coco
+   --image-size 1024 1024
+   --batch-size "${BATCH_SIZE}"
+@@ -569,7 +573,7 @@ echo "dry_run=${DRY_RUN:-0}"
+ echo "run_in_background=${RUN_IN_BACKGROUND}"
+ echo "sam2_repo=${SAM2_REPO}"
+ echo "sam2_checkpoint=${SAM2_CKPT}"
+-echo "data_root=${WHU1024_DATA_ROOT}"
++echo "data_root=${TRAIN_DATA_ROOT}"
+ echo "checkpoint_root=${PORTABLE_SAM2_CHECKPOINT_ROOT}"
+ echo "log_root=${PORTABLE_SAM2_LOG_ROOT}"
+ echo "tmp_root=${PORTABLE_SAM2_TMP_ROOT}"
+diff --git a/portable_sam2_explicit_coarse/scripts/visualize_instances.py b/portable_sam2_explicit_coarse/scripts/visualize_instances.py
+index add3f7c..b8e74a0 100755
+--- a/portable_sam2_explicit_coarse/scripts/visualize_instances.py
++++ b/portable_sam2_explicit_coarse/scripts/visualize_instances.py
+@@ -91,6 +91,8 @@ def parse_args() -> argparse.Namespace:
+     common.add_argument("--score-thr", type=float, default=0.0)
+     common.add_argument("--line-thickness", type=int, default=2)
+     common.add_argument("--mask-alpha", type=float, default=0.35)
++    common.add_argument("--mono-color", default="",
++                        help="BGR 三元组如 '170,0,0': 所有实例统一单色(对比图模式)")
+     common.add_argument("--mask-only", action="store_true",
+                         help="仅彩色 mask 叠加原图(每实例独立颜色, 无框/无文字/无置信度)")
+     common.add_argument("--font-scale", type=float, default=0.5)
+@@ -209,11 +211,12 @@ def draw_instances(img: np.ndarray, records: List[dict], cat_names: Dict[int, st
+     if getattr(args, "mask_only", False):
+         # 仅彩色 mask 叠加原图: 每实例独立颜色, 无框/无文字/无置信度
+         # (与对比算法 whu_test_*.py 的可视化口径一致)
++        mono = tuple(int(c) for c in args.mono_color.split(",")) if args.mono_color else None
+         for i, rec in enumerate(records):
+             m = rec.get("mask")
+             if m is None or not m.any():
+                 continue
+-            overlay[m > 0] = PALETTE[i % len(PALETTE)]
++            overlay[m > 0] = mono if mono else PALETTE[i % len(PALETTE)]
+         return cv2.addWeighted(overlay, args.mask_alpha, canvas,
+                                1.0 - args.mask_alpha, 0)
+ 
+diff --git a/portable_sam2_explicit_coarse/train/train_rsprompter_fusion.py b/portable_sam2_explicit_coarse/train/train_rsprompter_fusion.py
+index 0b2232b..34c72d2 100644
+--- a/portable_sam2_explicit_coarse/train/train_rsprompter_fusion.py
++++ b/portable_sam2_explicit_coarse/train/train_rsprompter_fusion.py
+@@ -84,8 +84,15 @@ def build_coco_gt_and_dt(
+     all_dt: List[dict],
+     img_metas_list: List[dict],
+     score_key: str = "scores",
++    category_names: Optional[List[str]] = None,
+ ) -> Tuple:
+-    """Build pycocotools COCO objects for GT and detections."""
++    """Build pycocotools COCO objects for GT and detections.
++
++    ``category_names`` opts into multi-class evaluation (NWPU VHR-10): labels
++    (0-based) map to COCO category ids 1..N. When None (the single-class WHU
++    default), behaviour is unchanged: every GT/prediction uses category id 1.
++    """
++    multi_class = bool(category_names) and len(category_names) > 1
+     from pycocotools.coco import COCO
+ 
+     images = []
+@@ -118,7 +125,7 @@ def build_coco_gt_and_dt(
+                 {
+                     "id": ann_id,
+                     "image_id": img_id,
+-                    "category_id": 1,
++                    "category_id": int(gt_labels[i]) + 1 if multi_class else 1,
+                     "bbox": bbox_xywh,
+                     "area": area,
+                     "segmentation": seg_rle,
+@@ -135,6 +142,7 @@ def build_coco_gt_and_dt(
+                 "predictions; refusing a silent score fallback"
+             )
+         dt_scores = dt[score_key]
++        dt_labels = dt.get("labels") if multi_class else None
+         dt_rles = dt.get("rles")
+         dt_masks = dt.get("masks")
+         if dt_rles is None:
+@@ -149,7 +157,7 @@ def build_coco_gt_and_dt(
+             predictions.append(
+                 {
+                     "image_id": img_id,
+-                    "category_id": 1,
++                    "category_id": int(dt_labels[i]) + 1 if dt_labels is not None else 1,
+                     "bbox": bbox_xywh,
+                     "score": float(dt_scores[i]),
+                     "segmentation": seg_rle,
+@@ -157,10 +165,17 @@ def build_coco_gt_and_dt(
+             )
+ 
+     # Build COCO GT
++    if multi_class:
++        categories = [
++            {"id": index + 1, "name": str(name)}
++            for index, name in enumerate(category_names)
++        ]
++    else:
++        categories = [{"id": 1, "name": "building"}]
+     gt_dataset = {
+         "images": images,
+         "annotations": annotations,
+-        "categories": [{"id": 1, "name": "building"}],
++        "categories": categories,
+     }
+     coco_gt = COCO()
+     coco_gt.dataset = gt_dataset
+@@ -229,6 +244,39 @@ def _env_flag(name: str, default: str = "0") -> bool:
+     return os.environ.get(name, default).strip().lower() in {"1", "true", "yes", "on"}
+ 
+ 
++def _parse_env_category_mapping(raw: Optional[str]) -> Optional[Dict[int, int]]:
++    """Parse 'DATASET_CATEGORY_MAPPING=1:0,2:1,...' into an int dict.
++
++    Returns None when unset/empty so the single-class WHU default is preserved.
++    """
++    if raw is None:
++        return None
++    raw = raw.strip()
++    if not raw:
++        return None
++    mapping: Dict[int, int] = {}
++    for part in raw.split(","):
++        part = part.strip()
++        if not part:
++            continue
++        key_text, _, value_text = part.partition(":")
++        mapping[int(key_text.strip())] = int(value_text.strip())
++    return mapping or None
++
++
++def _resolve_dataset_category_names() -> Optional[List[str]]:
++    """Multi-class eval category names from DATASET_CATEGORY_NAMES (CSV).
++
++    Unset (the WHU single-class default) yields None, which keeps every COCO
++    evaluation category id at 1 exactly as before.
++    """
++    raw = os.environ.get("DATASET_CATEGORY_NAMES", "").strip()
++    if not raw:
++        return None
++    names = [part.strip() for part in raw.split(",") if part.strip()]
++    return names or None
++
++
+ def _metric_value(metrics: Dict[str, float], metric_name: str) -> Optional[float]:
+     if not metric_name:
+         return None
+@@ -1981,6 +2029,17 @@ def main():
+             whu_val_img_subdir=os.environ.get(
+                 "WHU_VAL_IMG_SUBDIR", "2.3 valid/validation"
+             ),
++            # Multi-class opt-in (e.g. NWPU VHR-10). Defaults keep the proven
++            # single-class WHU contract byte-for-byte identical.
++            whu_single_class=_env_flag("DATASET_SINGLE_CLASS", "1"),
++            whu_enable_category_mapping=bool(
++                _parse_env_category_mapping(
++                    os.environ.get("DATASET_CATEGORY_MAPPING")
++                )
++            ),
++            whu_category_mapping=_parse_env_category_mapping(
++                os.environ.get("DATASET_CATEGORY_MAPPING")
++            ),
+             train_subset_ratio=train_subset_ratio,
+             val_subset_ratio=val_subset_ratio,
+             seed=int(args.seed),
+@@ -2124,14 +2183,30 @@ def main():
+             "dataset_format": "whu_coco" if args.use_whu_coco else "labelme",
+             "data_root": str(args.data_root),
+             "image_size": list(args.image_size),
+-            "single_class": True,
++            "single_class": _env_flag("DATASET_SINGLE_CLASS", "1"),
++            "category_mapping": _parse_env_category_mapping(
++                os.environ.get("DATASET_CATEGORY_MAPPING")
++            ),
++            "category_names": _resolve_dataset_category_names(),
+             "validation": {
+-                "ann_file": "2.4 annotation/annotation/validation.json",
+-                "image_subdir": "2.3 valid/validation",
++                "ann_file": os.environ.get(
++                    "WHU_VAL_ANN_FILE",
++                    "2.4 annotation/annotation/validation.json",
++                ),
++                "image_subdir": os.environ.get(
++                    "WHU_VAL_IMG_SUBDIR",
++                    "2.3 valid/validation",
++                ),
+             },
+             "test": {
+-                "ann_file": "2.4 annotation/annotation/test.json",
+-                "image_subdir": "2.2 test/test",
++                "ann_file": os.environ.get(
++                    "WHU_TEST_ANN_FILE",
++                    "2.4 annotation/annotation/test.json",
++                ),
++                "image_subdir": os.environ.get(
++                    "WHU_TEST_IMG_SUBDIR",
++                    "2.2 test/test",
++                ),
+             },
+         },
+         "runtime_config": {
+@@ -2412,12 +2487,25 @@ def main():
+ 
+         test_loader = create_test_loader(
+             data_root=args.data_root,
+-            ann_file="2.4 annotation/annotation/test.json",
+-            image_subdir="2.2 test/test",
++            ann_file=os.environ.get(
++                "WHU_TEST_ANN_FILE", "2.4 annotation/annotation/test.json"
++            ),
++            image_subdir=os.environ.get(
++                "WHU_TEST_IMG_SUBDIR", "2.2 test/test"
++            ),
+             image_size=tuple(args.image_size),
+             batch_size=int(args.val_batch_size),
+             num_workers=4,
+             seed=int(args.seed),
++            single_class=_env_flag("DATASET_SINGLE_CLASS", "1"),
++            enable_category_mapping=bool(
++                _parse_env_category_mapping(
++                    os.environ.get("DATASET_CATEGORY_MAPPING")
++                )
++            ),
++            category_mapping=_parse_env_category_mapping(
++                os.environ.get("DATASET_CATEGORY_MAPPING")
++            ),
+         )
+         # Non-main ranks skip iteration to match the rank0_only validation
+         # contract (no NCCL collective held open during COCO eval).
+@@ -2563,7 +2651,8 @@ def main():
+             )
+             if total_gt > 0:
+                 coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
+-                    all_gt, all_dt, all_img_metas, score_key="scores"
++                    all_gt, all_dt, all_img_metas, score_key="scores",
++                    category_names=_resolve_dataset_category_names(),
+                 )
+                 if eval_bbox:
+                     bbox_metrics = run_coco_eval(
+@@ -2583,6 +2672,7 @@ def main():
+                         all_dt,
+                         all_img_metas,
+                         score_key=segm_score_key,
++                        category_names=_resolve_dataset_category_names(),
+                     )
+                 segm_metrics = run_coco_eval(
+                     coco_gt, coco_segm_dt, iou_type="segm",
+@@ -2643,8 +2733,11 @@ def main():
+                             if hasattr(_masks, "masks"):
+                                 _masks = _masks.masks
+                             _rles = _masks_to_rles(_masks)
+-                        for _bb, _sc, _rl in zip(
+-                            _dt["bboxes"], _dt["scores"], _rles or []
++                        for _bb, _sc, _rl, _lb in zip(
++                            _dt["bboxes"],
++                            _dt["scores"],
++                            _rles or [],
++                            _dt.get("labels", [0] * len(_dt["scores"])),
+                         ):
+                             if float(_sc) < _vis_thr:
+                                 continue
+@@ -2654,7 +2747,7 @@ def main():
+                             _vis_records.append(
+                                 {
+                                     "file_name": _fn,
+-                                    "category_id": 1,
++                                    "category_id": int(_lb) + 1,
+                                     "bbox": [
+                                         float(_bb[0]),
+                                         float(_bb[1]),
+@@ -3324,7 +3417,8 @@ def main():
+                 # consumed identically by validation and checkpoint inference.
+                 # Bbox candidate selection/ranking always remains detector-score based.
+                 coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
+-                    all_gt, all_dt, all_img_metas, score_key="scores"
++                    all_gt, all_dt, all_img_metas, score_key="scores",
++                    category_names=_resolve_dataset_category_names(),
+                 )
+                 if eval_bbox:
+                     bbox_metrics = run_coco_eval(
+@@ -3345,6 +3439,7 @@ def main():
+                         all_dt,
+                         all_img_metas,
+                         score_key=segm_score_key,
++                        category_names=_resolve_dataset_category_names(),
+                     )
+                 segm_metrics = run_coco_eval(
+                     coco_gt, coco_segm_dt, iou_type="segm",
+diff --git a/portable_sam2_explicit_coarse/utils/coco_eval_utils.py b/portable_sam2_explicit_coarse/utils/coco_eval_utils.py
+index 7d1915b..faa4063 100644
+--- a/portable_sam2_explicit_coarse/utils/coco_eval_utils.py
++++ b/portable_sam2_explicit_coarse/utils/coco_eval_utils.py
+@@ -28,8 +28,16 @@ def build_coco_gt_and_dt(
+     img_metas_list: List[dict],
+     category_name: str = "building",
+     score_key: str = "scores",
++    category_names: List[str] = None,
+ ) -> Tuple:
+-    """Build pycocotools COCO objects for GT and detections."""
++    """Build pycocotools COCO objects for GT and detections.
++
++    ``category_names`` opts into multi-class evaluation: when provided, GT and
++    prediction labels (0-based) are mapped to COCO category ids 1..N. When it
++    is None (the single-class WHU default), behaviour is unchanged: every GT
++    and prediction uses category id 1.
++    """
++    multi_class = bool(category_names) and len(category_names) > 1
+     from pycocotools.coco import COCO
+ 
+     images = []
+@@ -57,7 +65,7 @@ def build_coco_gt_and_dt(
+                 {
+                     "id": ann_id,
+                     "image_id": img_id,
+-                    "category_id": 1,
++                    "category_id": int(gt_labels[i]) + 1 if multi_class else 1,
+                     "bbox": bbox_xywh,
+                     "area": area,
+                     "segmentation": seg_rle,
+@@ -73,6 +81,7 @@ def build_coco_gt_and_dt(
+                 "predictions; refusing a silent score fallback"
+             )
+         dt_scores = dt[score_key]
++        dt_labels = dt.get("labels") if multi_class else None
+         dt_masks = dt["masks"]
+ 
+         if hasattr(dt_masks, "masks"):
+@@ -85,17 +94,24 @@ def build_coco_gt_and_dt(
+             predictions.append(
+                 {
+                     "image_id": img_id,
+-                    "category_id": 1,
++                    "category_id": int(dt_labels[i]) + 1 if dt_labels is not None else 1,
+                     "bbox": bbox_xywh,
+                     "score": float(dt_scores[i]),
+                     "segmentation": seg_rle,
+                 }
+             )
+ 
++    if multi_class:
++        categories = [
++            {"id": index + 1, "name": str(name)}
++            for index, name in enumerate(category_names)
++        ]
++    else:
++        categories = [{"id": 1, "name": category_name}]
+     gt_dataset = {
+         "images": images,
+         "annotations": annotations,
+-        "categories": [{"id": 1, "name": category_name}],
++        "categories": categories,
+     }
+     coco_gt = COCO()
+     coco_gt.dataset = gt_dataset

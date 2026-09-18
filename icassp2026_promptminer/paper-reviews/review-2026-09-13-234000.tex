@@ -1,0 +1,40 @@
+\documentclass[UTF8,11pt]{ctexart}
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{amsmath,booktabs}
+\title{CSPM 与 UDPR 模块图：A3 实现一致性审查}
+\author{内部代码核对}
+\date{2026-09-13}
+\begin{document}
+\maketitle
+
+\section*{审查范围与结论}
+审查对象为 \texttt{CSPM.pdf} 和 \texttt{UDPR.pdf}，对照 A3（PBM + UDPR--K64，P2 关闭）实现。两图的总体模块划分和主要数据流正确，且未错误引入 P2 或二次 decoder。然而，CSPM 有两条必需补全的连线，UDPR 有四处必需更正的术语或算子标注。完成这些修改后，图可以作为 Method 中的单栏图插入。
+
+\section*{CSPM.pdf}
+\subsection*{通过项}
+RoI feature 经 lightweight coarse-shape decoder 生成 $64\times64$ coarse logits；2P2N 的 p1/p2、n1、n2 语义；proposal box 与 dense prompt 的输出形式，均与 A3 一致。A3 使用 \texttt{points\_box\_dense}，P2 关闭。
+
+\subsection*{必须修改}
+\begin{enumerate}
+  \item \textbf{补 Proposal box 到 Adaptive 2P2N Sampler 的分支。}采样器需要 proposal box 将 RoI 网格坐标变换至 image-frame point prompts；图中应加箭头，可标为 ``RoI-to-image mapping''。代码依据：\texttt{shape\_point\_miner.py:200--205, 501--514}。
+  \item \textbf{补 coarse-mask logits 到 Dense Prompt Renderer 的分支。}dense prompt 由同一份 signed coarse logits 经 resize/paste 得到，不能显示为仅由 box 产生。可从上方 logits 向下方左侧 logits grid 加一条分支箭头；将 ``mask canvas'' 改为 ``PE mask canvas''。代码依据：\texttt{sam2\_mask\_head.py:1130--1150}、\texttt{sam2\_mask\_head\_helpers.py:20--29, 53--68}。
+\end{enumerate}
+
+\section*{UDPR.pdf}
+\subsection*{通过项}
+单次 decoder pass 输出 $Y_r^0$、$U_r$ 与 mask token；按 $|Y_r^0|$ 选点；在 $U_r$ 上 gather；将 feature、token、坐标和 logit 拼接后写回 $Y_r^1$ 的总流程正确。图中没有 P2 或二次 decoder 路径。
+
+\subsection*{必须修改}
+\begin{enumerate}
+  \item \textbf{修正 ``Uncertainty map $|Y_r^0|$''。}$|Y_r^0|$ 是 confidence magnitude，数值越小表示置信度越低；建议写为 ``Confidence magnitude $|Y_r^0|$''，并保留 ``Select $K=64$ low-confidence locations''。
+  \item \textbf{修正 Residual MLP。}A3 不是 ``FC--ReLU--FC--tanh''，而是 ``LayerNorm $\rightarrow$ FC $\rightarrow$ GELU $\rightarrow$ FC $\rightarrow 2\times\tanh$''。代码依据：\texttt{decoder\_tail\_refiner.py:34--40, 82--86}。
+  \item \textbf{写明 $K=64$。}当前 ``Top-K'' 过于泛化；A3 的实际设置是 64 个最小绝对 logit 位置。代码依据：\texttt{vhr10\_p2v2\_dev.sh:228--235}、\texttt{decoder\_tail\_refiner.py:52--59}。
+  \item \textbf{明确 scatter 是残差相加。}在写回箭头旁补 $Y_{r,i}^{1}=Y_{r,i}^{0}+\delta_i$（$i\in\mathcal S$），并注明未选位置保持 $Y_r^0$。代码依据：\texttt{decoder\_tail\_refiner.py:93}。
+\end{enumerate}
+
+\subsection*{建议}
+将 ``Mask token $t_r$'' 改为 ``first output mask token $t_r$''，并将 ``Inputs (from decoder)'' 改为 ``Outputs of one decoder pass''，可更明确地反映 token 的选取方式和无二次解码的设计。
+
+\section*{单栏插图建议}
+CSPM 图可按 \verb|width=\columnwidth| 插入。UDPR 图的信息密度更高，缩至单栏后应确保最小文字不低于约 7 pt；若原图文字过小，优先删减重复图例而不是缩小整图。
+\end{document}

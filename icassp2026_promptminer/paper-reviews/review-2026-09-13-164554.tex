@@ -1,0 +1,41 @@
+\documentclass[UTF8,11pt]{ctexart}
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb,booktabs,array}
+\title{A3 方法部分实现一致性审查记录}
+\author{内部审查}
+\date{2026-09-13}
+\begin{document}
+\maketitle
+
+\section*{审查范围}
+审查对象为 \texttt{promptminer\_icassp2026.tex} 的 Method（第 I 节，\S A--C）及其与方法语义直接相连的摘要和贡献表述。基准实现为 A3：PBM（points+box+dense mask）加 UDPR--K64，P2 关闭。审查逐段对照 \texttt{shape\_point\_miner.py}、\texttt{shape\_prior\_injector.py}、\texttt{sam2\_mask\_head.py}、\texttt{decoder\_tail\_refiner.py} 和 \texttt{vhr10\_p2v2\_dev.sh}。
+
+\section*{逐段结论}
+\begin{tabular}{p{0.22\linewidth}p{0.17\linewidth}p{0.52\linewidth}}
+\toprule
+位置 & 结论 & 实现核对与处理\\
+\midrule
+Overall Architecture 首段 & 通过 & Hiera 特征进入 PAFPN/RPN/RoI；RoI 特征和 proposal box 进入 CSPM；SAM2 decoder 输出进入 UDPR。A3 使用 \texttt{points\_box\_dense}，P2 关闭，UDPR 的 K 为 64。\\
+Overall Architecture 次段 & 已修正 & dense prompt 位于与图像坐标对齐的 PromptEncoder mask canvas，而非原图分辨率；正文改为 ``image-aligned prompt coordinate frame''。\\
+Eq.~(1) 与 CSPM 首段 & 通过 & \(C_r=f_{\rm coarse}(X_r)\in\mathbb R^{1\times64\times64}\) 对应 A3 的 \texttt{roi\_only} coarse decoder。该路径没有 P2 或额外上下文分支。\\
+2P2N 段 & 已修正一处 & P1 的 \(p\geq0.6\)、内部距离加权，P2 与 P1 分离，N1 的一像素外环和 \(p\leq0.3\) 均正确。N2 的实现只显式远离 P1、N1，并未对 P2 施加间距；正文已据此收紧。\\
+Eq.~(2) 与 dense prompt 段 & 通过并澄清 & \(\mathcal S_r=\mathcal M(C_r,b_r)\) 是点/标签及坐标映射，\(Q_r=\operatorname{Place}(C_r,b_r)\) 是对齐 canvas。实现对 logits 做缩放/截断再 paste，因此正文改称 ``signed coarse logits''，不把工程变换写入主文。\\
+Eq.~(3) native decoding & 通过并澄清 & points、box、mask 经一次 PromptEncoder 调用后进入一次 decoder 调用。\(\widetilde{\mathcal E}_P\) 已补充为完整 native prompt-embedding pathway，涵盖 dense-mask embedding composition；\(\mathcal E_I\) 的说明吸收 decoder-side high-resolution features。\\
+UDPR 选择与 Eq.~(4) & 已修正 & 代码选取 \(|Y^0|\) 最小的 raster locations，且实际数量为 \(\min(K,HW)\)。用 \(\mathcal G_r\)、\(K_r\) 和 \(\operatorname{BottomK}\) 取代含义不够明确的 \(\operatorname{TopK}_{\min}\)。\\
+Eq.~(5)--(7) & 通过并精确化 & \(\phi_i=[z_i,t_r,Y^0_{r,i},x_i,y_i,|Y^0_{r,i}|]\)、\(\delta_i=2\tanh g(\phi_i)\) 以及 scatter-add 均与实现相同。token 是第一个输出 mask token，非由 IoU/reranking 选择的 token，正文已改正。\\
+UDPR 收束句 & 已修正 & 未选中位置逐点保持 \(Y^0\)；正文由 ``high-confidence'' 改为精确的 ``all nonselected''，避免把有限 K 以外的位置强行定义为高置信。\\
+摘要与贡献语义 & 已修正 & UDPR 依据低 \(|Y^0|\) 选点，并不显式提取边界。相关措辞由 ``boundary-sensitive'' 改为 ``ambiguous locations'' / ``localized mask refinement''。\\
+\bottomrule
+\end{tabular}
+
+\section*{公式、符号与上下文总核对}
+\begin{itemize}
+  \item 七个前向公式均与 A3 主路径一致；没有残差正负号、张量角色或 P2 状态错误。
+  \item \(C_r\) 是单通道 $64\times64$ 的 signed coarse logit，\(p_r=\sigma(C_r)\) 只用于阈值化采点；二者语义没有混用。
+  \item \(Y_r^0\) 是 native decoder logit，\(U_r\) 与其栅格对齐，\(\Omega_r\) 是其索引子集；Eq.~(5)--(7) 的索引域一致。
+  \item UDPR 在单次 prompt-conditioned decoding 后执行散点 residual update，不读取 P2、不重跑 decoder，也不改变 detector proposal、类别或排序。
+\end{itemize}
+
+\section*{结论}
+修订后，Method 对 A3 的核心叙事是自洽的：RoI coarse shape 被转换为原生 2P2N、box、dense prompts；SAM2 进行一次联合解码；UDPR 只在低绝对 logit 的 K64 个位置施加有界残差。剩余省略项（dense embedding 的内部插值、logit 截断及采样 fallback）属于实现细节，且按论文篇幅与叙事目的不必写入正文。
+\end{document}
