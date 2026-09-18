@@ -1,0 +1,2 @@
+scene_id,gt_index,b0_final_failure,b0_max_rpn_box_iou,deployed_replay_max_iou,raw_max_iou,pre_nms_max_iou,nms_unlimited_max_iou,final_max_iou,category,raw_count,pre_nms_count,nms_unlimited_count,final_count
+002002,10,partial_or_merge,0.49269622564315796,0.49269622564315796,0.9221851825714111,0.5077049732208252,0.49269622564315796,0.49269622564315796,nms_suppressed,523776,4996,2347,1000

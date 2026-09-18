@@ -1,0 +1,62 @@
+Embedded post-build model_config changed fingerprint; using contract-matching recorded config /home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/configs/whu1024_baseplus_explicit_coarse.py
+[RSSAM2VisionEncoder] Loading SAM2 base_plus model
+  - embed_dim: 112
+  - stages: (2, 3, 16, 3)
+  - backbone_channels: [896, 448, 224, 112]
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[ImageEncoder(base_plus)] Loaded 306 keys. missing=0, unexpected=0
+[RSSAM2VisionEncoder] Applied LoRA with config:
+  - r=16, alpha=32
+  - target_modules=['qkv', 'proj']
+  - dropout=0.05
+  - modules_to_save=['neck']
+trainable params: 1,492,528 || all params: 70,599,344 || trainable%: 2.114081966540652
+[RSSAM2VisionEncoder] LoRA audit: backbone total=70599344, trainable=1492528, lora_trainable=1061424, unexpected_trainable=0
+[SAM2] using package: /home/wangcheng/project/new/.worktrees/dual-stream-dev/sam2/sam2/__init__.py
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[MaskDecoder] Loaded 131 keys. missing=0, unexpected=0
+  use_high_res_features: True
+  Has conv_s0: True
+  Has conv_s1: True
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[MaskHead] Initialized no_mask_embed from SAM2 ckpt, frozen, abs_mean=0.01521041
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[PromptEncoder] Loaded 17 keys. missing=0, unexpected=0
+[DEBUG] RSSAM2PAFPN inputs: 4 tensors
+  [0] shape=torch.Size([1, 256, 256, 256]), dtype=torch.float32
+  [1] shape=torch.Size([1, 256, 128, 128]), dtype=torch.float32
+  [2] shape=torch.Size([1, 256, 64, 64]), dtype=torch.float32
+  [3] shape=torch.Size([1, 256, 32, 32]), dtype=torch.float32
+{
+  "output": "portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/B0-fullval/summary.json",
+  "decision": "AMBIGUOUS",
+  "metrics": {
+    "small_rpn_recall_iou03": 0.7650602409638554,
+    "small_rpn_recall_iou05": 0.6716867469879518,
+    "failed_small_rpn_recall_iou05": 0.5286343612334802,
+    "matched_good_small_rpn_recall_iou05": 1.0,
+    "failed_small_proposal_present_iou05": 0.5286343612334802,
+    "failed_small_two_view_coverage": {
+      "correct": {
+        "fraction": 0.8898678414096917,
+        "covered": 202,
+        "total": 227
+      },
+      "xy_plus_80m": {
+        "fraction": 0.6696035242290749,
+        "covered": 152,
+        "total": 227
+      },
+      "scene_permuted": {
+        "fraction": 0.7577092511013216,
+        "covered": 172,
+        "total": 227
+      }
+    }
+  },
+  "invariants": {
+    "prediction_parity_bitwise": true,
+    "rpn_readout_repeat_bitwise": true,
+    "proposal_counts_unchanged_by_geometry_shams": true
+  }
+}

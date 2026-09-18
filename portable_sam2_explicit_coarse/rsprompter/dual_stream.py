@@ -157,6 +157,73 @@ class P2P3ZeroGate(nn.Module):
         return tuple(out)
 
 
+class A1P2GeometryResidual(nn.Module):
+    """A1: frozen-UAV, single-height z=0 residual for satellite P2 only.
+
+    This is intentionally simpler than the legacy P2/P3 BEV attention arm:
+    high-resolution UAV FPN tokens are bilinearly sampled at each calibrated
+    P2 ground query, averaged over valid views, hard-masked below two views,
+    then learnedly projected into P2.  ``gamma`` starts at zero so a warm
+    start from the single-stream checkpoint is exactly the anchor at step 0.
+    """
+    def __init__(self, channels=512, uav_channels=256, query_chunk=2048,
+                 target_meters=360.0):
+        super().__init__()
+        self.channels = int(channels)
+        self.uav_channels = int(uav_channels)
+        self.query_chunk = int(query_chunk)
+        self.target_meters = float(target_meters)
+        self.proj = nn.Conv2d(self.uav_channels, self.channels, 1, bias=False)
+        self.gamma = nn.Parameter(torch.zeros(()))
+        self.last_stats: dict = {}
+
+    def forward(self, p2: Tensor, uav_fine: Tensor, intrinsics: Tensor,
+                extrinsics_w2c: Tensor, scene_centers: Tensor) -> Tensor:
+        b, channels, h, w = p2.shape
+        if channels != self.channels:
+            raise ValueError(f"P2 channels {channels} != configured {self.channels}")
+        views = intrinsics.shape[1]
+        if views != 5 or uav_fine.shape[:2] != (b, views):
+            raise ValueError("A1 requires Bx5 calibrated UAV fine features")
+        with torch.autocast(device_type=p2.device.type, enabled=False):
+            points = GeometrySparseBEV._ground_points(h, w, scene_centers.float(), p2.device, torch.float32)
+            camera = torch.einsum("bvij,bqj->bvqi", extrinsics_w2c.float(), points)
+            z = camera[..., 2]
+            pixel = torch.einsum("bvij,bvqj->bvqi", intrinsics.float(), camera[..., :3])
+            uv = pixel[..., :2] / pixel[..., 2:3].clamp_min(1e-6)
+        valid = ((z > 1e-4) & (uv[..., 0] >= 0) & (uv[..., 0] < 512) &
+                 (uv[..., 1] >= 0) & (uv[..., 1] < 512))
+        support = valid.sum(1) >= 2
+        fmap = uav_fine.reshape(b * views, self.uav_channels, *uav_fine.shape[-2:])
+        chunks = []
+        for start in range(0, h * w, self.query_chunk):
+            end = min(start + self.query_chunk, h * w)
+            grid = ((uv[:, :, start:end] / 512.0) * 2.0 - 1.0).to(fmap.dtype)
+            sampled = F.grid_sample(fmap, grid.reshape(b * views, 1, end - start, 2),
+                                    mode="bilinear", padding_mode="zeros", align_corners=False)
+            sampled = sampled.reshape(b, views, self.uav_channels, end - start)
+            counts = valid[:, :, start:end].sum(1).clamp_min(1).to(sampled.dtype)
+            fused = (sampled * valid[:, :, None, start:end].to(sampled.dtype)).sum(1) / counts[:, None]
+            fused = fused * support[:, None, start:end].to(fused.dtype)
+            chunks.append(self.proj(fused.unsqueeze(2)).squeeze(2))
+        residual = torch.cat(chunks, -1).reshape(b, self.channels, h, w)
+        delta = self.gamma * residual
+        with torch.no_grad():
+            self.last_stats = {
+                "candidate_valid_ratio": valid.float().mean().detach(),
+                "candidate_two_view_ratio": support.float().mean().detach(),
+                "candidate_hard_mask_zero": (
+                    residual.masked_select((~support.reshape(b, 1, h, w)).expand_as(residual))
+                    .abs().max() == 0
+                ).detach(),
+                "gamma_p2": self.gamma.detach(),
+                "residual_abs_mean": residual.detach().float().abs().mean(),
+                "residual_abs_max": residual.detach().float().abs().max(),
+                "injected_ratio_p2": delta.detach().float().norm() / p2.detach().float().norm().clamp_min(1e-6),
+            }
+        return p2 + delta
+
+
 class EmbeddingZeroGate(nn.Module):
     """Inject the BEV residual into the SAM2 stride-16 image embedding.
 

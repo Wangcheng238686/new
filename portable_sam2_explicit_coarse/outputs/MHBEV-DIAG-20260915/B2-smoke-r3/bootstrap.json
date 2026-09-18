@@ -1,0 +1,16 @@
+{
+  "samples_requested": 100,
+  "samples_valid": 61,
+  "seed": 20260917,
+  "categories": [
+    "bbox_refinement_lost",
+    "roi_score_rejected",
+    "nms_or_rank_loss"
+  ],
+  "observed_winner": "nms_or_rank_loss",
+  "winner_minus_others_mean": 1.0,
+  "ci95_percentile": [
+    1.0,
+    1.0
+  ]
+}

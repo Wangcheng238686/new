@@ -1,0 +1,247 @@
+{
+  "experiment_id": "MHBEV-ROI-20260914-A1-Frozen-R2",
+  "arm": "A1-Frozen-R2",
+  "status": "probe_only_no_training",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "model_config_source": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/configs/whu1024_baseplus_explicit_coarse.py",
+  "data": {
+    "root": "/data1/wangcheng/dataset/ue_coco_with_uav",
+    "split": "val",
+    "scene_ids": [
+      "002002",
+      "002003"
+    ]
+  },
+  "contract": {
+    "grid": 256,
+    "height_m": 0.0,
+    "target_meters": 360.0,
+    "uav_views": 5,
+    "extrinsics": "W2C column-vector UE centimetres",
+    "autocast_projection": "disabled_fp32"
+  },
+  "parity": {
+    "scenes": [
+      {
+        "scene_id": "002002",
+        "prediction_equal": true,
+        "fields": {
+          "bboxes": "556c0c55cbfbb9bad7585708887b90743331b60a8e3874da36fe68fc0cc03379",
+          "scores": "1d137c17977236c31115b60a1e42ddae38d1b0a2f757bf3c31076c9ce1c5d38e",
+          "labels": "b5fdab78d8947eacc864bfeecb4d2100780e5afe1cd8efafb124887913ac49fa",
+          "masks": "1815a562c3cc3de06e1a61e169f68077d00c68972c42d87f2da21799cfeede2a"
+        },
+        "p2_hash": "80d9ce2e18d3b4598794d050a6f4a1d1584ad773523b58be1c2a74c453212efd",
+        "gamma_p2": 0.0,
+        "residual_abs_mean": 0.011218598112463951
+      },
+      {
+        "scene_id": "002003",
+        "prediction_equal": true,
+        "fields": {
+          "bboxes": "73fb7185afdf721d6d4652bb15f1fa0617472878d6721892fba32efb41c178df",
+          "scores": "3633bcb0ed7717b9472f1ac873d647f5efff7be5c17f42531412598e030d654c",
+          "labels": "b707241545a346265aab1ffb32ff64b55bf8f8dc1b56a46ef33ce3d15db11d33",
+          "masks": "1b9e4b4393d99df99bf8b30072d8de678ad753bcf74c87ef59deb60de43ccc8c"
+        },
+        "p2_hash": "c9dabf520defaa82c6a1419b2e18a24ec3457d9edc1110a422bbc0e416207b93",
+        "gamma_p2": 0.0,
+        "residual_abs_mean": 0.01120817568153143
+      }
+    ],
+    "all_prediction_fields_bitwise_equal": true
+  },
+  "calibration": [
+    {
+      "scene_id": "002002",
+      "w2c_camera_center_max_abs": 4.3655745685100555e-11,
+      "tile_center_valid_views": 5,
+      "tile_center_uv": [
+        [
+          256.0,
+          256.0
+        ],
+        [
+          256.0001220703125,
+          255.99993896484375
+        ],
+        [
+          255.99993896484375,
+          256.0
+        ],
+        [
+          256.00006103515625,
+          255.99993896484375
+        ],
+        [
+          256.0,
+          256.0000915527344
+        ]
+      ],
+      "fp32_fp64_valid_equal": true,
+      "fp32_fp64_max_uv_delta_px": 0.00019203283784463565,
+      "boundary_band_view_queries": 55621,
+      "valid_mismatch_view_queries": 0,
+      "valid_mismatch_outside_boundary": 0,
+      "interior_valid_equal": true,
+      "two_view_support_equal": true
+    },
+    {
+      "scene_id": "002003",
+      "w2c_camera_center_max_abs": 8.549250196665525e-11,
+      "tile_center_valid_views": 5,
+      "tile_center_uv": [
+        [
+          256.0,
+          256.0
+        ],
+        [
+          256.0001220703125,
+          255.99998474121094
+        ],
+        [
+          255.99993896484375,
+          256.00006103515625
+        ],
+        [
+          255.99993896484375,
+          255.99993896484375
+        ],
+        [
+          256.0,
+          256.0000305175781
+        ]
+      ],
+      "fp32_fp64_valid_equal": true,
+      "fp32_fp64_max_uv_delta_px": 0.00018795378802138885,
+      "boundary_band_view_queries": 55621,
+      "valid_mismatch_view_queries": 0,
+      "valid_mismatch_outside_boundary": 0,
+      "interior_valid_equal": true,
+      "two_view_support_equal": true
+    }
+  ],
+  "telemetry": {
+    "correct": {
+      "aggregate": {
+        "valid_view_ratio": 0.8315322995185852,
+        "any_view_ratio": 1.0,
+        "two_view_ratio": 0.98529052734375,
+        "feature_abs_mean": 0.01269333390519023,
+        "candidate_abs_mean": 0.01121338689699769,
+        "pair_cosine": 0.39763619005680084,
+        "scenes": 2
+      },
+      "per_scene": [
+        {
+          "scene_id": "002002",
+          "grid_candidates": 65536,
+          "valid_view_ratio": 0.8315338492393494,
+          "any_view_ratio": 1.0,
+          "two_view_ratio": 0.98529052734375,
+          "feature_abs_mean": 0.012639409862458706,
+          "hard_mask_zero": true,
+          "candidate_abs_mean": 0.011218598112463951,
+          "pair_cosine": 0.4002301096916199,
+          "pair_points": 1767
+        },
+        {
+          "scene_id": "002003",
+          "grid_candidates": 65536,
+          "valid_view_ratio": 0.831530749797821,
+          "any_view_ratio": 1.0,
+          "two_view_ratio": 0.98529052734375,
+          "feature_abs_mean": 0.012747257947921753,
+          "hard_mask_zero": true,
+          "candidate_abs_mean": 0.01120817568153143,
+          "pair_cosine": 0.3950422704219818,
+          "pair_points": 1767
+        }
+      ]
+    },
+    "xy_plus_80m": {
+      "aggregate": {
+        "valid_view_ratio": 0.7420929074287415,
+        "any_view_ratio": 0.965057373046875,
+        "two_view_ratio": 0.85113525390625,
+        "feature_abs_mean": 0.012059116270393133,
+        "candidate_abs_mean": 0.009686836041510105,
+        "pair_cosine": 0.31780223548412323,
+        "scenes": 2
+      },
+      "per_scene": [
+        {
+          "scene_id": "002002",
+          "grid_candidates": 65536,
+          "valid_view_ratio": 0.7420929074287415,
+          "any_view_ratio": 0.965057373046875,
+          "two_view_ratio": 0.85113525390625,
+          "feature_abs_mean": 0.011926142498850822,
+          "hard_mask_zero": true,
+          "candidate_abs_mean": 0.009670039638876915,
+          "pair_cosine": 0.3536745011806488,
+          "pair_points": 1721
+        },
+        {
+          "scene_id": "002003",
+          "grid_candidates": 65536,
+          "valid_view_ratio": 0.7420929074287415,
+          "any_view_ratio": 0.965057373046875,
+          "two_view_ratio": 0.85113525390625,
+          "feature_abs_mean": 0.012192090041935444,
+          "hard_mask_zero": true,
+          "candidate_abs_mean": 0.009703632444143295,
+          "pair_cosine": 0.28192996978759766,
+          "pair_points": 1721
+        }
+      ]
+    },
+    "scene_permuted": {
+      "aggregate": {
+        "valid_view_ratio": 0.8315322995185852,
+        "any_view_ratio": 1.0,
+        "two_view_ratio": 0.98529052734375,
+        "feature_abs_mean": 0.012693332973867655,
+        "candidate_abs_mean": 0.011213383637368679,
+        "pair_cosine": 0.39763645827770233,
+        "scenes": 2
+      },
+      "per_scene": [
+        {
+          "scene_id": "002002",
+          "grid_candidates": 65536,
+          "valid_view_ratio": 0.8315338492393494,
+          "any_view_ratio": 1.0,
+          "two_view_ratio": 0.98529052734375,
+          "feature_abs_mean": 0.012747259810566902,
+          "hard_mask_zero": true,
+          "candidate_abs_mean": 0.01120815146714449,
+          "pair_cosine": 0.39504289627075195,
+          "pair_points": 1767
+        },
+        {
+          "scene_id": "002003",
+          "grid_candidates": 65536,
+          "valid_view_ratio": 0.831530749797821,
+          "any_view_ratio": 1.0,
+          "two_view_ratio": 0.98529052734375,
+          "feature_abs_mean": 0.012639406137168407,
+          "hard_mask_zero": true,
+          "candidate_abs_mean": 0.011218615807592869,
+          "pair_cosine": 0.4002300202846527,
+          "pair_points": 1767
+        }
+      ]
+    }
+  },
+  "gates": {
+    "a0_bypass_bitwise": true,
+    "all_conditions_feature_nonzero": true,
+    "candidate_counts_equal": true,
+    "hard_mask_zero": true,
+    "w2c_camera_center_fp64": true,
+    "fp32_fp64_projection_r2": true,
+    "tile_center_five_view": true,
+    "note": "Affinity is descriptive only; it is not a semantic-effectiveness gate for frozen SAM features."
+  }
+}

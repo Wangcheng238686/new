@@ -12,7 +12,7 @@ from mmdet.registry import MODELS
 from mmdet.structures import DetDataSample, SampleList
 from mmdet.structures.bbox import bbox2roi
 from mmdet.utils import InstanceList
-from .dual_stream import EmbeddingZeroGate, GeometrySparseBEV, P2P3ZeroGate
+from .dual_stream import A1P2GeometryResidual, EmbeddingZeroGate, GeometrySparseBEV, P2P3ZeroGate
 
 try:
     from transformers.models.sam.modeling_sam import SamVisionEncoderOutput
@@ -296,6 +296,58 @@ class DualStreamRSPrompterAnchor(RSPrompterAnchor):
         if self.embedding_gate is not None:
             image_embeddings = self.embedding_gate(image_embeddings, bev)
         return self.p2p3_gate(x, bev), image_embeddings, image_positional_embeddings, high_res_features
+
+
+@MODELS.register_module()
+class A1P2RSPrompterAnchor(RSPrompterAnchor):
+    """Trainable A1 P2-only calibrated UAV residual; UAV encoder stays frozen."""
+    def __init__(self, drone_backbone, a1_cfg=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.enable_drone_branch = True
+        self.freeze_drone = True
+        self.drone_encoder = MODELS.build(drone_backbone)
+        self.drone_encoder.requires_grad_(False)
+        self.drone_encoder.eval()
+        self.a1_p2 = A1P2GeometryResidual(**dict(a1_cfg or {}))
+
+    def train(self, mode=True):
+        super().train(mode)
+        self.drone_encoder.eval()
+        return self
+
+    @staticmethod
+    def _uav_inputs(samples, device):
+        return DualStreamRSPrompterAnchor._uav_inputs(samples, device)
+
+    def get_dual_stream_debug_stats(self) -> Dict[str, object]:
+        raw = dict(getattr(self.a1_p2, "last_stats", {}) or {})
+        # Reuse the trainer's rank-reduced monitor schema while preserving the
+        # A1 meaning: "point_valid" is >=2-view support, and "bev" is the
+        # P2 residual before its zero-initialized gate.
+        return {
+            "valid_ratio": raw.get("candidate_valid_ratio"),
+            "point_valid_ratio": raw.get("candidate_two_view_ratio"),
+            "bev_abs_mean": raw.get("residual_abs_mean"),
+            "bev_abs_max": raw.get("residual_abs_max"),
+            "gamma_p2": raw.get("gamma_p2"),
+            "injected_ratio_p2": raw.get("injected_ratio_p2"),
+            "candidate_hard_mask_zero": raw.get("candidate_hard_mask_zero"),
+        }
+
+    def extract_feat(self, batch_inputs: Tensor, batch_data_samples=None):
+        x, image_embeddings, image_positional_embeddings, high_res_features = super().extract_feat(batch_inputs, batch_data_samples)
+        if batch_data_samples is None:
+            raise RuntimeError("A1P2RSPrompterAnchor needs calibrated UAV metainfo")
+        drone, intrinsics, extrinsics, centers = self._uav_inputs(batch_data_samples, batch_inputs.device)
+        b, views = drone.shape[:2]
+        drone = (drone - drone.new_tensor([.485, .456, .406])[None, None, :, None, None]) / drone.new_tensor([.229, .224, .225])[None, None, :, None, None]
+        with torch.no_grad():
+            _, fpn = self.drone_encoder(drone.reshape(b * views, *drone.shape[2:]))
+        fine = max(fpn[-4:], key=lambda value: value.shape[-2] * value.shape[-1])
+        fine = fine.reshape(b, views, fine.shape[1], fine.shape[2], fine.shape[3])
+        updated = list(x)
+        updated[0] = self.a1_p2(updated[0], fine, intrinsics, extrinsics, centers)
+        return tuple(updated), image_embeddings, image_positional_embeddings, high_res_features
 
 
 @MODELS.register_module()

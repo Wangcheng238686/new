@@ -1,0 +1,199 @@
+{
+  "experiment_id": "MHBEV-ROI-20260914",
+  "arm": "A1-Frozen",
+  "status": "probe_only_no_training",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "model_config_source": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/configs/whu1024_baseplus_explicit_coarse.py",
+  "data": {
+    "root": "/data1/wangcheng/dataset/ue_coco_with_uav",
+    "split": "val",
+    "scene_ids": [
+      "002002",
+      "002003"
+    ]
+  },
+  "contract": {
+    "grid": 256,
+    "height_m": 0.0,
+    "target_meters": 360.0,
+    "uav_views": 5,
+    "extrinsics": "W2C column-vector UE centimetres",
+    "autocast_projection": "disabled_fp32"
+  },
+  "parity": {
+    "scenes": [
+      {
+        "scene_id": "002002",
+        "prediction_equal": true,
+        "fields": {
+          "bboxes": "556c0c55cbfbb9bad7585708887b90743331b60a8e3874da36fe68fc0cc03379",
+          "scores": "1d137c17977236c31115b60a1e42ddae38d1b0a2f757bf3c31076c9ce1c5d38e",
+          "labels": "b5fdab78d8947eacc864bfeecb4d2100780e5afe1cd8efafb124887913ac49fa",
+          "masks": "1815a562c3cc3de06e1a61e169f68077d00c68972c42d87f2da21799cfeede2a"
+        },
+        "passive_p2_hash": "80d9ce2e18d3b4598794d050a6f4a1d1584ad773523b58be1c2a74c453212efd"
+      }
+    ],
+    "all_prediction_fields_bitwise_equal": true
+  },
+  "calibration": [
+    {
+      "scene_id": "002002",
+      "w2c_camera_center_max_abs": 0.0390625,
+      "tile_center_valid_views": 5,
+      "tile_center_uv": [
+        [
+          256.0,
+          256.0
+        ],
+        [
+          256.0001220703125,
+          255.99993896484375
+        ],
+        [
+          255.99993896484375,
+          256.0
+        ],
+        [
+          256.00006103515625,
+          255.99993896484375
+        ],
+        [
+          256.0,
+          256.0000915527344
+        ]
+      ]
+    },
+    {
+      "scene_id": "002003",
+      "w2c_camera_center_max_abs": 0.03125,
+      "tile_center_valid_views": 5,
+      "tile_center_uv": [
+        [
+          256.0,
+          256.0
+        ],
+        [
+          256.0001220703125,
+          255.99998474121094
+        ],
+        [
+          255.99993896484375,
+          256.00006103515625
+        ],
+        [
+          255.99993896484375,
+          255.99993896484375
+        ],
+        [
+          256.0,
+          256.0000305175781
+        ]
+      ]
+    }
+  ],
+  "telemetry": {
+    "correct": {
+      "aggregate": {
+        "valid_view_ratio": 0.8315322995185852,
+        "any_view_ratio": 1.0,
+        "two_view_ratio": 0.98529052734375,
+        "feature_abs_mean": 0.010614377446472645,
+        "pair_cosine": 0.6870698928833008,
+        "scenes": 2
+      },
+      "per_scene": [
+        {
+          "scene_id": "002002",
+          "grid_candidates": 65536,
+          "valid_view_ratio": 0.8315338492393494,
+          "any_view_ratio": 1.0,
+          "two_view_ratio": 0.98529052734375,
+          "feature_abs_mean": 0.010602572001516819,
+          "pair_cosine": 0.6969449520111084,
+          "pair_points": 1767
+        },
+        {
+          "scene_id": "002003",
+          "grid_candidates": 65536,
+          "valid_view_ratio": 0.831530749797821,
+          "any_view_ratio": 1.0,
+          "two_view_ratio": 0.98529052734375,
+          "feature_abs_mean": 0.01062618289142847,
+          "pair_cosine": 0.6771948337554932,
+          "pair_points": 1767
+        }
+      ]
+    },
+    "xy_plus_80m": {
+      "aggregate": {
+        "valid_view_ratio": 0.7420929074287415,
+        "any_view_ratio": 0.965057373046875,
+        "two_view_ratio": 0.85113525390625,
+        "feature_abs_mean": 0.010144385974854231,
+        "pair_cosine": 0.6199045181274414,
+        "scenes": 2
+      },
+      "per_scene": [
+        {
+          "scene_id": "002002",
+          "grid_candidates": 65536,
+          "valid_view_ratio": 0.7420929074287415,
+          "any_view_ratio": 0.965057373046875,
+          "two_view_ratio": 0.85113525390625,
+          "feature_abs_mean": 0.010021773166954517,
+          "pair_cosine": 0.6438380479812622,
+          "pair_points": 1721
+        },
+        {
+          "scene_id": "002003",
+          "grid_candidates": 65536,
+          "valid_view_ratio": 0.7420929074287415,
+          "any_view_ratio": 0.965057373046875,
+          "two_view_ratio": 0.85113525390625,
+          "feature_abs_mean": 0.010266998782753944,
+          "pair_cosine": 0.5959709882736206,
+          "pair_points": 1721
+        }
+      ]
+    },
+    "scene_permuted": {
+      "aggregate": {
+        "valid_view_ratio": 0.8315322995185852,
+        "any_view_ratio": 1.0,
+        "two_view_ratio": 0.98529052734375,
+        "feature_abs_mean": 0.010614377446472645,
+        "pair_cosine": 0.6870699822902679,
+        "scenes": 2
+      },
+      "per_scene": [
+        {
+          "scene_id": "002002",
+          "grid_candidates": 65536,
+          "valid_view_ratio": 0.8315338492393494,
+          "any_view_ratio": 1.0,
+          "two_view_ratio": 0.98529052734375,
+          "feature_abs_mean": 0.01062618475407362,
+          "pair_cosine": 0.6771948933601379,
+          "pair_points": 1767
+        },
+        {
+          "scene_id": "002003",
+          "grid_candidates": 65536,
+          "valid_view_ratio": 0.831530749797821,
+          "any_view_ratio": 1.0,
+          "two_view_ratio": 0.98529052734375,
+          "feature_abs_mean": 0.01060257013887167,
+          "pair_cosine": 0.696945071220398,
+          "pair_points": 1767
+        }
+      ]
+    }
+  },
+  "gates": {
+    "a0_bypass_bitwise": true,
+    "correct_feature_nonzero": true,
+    "w2c_camera_center": false,
+    "note": "Affinity is descriptive only; it is not a semantic-effectiveness gate for frozen SAM features."
+  }
+}

@@ -1,0 +1,4 @@
+scene_id,gt_index,b0_final_failure,max_final_mask_iou,max_final_box_iou,final_detection_count,category,views_correct,views_xy_plus_80m,views_scene_permuted
+002007,18,partial_or_merge,0.4607999920845032,0.26724672317504883,25,post_rpn_box_lost_or_mislocalized,2,3,2
+002007,19,partial_or_merge,0.45016077160835266,0.35892656445503235,25,post_rpn_box_lost_or_mislocalized,1,0,2
+002010,24,partial_or_merge,0.11026261746883392,0.8214123249053955,39,mask_only_failure,3,2,3

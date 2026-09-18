@@ -1,0 +1,47 @@
+{
+  "experiment_id": "MHBEV-DIAG-20260915-C1",
+  "arm": "C1-Frozen-UAV-RPN-Preselection-Readout",
+  "status": "probe_only_no_detector_training",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "b0_lineage": {
+    "dir": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/B0-fullval",
+    "targets_expected": 107,
+    "parent_final_failure_small": 227
+  },
+  "data": {
+    "train_subset_ratio": 0.1797752808988764,
+    "train_seed": 44,
+    "train_scenes_expected": 128,
+    "train_scenes_processed": 128,
+    "train_complete": true,
+    "val_scene_universe": 259,
+    "target_scenes_expected": 85,
+    "target_scenes_processed": 1,
+    "val_pairs_expected": 107,
+    "val_pairs_common_valid": 0,
+    "val_complete": false,
+    "complete": false
+  },
+  "contract": {
+    "candidate": "all dense decoded RPN anchors before score_thr/nms_pre/NMS",
+    "descriptor": "frozen SAM2 finest FPN; 3x3 decoded raw-RPN box grid; z0/360m/W2C/fp32; >=2 views every point",
+    "conditions": [
+      "correct",
+      "XY+80m",
+      "scene_permuted"
+    ],
+    "linear_readout": "StandardScaler+LogisticRegression(C=1,class_weight=balanced,max_iter=1000,random_state=20260919)"
+  },
+  "invariants": {
+    "train_val_scene_disjoint": true,
+    "detector_parity_bitwise": true,
+    "post_nms_rpn_parity_bitwise": true,
+    "dense_anchor_cardinality": true,
+    "condition_pair_identity_fixed": true,
+    "detector_hash_unchanged": true,
+    "encoder_hash_unchanged": true,
+    "no_detector_uav_or_sham_intervention": true,
+    "b0_target_lineage_fail_closed": true
+  },
+  "decision": "INVALID"
+}

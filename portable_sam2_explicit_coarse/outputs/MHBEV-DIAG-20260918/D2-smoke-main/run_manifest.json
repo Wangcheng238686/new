@@ -1,0 +1,46 @@
+{
+  "experiment_id": "MHBEV-DIAG-20260918-D2",
+  "arm": "D2-Frozen-RPN-Rank-Profile",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "b0_lineage": {
+    "dir": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/B0-fullval",
+    "keys": 107
+  },
+  "d1_lineage": {
+    "dir": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/D1-fullval",
+    "decision": "D1_MIXED",
+    "counts": {
+      "nms_suppressed": 2,
+      "raw_geometry_unavailable": 23,
+      "max_per_img_truncated": 23,
+      "score_nms_pre_rejected": 59
+    }
+  },
+  "data": {
+    "val_scene_universe": 259,
+    "target_scenes_expected": 85,
+    "target_scenes_processed": 1,
+    "targets_expected": 107,
+    "targets_processed": 2,
+    "main_targets_expected": 59,
+    "main_targets_processed": 1,
+    "complete": false
+  },
+  "live_rpn_contract": {
+    "nms_pre": 1000,
+    "max_per_img": 1000,
+    "min_bbox_size": 0.0,
+    "score_thr_resolved": 0.0,
+    "nms_type": "nms",
+    "nms_iou_threshold": 0.7
+  },
+  "invariants": {
+    "normal_prediction_parity_typed": true,
+    "deployed_rpn_parity_typed": true,
+    "staged_final_equals_live_typed": true,
+    "readout_repeat_typed_hash": true,
+    "d1_replay_and_rank_separation_fail_closed": true,
+    "no_proposal_write": true
+  },
+  "decision": "INVALID"
+}

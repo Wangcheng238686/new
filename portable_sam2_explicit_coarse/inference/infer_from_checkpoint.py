@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Rebuild a model from a self-describing checkpoint and run WHU inference."""
+"""Rebuild a self-describing checkpoint and run WHU or UE inference."""
 
 from __future__ import annotations
 
@@ -32,10 +32,22 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Load a portable_sam2_explicit_coarse checkpoint, rebuild its model, "
-            "and run inference on an annotated WHU COCO split."
+            "and run inference on an annotated WHU COCO or UE split."
         )
     )
     parser.add_argument("--checkpoint", required=True, help="Training checkpoint (.pth).")
+    parser.add_argument(
+        "--dataset-format",
+        choices=("whu", "ue"),
+        default="whu",
+        help="Dataset adapter: WHU COCO (default) or calibrated UE LabelMe splits.",
+    )
+    parser.add_argument(
+        "--ue-split",
+        choices=("train", "val", "test"),
+        default="val",
+        help="UE official split used when --dataset-format ue.",
+    )
     parser.add_argument(
         "--config",
         default=None,
@@ -411,6 +423,19 @@ def _resolve_dataset_contract(
     args: argparse.Namespace,
     snapshot: Mapping[str, Any],
 ) -> Dict[str, Any]:
+    if args.dataset_format == "ue":
+        image_size = args.image_size or snapshot.get("image_size") or [1024, 1024]
+        if len(image_size) != 2:
+            raise ValueError(f"image_size must contain two integers, got {image_size!r}")
+        return {
+            "dataset_format": "ue",
+            "data_root": str(args.data_root or "/data1/wangcheng/dataset/ue_coco_with_uav"),
+            "ue_split": str(args.ue_split),
+            "image_size": [int(image_size[0]), int(image_size[1])],
+            "batch_size": int(args.batch_size or 1),
+            "single_class": True,
+        }
+
     data_config = snapshot.get("data_config", {})
     if not isinstance(data_config, Mapping):
         data_config = {}
@@ -456,6 +481,7 @@ def _resolve_dataset_contract(
         raise ValueError(f"image_size must contain two integers, got {image_size!r}")
     batch_size = args.batch_size or training_args.get("val_batch_size") or 1
     return {
+        "dataset_format": "whu",
         "data_root": str(data_root),
         "ann_file": str(ann_file),
         "image_subdir": str(image_subdir),
@@ -467,6 +493,26 @@ def _resolve_dataset_contract(
 
 def _build_loader(contract: Mapping[str, Any], num_workers: int) -> DataLoader:
     from data.loader import rtmdet_collate_fn
+    if contract.get("dataset_format") == "ue":
+        from data.ue_dual_stream_dataset import UEDualStreamDataset, ue_dual_collate
+
+        dataset = UEDualStreamDataset(
+            root=contract["data_root"],
+            split=contract["ue_split"],
+            image_size=tuple(contract["image_size"]),
+            load_uav=bool(contract.get("load_uav", False)),
+        )
+        return DataLoader(
+            dataset,
+            batch_size=int(contract["batch_size"]),
+            shuffle=False,
+            num_workers=int(num_workers),
+            collate_fn=ue_dual_collate if contract.get("load_uav", False) else rtmdet_collate_fn,
+            pin_memory=torch.cuda.is_available(),
+            drop_last=False,
+            persistent_workers=int(num_workers) > 0,
+        )
+
     from data.whu_instance_dataset import WHUCocoInstanceDataset
 
     single_class = bool(contract["single_class"])
@@ -513,6 +559,13 @@ def _build_data_samples(
     for index in range(len(imgs)):
         sample = DetDataSample()
         sample.set_metainfo(img_metas[index])
+        if "drone_images" in batch:
+            sample.set_metainfo({
+                "drone_images": batch["drone_images"][index],
+                "intrinsics": batch["intrinsics"][index],
+                "extrinsics": batch["extrinsics"][index],
+                "scene_center": batch["scene_centers"][index],
+            })
         instances = InstanceData()
         valid = gt_labels[index] >= 0
         valid_indices = valid.nonzero().squeeze(-1).cpu()
@@ -733,6 +786,7 @@ def main() -> None:
         return
 
     contract = _resolve_dataset_contract(args, snapshot)
+    contract["load_uav"] = bool(getattr(model, "enable_drone_branch", False))
     loader = _build_loader(contract, args.num_workers)
     data_preprocessor = model.data_preprocessor
     all_gt: List[dict] = []

@@ -1,0 +1,26 @@
+{
+  "experiment_id": "MHBEV-DIAG-20260918-D3",
+  "arm": "D3-Frozen-Satellite-RPN-Objectness-Readout",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "b0_dir": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/B0-fullval",
+  "d1_dir": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/D1-fullval",
+  "data": {
+    "train_scenes": 128,
+    "train_pairs": 158,
+    "bootstrap_scene_universe": 85,
+    "val_target_scenes_expected": 49,
+    "val_target_scenes_processed": 1,
+    "targets_expected": 59,
+    "targets_processed": 1,
+    "valid_pairs": 1,
+    "complete": false
+  },
+  "invariants": {
+    "normal_prediction_parity_typed": true,
+    "deployed_rpn_parity_typed": true,
+    "repeat_feature_descriptor_hash": true,
+    "d1_b0_replay_and_category_fail_closed": true,
+    "no_proposal_write": true
+  },
+  "decision": "INVALID"
+}

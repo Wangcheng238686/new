@@ -1,0 +1,16 @@
+{
+  "samples_requested": 10000,
+  "samples_valid": 10000,
+  "seed": 20260920,
+  "observed_major_category": "score_nms_pre_rejected",
+  "major_minus_rest_ci95": [
+    -0.09090909090909088,
+    0.2920422055820285
+  ],
+  "per_draw_major_counts": {
+    "raw_geometry_unavailable": 0,
+    "score_nms_pre_rejected": 9998,
+    "nms_suppressed": 0,
+    "max_per_img_truncated": 2
+  }
+}

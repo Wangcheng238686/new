@@ -1,0 +1,80 @@
+Embedded post-build model_config changed fingerprint; using contract-matching recorded config /home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/configs/whu1024_baseplus_explicit_coarse.py
+[RSSAM2VisionEncoder] Loading SAM2 base_plus model
+  - embed_dim: 112
+  - stages: (2, 3, 16, 3)
+  - backbone_channels: [896, 448, 224, 112]
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[ImageEncoder(base_plus)] Loaded 306 keys. missing=0, unexpected=0
+[RSSAM2VisionEncoder] Applied LoRA with config:
+  - r=16, alpha=32
+  - target_modules=['qkv', 'proj']
+  - dropout=0.05
+  - modules_to_save=['neck']
+trainable params: 1,492,528 || all params: 70,599,344 || trainable%: 2.114081966540652
+[RSSAM2VisionEncoder] LoRA audit: backbone total=70599344, trainable=1492528, lora_trainable=1061424, unexpected_trainable=0
+[SAM2] using package: /home/wangcheng/project/new/.worktrees/dual-stream-dev/sam2/sam2/__init__.py
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[MaskDecoder] Loaded 131 keys. missing=0, unexpected=0
+  use_high_res_features: True
+  Has conv_s0: True
+  Has conv_s1: True
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[MaskHead] Initialized no_mask_embed from SAM2 ckpt, frozen, abs_mean=0.01521041
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[PromptEncoder] Loaded 17 keys. missing=0, unexpected=0
+[DEBUG] RSSAM2PAFPN inputs: 4 tensors
+  [0] shape=torch.Size([1, 256, 256, 256]), dtype=torch.float32
+  [1] shape=torch.Size([1, 256, 128, 128]), dtype=torch.float32
+  [2] shape=torch.Size([1, 256, 64, 64]), dtype=torch.float32
+  [3] shape=torch.Size([1, 256, 32, 32]), dtype=torch.float32
+{
+  "output": "portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/B1-fullval/summary.json",
+  "decision": "POST_RPN_ROI_BOX",
+  "metrics": {
+    "mask_only_fraction": 0.15833333333333333,
+    "post_rpn_box_lost_fraction": 0.8416666666666667,
+    "inherited_two_view_coverage": {
+      "mask_only_failure": {
+        "correct": {
+          "fraction": 1.0,
+          "covered": 19,
+          "total": 19
+        },
+        "xy_plus_80m": {
+          "fraction": 0.7894736842105263,
+          "covered": 15,
+          "total": 19
+        },
+        "scene_permuted": {
+          "fraction": 0.8947368421052632,
+          "covered": 17,
+          "total": 19
+        }
+      },
+      "post_rpn_box_lost_or_mislocalized": {
+        "correct": {
+          "fraction": 0.8712871287128713,
+          "covered": 88,
+          "total": 101
+        },
+        "xy_plus_80m": {
+          "fraction": 0.693069306930693,
+          "covered": 70,
+          "total": 101
+        },
+        "scene_permuted": {
+          "fraction": 0.801980198019802,
+          "covered": 81,
+          "total": 101
+        }
+      }
+    }
+  },
+  "invariants": {
+    "processed_target_membership_exact": true,
+    "full_target_coverage": true,
+    "prediction_parity_bitwise": true,
+    "b0_final_failure_recomputed": true,
+    "detector_uav_or_sham_intervention": "none"
+  }
+}

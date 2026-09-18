@@ -1,0 +1,43 @@
+{
+  "experiment_id": "MHBEV-DIAG-20260915-B3",
+  "arm": "B3-Frozen-UAV-ROIScore-Readout",
+  "status": "probe_only_no_detector_training",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "b2_lineage": {
+    "dir": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/B2-fullval",
+    "decision": "ROI_SCORE",
+    "targets_expected": 87
+  },
+  "data": {
+    "train_subset_ratio": 0.1797752808988764,
+    "train_seed": 44,
+    "train_scenes_expected": 128,
+    "train_scenes_processed": 128,
+    "train_complete": true,
+    "val_scene_universe": 259,
+    "target_scenes_expected": 74,
+    "target_scenes_processed": 74,
+    "val_pairs_expected": 87,
+    "val_pairs_common_valid": 45,
+    "val_complete": true,
+    "complete": true
+  },
+  "contract": {
+    "descriptor": "frozen SAM2 finest FPN; 3x3 decoded ROI grid; z0/360m/W2C/fp32; >=2 views every point",
+    "conditions": [
+      "correct",
+      "XY+80m",
+      "scene_permuted"
+    ],
+    "linear_readout": "StandardScaler+LogisticRegression(C=1,class_weight=balanced,max_iter=1000,random_state=20260918)"
+  },
+  "invariants": {
+    "train_val_scene_disjoint": true,
+    "detector_parity_bitwise": true,
+    "encoder_hash_unchanged": true,
+    "no_detector_uav_or_sham_intervention": true,
+    "condition_pair_identity_fixed": true,
+    "b2_target_lineage_fail_closed": true
+  },
+  "decision": "NO_FROZEN_SIGNAL"
+}

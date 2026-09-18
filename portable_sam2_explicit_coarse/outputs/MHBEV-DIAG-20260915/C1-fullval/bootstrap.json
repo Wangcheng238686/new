@@ -1,0 +1,13 @@
+{
+  "samples_requested": 10000,
+  "samples_valid": 10000,
+  "seed": 20260919,
+  "correct_minus_xy_ci95": [
+    -0.11363636363636365,
+    0.28205128205128205
+  ],
+  "correct_minus_permuted_ci95": [
+    -0.15384615384615385,
+    0.18918918918918914
+  ]
+}

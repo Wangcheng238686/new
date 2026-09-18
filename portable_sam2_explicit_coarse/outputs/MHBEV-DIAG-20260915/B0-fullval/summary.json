@@ -1,0 +1,4493 @@
+{
+  "experiment_id": "MHBEV-DIAG-20260915-B0",
+  "arm": "B0-Frozen-RPN-Diagnosis",
+  "status": "probe_only_no_training",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "model_config_source": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/configs/whu1024_baseplus_explicit_coarse.py",
+  "data": {
+    "root": "/data1/wangcheng/dataset/ue_coco_with_uav",
+    "split": "val",
+    "scenes_expected": 259,
+    "scenes_processed": 259,
+    "gt_instances_expected": 5937,
+    "gt_instances": 5937,
+    "complete": true,
+    "scene_ids": [
+      "002002",
+      "002003",
+      "002004",
+      "002005",
+      "002006",
+      "002007",
+      "002008",
+      "002009",
+      "002010",
+      "002011",
+      "002012",
+      "002014",
+      "002015",
+      "002016",
+      "002017",
+      "002018",
+      "002019",
+      "002020",
+      "002021",
+      "002022",
+      "002023",
+      "002024",
+      "002025",
+      "002026",
+      "002027",
+      "002028",
+      "002029",
+      "002030",
+      "002031",
+      "002032",
+      "002033",
+      "002034",
+      "002036",
+      "002037",
+      "002038",
+      "002039",
+      "002040",
+      "002041",
+      "002042",
+      "002043",
+      "002258",
+      "002259",
+      "002260",
+      "002261",
+      "002262",
+      "002266",
+      "002267",
+      "002268",
+      "002269",
+      "002293",
+      "002297",
+      "002298",
+      "002300",
+      "002301",
+      "002302",
+      "002303",
+      "002305",
+      "002306",
+      "002307",
+      "002308",
+      "002309",
+      "002310",
+      "002524",
+      "002525",
+      "002526",
+      "002527",
+      "002528",
+      "002529",
+      "002530",
+      "002531",
+      "002532",
+      "002533",
+      "002534",
+      "002535",
+      "002537",
+      "002538",
+      "002539",
+      "002540",
+      "002542",
+      "002543",
+      "002544",
+      "002545",
+      "002546",
+      "002547",
+      "002548",
+      "002549",
+      "002550",
+      "002551",
+      "002552",
+      "002553",
+      "002554",
+      "002555",
+      "002556",
+      "002557",
+      "002558",
+      "002559",
+      "002560",
+      "002561",
+      "002562",
+      "002563",
+      "002564",
+      "002565",
+      "002567",
+      "002568",
+      "002570",
+      "002571",
+      "002572",
+      "002573",
+      "002574",
+      "002576",
+      "002577",
+      "002773",
+      "002774",
+      "002775",
+      "002776",
+      "002777",
+      "002779",
+      "002780",
+      "002782",
+      "002783",
+      "002784",
+      "002787",
+      "002788",
+      "002789",
+      "002790",
+      "002791",
+      "002792",
+      "002795",
+      "002796",
+      "002797",
+      "002799",
+      "002800",
+      "002801",
+      "002802",
+      "002803",
+      "002804",
+      "002805",
+      "002806",
+      "002807",
+      "002809",
+      "002810",
+      "002811",
+      "002812",
+      "002813",
+      "002814",
+      "002815",
+      "002816",
+      "002817",
+      "002818",
+      "002819",
+      "002820",
+      "002821",
+      "002822",
+      "002823",
+      "002824",
+      "002825",
+      "002826",
+      "003004",
+      "003007",
+      "003008",
+      "003010",
+      "003011",
+      "003012",
+      "003014",
+      "003015",
+      "003016",
+      "003017",
+      "003018",
+      "003019",
+      "003021",
+      "003022",
+      "003023",
+      "003024",
+      "003026",
+      "003028",
+      "003030",
+      "003032",
+      "003033",
+      "003034",
+      "003035",
+      "003036",
+      "003038",
+      "003039",
+      "003040",
+      "003041",
+      "003043",
+      "003044",
+      "003046",
+      "003047",
+      "003048",
+      "003049",
+      "003050",
+      "003051",
+      "003052",
+      "003054",
+      "003056",
+      "003057",
+      "003235",
+      "003237",
+      "003238",
+      "003239",
+      "003241",
+      "003242",
+      "003243",
+      "003244",
+      "003245",
+      "003246",
+      "003247",
+      "003249",
+      "003250",
+      "003251",
+      "003253",
+      "003254",
+      "003258",
+      "003260",
+      "003261",
+      "003264",
+      "003266",
+      "003267",
+      "003268",
+      "003271",
+      "003272",
+      "003275",
+      "003276",
+      "003277",
+      "003280",
+      "003281",
+      "003282",
+      "003283",
+      "003284",
+      "003285",
+      "003287",
+      "003449",
+      "003450",
+      "003451",
+      "003453",
+      "003454",
+      "003455",
+      "003456",
+      "003457",
+      "003460",
+      "003461",
+      "003462",
+      "003463",
+      "003466",
+      "003467",
+      "003468",
+      "003469",
+      "003470",
+      "003471",
+      "003472",
+      "003473",
+      "003474",
+      "003475",
+      "003476",
+      "003477",
+      "003481",
+      "003482",
+      "003483"
+    ]
+  },
+  "contract": {
+    "input_size": [
+      1024,
+      1024
+    ],
+    "small_area_px_lt": 1024,
+    "rpn_iou_thresholds": [
+      0.3,
+      0.5
+    ],
+    "final_match_mask_iou": 0.5,
+    "geometry": "W2C column-vector UE centimetres; 360m; z=0; >=2 view"
+  },
+  "invariants": {
+    "prediction_parity_bitwise": true,
+    "rpn_readout_repeat_bitwise": true,
+    "proposal_counts_unchanged_by_geometry_shams": true
+  },
+  "counts": {
+    "small": 332,
+    "small_final_failure": 227,
+    "small_matched_good": 39,
+    "failure_types": {
+      "matched_good": 39,
+      "partial_or_merge": 50,
+      "matched_boundary_error": 66,
+      "missed": 177
+    }
+  },
+  "metrics": {
+    "small_rpn_recall_iou03": 0.7650602409638554,
+    "small_rpn_recall_iou05": 0.6716867469879518,
+    "failed_small_rpn_recall_iou05": 0.5286343612334802,
+    "matched_good_small_rpn_recall_iou05": 1.0,
+    "failed_small_proposal_present_iou05": 0.5286343612334802,
+    "failed_small_two_view_coverage": {
+      "correct": {
+        "fraction": 0.8898678414096917,
+        "covered": 202,
+        "total": 227
+      },
+      "xy_plus_80m": {
+        "fraction": 0.6696035242290749,
+        "covered": 152,
+        "total": 227
+      },
+      "scene_permuted": {
+        "fraction": 0.7577092511013216,
+        "covered": 172,
+        "total": 227
+      }
+    }
+  },
+  "bootstrap": {
+    "samples_requested": 10000,
+    "samples_valid": 10000,
+    "seed": 20260915,
+    "difference_failure_minus_good": -0.47173327560470435,
+    "ci95_percentile": [
+      -0.5401812161475964,
+      -0.4055299539170507
+    ]
+  },
+  "decision": "AMBIGUOUS",
+  "decision_rule": "PROPOSAL_OBJECTNESS iff failure recall@.5<.50, good-failure>=.15 and bootstrap CI upper<0; ROI_OR_MASK iff failure recall@.5>=.75; otherwise AMBIGUOUS; invariant/data failure is INVALID.",
+  "interpretation": "RPN readout locates the baseline bottleneck only. Geometry coverage is necessary-query evidence, not UAV semantic gain evidence.",
+  "per_scene": [
+    {
+      "scene_id": "002002",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002003",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002004",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002005",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002006",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002007",
+      "failure_hits": 2,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002008",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002009",
+      "failure_hits": 0,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002010",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002011",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002012",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002014",
+      "failure_hits": 0,
+      "failure_total": 3,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002015",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002016",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002017",
+      "failure_hits": 0,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002018",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002019",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002020",
+      "failure_hits": 3,
+      "failure_total": 5,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002021",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002022",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002023",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002024",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002025",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002026",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002027",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002028",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002029",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002030",
+      "failure_hits": 2,
+      "failure_total": 3,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002031",
+      "failure_hits": 0,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002032",
+      "failure_hits": 0,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002033",
+      "failure_hits": 0,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002034",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002036",
+      "failure_hits": 0,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002037",
+      "failure_hits": 3,
+      "failure_total": 4,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002038",
+      "failure_hits": 3,
+      "failure_total": 5,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002039",
+      "failure_hits": 6,
+      "failure_total": 7,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002040",
+      "failure_hits": 5,
+      "failure_total": 7,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002041",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002042",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002043",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002258",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002259",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002260",
+      "failure_hits": 2,
+      "failure_total": 3,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002261",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002262",
+      "failure_hits": 2,
+      "failure_total": 3,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002266",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002267",
+      "failure_hits": 1,
+      "failure_total": 3,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002268",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002269",
+      "failure_hits": 1,
+      "failure_total": 4,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002293",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002297",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002298",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002300",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002301",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002302",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002303",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002305",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002306",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002307",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002308",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002309",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002310",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002524",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002525",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002526",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002527",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002528",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002529",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002530",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002531",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002532",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002533",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002534",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002535",
+      "failure_hits": 0,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002537",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002538",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002539",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002540",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002542",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002543",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002544",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002545",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002546",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002547",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002548",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002549",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002550",
+      "failure_hits": 2,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002551",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002552",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002553",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002554",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002555",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002556",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002557",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002558",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002559",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002560",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002561",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002562",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002563",
+      "failure_hits": 0,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002564",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002565",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002567",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002568",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002570",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002571",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002572",
+      "failure_hits": 0,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002573",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002574",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002576",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002577",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002773",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002774",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002775",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002776",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002777",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002779",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002780",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002782",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002783",
+      "failure_hits": 2,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002784",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002787",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002788",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002789",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002790",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002791",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002792",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002795",
+      "failure_hits": 0,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002796",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002797",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002799",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002800",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002801",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002802",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002803",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002804",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002805",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002806",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002807",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002809",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002810",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002811",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002812",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002813",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002814",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002815",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002816",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002817",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002818",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002819",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002820",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002821",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002822",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002823",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002824",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002825",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "002826",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003004",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003007",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003008",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003010",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003011",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003012",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003014",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003015",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003016",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003017",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003018",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003019",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003021",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003022",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003023",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003024",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003026",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003028",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003030",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003032",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003033",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 2,
+      "good_total": 2
+    },
+    {
+      "scene_id": "003034",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003035",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003036",
+      "failure_hits": 2,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003038",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003039",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003040",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003041",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003043",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003044",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003046",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003047",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003048",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003049",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003050",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003051",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003052",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003054",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003056",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003057",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003235",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003237",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003238",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003239",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003241",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003242",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003243",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003244",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003245",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003246",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003247",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003249",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003250",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003251",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003253",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003254",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003258",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003260",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003261",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003264",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003266",
+      "failure_hits": 2,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003267",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003268",
+      "failure_hits": 1,
+      "failure_total": 3,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003271",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003272",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003275",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003276",
+      "failure_hits": 2,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003277",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003280",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003281",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 2,
+      "good_total": 2
+    },
+    {
+      "scene_id": "003282",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003283",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003284",
+      "failure_hits": 2,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003285",
+      "failure_hits": 0,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003287",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003449",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 2,
+      "good_total": 2
+    },
+    {
+      "scene_id": "003450",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003451",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003453",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 2,
+      "good_total": 2
+    },
+    {
+      "scene_id": "003454",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003455",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003456",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003457",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 2,
+      "good_total": 2
+    },
+    {
+      "scene_id": "003460",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003461",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003462",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003463",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003466",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003467",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003468",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003469",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003470",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003471",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003472",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003473",
+      "failure_hits": 2,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003474",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003475",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003476",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003477",
+      "failure_hits": 1,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003481",
+      "failure_hits": 0,
+      "failure_total": 3,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "003482",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 0,
+      "good_total": 0
+    },
+    {
+      "scene_id": "003483",
+      "failure_hits": 1,
+      "failure_total": 2,
+      "good_hits": 0,
+      "good_total": 0
+    }
+  ],
+  "parity": [
+    {
+      "scene_id": "002002",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002003",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002004",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002005",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002006",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002007",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002008",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002009",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002010",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002011",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002012",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002014",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002015",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002016",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002017",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002018",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002019",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002020",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002021",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002022",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002023",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002024",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002025",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002026",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002027",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002028",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002029",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002030",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002031",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002032",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002033",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002034",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002036",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002037",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002038",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002039",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002040",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002041",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002042",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002043",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002258",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002259",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002260",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002261",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002262",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002266",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002267",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002268",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002269",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002293",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002297",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002298",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002300",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002301",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002302",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002303",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002305",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002306",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002307",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002308",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002309",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002310",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002524",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002525",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002526",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002527",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002528",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002529",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002530",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002531",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002532",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002533",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002534",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002535",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002537",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002538",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002539",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002540",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002542",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002543",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002544",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002545",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002546",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002547",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002548",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002549",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002550",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002551",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002552",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002553",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002554",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002555",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002556",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002557",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002558",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002559",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002560",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002561",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002562",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002563",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002564",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002565",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002567",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002568",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002570",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002571",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002572",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002573",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002574",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002576",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002577",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002773",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002774",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002775",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002776",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002777",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002779",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002780",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002782",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002783",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002784",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002787",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002788",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002789",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002790",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002791",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002792",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002795",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002796",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002797",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002799",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002800",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002801",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002802",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002803",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002804",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002805",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002806",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002807",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002809",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002810",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002811",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002812",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002813",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002814",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002815",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002816",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002817",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002818",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002819",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002820",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002821",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002822",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002823",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002824",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002825",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002826",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003004",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003007",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003008",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003010",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003011",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003012",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003014",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003015",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003016",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003017",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003018",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003019",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003021",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003022",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003023",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003024",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003026",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003028",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003030",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003032",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003033",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003034",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003035",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003036",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003038",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003039",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003040",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003041",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003043",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003044",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003046",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003047",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003048",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003049",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003050",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003051",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003052",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003054",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003056",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003057",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003235",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003237",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003238",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003239",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003241",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003242",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003243",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003244",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003245",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003246",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003247",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003249",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003250",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003251",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003253",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003254",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003258",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003260",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003261",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003264",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003266",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003267",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003268",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003271",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003272",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003275",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003276",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003277",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003280",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003281",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003282",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003283",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003284",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003285",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003287",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003449",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003450",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003451",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003453",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003454",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003455",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003456",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003457",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003460",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003461",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003462",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003463",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003466",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003467",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003468",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003469",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003470",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003471",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003472",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003473",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003474",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003475",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003476",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003477",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003481",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003482",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "003483",
+      "prediction_equal": true
+    }
+  ],
+  "rpn_readout": [
+    {
+      "scene_id": "002002",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002003",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002004",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002005",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002006",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002007",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002008",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002009",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002010",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002011",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002012",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002014",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002015",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002016",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002017",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002018",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002019",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002020",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002021",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002022",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002023",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002024",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002025",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002026",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002027",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002028",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002029",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002030",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002031",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002032",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002033",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002034",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002036",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002037",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002038",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002039",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002040",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002041",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002042",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002043",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002258",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002259",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002260",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002261",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002262",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002266",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002267",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002268",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002269",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002293",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002297",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002298",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002300",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002301",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002302",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002303",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002305",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002306",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002307",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002308",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002309",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002310",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002524",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002525",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002526",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002527",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002528",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002529",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002530",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002531",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002532",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002533",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002534",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002535",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002537",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002538",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002539",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002540",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002542",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002543",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002544",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002545",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002546",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002547",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002548",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002549",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002550",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002551",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002552",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002553",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002554",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002555",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002556",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002557",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002558",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002559",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002560",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002561",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002562",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002563",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002564",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002565",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002567",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002568",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002570",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002571",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002572",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002573",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002574",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002576",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002577",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002773",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002774",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002775",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002776",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002777",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002779",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002780",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002782",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002783",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002784",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002787",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002788",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002789",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002790",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002791",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002792",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002795",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002796",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002797",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002799",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002800",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002801",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002802",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002803",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002804",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002805",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002806",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002807",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002809",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002810",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002811",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002812",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002813",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002814",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002815",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002816",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002817",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002818",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002819",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002820",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002821",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002822",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002823",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002824",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002825",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002826",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003004",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003007",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003008",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003010",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003011",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003012",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003014",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003015",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003016",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003017",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003018",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003019",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003021",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003022",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003023",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003024",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003026",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003028",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003030",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003032",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003033",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003034",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003035",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003036",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003038",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003039",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003040",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003041",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003043",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003044",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003046",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003047",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003048",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003049",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003050",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003051",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003052",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003054",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003056",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003057",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003235",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003237",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003238",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003239",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003241",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003242",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003243",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003244",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003245",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003246",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003247",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003249",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003250",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003251",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003253",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003254",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003258",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003260",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003261",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003264",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003266",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003267",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003268",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003271",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003272",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003275",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003276",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003277",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003280",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003281",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003282",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003283",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003284",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003285",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003287",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003449",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003450",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003451",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003453",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003454",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003455",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003456",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003457",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003460",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003461",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003462",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003463",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003466",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003467",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003468",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003469",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003470",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003471",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003472",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003473",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003474",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003475",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003476",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003477",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003481",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003482",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "003483",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    }
+  ]
+}

@@ -1,0 +1,1030 @@
+{
+  "experiment_id": "MHBEV-DIAG-20260915-B1",
+  "arm": "B1-Frozen-PostRPN-Diagnosis",
+  "status": "probe_only_no_training",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "model_config_source": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/configs/whu1024_baseplus_explicit_coarse.py",
+  "b0_lineage": {
+    "dir": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/B0-fullval",
+    "target_count_expected": 120,
+    "b0_complete": true,
+    "b0_invariants": {
+      "prediction_parity_bitwise": true,
+      "rpn_readout_repeat_bitwise": true,
+      "proposal_counts_unchanged_by_geometry_shams": true
+    }
+  },
+  "data": {
+    "split": "val",
+    "bootstrap_scene_universe": 259,
+    "target_scenes_expected": 94,
+    "target_scenes_processed": 94,
+    "targets_expected": 120,
+    "targets_processed": 120,
+    "complete": true
+  },
+  "invariants": {
+    "processed_target_membership_exact": true,
+    "full_target_coverage": true,
+    "prediction_parity_bitwise": true,
+    "b0_final_failure_recomputed": true,
+    "detector_uav_or_sham_intervention": "none"
+  },
+  "metrics": {
+    "mask_only_fraction": 0.15833333333333333,
+    "post_rpn_box_lost_fraction": 0.8416666666666667,
+    "inherited_two_view_coverage": {
+      "mask_only_failure": {
+        "correct": {
+          "fraction": 1.0,
+          "covered": 19,
+          "total": 19
+        },
+        "xy_plus_80m": {
+          "fraction": 0.7894736842105263,
+          "covered": 15,
+          "total": 19
+        },
+        "scene_permuted": {
+          "fraction": 0.8947368421052632,
+          "covered": 17,
+          "total": 19
+        }
+      },
+      "post_rpn_box_lost_or_mislocalized": {
+        "correct": {
+          "fraction": 0.8712871287128713,
+          "covered": 88,
+          "total": 101
+        },
+        "xy_plus_80m": {
+          "fraction": 0.693069306930693,
+          "covered": 70,
+          "total": 101
+        },
+        "scene_permuted": {
+          "fraction": 0.801980198019802,
+          "covered": 81,
+          "total": 101
+        }
+      }
+    }
+  },
+  "bootstrap": {
+    "samples_requested": 10000,
+    "samples_valid": 10000,
+    "seed": 20260916,
+    "difference_mask_only_minus_box_lost": -0.6858658720484067,
+    "ci95_percentile": [
+      -0.8148225957049486,
+      -0.5555555555555556
+    ]
+  },
+  "decision": "POST_RPN_ROI_BOX",
+  "decision_rule": "ROI_LOCAL_MASK iff mask_only>=.60 and CI lower>0; POST_RPN_ROI_BOX iff box_lost>=.60 and CI upper<0; otherwise MIXED; failed lineage/data/parity is INVALID.",
+  "interpretation": "B1 locates the post-RPN outcome stage only; it does not identify a causal UAV mechanism or permit training.",
+  "parity": [
+    {
+      "scene_id": "002007",
+      "prediction_equal": true,
+      "target_count": 2
+    },
+    {
+      "scene_id": "002010",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002011",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002020",
+      "prediction_equal": true,
+      "target_count": 3
+    },
+    {
+      "scene_id": "002024",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002025",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002026",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002027",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002028",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002030",
+      "prediction_equal": true,
+      "target_count": 2
+    },
+    {
+      "scene_id": "002037",
+      "prediction_equal": true,
+      "target_count": 3
+    },
+    {
+      "scene_id": "002038",
+      "prediction_equal": true,
+      "target_count": 3
+    },
+    {
+      "scene_id": "002039",
+      "prediction_equal": true,
+      "target_count": 6
+    },
+    {
+      "scene_id": "002040",
+      "prediction_equal": true,
+      "target_count": 5
+    },
+    {
+      "scene_id": "002041",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002042",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002043",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002260",
+      "prediction_equal": true,
+      "target_count": 2
+    },
+    {
+      "scene_id": "002262",
+      "prediction_equal": true,
+      "target_count": 2
+    },
+    {
+      "scene_id": "002267",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002268",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002269",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002293",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002301",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002303",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002532",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002533",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002537",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002538",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002550",
+      "prediction_equal": true,
+      "target_count": 2
+    },
+    {
+      "scene_id": "002551",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002552",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002561",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002562",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002567",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002773",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002782",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002783",
+      "prediction_equal": true,
+      "target_count": 2
+    },
+    {
+      "scene_id": "002784",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002790",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002792",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002796",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002799",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002800",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002807",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002809",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002815",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "002816",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003004",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003007",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003016",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003017",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003022",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003024",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003026",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003033",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003034",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003036",
+      "prediction_equal": true,
+      "target_count": 2
+    },
+    {
+      "scene_id": "003041",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003043",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003047",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003052",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003057",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003238",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003243",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003246",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003247",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003249",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003250",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003254",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003258",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003260",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003261",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003266",
+      "prediction_equal": true,
+      "target_count": 2
+    },
+    {
+      "scene_id": "003267",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003268",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003276",
+      "prediction_equal": true,
+      "target_count": 2
+    },
+    {
+      "scene_id": "003283",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003284",
+      "prediction_equal": true,
+      "target_count": 2
+    },
+    {
+      "scene_id": "003449",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003450",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003451",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003454",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003457",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003460",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003462",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003463",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003466",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003472",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003473",
+      "prediction_equal": true,
+      "target_count": 2
+    },
+    {
+      "scene_id": "003474",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003476",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003477",
+      "prediction_equal": true,
+      "target_count": 1
+    },
+    {
+      "scene_id": "003483",
+      "prediction_equal": true,
+      "target_count": 1
+    }
+  ],
+  "per_scene": [
+    {
+      "scene_id": "002007",
+      "mask_only": 0,
+      "box_lost": 2
+    },
+    {
+      "scene_id": "002010",
+      "mask_only": 1,
+      "box_lost": 0
+    },
+    {
+      "scene_id": "002011",
+      "mask_only": 1,
+      "box_lost": 0
+    },
+    {
+      "scene_id": "002020",
+      "mask_only": 0,
+      "box_lost": 3
+    },
+    {
+      "scene_id": "002024",
+      "mask_only": 1,
+      "box_lost": 0
+    },
+    {
+      "scene_id": "002025",
+      "mask_only": 1,
+      "box_lost": 0
+    },
+    {
+      "scene_id": "002026",
+      "mask_only": 1,
+      "box_lost": 0
+    },
+    {
+      "scene_id": "002027",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002028",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002030",
+      "mask_only": 0,
+      "box_lost": 2
+    },
+    {
+      "scene_id": "002037",
+      "mask_only": 1,
+      "box_lost": 2
+    },
+    {
+      "scene_id": "002038",
+      "mask_only": 2,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002039",
+      "mask_only": 2,
+      "box_lost": 4
+    },
+    {
+      "scene_id": "002040",
+      "mask_only": 2,
+      "box_lost": 3
+    },
+    {
+      "scene_id": "002041",
+      "mask_only": 1,
+      "box_lost": 0
+    },
+    {
+      "scene_id": "002042",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002043",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002260",
+      "mask_only": 0,
+      "box_lost": 2
+    },
+    {
+      "scene_id": "002262",
+      "mask_only": 0,
+      "box_lost": 2
+    },
+    {
+      "scene_id": "002267",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002268",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002269",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002293",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002301",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002303",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002532",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002533",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002537",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002538",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002550",
+      "mask_only": 0,
+      "box_lost": 2
+    },
+    {
+      "scene_id": "002551",
+      "mask_only": 1,
+      "box_lost": 0
+    },
+    {
+      "scene_id": "002552",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002561",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002562",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002567",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002773",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002782",
+      "mask_only": 1,
+      "box_lost": 0
+    },
+    {
+      "scene_id": "002783",
+      "mask_only": 1,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002784",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002790",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002792",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002796",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002799",
+      "mask_only": 1,
+      "box_lost": 0
+    },
+    {
+      "scene_id": "002800",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002807",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002809",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002815",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "002816",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003004",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003007",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003016",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003017",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003022",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003024",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003026",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003033",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003034",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003036",
+      "mask_only": 0,
+      "box_lost": 2
+    },
+    {
+      "scene_id": "003041",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003043",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003047",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003052",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003057",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003238",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003243",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003246",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003247",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003249",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003250",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003254",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003258",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003260",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003261",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003266",
+      "mask_only": 0,
+      "box_lost": 2
+    },
+    {
+      "scene_id": "003267",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003268",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003276",
+      "mask_only": 1,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003283",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003284",
+      "mask_only": 0,
+      "box_lost": 2
+    },
+    {
+      "scene_id": "003449",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003450",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003451",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003454",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003457",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003460",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003462",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003463",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003466",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003472",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003473",
+      "mask_only": 0,
+      "box_lost": 2
+    },
+    {
+      "scene_id": "003474",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003476",
+      "mask_only": 1,
+      "box_lost": 0
+    },
+    {
+      "scene_id": "003477",
+      "mask_only": 0,
+      "box_lost": 1
+    },
+    {
+      "scene_id": "003483",
+      "mask_only": 0,
+      "box_lost": 1
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "prediction_file": "outputs/ue_single_c5v2_e86_val/predictions.json",
+  "scenes": 259,
+  "gt_instances": 5937,
+  "match_mask_iou": 0.5,
+  "height_bins_m": [
+    0.0,
+    4.0,
+    7.0,
+    10.0,
+    15.0,
+    22.0,
+    32.0
+  ],
+  "counts": {
+    "matched_good": 5289,
+    "partial_or_merge": 102,
+    "unmatched_predictions": 733,
+    "matched_boundary_error": 201,
+    "missed": 345
+  },
+  "by_area_bucket": {
+    "large": {
+      "matched_good": 3716,
+      "matched_boundary_error": 46,
+      "missed": 35,
+      "partial_or_merge": 16
+    },
+    "medium": {
+      "matched_good": 1534,
+      "matched_boundary_error": 89,
+      "missed": 133,
+      "partial_or_merge": 36
+    },
+    "small": {
+      "matched_good": 39,
+      "partial_or_merge": 50,
+      "matched_boundary_error": 66,
+      "missed": 177
+    }
+  },
+  "mean_mask_minus_bbox_iou_by_bucket": {
+    "large": 0.010599030705603559,
+    "medium": 0.0037601531212960067,
+    "small": -0.012366676046734764
+  },
+  "coverage_of_missed_or_partial": {
+    "0.0": 0.9197530864197531,
+    "4.0": 0.9182098765432098,
+    "7.0": 0.9166666666666666,
+    "10.0": 0.9151234567901234,
+    "15.0": 0.9089506172839507,
+    "22.0": 0.904320987654321,
+    "32.0": 0.8780864197530864
+  },
+  "interpretation": "Coverage is geometry-only. It shows whether UAV evidence can be queried, not whether it is semantically useful."
+}

@@ -1,0 +1,10 @@
+{
+  "samples_requested": 100,
+  "samples_valid": 100,
+  "seed": 20260916,
+  "difference_mask_only_minus_box_lost": -0.16666666666666663,
+  "ci95_percentile": [
+    -1.0,
+    1.0
+  ]
+}

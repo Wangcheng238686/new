@@ -1,0 +1,30 @@
+{
+  "experiment_id": "MHBEV-DIAG-20260915-B2",
+  "arm": "B2-Frozen-PostRPN-Mechanism",
+  "status": "probe_only_no_training",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "b1_lineage": {
+    "dir": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/B1-fullval",
+    "decision": "POST_RPN_ROI_BOX",
+    "b0_dir": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/B0-fullval",
+    "target_count_expected": 101
+  },
+  "data": {
+    "split": "val",
+    "bootstrap_scene_universe": 259,
+    "target_scenes_expected": 84,
+    "target_scenes_processed": 1,
+    "targets_expected": 101,
+    "targets_processed": 2,
+    "complete": false
+  },
+  "invariants": {
+    "b1_target_membership_exact": true,
+    "full_target_coverage": false,
+    "prediction_parity_bitwise": true,
+    "pstar_pre_iou_ge05": true,
+    "b1_final_failure_recomputed": true,
+    "detector_uav_or_sham_intervention": "none"
+  },
+  "decision": "INVALID"
+}

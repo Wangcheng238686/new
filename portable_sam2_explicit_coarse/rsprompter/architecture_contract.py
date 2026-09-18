@@ -136,6 +136,8 @@ def architecture_contract(model_config: Mapping[str, Any]) -> Dict[str, Any]:
     # nominally identical single-stream coarse-mask experiment.
     if str(model_config.get("type", "")) == "DualStreamRSPrompterAnchor":
         architecture = f"ue_dual_p2p3_sparse__{architecture}"
+    if str(model_config.get("type", "")) == "A1P2RSPrompterAnchor":
+        architecture = f"ue_a1_p2_z0__{architecture}"
     return {
         "schema_version": ARCHITECTURE_SCHEMA_VERSION,
         "architecture_id": architecture,

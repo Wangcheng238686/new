@@ -1,0 +1,11 @@
+{
+  "samples_requested": 10000,
+  "samples_valid": 10000,
+  "seed": 20260921,
+  "redraws_zero_denominator": 0,
+  "cap": 2000,
+  "ci95": [
+    0.22033050847457628,
+    0.46
+  ]
+}

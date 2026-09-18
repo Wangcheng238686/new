@@ -1,0 +1,10 @@
+{
+  "samples_requested": 10000,
+  "samples_valid": 10000,
+  "seed": 20260915,
+  "difference_failure_minus_good": -0.47173327560470435,
+  "ci95_percentile": [
+    -0.5401812161475964,
+    -0.4055299539170507
+  ]
+}

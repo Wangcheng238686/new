@@ -1,0 +1,123 @@
+{
+  "experiment_id": "MHBEV-DIAG-20260915-B0",
+  "arm": "B0-Frozen-RPN-Diagnosis",
+  "status": "probe_only_no_training",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "model_config_source": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/configs/whu1024_baseplus_explicit_coarse.py",
+  "data": {
+    "root": "/data1/wangcheng/dataset/ue_coco_with_uav",
+    "split": "val",
+    "scenes_expected": 259,
+    "scenes_processed": 2,
+    "gt_instances_expected": 5937,
+    "gt_instances": 27,
+    "complete": false,
+    "scene_ids": [
+      "002002",
+      "002003"
+    ]
+  },
+  "contract": {
+    "input_size": [
+      1024,
+      1024
+    ],
+    "small_area_px_lt": 1024,
+    "rpn_iou_thresholds": [
+      0.3,
+      0.5
+    ],
+    "final_match_mask_iou": 0.5,
+    "geometry": "W2C column-vector UE centimetres; 360m; z=0; >=2 view"
+  },
+  "invariants": {
+    "prediction_parity_bitwise": true,
+    "rpn_readout_repeat_bitwise": true,
+    "proposal_counts_unchanged_by_geometry_shams": true
+  },
+  "counts": {
+    "small": 4,
+    "small_final_failure": 1,
+    "small_matched_good": 2,
+    "failure_types": {
+      "matched_good": 2,
+      "partial_or_merge": 1,
+      "matched_boundary_error": 1
+    }
+  },
+  "metrics": {
+    "small_rpn_recall_iou03": 1.0,
+    "small_rpn_recall_iou05": 0.75,
+    "failed_small_rpn_recall_iou05": 0.0,
+    "matched_good_small_rpn_recall_iou05": 1.0,
+    "failed_small_proposal_present_iou05": 0.0,
+    "failed_small_two_view_coverage": {
+      "correct": {
+        "fraction": 1.0,
+        "covered": 1,
+        "total": 1
+      },
+      "xy_plus_80m": {
+        "fraction": 1.0,
+        "covered": 1,
+        "total": 1
+      },
+      "scene_permuted": {
+        "fraction": 1.0,
+        "covered": 1,
+        "total": 1
+      }
+    }
+  },
+  "bootstrap": {
+    "samples_requested": 100,
+    "samples_valid": 74,
+    "seed": 20260915,
+    "difference_failure_minus_good": -1.0,
+    "ci95_percentile": [
+      -1.0,
+      -1.0
+    ]
+  },
+  "decision": "INVALID",
+  "decision_rule": "PROPOSAL_OBJECTNESS iff failure recall@.5<.50, good-failure>=.15 and bootstrap CI upper<0; ROI_OR_MASK iff failure recall@.5>=.75; otherwise AMBIGUOUS; invariant/data failure is INVALID.",
+  "interpretation": "RPN readout locates the baseline bottleneck only. Geometry coverage is necessary-query evidence, not UAV semantic gain evidence.",
+  "per_scene": [
+    {
+      "scene_id": "002002",
+      "failure_hits": 0,
+      "failure_total": 1,
+      "good_hits": 1,
+      "good_total": 1
+    },
+    {
+      "scene_id": "002003",
+      "failure_hits": 0,
+      "failure_total": 0,
+      "good_hits": 1,
+      "good_total": 1
+    }
+  ],
+  "parity": [
+    {
+      "scene_id": "002002",
+      "prediction_equal": true
+    },
+    {
+      "scene_id": "002003",
+      "prediction_equal": true
+    }
+  ],
+  "rpn_readout": [
+    {
+      "scene_id": "002002",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    },
+    {
+      "scene_id": "002003",
+      "repeat_equal": true,
+      "proposal_count": 1000
+    }
+  ]
+}

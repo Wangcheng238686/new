@@ -1,0 +1,1987 @@
+{
+  "experiment_id": "MHBEV-DIAG-20260917-D1",
+  "arm": "D1-Frozen-Satellite-RPN-Stage-Attribution",
+  "status": "probe_only_no_training",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "model_config_source": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/configs/whu1024_baseplus_explicit_coarse.py",
+  "b0_lineage": {
+    "dir": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/B0-fullval",
+    "targets_expected": 107
+  },
+  "data": {
+    "val_scene_universe": 259,
+    "target_scenes_expected": 85,
+    "target_scenes_processed": 1,
+    "targets_expected": 107,
+    "targets_processed": 1,
+    "complete": false
+  },
+  "live_rpn_contract": {
+    "nms_pre": 1000,
+    "max_per_img": 1000,
+    "min_bbox_size": 0.0,
+    "score_thr_resolved": 0.0,
+    "nms_type": "nms",
+    "nms_iou_threshold": 0.7
+  },
+  "invariants": {
+    "prediction_parity_bitwise": true,
+    "deployed_rpn_parity_bitwise": true,
+    "staged_final_equals_live_bitwise": true,
+    "raw_repeat_bitwise": true,
+    "pre_nms_repeat_bitwise": true,
+    "final_repeat_bitwise": true,
+    "dense_anchor_cardinality": true,
+    "b0_lineage_fail_closed": true,
+    "no_proposal_write": true
+  },
+  "metrics": {
+    "counts": {
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 1,
+      "max_per_img_truncated": 0
+    },
+    "fractions": {
+      "raw_geometry_unavailable": 0.0,
+      "score_nms_pre_rejected": 0.0,
+      "nms_suppressed": 1.0,
+      "max_per_img_truncated": 0.0
+    },
+    "raw_align_rate": 1.0,
+    "pre_nms_align_rate": 1.0,
+    "nms_unlimited_align_rate": 0.0
+  },
+  "bootstrap": null,
+  "invalid_reasons": [
+    "validation_target_coverage_incomplete"
+  ],
+  "decision": "INVALID",
+  "decision_rule": "D1_<STAGE> iff complete/invariants pass, largest stage>=.60 and its image-paired bootstrap major-minus-rest CI lower>0; else D1_MIXED; any contract failure is INVALID.",
+  "interpretation": "D1 attributes a fixed baseline RPN failure slice; it neither changes proposals nor proves an intervention/AP gain.",
+  "per_scene": [
+    {
+      "scene_id": "002002",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 1,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002003",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002004",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002005",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002006",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002007",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002008",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002009",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002010",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002011",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002012",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002014",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002015",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002016",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002017",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002018",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002019",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002020",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002021",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002022",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002023",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002024",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002025",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002026",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002027",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002028",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002029",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002030",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002031",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002032",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002033",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002034",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002036",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002037",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002038",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002039",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002040",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002041",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002042",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002043",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002258",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002259",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002260",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002261",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002262",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002266",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002267",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002268",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002269",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002293",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002297",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002298",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002300",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002301",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002302",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002303",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002305",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002306",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002307",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002308",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002309",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002310",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002524",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002525",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002526",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002527",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002528",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002529",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002530",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002531",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002532",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002533",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002534",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002535",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002537",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002538",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002539",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002540",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002542",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002543",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002544",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002545",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002546",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002547",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002548",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002549",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002550",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002551",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002552",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002553",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002554",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002555",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002556",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002557",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002558",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002559",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002560",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002561",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002562",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002563",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002564",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002565",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002567",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002568",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002570",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002571",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002572",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002573",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002574",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002576",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002577",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002773",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002774",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002775",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002776",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002777",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002779",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002780",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002782",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002783",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002784",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002787",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002788",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002789",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002790",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002791",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002792",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002795",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002796",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002797",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002799",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002800",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002801",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002802",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002803",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002804",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002805",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002806",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002807",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002809",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002810",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002811",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002812",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002813",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002814",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002815",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002816",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002817",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002818",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002819",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002820",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002821",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002822",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002823",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002824",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002825",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "002826",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003004",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003007",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003008",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003010",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003011",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003012",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003014",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003015",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003016",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003017",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003018",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003019",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003021",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003022",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003023",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003024",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003026",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003028",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003030",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003032",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003033",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003034",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003035",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003036",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003038",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003039",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003040",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003041",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003043",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003044",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003046",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003047",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003048",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003049",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003050",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003051",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003052",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003054",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003056",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003057",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003235",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003237",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003238",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003239",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003241",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003242",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003243",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003244",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003245",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003246",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003247",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003249",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003250",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003251",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003253",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003254",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003258",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003260",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003261",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003264",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003266",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003267",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003268",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003271",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003272",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003275",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003276",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003277",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003280",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003281",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003282",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003283",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003284",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003285",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003287",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003449",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003450",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003451",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003453",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003454",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003455",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003456",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003457",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003460",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003461",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003462",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003463",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003466",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003467",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003468",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003469",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003470",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003471",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003472",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003473",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003474",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003475",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003476",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003477",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003481",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003482",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    },
+    {
+      "scene_id": "003483",
+      "raw_geometry_unavailable": 0,
+      "score_nms_pre_rejected": 0,
+      "nms_suppressed": 0,
+      "max_per_img_truncated": 0
+    }
+  ],
+  "parity": [
+    {
+      "scene_id": "002002",
+      "prediction_equal": true,
+      "deployed_rpn_equal": true,
+      "staged_final_equal_live": true,
+      "normal_before": {
+        "bboxes": "901d00b4c91522519426409ddbd507659cb8ca3266a20f630eacbc69ac945ba6",
+        "scores": "da169cc2c341ee8fde104e29f5b1458f86eb32c0fcac52a8dbbe9cfc4d996505",
+        "labels": "f6a5841de9b930e0d52f14bf9987a4f51ffb5062142527f1b5616ec455c723dc",
+        "masks": "34c71655e6054d5079d220e630d5d46ca294da56d1153b1785dee427b7909c68"
+      },
+      "normal_after": {
+        "bboxes": "901d00b4c91522519426409ddbd507659cb8ca3266a20f630eacbc69ac945ba6",
+        "scores": "da169cc2c341ee8fde104e29f5b1458f86eb32c0fcac52a8dbbe9cfc4d996505",
+        "labels": "f6a5841de9b930e0d52f14bf9987a4f51ffb5062142527f1b5616ec455c723dc",
+        "masks": "34c71655e6054d5079d220e630d5d46ca294da56d1153b1785dee427b7909c68"
+      },
+      "deployed_before": {
+        "boxes": "742aecfdd950392dfe9d67dafdf302d70290ba3e368ab050ee6674a9e4cae51b",
+        "scores": "9bf6f23111ba7563a11d5b20cc5877c98b039ebf943452846fdd92d2128887ea"
+      },
+      "deployed_after": {
+        "boxes": "742aecfdd950392dfe9d67dafdf302d70290ba3e368ab050ee6674a9e4cae51b",
+        "scores": "9bf6f23111ba7563a11d5b20cc5877c98b039ebf943452846fdd92d2128887ea"
+      },
+      "staged_final": {
+        "boxes": "742aecfdd950392dfe9d67dafdf302d70290ba3e368ab050ee6674a9e4cae51b",
+        "scores": "9bf6f23111ba7563a11d5b20cc5877c98b039ebf943452846fdd92d2128887ea"
+      }
+    }
+  ],
+  "repeats": [
+    {
+      "scene_id": "002002",
+      "raw_equal": true,
+      "pre_nms_equal": true,
+      "final_equal": true
+    }
+  ],
+  "stage_hashes": [
+    {
+      "scene_id": "002002",
+      "feature_hashes": [
+        "91c81a9013d97177a25118c886e590ab4d227f3e3a5b5a6fb311564181a86b83",
+        "e6354a4797d0b1222ca3da6b547788a3adcc9106caf70b694c2e639dc3ed65b7",
+        "d3cbfc2d75da304e7051e00345f8c873556ece2c2cb21b33eea4db109f6c63f9",
+        "7b86203c12719bd16264799e22200cb0341e7e299bf08e79da5a0dcc1eeeadff",
+        "fbab8c5fb3f33e7b756fc52cc07dcd6ad1a26ad8e7c1cb99f1116a9478fa40b5"
+      ],
+      "anchor_hashes": [
+        "0811e5518eedb54fddf6d7f9b9a6dee3580f9a8aac6823a3f62191d38d1cb5b8",
+        "9f54b568615b4057c3ba15b645f1f99ec14f9590bf438918a76d60b97e07b28e",
+        "db2de20c13e15f4e0992508a75831ae60f6c0dbd240ce9acf27b46220c5a3ccf",
+        "435850e60ada837f724d6b813bd5124bb6acb1f73419c366c45e2a162aaad3dd",
+        "8a805e6fac6f4a9ac7349d6e481f230c9d0305ae400f92dfc5d885d004aa72dc"
+      ],
+      "raw": {
+        "boxes": "eeef0c03eeeba3741a3c57d354506248a11507a89c9350be9ef7d906471fd100",
+        "scores": "8f63bf2e08ce75ae658024e6c2b725139480a3dd67af61b8de5c356a8ebe21b3"
+      },
+      "pre_nms": {
+        "boxes": "e6818da771c23e9cb3d3dbefafc16e826ccbba5773133469a272f33b7afddebc",
+        "scores": "e25d0a2b7284903118549db2c2159b408afcc910f9711606c79203a27a5bcfe3"
+      },
+      "nms_unlimited": {
+        "boxes": "d5e8264d79b42af09155b34480feb48fe377820abae71bb39eb5f612668acc95",
+        "scores": "f96774439def9d5472ca460e3d39137d092b934a36c58f355c56d4f354bd5436"
+      },
+      "final": {
+        "boxes": "742aecfdd950392dfe9d67dafdf302d70290ba3e368ab050ee6674a9e4cae51b",
+        "scores": "9bf6f23111ba7563a11d5b20cc5877c98b039ebf943452846fdd92d2128887ea"
+      },
+      "configs": {
+        "raw": {
+          "activation": "sigmoid",
+          "nms_pre": null,
+          "nms": null,
+          "max_per_img": null
+        },
+        "pre_nms": {
+          "activation": "sigmoid",
+          "nms_pre": 1000,
+          "min_bbox_size": 0.0,
+          "nms": null,
+          "max_per_img": null
+        },
+        "nms_unlimited": {
+          "nms_pre": 1000,
+          "max_per_img": 4997,
+          "min_bbox_size": 0.0,
+          "score_thr_resolved": 0.0,
+          "nms_type": "nms",
+          "nms_iou_threshold": 0.7
+        },
+        "final": {
+          "nms_pre": 1000,
+          "max_per_img": 1000,
+          "min_bbox_size": 0.0,
+          "score_thr_resolved": 0.0,
+          "nms_type": "nms",
+          "nms_iou_threshold": 0.7
+        }
+      },
+      "unlimited_bound": 4997,
+      "unlimited_count": 2347,
+      "unlimited_nontruncated": true,
+      "no_proposal_write": true
+    }
+  ]
+}

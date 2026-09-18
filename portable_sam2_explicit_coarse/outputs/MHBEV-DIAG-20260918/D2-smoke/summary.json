@@ -1,0 +1,155 @@
+{
+  "experiment_id": "MHBEV-DIAG-20260918-D2",
+  "arm": "D2-Frozen-RPN-Rank-Profile",
+  "status": "probe_only_no_training",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "model_config_source": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/configs/whu1024_baseplus_explicit_coarse.py",
+  "b0_lineage": {
+    "dir": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/B0-fullval",
+    "keys": 107
+  },
+  "d1_lineage": {
+    "dir": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/D1-fullval",
+    "decision": "D1_MIXED",
+    "counts": {
+      "nms_suppressed": 2,
+      "raw_geometry_unavailable": 23,
+      "max_per_img_truncated": 23,
+      "score_nms_pre_rejected": 59
+    }
+  },
+  "data": {
+    "val_scene_universe": 259,
+    "target_scenes_expected": 85,
+    "target_scenes_processed": 1,
+    "targets_expected": 107,
+    "targets_processed": 1,
+    "main_targets_expected": 59,
+    "main_targets_processed": 0,
+    "complete": false
+  },
+  "live_rpn_contract": {
+    "nms_pre": 1000,
+    "max_per_img": 1000,
+    "min_bbox_size": 0.0,
+    "score_thr_resolved": 0.0,
+    "nms_type": "nms",
+    "nms_iou_threshold": 0.7
+  },
+  "invariants": {
+    "normal_prediction_parity_typed": true,
+    "deployed_rpn_parity_typed": true,
+    "staged_final_equals_live_typed": true,
+    "readout_repeat_typed_hash": true,
+    "d1_replay_and_rank_separation_fail_closed": true,
+    "no_proposal_write": true
+  },
+  "metrics": {
+    "recovery_by_cap": {},
+    "main_min_rank_median": null,
+    "main_min_rank_p90": null,
+    "main_level_counts": {},
+    "controls": {
+      "raw_no_positive": {
+        "pass": 0,
+        "total": 23
+      },
+      "selected_rank_le_1000": {
+        "pass": 1,
+        "total": 25
+      }
+    }
+  },
+  "bootstrap": null,
+  "invalid_reasons": [
+    "validation_target_coverage_incomplete"
+  ],
+  "decision": "INVALID",
+  "decision_rule": "D2_BOUNDARY_RECOVERABLE iff complete/invariants, cap2000 recovery>=.70 and 85-scene paired bootstrap CI lower>=.50; else D2_BROAD_RANK_DEFICIT; contract failure INVALID.",
+  "interpretation": "D2 reads frozen candidate ranks; it does not alter proposals or demonstrate AP/compute benefit.",
+  "per_scene": [
+    {
+      "scene_id": "002002",
+      "recovered": 0,
+      "main": 0
+    }
+  ],
+  "telemetry": [
+    {
+      "scene_id": "002002",
+      "normal_before": {
+        "bboxes": "901d00b4c91522519426409ddbd507659cb8ca3266a20f630eacbc69ac945ba6",
+        "scores": "da169cc2c341ee8fde104e29f5b1458f86eb32c0fcac52a8dbbe9cfc4d996505",
+        "labels": "f6a5841de9b930e0d52f14bf9987a4f51ffb5062142527f1b5616ec455c723dc",
+        "masks": "34c71655e6054d5079d220e630d5d46ca294da56d1153b1785dee427b7909c68"
+      },
+      "normal_after": {
+        "bboxes": "901d00b4c91522519426409ddbd507659cb8ca3266a20f630eacbc69ac945ba6",
+        "scores": "da169cc2c341ee8fde104e29f5b1458f86eb32c0fcac52a8dbbe9cfc4d996505",
+        "labels": "f6a5841de9b930e0d52f14bf9987a4f51ffb5062142527f1b5616ec455c723dc",
+        "masks": "34c71655e6054d5079d220e630d5d46ca294da56d1153b1785dee427b7909c68"
+      },
+      "live_before": {
+        "boxes": "742aecfdd950392dfe9d67dafdf302d70290ba3e368ab050ee6674a9e4cae51b",
+        "scores": "9bf6f23111ba7563a11d5b20cc5877c98b039ebf943452846fdd92d2128887ea"
+      },
+      "live_after": {
+        "boxes": "742aecfdd950392dfe9d67dafdf302d70290ba3e368ab050ee6674a9e4cae51b",
+        "scores": "9bf6f23111ba7563a11d5b20cc5877c98b039ebf943452846fdd92d2128887ea"
+      },
+      "staged_final": {
+        "boxes": "742aecfdd950392dfe9d67dafdf302d70290ba3e368ab050ee6674a9e4cae51b",
+        "scores": "9bf6f23111ba7563a11d5b20cc5877c98b039ebf943452846fdd92d2128887ea"
+      },
+      "readout": {
+        "features": [
+          "91c81a9013d97177a25118c886e590ab4d227f3e3a5b5a6fb311564181a86b83",
+          "e6354a4797d0b1222ca3da6b547788a3adcc9106caf70b694c2e639dc3ed65b7",
+          "d3cbfc2d75da304e7051e00345f8c873556ece2c2cb21b33eea4db109f6c63f9",
+          "7b86203c12719bd16264799e22200cb0341e7e299bf08e79da5a0dcc1eeeadff",
+          "fbab8c5fb3f33e7b756fc52cc07dcd6ad1a26ad8e7c1cb99f1116a9478fa40b5"
+        ],
+        "levels": [
+          {
+            "prior": "0811e5518eedb54fddf6d7f9b9a6dee3580f9a8aac6823a3f62191d38d1cb5b8",
+            "boxes": "4169979825acaa3df862801a9f7d19f906e1e9cf98d1c8f638a689671506cbe4",
+            "scores": "9cce50fcd39ce16784db1d553edd3ae0ffb0c58f321c3e2b9e4865fcbbeb3a66",
+            "ranks": "d560c141b19d5d32fa7e7c4eba3663c824d9e827df5188b19b00351aa4c7d588"
+          },
+          {
+            "prior": "9f54b568615b4057c3ba15b645f1f99ec14f9590bf438918a76d60b97e07b28e",
+            "boxes": "bd25bbd3ed04ec779135e8b1a911d8b1c555665652e2733761f2ed7aaf9231be",
+            "scores": "6dfe0610cc132c2c52fa01a8b27ce3092f34e8960660c5730f5d29ed329737e6",
+            "ranks": "51390d644b2f45d0bbb8e4abc232f9f21f6147f27ce080d721c0a86adc57c530"
+          },
+          {
+            "prior": "db2de20c13e15f4e0992508a75831ae60f6c0dbd240ce9acf27b46220c5a3ccf",
+            "boxes": "ad17d051e7619999edaa4899fc84cd268b8da87e58fb3c6054b62369fda4e985",
+            "scores": "7a1d5d2a12f1c88ce24d0a17f41aa1d94b6486e6a88176b5b84f0f9e4a4d8dc8",
+            "ranks": "c85d9e1df1c7685b10db892bcd2af27bfccc7d7ff36b7272669c8ec933dd3ffd"
+          },
+          {
+            "prior": "435850e60ada837f724d6b813bd5124bb6acb1f73419c366c45e2a162aaad3dd",
+            "boxes": "84ff24bfd4f7da84b3038b4aba1e32d6a236ad00d9e6fc49d65119f9462cfa5e",
+            "scores": "a3fc38fc33dfe687e210ed5930a7f84d4dfd78c8c09872c8928ebbb3807b5ee5",
+            "ranks": "00523dade67969f817905be23ed54da0f7e1054dff24bc414de44caf29e9d5d4"
+          },
+          {
+            "prior": "8a805e6fac6f4a9ac7349d6e481f230c9d0305ae400f92dfc5d885d004aa72dc",
+            "boxes": "d498679771b86671712d0bf883fd637de8d98ebf69e070ad6e798012dd47d828",
+            "scores": "007e12e4f29034059494a002d75359ed9607bb9b9836ec1955f1ea835b02f3b9",
+            "ranks": "c0e7df9028807d5641c479aceec537598d7fe3d63ccfa9b81940fbd9e982da90"
+          }
+        ],
+        "contract": {
+          "nms_pre": 1000,
+          "max_per_img": 1000,
+          "min_bbox_size": 0.0,
+          "score_thr_resolved": 0.0,
+          "nms_type": "nms",
+          "nms_iou_threshold": 0.7
+        }
+      }
+    }
+  ]
+}

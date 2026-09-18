@@ -555,6 +555,7 @@ def _build_optimizer(
             names_scene_align.append(name)
         elif (
             match_name.startswith("drone_encoder.")
+            or match_name.startswith("a1_p2.")
             or match_name.startswith("geometry_bev.")
             or match_name.startswith("p2p3_gate.")
             or match_name.startswith("embedding_gate.")
@@ -1002,6 +1003,7 @@ _DUAL_STREAM_MONITOR_KEYS = (
     "injected_ratio_p3",
     "gamma_emb",
     "injected_ratio_emb",
+    "candidate_hard_mask_zero",
 )
 
 
@@ -1354,6 +1356,8 @@ def _load_init_checkpoint(
         "missing": len(load_result.missing_keys),
         "migrated": len(migrations),
         "migration_pairs": migrations,
+        "missing_keys": list(load_result.missing_keys),
+        "unexpected_keys": list(load_result.unexpected_keys),
     }
 
 
@@ -1561,6 +1565,10 @@ def main():
         "--train-quality-head-only",
         action="store_true",
         help="Freeze C2 and optimize only the native SAM2 IoU quality head.",
+    )
+    parser.add_argument(
+        "--train-a1-only", action="store_true",
+        help="Freeze the single-stream anchor and optimize only a1_p2.*.",
     )
 
     parser.add_argument("--val-ratio", type=float, default=0.0)
@@ -1828,6 +1836,7 @@ def main():
         int(flag)
         for flag in (
             args.train_quality_head_only,
+            args.train_a1_only,
         )
     )
     if exclusive_scopes > 1:
@@ -1851,6 +1860,18 @@ def main():
                 "Training scope: quality head only (%s); loaded C2 baseline is frozen in eval mode",
                 quality_type,
             )
+    if args.train_a1_only:
+        model.requires_grad_(False)
+        a1 = getattr(model, "a1_p2", None)
+        if a1 is None:
+            raise RuntimeError("--train-a1-only requires A1P2RSPrompterAnchor")
+        a1.requires_grad_(True)
+        model.eval()
+        a1.train()
+        if hasattr(model, "drone_encoder"):
+            model.drone_encoder.eval()
+        if is_main:
+            logger.info("Training scope: A1 P2 residual only; anchor and UAV encoder frozen")
 
     model_for_preproc = model.module if hasattr(model, "module") else model
     data_preprocessor = model_for_preproc.data_preprocessor
@@ -2227,6 +2248,7 @@ def main():
             resolved_mask_head_cfg.get("p2_boundary_refiner_cfg", {})
         ),
         "train_quality_head_only": int(args.train_quality_head_only),
+        "train_a1_only": int(args.train_a1_only),
         "quality_head_enabled": os.environ.get("QUALITY_HEAD_ENABLED", "0"),
         "quality_head_type": os.environ.get("QUALITY_HEAD_TYPE", "native_iou"),
         "quality_head_loss_weight": os.environ.get("QUALITY_HEAD_LOSS_WEIGHT", "1.0"),
@@ -2364,6 +2386,15 @@ def main():
                 logger.info(
                     "Checkpoint key migration (INIT_FROM): %s",
                     init_stats["migration_pairs"],
+                )
+        if args.train_a1_only:
+            allowed_missing = ("drone_encoder.", "a1_p2.")
+            bad_missing = [name for name in init_stats["missing_keys"] if not name.startswith(allowed_missing)]
+            if bad_missing or init_stats["unexpected"] or init_stats["shape_mismatch"]:
+                raise RuntimeError(
+                    "A1 hot-start must load every anchor tensor unchanged; "
+                    f"bad_missing={bad_missing[:10]} unexpected={init_stats['unexpected']} "
+                    f"shape_mismatch={init_stats['shape_mismatch']}"
                 )
 
     if args.resume_from:
@@ -2606,6 +2637,9 @@ def main():
         model.train()
         if args.train_quality_head_only:
             _set_quality_head_only_train_mode(model)
+        elif args.train_a1_only:
+            core = model.module if hasattr(model, "module") else model
+            core.eval(); core.a1_p2.train(); core.drone_encoder.eval()
         elif args.freeze_bn:
             _set_norm_eval(model)
 
@@ -2939,7 +2973,7 @@ def main():
                     "gamma[p2/p3]=%.6f/%.6f "
                     "gamma_emb=%.6f "
                     "injected_ratio[p2/p3]=%.6f/%.6f "
-                    "injected_ratio_emb=%.6f",
+                    "injected_ratio_emb=%.6f hardmask_zero=%.2f%%",
                     epoch_number,
                     100.0 * dual_monitor_epoch.get("valid_ratio", float("nan")),
                     100.0 * dual_monitor_epoch.get("point_valid_ratio", float("nan")),
@@ -2951,6 +2985,7 @@ def main():
                     dual_monitor_epoch.get("injected_ratio_p2", float("nan")),
                     dual_monitor_epoch.get("injected_ratio_p3", float("nan")),
                     dual_monitor_epoch.get("injected_ratio_emb", float("nan")),
+                    100.0 * dual_monitor_epoch.get("candidate_hard_mask_zero", float("nan")),
                 )
             averaged_components = {
                 key: value / max(1, num_batches) for key, value in loss_meter.items()

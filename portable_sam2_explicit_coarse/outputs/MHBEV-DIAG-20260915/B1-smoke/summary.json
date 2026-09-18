@@ -1,0 +1,108 @@
+{
+  "experiment_id": "MHBEV-DIAG-20260915-B1",
+  "arm": "B1-Frozen-PostRPN-Diagnosis",
+  "status": "probe_only_no_training",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "model_config_source": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/configs/whu1024_baseplus_explicit_coarse.py",
+  "b0_lineage": {
+    "dir": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse/outputs/MHBEV-DIAG-20260915/B0-fullval",
+    "target_count_expected": 120,
+    "b0_complete": true,
+    "b0_invariants": {
+      "prediction_parity_bitwise": true,
+      "rpn_readout_repeat_bitwise": true,
+      "proposal_counts_unchanged_by_geometry_shams": true
+    }
+  },
+  "data": {
+    "split": "val",
+    "target_scenes_expected": 94,
+    "target_scenes_processed": 2,
+    "targets_expected": 120,
+    "targets_processed": 3,
+    "complete": false
+  },
+  "invariants": {
+    "b0_target_membership_exact": true,
+    "prediction_parity_bitwise": true,
+    "b0_final_failure_recomputed": true,
+    "detector_uav_or_sham_intervention": "none"
+  },
+  "metrics": {
+    "mask_only_fraction": 0.3333333333333333,
+    "post_rpn_box_lost_fraction": 0.6666666666666666,
+    "inherited_two_view_coverage": {
+      "mask_only_failure": {
+        "correct": {
+          "fraction": 1.0,
+          "covered": 1,
+          "total": 1
+        },
+        "xy_plus_80m": {
+          "fraction": 1.0,
+          "covered": 1,
+          "total": 1
+        },
+        "scene_permuted": {
+          "fraction": 1.0,
+          "covered": 1,
+          "total": 1
+        }
+      },
+      "post_rpn_box_lost_or_mislocalized": {
+        "correct": {
+          "fraction": 0.5,
+          "covered": 1,
+          "total": 2
+        },
+        "xy_plus_80m": {
+          "fraction": 0.5,
+          "covered": 1,
+          "total": 2
+        },
+        "scene_permuted": {
+          "fraction": 1.0,
+          "covered": 2,
+          "total": 2
+        }
+      }
+    }
+  },
+  "bootstrap": {
+    "samples_requested": 100,
+    "samples_valid": 100,
+    "seed": 20260916,
+    "difference_mask_only_minus_box_lost": -0.16666666666666663,
+    "ci95_percentile": [
+      -1.0,
+      1.0
+    ]
+  },
+  "decision": "INVALID",
+  "decision_rule": "ROI_LOCAL_MASK iff mask_only>=.60 and CI lower>0; POST_RPN_ROI_BOX iff box_lost>=.60 and CI upper<0; otherwise MIXED; failed lineage/data/parity is INVALID.",
+  "interpretation": "B1 locates the post-RPN outcome stage only; it does not identify a causal UAV mechanism or permit training.",
+  "parity": [
+    {
+      "scene_id": "002007",
+      "prediction_equal": true,
+      "target_count": 2
+    },
+    {
+      "scene_id": "002010",
+      "prediction_equal": true,
+      "target_count": 1
+    }
+  ],
+  "per_scene": [
+    {
+      "scene_id": "002007",
+      "mask_only": 0,
+      "box_lost": 2
+    },
+    {
+      "scene_id": "002010",
+      "mask_only": 1,
+      "box_lost": 0
+    }
+  ]
+}

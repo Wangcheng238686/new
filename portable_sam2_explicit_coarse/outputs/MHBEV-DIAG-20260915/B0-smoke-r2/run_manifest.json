@@ -1,0 +1,38 @@
+{
+  "experiment_id": "MHBEV-DIAG-20260915-B0",
+  "arm": "B0-Frozen-RPN-Diagnosis",
+  "status": "probe_only_no_training",
+  "checkpoint": "/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "data": {
+    "root": "/data1/wangcheng/dataset/ue_coco_with_uav",
+    "split": "val",
+    "scenes_expected": 259,
+    "scenes_processed": 2,
+    "gt_instances_expected": 5937,
+    "gt_instances": 27,
+    "complete": false,
+    "scene_ids": [
+      "002002",
+      "002003"
+    ]
+  },
+  "contract": {
+    "input_size": [
+      1024,
+      1024
+    ],
+    "small_area_px_lt": 1024,
+    "rpn_iou_thresholds": [
+      0.3,
+      0.5
+    ],
+    "final_match_mask_iou": 0.5,
+    "geometry": "W2C column-vector UE centimetres; 360m; z=0; >=2 view"
+  },
+  "invariants": {
+    "prediction_parity_bitwise": true,
+    "rpn_readout_repeat_bitwise": true,
+    "proposal_counts_unchanged_by_geometry_shams": true
+  },
+  "decision": "INVALID"
+}
