@@ -216,3 +216,30 @@ e98 −0.012、A3-E73 −0.025。§8 中"+0.034 口径 → test≈0.697"的外�
 **终止记录（2026-09-18 11:1x，用户指令）**：GPU3 的 A3 尾段续跑（E109 起）与
 GPU1/2 的 cur150（P2BRR×当前代码×150ep，E1 未完成）双双终止，产物保留
 （A3：best 0.6691@E73 + test 预读 §9；cur150：仅日志）。三卡全部释放。
+
+## 11. a3sgm 尾 × fast150 监督移植（2026-09-18 11:50 发射，用户指令）
+
+**目的**：论文 NWPU 版 a3sgm（耦合 margin 尾 K64 + 解耦辅助裁剪）换装 fast150 的
+监督地基（roi_local + standard + PE 冻结 + dense detach），检验"新模块骑旧地基"
+能否复现 fast150 的趋势。P2BRR 的槽位由 margin 尾顶替，其余 fast150 配方原样。
+
+**移植设计（三处代码手术）**：
+1. `sam2_mask_head`：放开"UDPR 必须 full_image"契约（保留 roi_sam 禁用）；
+2. `anchor_roi_head`：**双目标语义**——主 mask 损失保持历史 28×28 roi_local 目标
+   （fast150 契约不动），尾点损失改用解码器原生网格的逐 RoI GT 裁剪
+   （复用 C2-R 的 `get_coarse_targets`；尾的选点索引在原生栅格上，
+   直接 gather 28×28 目标会越界）；
+3. roi_local 推理路径补 margin 锚定 logit 运行时校验（原校验只在 full_image
+   分支，是盲区）。契约 ID：RD/G 早退分支改为 base+后缀统一（历史无尾配置
+   ID 逐字节不变；新臂 = `r1_c4_rd_..._emb64_udprk64`）。
+
+**锚定值教训**：初版按 mmdet 默认设 BOUNDARY_LOGIT=0.0（thr 0.5），**被自己新加的
+校验当场拦下**——本仓 WHU 部署阈值实为 0.4，正确锚定 = NWPU 同款 −0.4055。
+
+**冒烟证据**：35% 子集 129 优化步（过 warmup）+ 验证路径全通；
+`loss_decoder_tail=0.0994/0.1856` 有限、无 gather 越界、锚定校验放行。
+
+**运行**：`whu1024_a3sgm_roilocal_full_fast_tr1.0_va1.0_20260918_115030_pid3412484`，
+GPU1/2 fp32 2×1×4（有效 8、368 步/ep）、150ep、val 每 ep（fast150 节奏，轨迹可直接
+对齐）、四别名选模、seed 44。ETA ≈ 3.6 天（~9/22）。**判读锚点：E2 对齐 fast150
+的 0.4521 起步形状；E85 对齐 ~0.723；E150 对齐 0.7493。**
