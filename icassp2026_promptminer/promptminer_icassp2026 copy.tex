@@ -17,15 +17,14 @@
 \maketitle
 
 \begin{abstract}
-In dense overhead scenes, visually similar adjacent instances are difficult to separate under shadows, low contrast, and narrow inter-instance gaps. 
-Consequently, a proposal box alone provides insufficient shape cues for accurate instance-mask prediction.
+Remote sensing instance segmentation usually contains similar or adjacent instances that are difficult to separate under shadows and narrow inter-instance gaps. The common proposal box-driven methods provide insufficient shape cues for accurate instance-mask prediction.
 To address this issue, we propose PromptMiner-SAM2, 
-a two-stage framework that mines proposal-level shape cues and injects them into prompt-conditioned SAM2 mask decoding.
-The mined shape cues are converted into complementary prompts that provide instance-specific guidance for SAM2 mask prediction. 
-To address residual ambiguity in the decoded masks, an uncertainty-guided decoder-tail point refinement module further corrects selected uncertain locations. 
+a two-stage segmentation framework that mines proposal-level shape cues and injects them into prompt-conditioned SAM2 mask decoding.
+The coarse shape cues are first mined and it serves as complementary instance-specific prompts for SAM2 mask prediction. 
+To refine margin lines of instances, an uncertainty-guided decoder-tail module is designed to further correct uncertain local pixels. 
 Experiments on the WHU and NWPU VHR-10 benchmarks show that PromptMiner-SAM2 obtains 73.4\% and 68.3\%
-mask AP, respectively, achieving the highest mask AP among the compared
-methods on both datasets.
+mask AP, respectively, achieving the highest mask AP value on both datasets among the compared
+methods.
 \end{abstract}
 \begin{keywords}
 Instance segmentation, remote sensing imagery, SAM2, prompt mining, mask refinement
