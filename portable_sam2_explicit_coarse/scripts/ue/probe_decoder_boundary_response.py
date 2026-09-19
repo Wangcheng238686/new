@@ -205,12 +205,14 @@ def main():
     settings = [("aligned", a) for a in (0.0, 0.1, 0.25, 0.5, 1.0)] + \
                [("random", 0.25), ("mismatch", 0.25)]
     results_by_setting, sens, bf1_by_setting = {}, {}, {}
+    baseline_union = None
 
     t0 = time.time()
     for si, (kind, alpha) in enumerate(settings):
         model.neck.forward = patched_forward
         coco_dt_list = []
         xor_fracs, bf1s = [], []
+        base_union = baseline_union if alpha > 0 else None
         for i in range(n_val):
             item = val_ds[i]
             ds = DetDataSample(); ds.set_metainfo(item["img_metas"])
@@ -237,11 +239,14 @@ def main():
                 pmasks = msk.to_ndarray() if isinstance(msk, BitmapMasks__) else msk.cpu().numpy()
                 keep = inst.scores.cpu().numpy() >= 0.5
                 pm = pmasks[keep].any(0) if keep.any() else np.zeros((1024, 1024), bool)
+            if kind == "aligned" and alpha == 0.0:
+                baseline_union = pm.copy()
             gtocc = np.zeros((1024, 1024), np.uint8)
             for m in item["gt_masks"]:
                 gtocc = np.maximum(gtocc, m)
             if alpha > 0:
-                xor_fracs.append(float((pm ^ (gtocc > 0)).mean()))
+                # pre-registered responsiveness: XOR(perturbed output, UNPERTURBED output)
+                xor_fracs.append(float((pm ^ base_union).mean()))
             bf1s.append(boundary_f1(pm, gtocc > 0))
             # coco results: all instances with scores
             if inst is not None and len(inst.bboxes):
@@ -253,6 +258,8 @@ def main():
                     coco_dt_list.append(dict(image_id=i, category_id=1, segmentation=r, score=float(s)))
         results_by_setting[f"{kind}@{alpha}"] = coco_dt_list
         bf1_by_setting[f"{kind}@{alpha}"] = float(np.mean(bf1s))
+        (out / f"per_scene_bf1_{kind}_{alpha}.csv").write_text(
+            "\n".join(f"{i},{v:.5f}" for i, v in enumerate(bf1s)) + "\n")
         sens[f"{kind}@{alpha}"] = float(np.mean(xor_fracs)) if xor_fracs else 0.0
         print(f"[{si+1}/{len(settings)}] {kind}@{alpha}: boundaryF1={bf1_by_setting[f'{kind}@{alpha}']:.4f} "
               f"sensitivity={sens[f'{kind}@{alpha}']:.5f} ({time.time()-t0:.0f}s)")

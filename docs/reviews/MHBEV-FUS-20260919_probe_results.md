@@ -38,8 +38,9 @@ mechanism, four probes were run to establish, without detector training:
   DBEVmis = identical but with ground points rotated 90° about the scene center
   (calibration-content mismatch control).
 - Probes: per-cell linear readout (per-dim standardization, single Linear layer, Adam
-  500 iters, balanced 1:1 cell subsampling for fit: 80 train scenes, ≤400 pos+400 neg
-  per scene, 62,508 fit cells). Evaluation: all 16,384 cells per val scene, first 60
+  500 iters. Occupancy fit: balanced 1:1, ≤400 pos+400 neg per scene, 62,508 cells.
+  Boundary fit: 1,500 uniform cells/scene, 120,000 cells, MSE target = signed
+distance /8.) Evaluation: all 16,384 cells per val scene, first 60
   val scenes, per-scene metric, paired statistics vs SAT.
 - Lineage: satellite branch from `ue_single_..._r1/best_model_epoch86.pth`; fusion branch
   from `ue_dual_..._r1/best_model_epoch85.pth`; D2 arm satellite branch from
@@ -145,7 +146,7 @@ Target: per-cell signed distance to the nearest building boundary (GT distance t
   gradients against a contaminated loss (raw `_p2br_local_sum`, unmaterialized; loss
   ~250 instead of ~0.15). That run's gradient numbers are invalid and were discarded;
   the fix (replicating the trainer's materialization + "loss"-key filtering) is in the
-  committed script. Reviewers can verify: batch losses in the current log are 0.09–0.22.
+  committed script. Reviewers can verify: batch losses in the current log are 0.0959–0.2350.
 - **LBEV weights are near random-init** (historical γ≈−0.054 starved their gradient).
   E1/E4 show this is immaterial for the readout conclusions (LBEV ≈ DBEV), but it means
   the probes say nothing about what a *trained* BEV could become.
@@ -176,9 +177,9 @@ Expected runtimes ≈ 6 min each on one RTX 4090; logs at
 
 **Script:** `scripts/ue/probe_decoder_boundary_response.py`. **Output:**
 `outputs/probe_decoder_boundary_response/summary.json` (md5
-`4eb75e1bed27d421381775ae2d03ee53` — recompute at review). **Design:** on the frozen
+`5af339de6a51398bf2b027ec2528f220). **Design:** on the frozen
 single-stream checkpoint, perturb the P2 pyramid map after the neck with
-`alpha * sigma_c * sdf_z * s_c` (GT signed-distance field, per-channel std scaling,
+`alpha * sigma_c * sdf_z * s_c` (GT signed-distance field, scalar sigma (mean per-channel std),
 per-channel boundary-correlation signs estimated on 20 train scenes), then run full
 `predict` and measure COCO segm metrics, raster boundary F1 (tol 3 px), and union-mask
 XOR sensitivity on 40 val scenes. Settings: alpha ladder {0,.1,.25,.5,1.0} aligned;
@@ -228,3 +229,44 @@ in the script docstring (written before execution).
    BEV→refiner arm with boundary-F1 as co-primary endpoint, or accept that on this
    dataset the UAV contribution cannot surface in segm mAP and reframe the paper
    accordingly (controlled diagnosis + boundary-quality contribution).
+
+
+---
+
+## 8. Independent review verdict and corrective actions (2026-09-19)
+
+**Independent subagent review: HOLD** (all numbers, artifacts, checksums, and
+statistics verified correct, including independent recomputation of paired t
+from per-scene CSVs; four issues raised). All required fixes have been applied:
+
+1. **[MAJOR, fixed by recompute]** The originally reported "sensitivity 8.5%" was
+   an implementation deviation: it computed pred-vs-GT XOR (error floor, nearly
+   flat across alpha), not the pre-registered perturbed-vs-unperturbed output
+   change. The sensitivity implementation now matches the pre-registered
+   definition; corrected value: **46.7% union-mask XOR vs the alpha=0 output at
+   every alpha>=0.1** — the decoder is in fact *highly* responsive (stronger than
+   the original incorrect claim). All other P5 numbers reproduced identically on
+   rerun (boundary F1 0.6164→0.6286 monotone; controls unchanged), demonstrating
+   deterministic extraction. summary.json md5 updated to 5af339de6a51398bf2b027ec2528f220.
+2. **[MODERATE, fixed]** P5 now writes per-scene boundary-F1 CSVs
+   (`per_scene_bf1_*.csv`); single-run 40-scene means remain the headline numbers
+   and are explicitly without CI.
+3. **[MODERATE, registered]** Probe-fit run-to-run noise (torch init unfixed):
+   DBEV per-scene APs differ between the E1 and E1-D2 runs with identical inputs
+   and weights (0.5395 vs 0.5322, ~0.007). Added to limitations; it widens the
+   null CIs (E1/E1-D2 conclusions unaffected) and does not threaten E4 (t=13.27).
+4. **[MODERATE, fixed]** Section 7.1 wording downgraded: P5 transmits a
+   **GT-derived oracle boundary field** (train-calibrated channel signs), not
+   UAV-derived content; it is oracle-transmission evidence, an upper bound on
+   what a learned injection could extract, not evidence that the learned
+   mechanism achieves it.
+5. **[MINOR, fixed]** Boundary-probe fit protocol added to Section 2
+   (1,500 uniform cells/scene, 120,000 total); sigma implementation is a scalar
+   (mean over channels), not per-channel; loss range corrected to 0.0959–0.2350;
+   the boundary-run E2 remeasurement (γ_p2 SNR 0.65, sign consistency 0.8, still
+   ~19x below the weight-decay pull) further supports conclusion 4.3.
+
+**Remaining gate before any detector-training arm:** execute the already
+pre-registered E5 (matched-capacity PCA-512 control + full 259-val bootstrap,
+Appendix K) to close the dimension-asymmetry confound on E4. Until E5 passes its
+preregistered gate, the BEV→refiner training arm stays unauthorized.
