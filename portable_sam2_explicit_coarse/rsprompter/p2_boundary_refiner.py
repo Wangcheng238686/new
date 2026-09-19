@@ -42,6 +42,8 @@ class P2BoundaryRefiner(nn.Module):
         max_search_coverage: float = 0.50,
         boundary_loss_weight: float = 0.05,
         zero_init_residual: bool = True,
+        bev_channels: int = 0,
+        bev_spatial_scale: float = 0.125,
     ) -> None:
         super().__init__()
         for name, value in (
@@ -96,6 +98,34 @@ class P2BoundaryRefiner(nn.Module):
             pool_mode="avg",
             aligned=self.aligned,
         )
+        # Optional BEV boundary-prior branch (H1 hot-start screening).  Default
+        # off: bev_channels=0 keeps every existing checkpoint/config identical.
+        # The branch's own residual head is zero-initialized, so the warm-start
+        # gate IS the zero head: gradient reaches the branch at full strength
+        # while the initial contribution is exactly zero (E2 starvation-proof).
+        self.bev_channels = int(bev_channels)
+        self.bev_provider = None  # set externally; returns [B,bev_channels,H,W] or None
+        if self.bev_channels > 0:
+            self.bev_projection = nn.Sequential(
+                nn.Conv2d(self.bev_channels, self.projected_channels, 1),
+                _group_norm(self.projected_channels),
+                nn.GELU(),
+            )
+            self.bev_roi_align = RoIAlign(
+                output_size=(self.roi_output_size, self.roi_output_size),
+                spatial_scale=float(bev_spatial_scale),
+                sampling_ratio=self.sampling_ratio,
+                pool_mode="avg",
+                aligned=self.aligned,
+            )
+            self.bev_conv = nn.Sequential(
+                nn.Conv2d(self.projected_channels, self.projected_channels, 3, padding=1),
+                _group_norm(self.projected_channels),
+                nn.GELU(),
+            )
+            self.bev_head = nn.Conv2d(self.projected_channels, 1, 1)
+            nn.init.zeros_(self.bev_head.weight)
+            nn.init.zeros_(self.bev_head.bias)
         fused_channels = 2 * self.projected_channels + 3
         self.fusion = nn.Sequential(
             nn.Conv2d(fused_channels, self.mid_channels, 3, padding=1),
@@ -193,6 +223,30 @@ class P2BoundaryRefiner(nn.Module):
         probability_32 = F.interpolate(probability, target_size, mode="bilinear", align_corners=False)
         uncertainty_32 = F.interpolate(uncertainty, target_size, mode="bilinear", align_corners=False)
         support_32 = F.adaptive_max_pool2d(search_support, target_size)
+
+        delta_bev = None
+        bev_norm = raw_logits.new_zeros(())
+        if self.bev_channels > 0:
+            bev = self.bev_provider() if callable(self.bev_provider) else None
+            if bev is not None:
+                if bev.dim() != 4 or bev.shape[-2:] != (128, 128):
+                    raise ValueError(
+                        f"expected BEV [B,{self.bev_channels},128,128], got {tuple(bev.shape)}"
+                    )
+                bev_feat = self.bev_projection(bev.detach().to(projected_p2.dtype))
+                bev_roi = self.bev_roi_align(bev_feat, prompt_rois)
+                bev_out = self.bev_conv(bev_roi)
+                bev_delta_32 = self.bev_head(bev_out)
+                bev_delta = F.interpolate(
+                    bev_delta_32, (self.coarse_size, self.coarse_size),
+                    mode="bilinear", align_corners=False
+                )
+                delta_bev = (
+                    self.beta * self.delta_logit_max * torch.tanh(bev_delta)
+                    * search_support.to(bev_delta.dtype)
+                )
+                bev_norm = bev_delta.float().flatten(1).norm(dim=1).sum()
+
         fused = self.fusion(
             torch.cat([roi_feature, high_frequency, probability_32, uncertainty_32, support_32], dim=1)
         )
@@ -201,13 +255,15 @@ class P2BoundaryRefiner(nn.Module):
         )
         bounded_source = self.delta_logit_max * torch.tanh(self.residual_head(fused))
         delta = self.beta * bounded_source * search_support.to(bounded_source.dtype)
+        if delta_bev is not None:
+            delta = delta + delta_bev
         refined = raw_logits + delta
 
         with torch.no_grad():
             search_coverage = search_support.float().mean(dim=(1, 2, 3))
             projected_norm = roi_feature.float().flatten(1).norm(dim=1)
             highpass_norm = high_frequency.float().flatten(1).norm(dim=1)
-        return dict(
+        out = dict(
             refined_logits=refined,
             delta_logits=delta,
             raw_boundary_band=boundary_band,
@@ -217,6 +273,9 @@ class P2BoundaryRefiner(nn.Module):
             projected_feature_norm_sum=projected_norm.sum(),
             highpass_feature_norm_sum=highpass_norm.sum(),
         )
+        if delta_bev is not None:
+            out["bev_delta_norm_sum"] = bev_norm
+        return out
 
     def boundary_loss(
         self,

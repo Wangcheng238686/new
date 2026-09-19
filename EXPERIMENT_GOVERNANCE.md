@@ -856,7 +856,10 @@ boundary-refiner 通路、以检测器损失直接监督，能否在**不训练 
   bev_conv(64→64,3×3+GN+GELU) → bev_head(64→1,1×1,零初始化)`，
   `delta_bev = beta·tanh(bev_head)·delta_logit_max·search_support`，
   `refined = raw_logits + delta_p2br + delta_bev`。门 = 零初始化 bev_head
-  （refiner 自身的温启动设计；γ=1 无衰减，规避 E2 梯度饥饿）。
+  （refiner 自身的温启动设计）。梯度自举序列：bev_head 零初始化在第 1 步即获得
+  全强度梯度（结构化输入实测 absmax≈0.026），上游 bev_conv/bev_projection 在头离开
+  零点后（预计 1–2 步）开始训练——与 E2 的死门有本质区别：头的自身梯度是相干信号
+  而非噪声。初始贡献严格为零（bev 开/关前向逐位一致，已验证）。
   pyramid P2/P3 门强制保持 0；embedding_gate 不构建。非 BEV 路径默认关闭
   （`bev_channels=0` 时行为与现有 ckpt 完全一致）。
 - **BEV 供给：** dual `extract_feat` 的 BEV 经只读 provider 传递给 refiner；
