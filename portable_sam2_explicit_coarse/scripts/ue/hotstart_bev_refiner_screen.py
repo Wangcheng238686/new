@@ -102,29 +102,36 @@ def main():
 
     cfg = Config.fromfile(args.config)
     # H1: disable pyramid/embedding injection paths; enable the refiner BEV branch.
-    cfg.model.roi_head.mask_head.p2_boundary_refiner.bev_channels = 128
-    cfg.model.roi_head.mask_head.p2_boundary_refiner.bev_spatial_scale = 0.125
+    cfg.model.roi_head.mask_head.p2_boundary_refiner_cfg.bev_channels = 128
+    cfg.model.roi_head.mask_head.p2_boundary_refiner_cfg.bev_spatial_scale = 0.125
     model = MODELS.build(cfg.model)
 
+    import random
+    SEED = 20260928
+    torch.manual_seed(SEED); np.random.seed(SEED); random.seed(SEED)
     dual = torch.load(DUAL_CKPT, map_location="cpu", weights_only=False)
     m1 = model.load_state_dict(dual.get("model", dual.get("state_dict")), strict=False)
     single = torch.load(SINGLE_CKPT, map_location="cpu", weights_only=False)
     single_sd = single.get("model", single.get("state_dict"))
-    # drop the refiner fusion conv (input-width changed by the BEV branch concat
-    # is NOT used in this design -- fusion untouched; only guard anyway) and any
-    # dual-only keys; everything else overwrites with single-stream weights.
+    model_sd = model.state_dict()
     filtered = {k: v for k, v in single_sd.items()
-                if model.state_dict()[k].shape == v.shape}
+                if k in model_sd and model_sd[k].shape == v.shape}
     dropped = [k for k in single_sd if k not in filtered]
     m2 = model.load_state_dict(filtered, strict=False)
-    print(f"dual load: missing={len(m1.missing_keys)} unexpected={len(m1.unexpected_keys)}")
+    print(f"dual load: missing={sorted(m1.missing_keys)}")
+    print(f"dual load unexpected={sorted(m1.unexpected_keys)}")
     print(f"single overwrite: matched={len(filtered)} dropped(shape)={dropped}")
+    assert dropped == [], f"unexpected shape-mismatched single keys: {dropped}"
     model = model.to(device)
+    refiner = model.roi_head.mask_head.p2_boundary_refiner
+    assert refiner.bev_channels == 128 and hasattr(refiner, "bev_head"), \
+        "BEV branch was not constructed -- config injection failed"
+    assert not hasattr(model, "embedding_gate") or model.embedding_gate is None
 
+    model_core = model
     # freeze everything, train only the new BEV branch
     for p in model.parameters():
         p.requires_grad_(False)
-    refiner = model.roi_head.mask_head.p2_boundary_refiner
     trainable = [p for n, p in refiner.named_parameters() if n.startswith(("bev_",))]
     for p in trainable:
         p.requires_grad_(True)
@@ -133,7 +140,6 @@ def main():
           f"({[n for n, _ in refiner.named_parameters() if n.startswith('bev_')]}")
 
     # provider: refiner pulls the current-batch BEV from the dual model
-    model_core = model
     refiner.bev_provider = lambda: getattr(model_core, "_last_bev", None)
     orig_extract = model_core.extract_feat
     def extract_feat_with_bev(batch_inputs, batch_data_samples=None):
@@ -161,6 +167,29 @@ def main():
     train_loader = DataLoader(train_ds, batch_size=1, shuffle=True, num_workers=2,
                               collate_fn=ue_dual_collate, drop_last=False)
     print(f"train={len(train_ds)} val={len(val_ds)} epochs={args.epochs}")
+
+    # init parity: with the zero-init BEV head, enabled/disabled forwards must be
+    # bitwise identical (otherwise the epoch-0 baseline is not the pure baseline).
+    _p = refiner.bev_provider
+    item0 = val_ds[0]
+    def _one_forward(item, use_bev):
+        ds = DetDataSample(); ds.set_metainfo(item["img_metas"])
+        ds.set_metainfo({"drone_images": item["drone_images"], "intrinsics": item["intrinsics"],
+                         "extrinsics": item["extrinsics"], "scene_center": item["scene_center"]})
+        proc = model.data_preprocessor(
+            {"inputs": [item["img"].to(device)], "data_samples": [ds.to(device)]}, training=False)
+        inputs = proc["inputs"][0] if isinstance(proc["inputs"], (list, tuple)) else proc["inputs"]
+        with torch.no_grad():
+            return model.predict(inputs, proc["data_samples"], rescale=False)[0].pred_instances.masks.cpu().numpy()
+    refiner.bev_provider = lambda: getattr(model_core, "_last_bev", None)
+    model_core.train(); _ = model_core  # keep provider path live
+    a = _one_forward(item0, True)
+    refiner.bev_provider = None
+    b = _one_forward(item0, False)
+    refiner.bev_provider = _p
+    assert np.array_equal(a, b), "init parity violated: BEV branch changes the epoch-0 output"
+    print("init parity OK (bev on/off bitwise identical)")
+
 
     def make_batch(batch, device):
         data_samples = []
@@ -256,8 +285,10 @@ def main():
 
     # ================= epoch-0 baseline =================
     print("===== epoch-0 baseline eval (exact single-stream model) =====", flush=True)
-    history = [dict(epoch=0, **{k: v for k, v in eval_epoch().items()
-                                if k != "per_scene_bf1"})]
+    ev0 = eval_epoch()
+    ev0["engagement_bev_over_p2br"] = 0.0
+    history = [dict(epoch=0, **{k: v for k, v in ev0.items() if k != "per_scene_bf1"})]
+    (out / "per_scene_bf1_epoch0.json").write_text(json.dumps(ev0["per_scene_bf1"]))
     print("epoch0:", history[0], flush=True)
 
     # ================= screening training =================
@@ -266,6 +297,7 @@ def main():
         model.train()
         t0 = time.time()
         optimizer.zero_grad(set_to_none=True)
+        engage = []
         for bi, batch in enumerate(train_loader):
             inputs, data_samples = make_batch(batch, device)
             with torch.amp.autocast("cuda"):
@@ -274,6 +306,9 @@ def main():
             parts = [v for k, v in loss_dict.items()
                      if "loss" in k and isinstance(v, torch.Tensor)]
             loss = sum(parts) / GRAD_ACCUM
+            norms = getattr(refiner, "_last_norms", None)
+            if norms:
+                engage.append((norms["bev"], norms["p2br"]))
             scaler.scale(loss).backward()
             if (bi + 1) % GRAD_ACCUM == 0 or (bi + 1) == len(train_loader):
                 step += 1
@@ -288,7 +323,20 @@ def main():
         ev = eval_epoch()
         ev["epoch"] = epoch
         ev["train_seconds"] = round(time.time() - t0, 1)
+        ev["engagement_bev_over_p2br"] = (float(np.sum([a for a, _ in engage])
+                                                 / max(np.sum([b for _, b in engage]), 1e-9))
+                                          if engage else 0.0)
+        # preregistered gate (i): paired bootstrap vs epoch-0 (10k, seed 20260927)
+        base = history[0]["per_scene_bf1"]
+        cur = ev["per_scene_bf1"]
+        d = np.array(cur) - np.array(base)
+        rng = np.random.RandomState(BOOT_SEED)
+        idx = rng.randint(0, len(d), size=(BOOT_DRAWS, len(d)))
+        ci_lo = float(np.percentile(d[idx].mean(1), 2.5))
+        ev["bf1_delta_vs_epoch0"] = float(d.mean())
+        ev["bf1_delta_ci95"] = [ci_lo, float(np.percentile(d[idx].mean(1), 97.5))]
         history.append({k: v for k, v in ev.items() if k != "per_scene_bf1"})
+        (out / f"per_scene_bf1_epoch{epoch}.json").write_text(json.dumps(cur))
         json.dump(history, (out / "history.json").open("w"), indent=1)
         print(f"epoch {epoch}: BF1={ev['boundary_f1']:.4f} AP={ev['AP']:.4f} "
               f"AP75={ev['AP75']:.4f} ({ev['train_seconds']}s)", flush=True)
