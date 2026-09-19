@@ -169,3 +169,62 @@ python scripts/ue/probe_fusion_information.py --target boundary --out outputs/pr
 
 Expected runtimes ≈ 6 min each on one RTX 4090; logs at
 `work_dirs/ue/probe_fusion_information*.log`.
+
+---
+
+## 7. P5 — decoder boundary-response probe (added 2026-09-19, same frozen lineage)
+
+**Script:** `scripts/ue/probe_decoder_boundary_response.py`. **Output:**
+`outputs/probe_decoder_boundary_response/summary.json` (md5
+`4eb75e1bed27d421381775ae2d03ee53` — recompute at review). **Design:** on the frozen
+single-stream checkpoint, perturb the P2 pyramid map after the neck with
+`alpha * sigma_c * sdf_z * s_c` (GT signed-distance field, per-channel std scaling,
+per-channel boundary-correlation signs estimated on 20 train scenes), then run full
+`predict` and measure COCO segm metrics, raster boundary F1 (tol 3 px), and union-mask
+XOR sensitivity on 40 val scenes. Settings: alpha ladder {0,.1,.25,.5,1.0} aligned;
+random field @.25; mismatched-scene field @.25. Pre-registered interpretation table is
+in the script docstring (written before execution).
+
+### P5 results
+
+| setting | AP | AP50 | AP75 | boundary F1 | sensitivity (XOR frac) |
+|---|---|---|---|---|---|
+| aligned@0.0 | 0.6582 | 0.8215 | 0.7949 | 0.6164 | – |
+| aligned@0.1 | 0.6583 | 0.8218 | 0.7951 | 0.6191 | 0.0856 |
+| aligned@0.25 | 0.6596 | 0.8214 | 0.7922 | 0.6229 | 0.0849 |
+| aligned@0.5 | 0.6616 | 0.8295 | 0.7916 | 0.6263 | 0.0846 |
+| aligned@1.0 | 0.6598 | 0.8287 | 0.7825 | 0.6286 | 0.0843 |
+| random@0.25 | 0.6545 | 0.8197 | 0.7944 | 0.6167 | 0.0859 |
+| mismatch@0.25 | 0.6526 | 0.8205 | 0.7861 | 0.6136 | 0.0859 |
+
+### P5 readout
+
+- **Responsiveness: confirmed.** Outputs change materially (8.5% union XOR) at all
+  alpha>=0.1 — the mask pathway is not invariant to boundary-feature changes.
+- **Correctness and specificity: confirmed for boundary quality.** Aligned field:
+  monotone boundary-F1 gain (+0.0122 at alpha=1.0). Random field: +0.0003 (no generic
+  gain). Mismatched field: −0.0028 (active degradation). The response is
+  boundary-specific with the correct sign.
+- **AP75 mapping: NOT responsive.** Aligned AP75 never exceeds baseline (+0.0001 at
+  alpha=0.1 is noise; −0.0028 at 0.25; −0.0124 at 1.0), while mismatch AP75 degrades
+  (−0.0089) — the metric is asymmetric: it punishes wrong boundary information but does
+  not reward correct boundary information added at the P2 feature level. Overall AP
+  improves mildly at alpha=0.5 (+0.0034), driven by AP50 (+0.0080).
+
+### Revised conclusion set (supersedes Section 4 where conflicting)
+
+1. E4's boundary information is **transmittable**: the decoder converts boundary-aligned
+   feature changes into better boundary quality, specifically and monotonically (P5).
+2. **The expected payoff of the BEV→refiner mechanism is boundary-F1 / mask-quality
+   metrics, NOT segm AP75.** Under this decoder, correct boundary feature improvements
+   do not raise AP75 (asymmetric response). Any experiment arm must therefore
+   pre-register boundary F1 as a co-primary endpoint; mAP/AP75 expectations should be
+   stated as secondary and possibly null.
+3. The blunt global perturbation is a **lower bound**: it applies one GT-derived field to
+   all channels at P2 only, with no RoI focus. A learned, refiner-targeted injection can
+   in principle be more efficient — but AP75 insensitivity is a property of the
+   metric-vs-output relationship and should not be assumed away.
+4. Decision for the project owner (explicitly deferred to review): proceed with the
+   BEV→refiner arm with boundary-F1 as co-primary endpoint, or accept that on this
+   dataset the UAV contribution cannot surface in segm mAP and reframe the paper
+   accordingly (controlled diagnosis + boundary-quality contribution).
