@@ -728,3 +728,49 @@ D3 问更严格的问题：冻结的卫星 FPN 特征是否仍含有、但当前
 D3 只能测试冻结 FPN 内容是否存在超出已匹配 raw score 的线性可读 targetness，不测试训练动力学、
 anchor 几何或检测终局指标。D3 不是 D2 candidate cap 的替代验证，也不能挽回 B3/C1 的 UAV
 负结果。
+
+## 附录 J：立项记录 MHBEV-FUS-20260919（UAV 边际信息冻结探针；冻结、只读、不训练 detector）
+
+**状态：已执行；结果已落盘，待独立复核（见 `docs/reviews/MHBEV-FUS-20260919_probe_results.md`）。**
+本探针由 dual-stream 工作树会话发起，回答 r2/r3（FPN P2/P3 与 image-embedding 零门控注入）
+parity 之后"采取何种融合方式"的决策问题。不训练、不修改任何 detector 或数据；只加载既有
+checkpoint 做冻结前向与线性读出。
+
+### J.1 谱系与输入
+
+- **卫星特征谱系：** `ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth`
+  （原始数据单流对照，best segm 0.7312）。
+- **双流分支谱系：** `ue_dual_c5v2_p2p3_emb_tr128_va259_s44_r1/best_model_epoch85.pth`
+  （r3，best segm 0.7306；geometry_bev/drone_encoder/embedding_gate 权重）。
+- **D2 臂：** 卫星特征改用 `ue_d2_single_tr128_va259_s44/best_model_epoch83.pth`，
+  数据根 `/data1/wangcheng/dataset/ue_coco_with_uav_d2`；UAV 与标定不变。
+- **划分：** 训练拟合 = 128-scene train subset（ratio=.1797752808988764, seed 44）前 80 场景；
+  评估 = val 前 60 场景；与全部既有臂的 train/val 隔离一致。
+- **实现：** `portable_sam2_explicit_coarse/scripts/ue/probe_fusion_information.py`
+  （commit `d40be42`）。特征：SAT=卫星 P3 512-d；LBEV=学习式 GeometrySparseBEV 128-d；
+  DBEV=免学习直接几何采样 BEV（4 level×256-d）；DBEVmis=地面点绕场景中心旋转 90°
+  的标定错配负对照。探针=逐 cell 线性读出（标准化 + 单层 Linear，balanced 1:1 拟合）。
+
+### J.2 四个臂与预注册判读
+
+- **E1 占据率读出（原始数据）：** 逐 cell 建筑占据二分类。判读：SAT+BEV 相对 SAT 的
+  逐场景 AP 差（paired）是否显著>0 —— 回答"UAV 是否有边际信息"。
+- **E1-D2（降质数据）：** 同上，卫星支路换 D2 谱系。回答"降质是否制造可填补缺口"。
+- **E2 门梯度 SNR：** 冻结全部参数、仅放开三个 γ，在 10 个真实训练 batch 上取 dL/dγ；
+  与 weight-decay 拉力 `wd·|γ|` 比较。回答"零门能否自举"。
+- **E3 注入空间结构：** 逐 cell 注入残差幅度与 GT 占据的秩相关、与基底特征的方向余弦。
+- **E4 边界距离回归（后补，占位注册于结果落盘时）：** 逐 cell 到建筑边界的符号距离回归
+  （GT 距离变换 /8），逐场景 Pearson r。回答"UAV 的边际信息是否在边界通道"。
+
+### J.3 结果摘要（详见 review 文件）
+
+E1：SAT AP .8848；SAT+DBEV ΔAP=+.0019（p=.10，n.s.）；DBEVmis .3268 vs DBEV .5395
+（几何依赖成立）。E1-D2：SAT .8744；Δ=+.0017（p=.28，n.s.）。E2：三门梯度 SNR
+.10–.59，低于 wd 拉力 1–2 个数量级。E3：注入幅度与占据 Spearman −0.27。E4：SAT
+r=.519；SAT+DBEV r=.611，Δ=+.0919（t=13.27，p=2.3e-19，58/60 场景改善）。
+
+### J.4 解释边界
+
+探针只测线性可读信息与单谱系 checkpoint，不构成端到端增益承诺；E4 的正结果支持
+"BEV→边界精修通路 + 非零门初始化"的机制方向，但不保证检测器训练后增益成立。在任何
+后续实现/训练被授权前，本附录与 review 文件须先通过独立复核。
