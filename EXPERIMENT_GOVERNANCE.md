@@ -838,3 +838,50 @@ r=.519；SAT+DBEV r=.611，Δ=+.0919（t=13.27，p=2.3e-19，58/60 场景改善�
 - E5 能证的是正确投影 DBEV 在固定线性边界读出中是否有超过 satellite、错配几何及线性
   容量的边际信息；不能证 detector AP、mask 边界改善、真实高度、训练稳定性或 UAV 深度价值。
   任何热启动仍须另立项、经独立实施审计，并以完整标准推理的多指标门判定。
+
+## 附录 L：立项记录 MHBEV-FUS-20260919-H1（BEV→boundary-refiner 热启动筛查；冻结 detector、仅训新增模块）
+
+**状态：预注册；实施须经独立子代理审核 PASS 后方可启动。** 证据链：几何审计（2.4px）
+→ E4 探索（UAV 边界边际 r+0.09）→ E5_PASS 确认（ridge+PCA512+259val bootstrap）
+→ P5 decoder 传输（oracle 场 boundary F1 单调、AP75 不响应）。H1 回答：把 DBEV 注入
+boundary-refiner 通路、以检测器损失直接监督，能否在**不训练 detector 主体**的前提下
+产生可测的边界质量增益。
+
+### L.1 谱系、架构与训练范围
+
+- **初始化：** 双流 ckpt（r3 e85）提供 drone_encoder/geometry_bev；单流 ckpt
+  （r1 e86）覆盖全部 satellite/roi_head 权重。refiner 的 P2 路径权重原样保留。
+- **新增模块（唯一可训练）：** refiner 内增加 BEV 分支
+  `bev_projection(128→64,1×1+GN+GELU) → RoIAlign(32×32, scale=0.125) →
+  bev_conv(64→64,3×3+GN+GELU) → bev_head(64→1,1×1,零初始化)`，
+  `delta_bev = beta·tanh(bev_head)·delta_logit_max·search_support`，
+  `refined = raw_logits + delta_p2br + delta_bev`。门 = 零初始化 bev_head
+  （refiner 自身的温启动设计；γ=1 无衰减，规避 E2 梯度饥饿）。
+  pyramid P2/P3 门强制保持 0；embedding_gate 不构建。非 BEV 路径默认关闭
+  （`bev_channels=0` 时行为与现有 ckpt 完全一致）。
+- **BEV 供给：** dual `extract_feat` 的 BEV 经只读 provider 传递给 refiner；
+  不修改 roi_head/mask_head 调用链签名。
+- **冻结：** 除新增分支外全部参数 `requires_grad=False`（含 refiner 原 P2 路径、
+  LoRA、neck、rpn/roi heads）。可训练参数只归档新增分支。
+- **训练：** 128-scene train subset（ratio/seed 同既有臂）；AdamW lr=1e-3、wd=0.01、
+  grad-accum 8（16 optimizer steps/epoch）、warmup 20 步、cosine 至 0.1×；最多 8 epoch；
+  损失 = trainer 同款 materialized 全损失和（AMP autocast+GradScaler）。
+- **评估：** 每 epoch 在完整 259 val 上：COCO segm AP/AP75/AP50 + 逐场景 raster
+  boundary F1（tol 3px，score≥0.5 阈值并集，逐场景后取均值）；epoch-0 评估 =
+  初始化模型（新增分支贡献严格为 0，即精确单流基线）为配对基线。
+
+### L.2 预注册门（H1_SCREEN_PASS，须全部满足）
+
+在 e∈{4,8} 任一 epoch：(i) boundary-F1(e) − boundary-F1(epoch0) 的 40…(完整 259 场景)
+paired percentile bootstrap（10,000 draws、seed 20260927）95% CI 下界 > 0；
+(ii) AP75(e) − AP75(epoch0) ≥ −0.003；(iii) mean|delta_bev|/mean|delta_p2br|
+（训练 batch 监控）≥ 5× 其 epoch-0 值（分支真实投入）；(iv) 全部 parity/hash/
+no-write 不变量通过。任一不满足为 `H1_SCREEN_NO_BOUNDARY_GAIN`。
+
+### L.3 端点与解释边界
+
+**共同主指标：boundary F1（逐场景均值差 + bootstrap CI）。segm AP75/mAP 为次要端点，
+预期可以为 null（P5 AP75 不对称性）**。H1 是筛查：不宣称完整训练结果；PASS 只授权
+另立全量训练臂提案（多 seed、完整 schedule），FAIL/NULL 则记录并重新决策。归档：
+manifest（git commit/dirty、checkpoint SHA256、seeds）、可训练参数清单、逐 epoch
+指标 JSON/CSV、门判定；资产入数据盘，结论登记路径。
