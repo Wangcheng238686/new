@@ -328,3 +328,102 @@ Rerun the exact all-128-train / `--scene-id 002009` smoke. It remains valid
 only under the previous exit/coverage-only-`INVALID`/nonempty-main-pair and
 all-invariants conditions, and does not authorize full validation,
 intervention, or training.
+
+---
+
+## Result audit — fourth D3 capped smoke (`D3-smoke-main`) — 2026-09-19
+
+**VERDICT: PASS — authorize the complete frozen D3 scan of all 59 targets in
+the 49 affected D1 scenes (with the fixed 85-scene bootstrap universe).** This
+does not authorize any intervention or training; a separate result audit is
+required before any follow-on proposal.
+
+The smoke artifact set is internally complete for its capped scope and exited
+zero. `summary.json` and the manifest report exactly 128 fixed train scenes,
+158 archived train pairs, one processed target scene, one processed target,
+and one valid pair. The sole result state is `INVALID` with the sole reason
+`validation_target_coverage_incomplete`; `bootstrap.json` is correctly `null`
+for this incomplete run. There is no hidden complete-run CI or positive-signal
+claim.
+
+The explicit main-branch validation target is present: `val_pairs.csv` records
+`002009/25` as valid, preserves B0/D1/D3 replay IoU at
+`0.32323628664016724`, and has score gap
+`1.7969869077205658e-06`, well inside the preregistered `<=.02` validation
+threshold. Its pair identity, positive/negative anchor and cell indices,
+row/column coordinates, boxes, scores, classifier outputs, and correct/sham/
+raw win bits are archived.
+
+All stated smoke controls pass across the full 129-scene telemetry population
+(128 train plus 1 validation): normal typed prediction parity, deployed RPN
+typed parity, repeated feature/descriptor hashes, B0/D1 replay/category, and
+no proposal writes are all true. Independently recomputing the archived
+per-level records finds 645 layouts (129 x 5), all with 512 feature channels
+and six anchors per cell, with `prior == sparse_prior` digest on every level;
+all repeat and before/after hashes agree. The sham is a nonidentity permutation
+with distinct typed label hashes and preserved 158/158 class counts.
+
+The train-gap feasibility correction did not contaminate the validation
+condition: train pairs have gap range approximately `3.73e-09` to `.999824`,
+with 155/158 above `.02`, whereas the only validation pair was admitted only
+through the unchanged `gap <= .02` branch. Neither score nor validation rows
+are classifier inputs. The single-pair smoke rates (all 1.0, including sham
+and raw) have no evidentiary meaning and are not used as a D3 result.
+
+The authorized complete run must leave `--scene-id`, `--max-val-scenes`, and
+`--max-train-scenes` unset; retain all 128 training scenes, process all 49
+affected scenes/59 targets, and use the Appendix-I 10,000-draw, seed-20260924
+85-scene bootstrap. Its result must be independently audited against the
+coverage, raw-score-control, sham, CI, and decision gates before any new
+experiment is considered.
+
+---
+
+## Full-run execution finding — `D3-fullval` — 2026-09-19
+
+**VERDICT: FAIL — no D3 result exists; do not authorize any follow-on work.**
+
+The authorized full run exited with code 1 and wrote only `run.log` and
+`exit_code`, not summary, CSV, bootstrap, layout, or manifest artifacts. It
+therefore cannot be audited as a diagnostic result. After the expensive
+128-train / full-validation readouts, complete-run aggregation executes
+`boot=boot(...) if complete and valid else None`. Python consequently treats
+`boot` as a local variable and raises `UnboundLocalError` while resolving the
+right-hand-side callable when `complete and valid` is true. Capped smoke did
+not expose it because its incomplete short-circuit never evaluates that branch.
+
+Apply only the mechanical local-name repair (for example, preserve the
+function `boot` and call its result `bootstrap_result` consistently in summary
+and decision code), then request re-review of the complete-run branch before
+rerunning. Do not reinterpret the failed run as D3 evidence and do not
+authorize intervention or training.
+
+---
+
+## Re-review — full-only bootstrap name-binding repair — 2026-09-19
+
+**VERDICT: PASS — authorize one clean rerun of the same complete D3 frozen
+scan.**
+
+The patch is mechanically limited to renaming the aggregation result from
+`boot` to `bootstrap_result`; the callable remains `boot(...)`. This removes
+the Python local-name binding that caused the full-only `UnboundLocalError`.
+All result consumers now consistently refer to `bootstrap_result`:
+
+- the raw-score-match CI invalidation gate;
+- the correct-minus-sham lower-CI positive decision branch;
+- `summary.json`'s `bootstrap` field; and
+- `bootstrap.json` serialization.
+
+The existing guards remain correct: incomplete runs leave the result `None`
+and are already `INVALID`; complete zero-valid runs are `INVALID` before the
+conditional decision's inner bootstrap access; and complete valid runs call
+the unchanged 85-scene, 10,000-draw, seed-20260924 `boot()` function. No data,
+target lineage, split, pair selection, train/val gap rule, feature forward,
+threshold, bootstrap mathematics, or preregistered decision criterion changed.
+The script passes `py_compile`.
+
+Rerun the complete configuration only (all 128 train scenes; all 49 affected
+validation scenes / 59 targets; no scene or max-scene caps). The prior failed
+attempt supplies no D3 evidence. A successful rerun still requires a separate
+result audit before any intervention or training can be considered.
