@@ -142,8 +142,8 @@ def main():
         inputs = proc["inputs"][0] if isinstance(proc["inputs"], (list, tuple)) else proc["inputs"]
         return inputs, proc["data_samples"]
 
-    def extract_scene(item, rot90=False):
-        """Returns dict of per-cell features/labels on the 128 grid."""
+    def extract_scene(item):
+        """Single predict + both correct and rotated-geometry DBEV sampling."""
         inputs, dss = forward_inputs(item)
         with torch.no_grad():
             vo = model.backbone(inputs)
@@ -158,7 +158,6 @@ def main():
             bev_learned = model.geometry_bev(x[1], fpn, item["intrinsics"][None].to(device),
                                              item["extrinsics"][None].to(device),
                                              item["scene_center"][None].to(device))[0].float()
-            # direct geometric DBEV (1024-d): valid-view averaged sampling of the 4 levels
             h = w = RES
             u = (torch.arange(w, device=device) + .5) * (512.0 / w)
             v = (torch.arange(h, device=device) + .5) * (512.0 / h)
@@ -166,35 +165,40 @@ def main():
             gx = -(vv / 512.0 - .5) * 360.0
             gy = (uu / 512.0 - .5) * 360.0
             c = item["scene_center"].to(device)
-            pts = torch.stack((gx.reshape(-1) * 100 + c[0], gy.reshape(-1) * 100 + c[1],
-                               torch.zeros(h * w, device=device), torch.ones(h * w, device=device)), -1)
-            if rot90:
-                cxy = torch.stack((c[0], c[1]))[None]
-                rel = pts[:, :2] - cxy
-                rot = torch.tensor([[0., -1.], [1., 0.]], device=pts.device)
-                pts = pts.clone()
-                pts[:, :2] = rel @ rot.T + cxy
-            per_level = []
-            for feat in fpn:                            # [5,256,h,w]
-                acc = torch.zeros(256, h * w, device=device)
-                cnt = torch.zeros(h * w, device=device)
-                for vi in range(5):
-                    camc = pts @ item["extrinsics"][vi].cuda().T
-                    z = camc[:, 2]
-                    pix = camc[:, :3] @ item["intrinsics"][vi].cuda().T
-                    uv = pix[:, :2] / pix[:, 2:3].clamp_min(1e-6)
-                    ok = (z > 0) & (uv[:, 0] >= 0) & (uv[:, 0] < 512) & (uv[:, 1] >= 0) & (uv[:, 1] < 512)
-                    grid = ((uv / 512.0) * 2.0 - 1.0)
-                    grid[~ok] = 0.0
-                    smp = F.grid_sample(feat[vi:vi + 1].float(), grid[None, :, None, :],
-                                        mode="bilinear", padding_mode="zeros",
-                                        align_corners=False)[0, :, :, 0]
-                    acc += smp * ok[None].float()
-                    cnt += ok.float()
-                per_level.append(acc / cnt.clamp_min(1.0))
-            direct = torch.cat(per_level, 0)            # [1024, Q]
-            direct_mis = None
-            # model prediction union@0.5 -> 128
+            base = torch.stack((gx.reshape(-1) * 100 + c[0], gy.reshape(-1) * 100 + c[1],
+                                torch.zeros(h * w, device=device),
+                                torch.ones(h * w, device=device)), -1)
+            rot = torch.tensor([[0., -1.], [1., 0.]], device=device)
+            rel = base[:, :2] - c[None, :2]
+            pts_mis = base.clone()
+            pts_mis[:, :2] = rel @ rot.T + c[None, :2]
+
+            def sample(pts):
+                per_level = []
+                for feat in fpn:                        # [5,256,h,w]
+                    acc = torch.zeros(256, h * w, device=device)
+                    cnt = torch.zeros(h * w, device=device)
+                    for vi in range(5):
+                        camc = pts @ item["extrinsics"][vi].cuda().T
+                        z = camc[:, 2]
+                        pix = camc[:, :3] @ item["intrinsics"][vi].cuda().T
+                        uv = pix[:, :2] / pix[:, 2:3].clamp_min(1e-6)
+                        ok = (z > 0) & (uv[:, 0] >= 0) & (uv[:, 0] < 512) & \
+                             (uv[:, 1] >= 0) & (uv[:, 1] < 512)
+                        grid = ((uv / 512.0) * 2.0 - 1.0)
+                        grid[~ok] = 0.0
+                        smp = F.grid_sample(feat[vi:vi + 1].float(), grid[None, :, None, :],
+                                            mode="bilinear", padding_mode="zeros",
+                                            align_corners=False)[0, :, :, 0]
+                        acc += smp * ok[None].float()
+                        cnt += ok.float()
+                    per_level.append(acc / cnt.clamp_min(1.0))
+                return torch.cat(per_level, 0)          # [1024, Q]
+
+            direct = sample(base).reshape(1024, h, w)
+            directmis = sample(pts_mis).reshape(1024, h, w)
+            # deployed-path prediction (single forward; exact single-stream:
+            # gates zeroed and verified at startup)
             outs = model.predict(inputs, dss, rescale=False)
             inst = outs[0].pred_instances
             pm = np.zeros((1024, 1024), np.uint8)
@@ -214,9 +218,10 @@ def main():
         gt_bin = occ.reshape(-1) > 0
         err = (pred128_bin != gt_bin).astype(np.float32)
         return dict(
-            sat=sat.reshape(512, -1).T.cpu().numpy().astype(np.float16),        # [Q,512]
+            sat=sat.reshape(512, -1).T.cpu().numpy().astype(np.float16),
             bev=bev_learned.reshape(128, -1).T.cpu().numpy().astype(np.float16),
-            direct=direct.reshape(1024, -1).T.cpu().numpy().astype(np.float16),  # [Q,1024]
+            direct=direct.reshape(1024, -1).T.cpu().numpy().astype(np.float16),
+            directmis=directmis.reshape(1024, -1).T.cpu().numpy().astype(np.float16),
             band=band, sdf=sdf, err=err, gt=gt_bin, pred=pred128_bin)
 
     # ================= fit pass (train scenes) =================
@@ -231,8 +236,6 @@ def main():
         if len(item["gt_labels"]) == 0: continue
         f = extract_scene(item)
         if f is None: continue
-        fm = extract_scene(item, rot90=True)
-        f["directmis"] = fm["direct"]
         rng = np.random.RandomState(7000 + idx)
         bi = np.where(f["band"] & ((f["err"] > 0) | (f["pred"] > 0)))[0]
         if len(bi) < 50: continue
@@ -318,7 +321,9 @@ def main():
     r2_models[("ridge", "SAT")] = fit_ridge(F2["sat"], y_sdf)
     r2_models[("ridge", "DBEVd")] = fit_ridge(F2["direct"], y_sdf)
     r2_models[("ridge", "SAT+DBEVd")] = fit_ridge(X2_cat, y_sdf)
-    for name, mat in (("SAT", F2["sat"]), ("DBEVd", F2["direct"]), ("SAT+DBEVd", X2_cat)):
+    r2_models[("ridge", "DBEVmis")] = fit_ridge(F2["directmis"], y_sdf)
+    for name, mat in (("SAT", F2["sat"]), ("DBEVd", F2["direct"]), ("SAT+DBEVd", X2_cat),
+                      ("DBEVmis", F2["directmis"])):
         r2_models[("mlp", name)] = fit_mlp(mat, y_sdf, device, copy=copy)
     print("R2 models fitted", flush=True)
 
@@ -344,7 +349,8 @@ def main():
             continue
         # R1 AUC on band cells
         allmats = dict(SAT=f["sat"].astype(np.float32), BEVlearned=f["bev"].astype(np.float32),
-                       DBEVd=f["direct"].astype(np.float32))
+                       DBEVd=f["direct"].astype(np.float32),
+                       DBEVmis=f["directmis"].astype(np.float32))
         allmats["SAT+DBEVd"] = np.concatenate([allmats["SAT"], allmats["DBEVd"]], 1)
         for name, pr in r1_probes.items():
             sc = score_logistic(pr, allmats[name])
@@ -360,7 +366,8 @@ def main():
         n_val += 1
         if n_val % 10 == 0: print(f"  eval {n_val} scenes", flush=True)
 
-    keys = sorted({k for r in per_scene.values() for k in r})
+    keys = sorted({k for r in per_scene.values() for k in r
+                   if k.startswith(("R1_", "R2_"))})
     skipped_eval = sum(1 for r in per_scene.values() if r.get("skipped"))
     commit, dirty = subprocess_git()
     manifest = dict(git_commit=commit, git_dirty=dirty,
@@ -409,7 +416,7 @@ def main():
 
     for cohort in ("first60", "full259"):
         print(f"===== paired marginals on cohort={cohort} =====")
-        for a, b in (("R1_SAT+DBEV", "R1_SAT"), ("R1_SAT+DBEV", "R1_DBEVd"),
+        for a, b in (("R1_SAT+DBEVd", "R1_SAT"), ("R1_SAT+DBEVd", "R1_DBEVd"),
                      ("R2_mlp_SAT+DBEVd", "R2_mlp_SAT"),
                      ("R2_mlp_SAT+DBEVd", "R2_ridge_SAT+DBEVd"),
                      ("R2_ridge_SAT+DBEVd", "R2_ridge_SAT")):
@@ -420,7 +427,7 @@ def main():
                       f"improved {p['improved']}/{p['n']}")
             except Exception as ex:
                 print(f"  paired {a} - {b}: failed {ex}")
-    for a, b in (("R1_SAT+DBEV", "R1_SAT"), ("R1_SAT+DBEV", "R1_DBEVd"),
+    for a, b in (("R1_SAT+DBEVd", "R1_SAT"), ("R1_SAT+DBEVd", "R1_DBEVd"),
                  ("R2_mlp_SAT+DBEVd", "R2_mlp_SAT"), ("R2_mlp_SAT+DBEVd", "R2_ridge_SAT+DBEVd"),
                  ("R2_ridge_SAT+DBEVd", "R2_ridge_SAT")):
         try:
