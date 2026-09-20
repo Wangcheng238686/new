@@ -303,3 +303,40 @@ moved no metric. Combined with the refiner's own trained footprint on its own tr
 data (r3 monitor: Δdice ≈ 0.000, Δboundary-F1 ≈ +0.0007; WHU ablation +0.005 AP), the
 refiner pathway's intrinsic metric ceiling (~10⁻³) — not the fusion mechanics — is the
 binding constraint at this injection site.
+
+---
+
+## 10. P6 — injection-site causal footprint audit (2026-09-19)
+
+**Script:** `scripts/ue/probe_p6_footprint.py`; **output:** `outputs/probe_p6_footprint/`.
+Same frozen single-stream lineage, 40 val scenes, GT-derived boundary field per site
+(per-channel signs calibrated on 20 train scenes), response = Δ vs un-perturbed forward.
+
+| site (α) | ΔAP | ΔAP75 | Δboundary-F1 |
+|---|---|---|---|
+| P2 @1.0 (aligned) | −0.0010 | −0.0135 | **+0.0108** |
+| EMB @0.5 | −0.0218 | −0.0238 | −0.0190 |
+| EMB @1.0 | −0.0399 | −0.0394 | −0.0589 |
+| COARSE @0.5 | −0.0027 | −0.0011 | −0.0015 |
+| COARSE @1.0 | −0.0050 | −0.0099 | −0.0082 |
+| COARSEmis @1.0 (control) | −0.0058 | −0.0116 | −0.0077 |
+
+**Findings:**
+1. **P2 is the only site with a positive boundary response** (+0.0108 F1). Every other
+   site degrades all metrics under the same oracle field.
+2. **The image-embedding canvas is adversarial**: α=0.5 already costs −0.024 AP75 /
+   −0.019 F1; the SAM2 decoder is calibrated to its embedding statistics. This
+   retroactively explains r3's null result independently of gate dynamics.
+3. **The post-refiner coarse-logits pathway has no specificity**: aligned (−0.0082)
+   vs mismatched (−0.0077) responses are indistinguishable — perturbations there are
+   pure harm regardless of correctness. Confirms H1's flatness at the mechanism level.
+4. **The P2 oracle ceiling itself is modest**: +0.011 boundary F1 and AP75 ≈ flat at
+   full strength. The metric payoff of ANY boundary-level feature intervention —
+   learned included — is bounded near +0.01 F1 with no strict-IoU movement on this
+   dataset/architecture.
+
+**Conclusion of the probe series:** the binding constraint was the injection site all
+along, but even the best site's oracle ceiling (~+0.01 F1, no AP75 gain) defines a low
+metric horizon for boundary-information fusion on this dataset. Evidence chain now
+complete: info exists (E5) → P2 is the only viable site (P6) → P2 ceiling is +0.011 F1
+/ flat AP75 (P5) → learned injection at other sites = 0 (H1).
