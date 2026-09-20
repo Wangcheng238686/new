@@ -117,6 +117,7 @@ def main():
     ap.add_argument("--config", default="configs/ue_dual_stream_p2p3_sparse.py")
     ap.add_argument("--data-root", default="/data1/wangcheng/dataset/ue_coco_with_uav")
     ap.add_argument("--epochs", type=int, default=EPOCHS)
+    ap.add_argument("--single-ckpt", default=SINGLE_CKPT)
     ap.add_argument("--lr", type=float, default=LR)
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
@@ -131,7 +132,7 @@ def main():
     model = MODELS.build(cfg.model)
     dual = torch.load(DUAL_CKPT, map_location="cpu", weights_only=False)
     model.load_state_dict(dual.get("model", dual.get("state_dict")), strict=False)
-    single = torch.load(SINGLE_CKPT, map_location="cpu", weights_only=False)
+    single = torch.load(args.single_ckpt, map_location="cpu", weights_only=False)
     single_sd = single.get("model", single.get("state_dict"))
     model_sd = model.state_dict()
     filtered = {k: v for k, v in single_sd.items()
@@ -373,8 +374,8 @@ def main():
     manifest = dict(
         inject=bool(args.inject), git_commit=commit, git_dirty=dirty,
         seeds=dict(env=SEED, train_subset=44, fit=FIT_SEED),
-        single_ckpt_sha256=sha256(SINGLE_CKPT), dual_ckpt_sha256=sha256(DUAL_CKPT),
-        single_ckpt=SINGLE_CKPT, epochs=args.epochs, lr=args.lr, inj_lr=INJ_LR,
+        single_ckpt_sha256=sha256(args.single_ckpt), dual_ckpt_sha256=sha256(DUAL_CKPT),
+        single_ckpt=args.single_ckpt, epochs=args.epochs, lr=args.lr, inj_lr=INJ_LR,
         tau=TAU, warm_fit_r2=(float(r2) if args.inject else None),
         train_scenes=len(train_ds), val_scenes=len(val_ds))
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1))
