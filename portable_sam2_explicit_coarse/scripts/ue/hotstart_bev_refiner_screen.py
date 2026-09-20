@@ -354,6 +354,7 @@ def main():
         ev["epoch"] = epoch
         ev["train_seconds"] = round(time.time() - t0, 1)
         ev["skipped_no_grad_batches"] = skipped_no_grad
+        ev["skipped_no_grad_batches"] = skipped_no_grad
         ev["engagement_bev_over_p2br"] = (float(np.sum([a for a, _ in engage])
                                                  / max(np.sum([b for _, b in engage]), 1e-9))
                                           if engage else 0.0)
