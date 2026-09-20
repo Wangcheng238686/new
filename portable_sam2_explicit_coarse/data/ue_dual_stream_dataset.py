@@ -5,8 +5,12 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
-from PIL import Image
+from PIL import Image, ImageFile
 from torch.utils.data import Dataset
+
+# Full-split training touches scenes the 128-subset never loaded; a few UAV PNGs
+# are byte-truncated in their trailing metadata. Pixel data still decodes.
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 MISSING_SCENE_CENTERS = {"003496", "003497", "003498", "003500"}

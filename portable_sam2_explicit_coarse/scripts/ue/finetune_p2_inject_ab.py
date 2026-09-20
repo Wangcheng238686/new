@@ -210,10 +210,11 @@ def main():
                 for m in item["gt_masks"]:
                     occ = np.maximum(occ, cv2.resize(m, (256, 256), interpolation=cv2.INTER_NEAREST))
                 if occ.sum() == 0: continue
-                sdf128 = cv2.resize(sdf_field(occ), (128, 128), interpolation=cv2.INTER_LINEAR)
+                sdf256 = sdf_field(occ)
+                sdf128 = cv2.resize(sdf256, (128, 128), interpolation=cv2.INTER_LINEAR)
                 sdf128 = (sdf128 - sdf128.mean()) / (sdf128.std() + 1e-6)
                 if n_c < 20:
-                    a = x0.flatten(1).cpu().numpy(); b = sdf128.reshape(-1)
+                    a = x0.flatten(1).cpu().numpy(); b = sdf256.reshape(-1)
                     a = a - a.mean(1, keepdims=True)
                     c = (a @ b) / (np.linalg.norm(a, axis=1) * np.linalg.norm(b) + 1e-9)
                     p2_sign = c if p2_sign is None else p2_sign + c
@@ -223,14 +224,14 @@ def main():
                     continue
                 if n_fit >= 80: continue
                 p2s = np.sign(p2_sign / n_c).astype(np.float32); p2s[p2s == 0] = 1
-                sb = (sigma_bar / n_c)
+                sb = (sigma_bar / n_c).cpu().numpy() if torch.is_tensor(sigma_bar) else (sigma_bar / n_c)
                 T = (sdf128.reshape(-1, 1) * (sb * p2s)[None, :]).astype(np.float32)  # [cells,512]
                 B = bev.reshape(bev.shape[0], -1).T.cpu().numpy()  # [cells,128]
                 rng = np.random.RandomState(FIT_SEED + idx)
                 sel = rng.choice(T.shape[0], size=1500, replace=False)
                 X.append(B[sel]); T_rows.append(T[sel]); n_fit += 1
         p2s = np.sign(p2_sign / n_c).astype(np.float32); p2s[p2s == 0] = 1
-        sb = (sigma_bar / n_c)
+        sb = (sigma_bar / n_c).cpu().numpy() if torch.is_tensor(sigma_bar) else (sigma_bar / n_c)
         Xa = np.concatenate(X).astype(np.float64)
         Ta = np.concatenate(T_rows).astype(np.float64)
         lam = 1e-2 * float((Xa.T @ Xa).diagonal().mean())
