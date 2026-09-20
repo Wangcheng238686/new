@@ -258,7 +258,9 @@ class P2BoundaryRefiner(nn.Module):
         if delta_bev is not None:
             delta = delta + delta_bev
             self._last_norms = dict(
-                bev=float(bev_norm), p2br=float(delta.float().flatten(1).norm(dim=1).sum()))
+                bev=float(bev_norm.detach()), p2br=float(
+                    (self.beta * bounded_source.detach() * search_support.to(bounded_source.dtype)
+                     ).float().flatten(1).norm(dim=1).sum().detach()))
         refined = raw_logits + delta
 
         with torch.no_grad():

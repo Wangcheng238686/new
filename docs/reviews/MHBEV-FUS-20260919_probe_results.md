@@ -270,3 +270,36 @@ from per-scene CSVs; four issues raised). All required fixes have been applied:
 pre-registered E5 (matched-capacity PCA-512 control + full 259-val bootstrap,
 Appendix K) to close the dimension-asymmetry confound on E4. Until E5 passes its
 preregistered gate, the BEV→refiner training arm stays unauthorized.
+
+---
+
+## 9. H1 hot-start screening result review (Appendix L gates, run of 2026-09-19)
+
+**Verdict: `H1_SCREEN_NO_BOUNDARY_GAIN`.** All four preregistered gates evaluated:
+
+- **Gate (i) boundary-F1 bootstrap: FAIL.** Per-epoch ΔBF1 vs epoch-0 (259 scenes,
+  paired bootstrap 10k/seed 20260927): e1 −0.0001 [−0.0005,+0.0004]; e2 +0.0001
+  [−0.0005,+0.0006]; e3 +0.0000; e4 +0.0002 [−0.0004,+0.0007]; e5 +0.0001; e6 −0.0001;
+  e7 −0.0000; e8 +0.0001 [−0.0005,+0.0006]. Every CI straddles zero; gate requires
+  lower bound > 0 at e∈{4,8} — both fail.
+- **Gate (ii) AP75 non-degeneration: PASS** (identical to baseline at 4 decimals
+  throughout: 0.8418).
+- **Gate (iii) engagement: branch engaged massively** — |delta_bev|/|delta_p2br|
+  reached 2.19 (epoch-0 reference 0.0 by zero-init). Positive engagement satisfies
+  the gate's intent under the registered erratum interpretation; it makes the null
+  *more* informative: the branch injected at 2× the P2 pathway's magnitude with zero
+  metric effect.
+- **Gate (iv) invariants: PASS** — init parity bitwise OK; 1 no-grad batch skipped
+  (degenerate scene 002646, consistent with E5's preregistered skip); manifest with
+  seeds/SHA256/IDs archived.
+
+One execution incident (recorded): the first launch crashed at the epoch-1 backward —
+empty-GT batch (scene 002646) makes every loss part a constant under the frozen
+detector. Fixed by skipping no-grad-path batches (counted per epoch: 1). Script diff
+applied after reviewer authorization per its launch conditions.
+
+**Reading:** the fusion branch trained, engaged at 2× the P2 pathway's magnitude, and
+moved no metric. Combined with the refiner's own trained footprint on its own training
+data (r3 monitor: Δdice ≈ 0.000, Δboundary-F1 ≈ +0.0007; WHU ablation +0.005 AP), the
+refiner pathway's intrinsic metric ceiling (~10⁻³) — not the fusion mechanics — is the
+binding constraint at this injection site.

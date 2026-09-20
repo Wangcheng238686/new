@@ -100,15 +100,16 @@ def main():
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     device = torch.device("cuda")
 
+    import random
+    SEED = 20260928
+    torch.manual_seed(SEED); np.random.seed(SEED); random.seed(SEED)
+
     cfg = Config.fromfile(args.config)
     # H1: disable pyramid/embedding injection paths; enable the refiner BEV branch.
     cfg.model.roi_head.mask_head.p2_boundary_refiner_cfg.bev_channels = 128
     cfg.model.roi_head.mask_head.p2_boundary_refiner_cfg.bev_spatial_scale = 0.125
     model = MODELS.build(cfg.model)
 
-    import random
-    SEED = 20260928
-    torch.manual_seed(SEED); np.random.seed(SEED); random.seed(SEED)
     dual = torch.load(DUAL_CKPT, map_location="cpu", weights_only=False)
     m1 = model.load_state_dict(dual.get("model", dual.get("state_dict")), strict=False)
     single = torch.load(SINGLE_CKPT, map_location="cpu", weights_only=False)
@@ -164,6 +165,26 @@ def main():
     train_ds = UEDualStreamDataset(args.data_root, "train", image_size=(1024, 1024),
                                    train_subset=0.1797752808988764, seed=44, load_uav=True)
     val_ds = UEDualStreamDataset(args.data_root, "val", image_size=(1024, 1024), load_uav=True)
+    assert not (set(train_ds.ids) & set(val_ds.ids)), "train/val scene overlap"
+    import subprocess, hashlib
+    def sha256(p):
+        h = hashlib.sha256()
+        with open(p, "rb") as f:
+            for blk in iter(lambda: f.read(1 << 20), b""):
+                h.update(blk)
+        return h.hexdigest()
+    manifest = dict(
+        git_commit=subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True,
+                                  text=True, cwd=project_root).stdout.strip(),
+        git_dirty=subprocess.run(["git", "status", "--short"], capture_output=True,
+                                 text=True, cwd=project_root).stdout,
+        seeds=dict(global_env=SEED, train_subset=44, bootstrap=BOOT_SEED),
+        single_ckpt_sha256=sha256(SINGLE_CKPT), dual_ckpt_sha256=sha256(DUAL_CKPT),
+        train_ids=list(train_ds.ids), val_ids=list(val_ds.ids),
+        trainable_params=[n for n, _ in refiner.named_parameters() if n.startswith("bev_")],
+        epochs=args.epochs, lr=LR, wd=WD, grad_accum=GRAD_ACCUM,
+        warmup_steps=WARMUP_STEPS)
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=1))
     train_loader = DataLoader(train_ds, batch_size=1, shuffle=True, num_workers=2,
                               collate_fn=ue_dual_collate, drop_last=False)
     print(f"train={len(train_ds)} val={len(val_ds)} epochs={args.epochs}")
@@ -182,7 +203,7 @@ def main():
         with torch.no_grad():
             return model.predict(inputs, proc["data_samples"], rescale=False)[0].pred_instances.masks.cpu().numpy()
     refiner.bev_provider = lambda: getattr(model_core, "_last_bev", None)
-    model_core.train(); _ = model_core  # keep provider path live
+    model.eval()  # parity must run in eval mode (epoch-0 baseline is eval-mode)
     a = _one_forward(item0, True)
     refiner.bev_provider = None
     b = _one_forward(item0, False)
@@ -287,6 +308,7 @@ def main():
     print("===== epoch-0 baseline eval (exact single-stream model) =====", flush=True)
     ev0 = eval_epoch()
     ev0["engagement_bev_over_p2br"] = 0.0
+    base_bf1 = list(ev0["per_scene_bf1"])
     history = [dict(epoch=0, **{k: v for k, v in ev0.items() if k != "per_scene_bf1"})]
     (out / "per_scene_bf1_epoch0.json").write_text(json.dumps(ev0["per_scene_bf1"]))
     print("epoch0:", history[0], flush=True)
@@ -298,6 +320,7 @@ def main():
         t0 = time.time()
         optimizer.zero_grad(set_to_none=True)
         engage = []
+        skipped_no_grad = 0
         for bi, batch in enumerate(train_loader):
             inputs, data_samples = make_batch(batch, device)
             with torch.amp.autocast("cuda"):
@@ -309,8 +332,15 @@ def main():
             norms = getattr(refiner, "_last_norms", None)
             if norms:
                 engage.append((norms["bev"], norms["p2br"]))
+            if not loss.requires_grad:
+                # empty-GT batch (e.g. degenerate scene 002646): every loss part
+                # is a constant under the frozen detector -- nothing to train on.
+                skipped_no_grad += 1
+                continue
             scaler.scale(loss).backward()
             if (bi + 1) % GRAD_ACCUM == 0 or (bi + 1) == len(train_loader):
+                if not any(p.grad is not None for p in trainable):
+                    continue  # accum group had no grad-bearing batch
                 step += 1
                 total_steps = args.epochs * math.ceil(len(train_loader) / GRAD_ACCUM)
                 warm = min(1.0, (step + 1) / (WARMUP_STEPS + 1))
@@ -323,13 +353,13 @@ def main():
         ev = eval_epoch()
         ev["epoch"] = epoch
         ev["train_seconds"] = round(time.time() - t0, 1)
+        ev["skipped_no_grad_batches"] = skipped_no_grad
         ev["engagement_bev_over_p2br"] = (float(np.sum([a for a, _ in engage])
                                                  / max(np.sum([b for _, b in engage]), 1e-9))
                                           if engage else 0.0)
         # preregistered gate (i): paired bootstrap vs epoch-0 (10k, seed 20260927)
-        base = history[0]["per_scene_bf1"]
         cur = ev["per_scene_bf1"]
-        d = np.array(cur) - np.array(base)
+        d = np.array(cur) - np.array(base_bf1)
         rng = np.random.RandomState(BOOT_SEED)
         idx = rng.randint(0, len(d), size=(BOOT_DRAWS, len(d)))
         ci_lo = float(np.percentile(d[idx].mean(1), 2.5))
