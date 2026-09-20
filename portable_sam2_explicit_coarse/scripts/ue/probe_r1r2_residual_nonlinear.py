@@ -117,11 +117,16 @@ def main():
     model.load_state_dict(filtered, strict=False)
     assert dropped == [], dropped
     model = model.to(device).eval()
-    # pyramid/embedding gates: single ckpt lacks them -> they stay at init (zero) --
-    # verify empirically once
+    # dual ckpt carries TRAINED gate values; the single overlay lacks gate keys.
+    # Zero them BEFORE any predict, else predictions are not the pure
+    # single-stream baseline and R1 labels are contaminated.
+    gates_before = dict(g2=float(model.p2p3_gate.gamma_p2), g3=float(model.p2p3_gate.gamma_p3))
+    model.p2p3_gate.gamma_p2.data.zero_()
+    model.p2p3_gate.gamma_p3.data.zero_()
+    assert (not hasattr(model, "embedding_gate")) or model.embedding_gate is None
     assert float(model.p2p3_gate.gamma_p2) == 0.0 and float(model.p2p3_gate.gamma_p3) == 0.0
-    assert (not hasattr(model, "embedding_gate")) or model.embedding_gate is None \
-        or float(model.embedding_gate.gamma) == 0.0
+    print(f"gates zeroed: before={gates_before} after=0/0 "
+          "(predictions = exact single-stream)", flush=True)
     print("gates zero-verified: predictions = exact single-stream", flush=True)
 
     train_ds = UEDualStreamDataset(args.data_root, "train", image_size=(1024, 1024),
@@ -321,20 +326,26 @@ def main():
     print("=== eval pass (val scenes) ===", flush=True)
     per_scene = {}
     n_val = 0
+    skipped_eval_scenes = 0
     for idx in range(args.n_val):
         item = val_ds[idx]
         if len(item["gt_labels"]) == 0: continue
         f = extract_scene(item)
         if f is None: continue
         band = f["band"]
-        if band.sum() < 50: continue
-        res = {}
-        # R1 AUC on band cells
-        allmats = dict(SAT=f["sat"].astype(np.float32), DBEV=f["bev"].astype(np.float32),
-                       DBEVd=f["direct"].astype(np.float32))
-        allmats["SAT+DBEV"] = np.concatenate([allmats["SAT"], allmats["DBEVd"]], 1)
+        res = dict(scene_index=idx)
+        if band.sum() < 50:
+            skipped_eval_scenes += 1
+            per_scene[item["img_metas"]["scene_id"]] = dict(scene_index=idx, skipped=True)
+            continue
         if len(np.unique(f["err"][band])) < 2:
-            return None
+            skipped_eval_scenes += 1
+            per_scene[item["img_metas"]["scene_id"]] = dict(scene_index=idx, skipped=True)
+            continue
+        # R1 AUC on band cells
+        allmats = dict(SAT=f["sat"].astype(np.float32), BEVlearned=f["bev"].astype(np.float32),
+                       DBEVd=f["direct"].astype(np.float32))
+        allmats["SAT+DBEVd"] = np.concatenate([allmats["SAT"], allmats["DBEVd"]], 1)
         for name, pr in r1_probes.items():
             sc = score_logistic(pr, allmats[name])
             res[f"R1_{name}"] = float(roc_auc_score(f["err"][band], sc[band]))
@@ -345,11 +356,7 @@ def main():
                   else score_mlp(pr, allmats[name]))
             if np.std(sc) < 1e-9: continue
             res[f"R2_{kind}_{name}"] = float(np.corrcoef(sc, f["sdf"])[0, 1])
-        res["skipped"] = False
-        if res.get("skipped"):
-            per_scene[item["img_metas"]["scene_id"]] = dict(scene_index=idx, skipped=True)
-        else:
-            per_scene[item["img_metas"]["scene_id"]] = res
+        per_scene[item["img_metas"]["scene_id"]] = res
         n_val += 1
         if n_val % 10 == 0: print(f"  eval {n_val} scenes", flush=True)
 
