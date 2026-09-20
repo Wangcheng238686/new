@@ -941,7 +941,9 @@ manifest（git commit/dirty、checkpoint SHA256、seeds）、可训练参数清�
 - **臂：**`SAT+H0`、`SAT+mean(H={0,4,7,10,15,22,32})`，和后者的整套 90°旋转错位几何 sham。每高度均按同一五视角/360m/FP32 合成 1024-d DBEV，再作高度均值，故 H0 与多高度严格同维，排除容量增益。
 - **端点/门：**同 E5 的 train-only ridge、80 valid train scenes、259 val、每场 boundary signed-distance Pearson-r；paired bootstrap 10,000、seed 20260932。`MultiH_correct−H0` 与 `MultiH_correct−MultiH_mis` 两个 CI 下界均 >0 为 PASS；伴随报告每高度有效视角数、跨高度 feature cosine/difference、parity/repeat hash/state。否则 `P10_NO_MULTIHEIGHT_MARGINAL_SIGNAL`，不得训练。
 
-## 附录 M：立项记录 MHBEV-FUS-20260919-H2（BEV→P2 热拟合注入筛查；冻结 detector、仅训注入器）
+## 附录 R：立项记录 MHBEV-FUS-20260919-H2（BEV→P2 热拟合注入筛查；冻结 detector、仅训注入器）
+
+**编号勘误：** 本立项原登记为附录 M（commit 2c86fbf），与 P6 立项（MHBEV-FUS-20260919-P6）的附录 M 编号冲突，重编号为附录 R。唯一实验 ID `MHBEV-FUS-20260919-H2` 不变。
 
 **状态：预注册；实施须独立实施审核 PASS 后启动。** 依据 P6 影响面审计：P2 是唯一
 对边界对齐信息产生正响应的位点（oracle +0.0108 F1），refiner/coarse 位点无特异性

@@ -74,6 +74,8 @@ WD = 0.01
 GRAD_ACCUM = 8
 WARMUP_STEPS = 20
 BOOT_SEED = 20260927
+FIT_SEED = 20260925
+BOOT_DRAWS = 10000
 TAU = 0.25  # warm-fit scale: init perturbation ~ P5 alpha=0.25 response zone
 
 
@@ -217,8 +219,11 @@ def main():
             for m in item["gt_masks"]:
                 occ = np.maximum(occ, cv2.resize(m, (256, 256), interpolation=cv2.INTER_NEAREST))
             if occ.sum() == 0: continue
-            sdf = sdf_field(occ).reshape(-1)
-            T = (sigma_bar[:, None] * p2_sign[:, None] * sdf[None, :]).astype(np.float32)  # [cells,512]
+            # grid choice (fixed, recorded): the fit runs on the NATIVE BEV grid
+            # 128x128 (= satellite P3 space); the sdf field is resampled to it.
+            sdf128 = cv2.resize(sdf_field(occ), (128, 128), interpolation=cv2.INTER_LINEAR)
+            sdf128 = (sdf128 - sdf128.mean()) / (sdf128.std() + 1e-6)
+            T = (sigma_bar[:, None] * p2_sign[:, None] * sdf128.reshape(1, -1)).astype(np.float32)  # [cells,512]
             B = bev.reshape(bev.shape[0], -1).T.cpu().numpy()  # [cells,128]
             rng = np.random.RandomState(FIT_SEED + idx)
             sel = rng.choice(T.shape[0], size=1500, replace=False)
@@ -228,11 +233,13 @@ def main():
     T_all = np.concatenate(T_rows).astype(np.float64)
     lam = 1e-2 * float((X.T @ X).diagonal().mean())
     Wls = np.linalg.solve(X.T @ X + lam * np.eye(X.shape[1]), X.T @ T_all)  # [128,512]
-    fit_pred = X @ Wls * TAU
-    r2 = 1 - ((T_all - fit_pred) ** 2).sum() / ((T_all - T_all.mean(0)) ** 2).sum()
-    print(f"warm fit: cells={len(X)} train R2={r2:.4f} (tau={TAU})", flush=True)
+    r2_unscaled = 1 - ((T_all - X @ Wls) ** 2).sum() / ((T_all - T_all.mean(0)) ** 2).sum()
+    r2_scaled = 1 - ((T_all - X @ Wls * TAU) ** 2).sum() / ((T_all - T_all.mean(0)) ** 2).sum()
+    print(f"warm fit: cells={len(X)} R2_unscaled={r2_unscaled:.4f} R2_scaled(tau={TAU})={r2_scaled:.4f}",
+          flush=True)
 
-    injector.weight.data = torch.from_numpy((Wls * TAU).T.astype(np.float32)).to(device)
+    injector.weight.data = torch.from_numpy(
+        (Wls * TAU).T.astype(np.float32)).view(512, 128, 1, 1).to(device)
     gamma = torch.nn.Parameter(torch.ones((), device=device))
     model.injector = injector
     model.injector_gamma = gamma
@@ -253,7 +260,13 @@ def main():
         x, emb, pos, hrf = orig_extract(batch_inputs, batch_data_samples)
         bev = getattr(model.geometry_bev, "_last_out", None)
         if inject["enabled"] and bev is not None:
-            delta = gamma * injector(bev.float())
+            delta = gamma * injector(bev.float())                     # [1,512,128,128]
+            delta = F.interpolate(delta, size=x[0].shape[-2:], mode="bilinear",
+                                  align_corners=False)                # -> P2 256 res
+            if model.training and torch.is_grad_enabled():
+                ratio = float(delta.float().flatten(1).norm(dim=1).mean()
+                              / x[0].float().flatten(1).norm(dim=1).mean().clamp_min(1e-9))
+                getattr(model, "_engagement", []).append(ratio)
             x = list(x)
             x[0] = (x[0].float() + delta).to(x[0].dtype)
             x = tuple(x)
@@ -263,6 +276,29 @@ def main():
     optimizer = torch.optim.AdamW(trainable, lr=LR, weight_decay=WD)
     scaler = torch.amp.GradScaler("cuda", enabled=True)
 
+    model._engagement = []
+    import subprocess, hashlib
+    def sha256(p):
+        h = hashlib.sha256()
+        with open(p, "rb") as f:
+            for blk in iter(lambda: f.read(1 << 20), b""):
+                h.update(blk)
+        return h.hexdigest()
+    manifest = dict(
+        git_commit=subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True,
+                                  text=True, cwd=project_root).stdout.strip(),
+        git_dirty=subprocess.run(["git", "status", "--short"], capture_output=True,
+                                 text=True, cwd=project_root).stdout,
+        seeds=dict(global_env=SEED, train_subset=44, fit=FIT_SEED, bootstrap=BOOT_SEED),
+        single_ckpt_sha256=sha256(SINGLE_CKPT), dual_ckpt_sha256=sha256(DUAL_CKPT),
+        train_ids=list(train_ds.ids), val_ids=list(val_ds.ids),
+        trainable_params=[n for n, _ in model.named_parameters()
+                          if n.startswith(("injector", "injector_gamma"))],
+        warm_fit=dict(tau=TAU, lam_rel=1e-2, cells=len(X), fit_seed=FIT_SEED,
+                      r2_unscaled=float(r2_unscaled), r2_scaled=float(r2_scaled),
+                      grid="fit on native BEV 128 grid; sdf resampled 256->128"),
+        epochs=args.epochs, lr=LR, wd=WD, grad_accum=GRAD_ACCUM, warmup_steps=WARMUP_STEPS)
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=1))
     train_loader = DataLoader(train_ds, batch_size=1, shuffle=True, num_workers=2,
                               collate_fn=ue_dual_collate, drop_last=False)
     print(f"train={len(train_ds)} val={len(val_ds)} epochs={args.epochs}", flush=True)
@@ -368,13 +404,17 @@ def main():
     print(f"pure baseline: BF1={m_a['boundary_f1']:.4f} AP={m_a['AP']:.4f} AP75={m_a['AP75']:.4f}",
           flush=True)
     base_bf1 = list(bf1_a)
-    gamma.data.fill_(saved_gamma)
     print("===== epoch-0 (b): warm-injected forward =====", flush=True)
-    m_b, _ = eval_epoch()
+    inject["enabled"] = True
+    m_b, bf1_b = eval_epoch()
+    (out / "per_scene_bf1_warm_injected.json").write_text(json.dumps(bf1_b))
     print(f"warm-injected: BF1={m_b['boundary_f1']:.4f} AP={m_b['AP']:.4f} AP75={m_b['AP75']:.4f}",
           flush=True)
+    if m_b["boundary_f1"] == m_a["boundary_f1"] and bf1_b == bf1_a:
+        raise RuntimeError("reference (b) identical to (a): warm injection is dead -- abort")
     history = [dict(epoch=0, mode="pure_baseline", **m_a, gamma=0.0),
-               dict(epoch=0, mode="warm_injected", **m_b, gamma=1.0)]
+               dict(epoch=0, mode="warm_injected", **m_b, gamma=float(gamma))]
+    inject["enabled"] = True  # stay on for training
     json.dump(history, (out / "history.json").open("w"), indent=1)
     (out / "per_scene_bf1_pure_baseline.json").write_text(json.dumps(base_bf1))
     model.train()
@@ -385,7 +425,8 @@ def main():
         model.train()
         t0 = time.time()
         optimizer.zero_grad(set_to_none=True)
-        engage, skipped_no_grad = [], 0
+        model._engagement = []
+        skipped_no_grad = 0
         inject["enabled"] = True
         for bi, batch in enumerate(train_loader):
             inputs, data_samples = make_batch(batch, device)
@@ -395,10 +436,6 @@ def main():
             parts = [v for k, v in loss_dict.items()
                      if "loss" in k and isinstance(v, torch.Tensor)]
             loss = sum(parts) / GRAD_ACCUM
-            with torch.no_grad():
-                d = (gamma * injector(model.geometry_bev._last_out.float())).flatten(1).norm(dim=1)
-                p2n = model.geometry_bev._last_out.new_tensor(1.0)  # relative monitor
-                engage.append(float(d.mean()) / 100.0)
             if not loss.requires_grad:
                 # empty-GT batch (degenerate scene 002646): constant loss under
                 # the frozen detector -- nothing to train on.
@@ -420,7 +457,8 @@ def main():
         ev, bf1s = eval_epoch()
         ev.update(epoch=epoch, train_seconds=round(time.time() - t0, 1),
                   skipped_no_grad_batches=skipped_no_grad, gamma=float(gamma),
-                  engagement_bev_over_p2=int(np.mean([e for e in engage]) * 100) if engage else 0)
+                  engagement_delta_over_p2=(float(np.mean(model._engagement))
+                                             if model._engagement else 0.0))
         d = np.array(bf1s) - np.array(base_bf1)
         rng = np.random.RandomState(BOOT_SEED)
         idx = rng.randint(0, len(d), size=(BOOT_DRAWS, len(d)))
