@@ -1,0 +1,219 @@
+{
+ "R1_BEVlearned": {
+  "mean": 0.5050106446606674,
+  "std": 0.06645447113503868,
+  "n": 259
+ },
+ "R1_DBEVd": {
+  "mean": 0.5216283388171095,
+  "std": 0.05548015489469893,
+  "n": 259
+ },
+ "R1_SAT": {
+  "mean": 0.5524871637426764,
+  "std": 0.08983715156832804,
+  "n": 259
+ },
+ "R1_SAT+DBEVd": {
+  "mean": 0.5520148290072581,
+  "std": 0.08971219719599094,
+  "n": 259
+ },
+ "R2_mlp_DBEVd": {
+  "mean": 0.36325436723181515,
+  "std": 0.154116326057832,
+  "n": 259
+ },
+ "R2_mlp_DBEVmis": {
+  "mean": 0.038475998736033065,
+  "std": 0.10486096329876392,
+  "n": 259
+ },
+ "R2_mlp_SAT": {
+  "mean": 0.7591568123102955,
+  "std": 0.12012600375755582,
+  "n": 259
+ },
+ "R2_mlp_SAT+DBEVd": {
+  "mean": 0.7230650382193333,
+  "std": 0.10901327495796702,
+  "n": 259
+ },
+ "R2_ridge_DBEVd": {
+  "mean": 0.4146398212197619,
+  "std": 0.16517926274485997,
+  "n": 259
+ },
+ "R2_ridge_DBEVmis": {
+  "mean": 0.04859435763938766,
+  "std": 0.14445859229099622,
+  "n": 259
+ },
+ "R2_ridge_SAT": {
+  "mean": 0.7130186347328541,
+  "std": 0.11970907111846665,
+  "n": 259
+ },
+ "R2_ridge_SAT+DBEVd": {
+  "mean": 0.7184998785510859,
+  "std": 0.1136426512898256,
+  "n": 259
+ },
+ "paired[first60] R1_SAT+DBEVd - R1_SAT": {
+  "mean": 3.431708479246694e-05,
+  "ci": [
+   -0.0004929441321870833,
+   0.0005683483606709139
+  ],
+  "improved": 25,
+  "n": 60
+ },
+ "paired[first60] R1_SAT+DBEVd - R1_DBEVd": {
+  "mean": -0.023487483140555897,
+  "ci": [
+   -0.052502292716753815,
+   0.004900654344197052
+  ],
+  "improved": 24,
+  "n": 60
+ },
+ "paired[first60] R2_mlp_SAT+DBEVd - R2_mlp_SAT": {
+  "mean": -0.013564655678476586,
+  "ci": [
+   -0.03200293807131759,
+   0.006291766619969934
+  ],
+  "improved": 23,
+  "n": 60
+ },
+ "paired[first60] R2_mlp_SAT+DBEVd - R2_ridge_SAT+DBEVd": {
+  "mean": 0.006739209093283756,
+  "ci": [
+   -0.005056662057227819,
+   0.018907384875445372
+  ],
+  "improved": 32,
+  "n": 60
+ },
+ "paired[first60] R2_ridge_SAT+DBEVd - R2_ridge_SAT": {
+  "mean": 0.025487118077183925,
+  "ci": [
+   0.01752303054927943,
+   0.034080472336355194
+  ],
+  "improved": 47,
+  "n": 60
+ },
+ "paired[full259] R1_SAT+DBEVd - R1_SAT": {
+  "mean": -0.0004723347354183618,
+  "ci": [
+   -0.0006728789133898558,
+   -0.0002726804282877957
+  ],
+  "improved": 86,
+  "n": 259
+ },
+ "paired[full259] R1_SAT+DBEVd - R1_DBEVd": {
+  "mean": 0.03038649019014846,
+  "ci": [
+   0.017487801731191716,
+   0.043289687669070466
+  ],
+  "improved": 168,
+  "n": 259
+ },
+ "paired[full259] R2_mlp_SAT+DBEVd - R2_mlp_SAT": {
+  "mean": -0.03609177409096226,
+  "ci": [
+   -0.04154412160672052,
+   -0.030288691348139735
+  ],
+  "improved": 34,
+  "n": 259
+ },
+ "paired[full259] R2_mlp_SAT+DBEVd - R2_ridge_SAT+DBEVd": {
+  "mean": 0.004565159668247388,
+  "ci": [
+   -0.00035605531790410964,
+   0.009364478789238264
+  ],
+  "improved": 140,
+  "n": 259
+ },
+ "paired[full259] R2_ridge_SAT+DBEVd - R2_ridge_SAT": {
+  "mean": 0.005481243818231796,
+  "ci": [
+   0.0022078764713296326,
+   0.008853145779172086
+  ],
+  "improved": 147,
+  "n": 259
+ },
+ "paired R1_SAT+DBEVd - R1_SAT": {
+  "mean": -0.0004723347354183618,
+  "ci": [
+   -0.0006728789133898558,
+   -0.0002726804282877957
+  ],
+  "improved": 86,
+  "n": 259
+ },
+ "paired R1_SAT+DBEVd - R1_DBEVd": {
+  "mean": 0.03038649019014846,
+  "ci": [
+   0.017487801731191716,
+   0.043289687669070466
+  ],
+  "improved": 168,
+  "n": 259
+ },
+ "paired R2_mlp_SAT+DBEVd - R2_mlp_SAT": {
+  "mean": -0.03609177409096226,
+  "ci": [
+   -0.04154412160672052,
+   -0.030288691348139735
+  ],
+  "improved": 34,
+  "n": 259
+ },
+ "paired R2_mlp_SAT+DBEVd - R2_ridge_SAT+DBEVd": {
+  "mean": 0.004565159668247388,
+  "ci": [
+   -0.00035605531790410964,
+   0.009364478789238264
+  ],
+  "improved": 140,
+  "n": 259
+ },
+ "paired R2_ridge_SAT+DBEVd - R2_ridge_SAT": {
+  "mean": 0.005481243818231796,
+  "ci": [
+   0.0022078764713296326,
+   0.008853145779172086
+  ],
+  "improved": 147,
+  "n": 259
+ },
+ "manifest": {
+  "git_commit": "ea1b3fdb73e555e9cfdbdc798a0d403532cebcea",
+  "git_dirty": " M ../EXPERIMENT_GOVERNANCE.md\n M scripts/ue/ab_d2_watchdog.sh\n M scripts/ue/probe_sat_rpn_objectness_signal.py\n?? ../docs/MHBEV-DIAG-20260918_D3_conclusion.md\n?? outputs/MHBEV-DIAG-20260918/D3-fullval-rerun1/\n?? outputs/MHBEV-DIAG-20260918/D3-fullval/\n?? scripts/ue/probe_dbev_p2_site.py\n?? scripts/ue/probe_dbev_roi_quality.py\n?? scripts/ue/probe_multih_p3.py\n",
+  "seeds": {
+   "env": 20260929,
+   "boot": 20260930,
+   "fit_cell": "7000+idx"
+  },
+  "gates_before": {
+   "g2": -0.05422713980078697,
+   "g3": -0.007843787781894207
+  },
+  "single_ckpt": "work_dirs/ue/ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth",
+  "dual_ckpt": "work_dirs/ue/ue_dual_c5v2_p2p3_emb_tr128_va259_s44_r1/best_model_epoch85.pth",
+  "n_fit_scenes": 80,
+  "n_val_requested": 259,
+  "r2_fit_protocol_deviation": "80 scenes x 1500 cells, Adam 400 iters full-batch, no early stop (preregistered: 60 fit + 20 early-stop split, 200 iters); both MLP arms symmetric, eval on held-out scenes",
+  "r1_fit_sampling_note": "band cells intersected with (err>0 | pred>0), <=2000/scene",
+  "pos_weight_clamp": "0.2..5 (affects fit balance, AUC is rank-based)",
+  "naming_note": "BEVlearned = learned geometry_bev 128-d; DBEVd = direct geometric 1024-d"
+ },
+ "skipped_eval_scenes": 0
+}
