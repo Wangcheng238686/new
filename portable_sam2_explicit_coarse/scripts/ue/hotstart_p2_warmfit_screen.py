@@ -200,7 +200,7 @@ def main():
             a = a - a.mean(1, keepdims=True)
             c = (a @ b) / (np.linalg.norm(a, axis=1) * np.linalg.norm(b) + 1e-9)
             p2_sign = c if p2_sign is None else p2_sign + c
-            s = x0.flatten(2).std(dim=1)
+            s = x0.reshape(x0.shape[0], -1).std(dim=1)  # [512] per-channel spatial std
             sigma_bar = s if sigma_bar is None else sigma_bar + s
             n_c += 1
     p2_sign = np.sign(p2_sign / n_c).astype(np.float32); p2_sign[p2_sign == 0] = 1
