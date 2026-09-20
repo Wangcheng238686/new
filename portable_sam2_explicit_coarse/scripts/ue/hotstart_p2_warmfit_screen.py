@@ -42,6 +42,7 @@ sys.path.insert(0, str(project_root))
 import cv2
 import numpy as np
 import torch
+import torch.nn.functional as F
 from mmengine.config import Config
 from mmengine.registry import MODELS as MMENGINE_MODELS
 
@@ -223,7 +224,7 @@ def main():
             # 128x128 (= satellite P3 space); the sdf field is resampled to it.
             sdf128 = cv2.resize(sdf_field(occ), (128, 128), interpolation=cv2.INTER_LINEAR)
             sdf128 = (sdf128 - sdf128.mean()) / (sdf128.std() + 1e-6)
-            T = (sigma_bar[:, None] * p2_sign[:, None] * sdf128.reshape(1, -1)).astype(np.float32)  # [cells,512]
+            T = (sdf128.reshape(-1, 1) * (sigma_bar * p2_sign)[None, :]).astype(np.float32)  # [cells,512]
             B = bev.reshape(bev.shape[0], -1).T.cpu().numpy()  # [cells,128]
             rng = np.random.RandomState(FIT_SEED + idx)
             sel = rng.choice(T.shape[0], size=1500, replace=False)
@@ -404,6 +405,7 @@ def main():
     print(f"pure baseline: BF1={m_a['boundary_f1']:.4f} AP={m_a['AP']:.4f} AP75={m_a['AP75']:.4f}",
           flush=True)
     base_bf1 = list(bf1_a)
+    gamma.data.fill_(saved_gamma)
     print("===== epoch-0 (b): warm-injected forward =====", flush=True)
     inject["enabled"] = True
     m_b, bf1_b = eval_epoch()
