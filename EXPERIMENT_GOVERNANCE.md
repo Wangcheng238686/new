@@ -941,6 +941,13 @@ manifest（git commit/dirty、checkpoint SHA256、seeds）、可训练参数清�
 - **臂：**`SAT+H0`、`SAT+mean(H={0,4,7,10,15,22,32})`，和后者的整套 90°旋转错位几何 sham。每高度均按同一五视角/360m/FP32 合成 1024-d DBEV，再作高度均值，故 H0 与多高度严格同维，排除容量增益。
 - **端点/门：**同 E5 的 train-only ridge、80 valid train scenes、259 val、每场 boundary signed-distance Pearson-r；paired bootstrap 10,000、seed 20260932。`MultiH_correct−H0` 与 `MultiH_correct−MultiH_mis` 两个 CI 下界均 >0 为 PASS；伴随报告每高度有效视角数、跨高度 feature cosine/difference、parity/repeat hash/state。否则 `P10_NO_MULTIHEIGHT_MARGINAL_SIGNAL`，不得训练。
 
+## 附录 R：立项记录 MHBEV-FUS-20260920-P11（单高度扫描冻结探针）
+
+**状态：预注册；冻结、只读。** P10 的高度平均可能稀释稀有有效高度。P11 不学习高度注意力，只对固定 `H={0,4,7,10,15,22,32}m` 的每个单高度分别跑与 E5 同维的 `SAT+DBEV_H` readout，并对每个高度配套 90°错位 sham。
+
+- **主判定：**每个非零高度相对 H0 的 259-scene paired bootstrap；为控制 6 个预注册比较，使用同时 bootstrap：每 draw 取六个非零高度增量的最大值，95% 分位数为家族阈值。只有至少一个非零 H 的 observed mean 超过阈值，且该 H 的 `correct−mis` 普通 paired-bootstrap CI 下界 >0，才为 `P11_NONZERO_HEIGHT_SIGNAL`。其余为 `P11_NO_NONZERO_HEIGHT_SIGNAL`。
+- **解释边界：**PASS 仅说明存在一个全局可读的固定非零高度，不说明实例高度或授权多高度训练；若所有 H 都不超 H0，则无深度下关闭固定高度扫描，后续只能等深度/可见性信息。
+
 ## 附录 R：立项记录 MHBEV-FUS-20260919-H2（BEV→P2 热拟合注入筛查；冻结 detector、仅训注入器）
 
 **编号勘误：** 本立项原登记为附录 M（commit 2c86fbf），与 P6 立项（MHBEV-FUS-20260919-P6）的附录 M 编号冲突，重编号为附录 R。唯一实验 ID `MHBEV-FUS-20260919-H2` 不变。
@@ -982,3 +989,41 @@ manifest 不变量通过。任一不满足 = `H2_SCREEN_NO_BOUNDARY_GAIN`。
 全微调（门饿死在注入比 0.05%）；H2 = 热拟合 conv（第 0 步即边界信息性）+γ=1+
 冻结 detector 短程筛查+边界 F1 主指标——每个差异都由探针证据（E2/E4/E5/P5/P6/H1）
 单独支撑。
+
+## 附录 S：立项记录 MHBEV-FUS-20260919-R1/R2（模型残差条件化 + 非线性场读出；冻结、只读）
+
+**状态：预注册；实施须独立审核 PASS 后与运行。** 背景：对抗审查判定 C2/C4/C5
+UNSAFE（H1 监督被 SHAPE_DENSE_DETACH 切断、D2/C30 被饿死零门污染、oracle 天花板
+被过度外推），且 D2 边界探针确认降质下边际 +0.0965 r。原始数据上尚存两个未决
+信息问题，R1/R2 以加强仪器一次跑清：
+
+### S.1 R1 模型残差条件化探针（决策相关信息的直接度量）
+
+- **问题：** DBEV 是否在**边界搜索带内**预测"单流模型的预测与 GT 的分歧"（误差
+  cell），超过 SAT 的能力？这是所有损失驱动融合能消费的信息的精确形态。
+- **标签：** 128² P3 格上，搜索带（GT 边界膨胀 4 cell）内 `err = (pred_union@0.5
+  != GT)`；带外不计。pred 取冻结单流 r1 e86 的逐场景 union 掩码（阈值 0.5）。
+- **特征/臂：** SAT（P3 512-d）、DBEV（直采 1024-d）、SAT+DBEV（1536-d）；逐臂
+  标准化 + L2 逻辑回归（C=0.1）。拟合 = 80 train 场景带内 cell（≤2000/场，
+  ~160k cell——相对 P8/P9 的 1024 维×80 场景 ridge 为功率加强版）。
+- **指标：** 逐场景带内 AUC（60 val 场景），paired bootstrap（10k、seed
+  20260930）对 `SAT+DBEV − SAT`。
+- **R1_MARGINAL_PASS：** ΔAUC 的 CI 下界 > 0。
+
+### S.2 R2 非线性场读出探针（H2 瓶颈归因判定）
+
+- **问题：** 线性 ridge 之外，小型 MLP 能否从 DBEV 提取显著更多的边界场信息？
+  判定"H2 零收益是 1×1 conv 线性瓶颈"还是"线性读出即信息上限"。
+- **设置：** 目标 = 128² sdf（z-score）；拟合 = 60 train 场景×1500 cell；早停 =
+  另 20 train 场景；测试 = 259 val 逐场景 Pearson r。模型：ridge（E5 复现）与
+  MLP `[in→256 GELU→64 GELU→1]`（Adam 1e-3、200 iter、标准化输入）；臂：SAT、
+  DBEV、SAT+DBEV、DBEVmis（旋转 90° 对照）。
+- **R2_UNLOCK：** MLP(SAT+DBEV) − MLP(SAT) 的 CI 下界 > 0 **且**
+  MLP(SAT+DBEV) − ridge(SAT+DBEV) ≥ +0.02 r。若 MLP≈ridge 且边际≈0 → 原始数据
+  特征融合正式关闭。
+
+### S.3 解释边界
+
+两探针都是冻结特征线性/浅层读出，不构成端到端增益承诺；R1_PASS 授权"残差
+监督注入"训练臂提案，R2_UNLOCK 授权"加强分支容量"的训练臂提案；两者皆阴性
+则原始数据特征融合路线关闭（记录并转 D3/数据设计）。
