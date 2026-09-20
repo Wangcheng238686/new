@@ -340,3 +340,45 @@ along, but even the best site's oracle ceiling (~+0.01 F1, no AP75 gain) defines
 metric horizon for boundary-information fusion on this dataset. Evidence chain now
 complete: info exists (E5) → P2 is the only viable site (P6) → P2 ceiling is +0.011 F1
 / flat AP75 (P5) → learned injection at other sites = 0 (H1).
+
+---
+
+## 11. H2 warm-fitted P2-injection screening result review (Appendix R gates)
+
+**Verdict: `H2_SCREEN_NO_BOUNDARY_GAIN`.** Run completed 8 epochs (2026-09-20);
+crash-free after the flatten(2) identity-bug fix (commit 0328574). Key numbers
+(`history.json`):
+
+| epoch | boundary F1 | ΔBF1 vs pure baseline | CI95 | AP75 | γ |
+|---|---|---|---|---|---|
+| 0 (a) pure | 0.6252 | — | — | 0.8418 | 0 |
+| 0 (b) warm-injected | 0.6253 | +0.0000 | — | 0.8417 | 1.0 |
+| 4 | 0.6238 | **−0.0014** | [−0.0020, −0.0008] | 0.8418 | 0.960 |
+| 8 | 0.6238 | **−0.0014** | [−0.0020, −0.0008] | 0.8415 | 0.946 |
+
+- **Gate (i) boundary-F1 bootstrap: FAIL** — both checkpoint epochs have CIs
+  entirely BELOW zero (small but significant degradation, not noise).
+- **Gate (ii) AP75: PASS** (−0.0003, within the −0.003 tolerance).
+- **Gate (iii) engagement: FAIL** — γ drifted only 5.4% from init (gate ≥20%);
+  injection magnitude stable and nonzero (warm fit active by construction).
+- **Gate (iv) invariants: PASS** (init parity, skip count = 1 (002646), manifest
+  with seeds/SHA256/IDs, warm-fit R² archived: unscaled 0.2499 / scaled 0.1015).
+
+### The decisive number
+
+The warm-fitted injection at init (τ=0.25, the P5 α=0.25-equivalent zone where the
+ORACLE perturbation gave +0.0065 BF1) produced **+0.0000**. The fitted
+approximation retains ~1–2% of the oracle's effect. E5's marginal information is
+about the scene's boundary LAYOUT (agreement with the GT distance field); what the
+detector loss can consume is information about the MODEL'S OWN DISAGREEMENT with
+GT (its residual errors). The coarse masks already encode the predictable layout
+(dice 0.95); the BEV's marginal +0.09 r of layout information is therefore largely
+redundant at the point of consumption.
+
+### Probe-series conclusion (E1–E5, P5, P6, H1, H2)
+
+On this dataset+architecture, the UAV boundary signal (i) exists, (ii) is
+geometry-specific, (iii) is injectable only at P2, and (iv) converts to ~zero
+mask-quality change because it duplicates what the trained satellite stream
+already predicts. Feature-level UAV fusion on the original UE data is exhausted:
+every preregistered screening gate and every oracle ceiling has been measured.
