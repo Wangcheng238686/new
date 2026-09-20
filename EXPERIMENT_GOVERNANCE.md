@@ -888,3 +888,95 @@ no-write 不变量通过。任一不满足为 `H1_SCREEN_NO_BOUNDARY_GAIN`。
 另立全量训练臂提案（多 seed、完整 schedule），FAIL/NULL 则记录并重新决策。归档：
 manifest（git commit/dirty、checkpoint SHA256、seeds）、可训练参数清单、逐 epoch
 指标 JSON/CSV、门判定；资产入数据盘，结论登记路径。
+
+## 附录 M：立项记录 MHBEV-FUS-20260919-P6（DBEV 注入位置冻结因果探针）
+
+**状态：预注册；冻结、只读，不训练、不写 checkpoint。** P6 区分“UAV 边界信息不存在”与“作为末端 mask-logit 残差注入过晚”。它不替代 H1；H1 是末端残差筛查，P6 是下一位置的因果诊断。
+
+### M.1 固定设计
+
+- 沿用 E5 的双 checkpoint overlay、固定 train 的前 80 个边界标签有效 scene 拟合、完整 259-val。DBEV 是同一 360m/z=0/FP32/W2C 五视角 frozen-UAV-FPN 采样；val 推理绝不读取 GT。
+- train-only ridge 把 `SAT-P3(512)+DBEV(1024)` 读为 128² signed boundary distance；上采样为 256²场，并用 train-only 的 20-scene P2 通道相关符号、P5 固定尺度及 `alpha=0.5` 写入**neck 后 P2**。UAV 场由此在 RPN、ROI 与原 decoder 之前同卫星特征交互，而非另起末端 logit 头。
+- 唯一变量为 DBEV 几何：`zero`（严格不注入）、`correct`、`mis`（绕场景中心旋转 90°）。模型、卫星输入、阈值与候选规则相同。P2 臂允许 proposal/bbox 改变，因为它们是被测中介；禁止手工写 proposal 或改变排序。
+
+### M.2 四要素与门
+
+- **主指标：**完整 259 val 的逐场景 union-mask boundary-F1（tol=3px、score>=0.5），`correct-zero` 的 image-paired bootstrap 95% CI（10,000 draws, seed 20260929）。**伴随：**`correct-mis` CI、segm/bbox AP/AP50/AP75、输出 XOR、P2 注入/base norm、有效视角覆盖及 proposal 数。
+- **选择口径：**唯一固定 `alpha=0.5` 的完整一次 259-val 扫描；不选 peak、scene 或阈值。
+- **P6_EARLY_SITE_PASS：**zero-arm 逐字段 parity 与 model-state/no-proposal-write 不变量通过；correct-zero 和 correct-mis 的 BF1 CI 下界均 >0，且 correct bbox AP 不低于 zero 0.002 以上。否则为 `P6_NO_EARLY_SITE_EVIDENCE`。PASS 只授权讨论 P2/ROI 交互热启动；FAIL 关闭“DBEV 经 P2 boundary field”路线。
+
+## 附录 N：立项记录 MHBEV-FUS-20260920-P7（DBEV-only P2 注入场冻结探针）
+
+**状态：预注册；冻结、只读，不训练、不写 checkpoint。** P6 的 `SAT+DBEV` 读出使 correct 与 mis 共用 SAT-P3 项，削弱了几何 sham 的判别力。P7 只替换这一场生成器，以检验真正的 UAV 边际场能否在早期 P2 位置传输。
+
+### N.1 固定设计
+
+- 使用 P6 相同的 checkpoint overlay、固定 80 个 train-valid scene、259-val、360m/z=0/FP32 DBEV 提取、P2 通道符号、`alpha=0.5`、zero/correct/mis 三臂、score>=0.5 union boundary-F1、以及 RPN/ROI/decoder 的同一前置 P2 注入位置。
+- 唯一变化：train-only ridge 的输入从 `SAT-P3+DBEV` 改为**仅 `DBEV(1024)`**。correct 与 mis 场由各自 DBEV 独立生成；卫星 P3 不进入场预测器。训练/val 均不使用 val GT，GT 只用于评价和 train-only P2 方向标定。
+
+### N.2 四要素、遥测及门
+
+- **主指标：**259-val `correct-zero` union boundary-F1 paired bootstrap 95% CI；**伴随：**`correct-mis` 同一 CI、COCO segm/bbox AP/AP50/AP75、P2 residual/base norm、prediction/proposal count、zero-hook 全 259 场 typed parity 与 state hash。bootstrap 10,000 draws，seed `20260930`；唯一选择口径为一次固定 `alpha=0.5` 扫描。
+- **P7_UAV_EARLY_SITE_PASS：**所有不变量通过；`correct-zero` 与 `correct-mis` 的 BF1 CI 下界均 >0；correct bbox AP 相比 zero 不低于 0.002。否则为 `P7_NO_UAV_SPECIFIC_EARLY_SITE_EVIDENCE`，不得训练。该门能证正确 UAV 几何的早期 P2 传输，不证完整训练或泛化。
+
+## 附录 O：立项记录 MHBEV-FUS-20260920-P8（条件化 RoI 质量信息冻结探针）
+
+**状态：预注册；冻结、只读，不训练、不改预测。** P7 排除了把 UAV 压成共享单通道边界场并写入 P2 的路线；P8 不再干预 feature map，而问：在单流检测器已经给出候选实例时，正确 DBEV 是否能提供该候选 mask 需要如何/是否纠错的边际信息。
+
+- **数据/特征：**固定 E5 overlay 与 80 个 train-valid scenes/259 val；每个场景运行未干预 single-stream predict，取 score>=0.5 的预测实例，与同场 GT 的最大 mask-IoU 作为冻结目标。对每实例 bbox 在 P3(128²)上平均池化 SAT(512)、DBEV_correct(1024) 与 DBEV_mis(1024)。无匹配或空预测均登记，不删除场景。
+- **读出/对照：**train-only standardization + deterministic ridge，三臂 `SAT`、`SAT+correct`、`SAT+mis`；目标为预测实例 mask-IoU。主指标为每 val scene 预测值与真实 IoU 的 Pearson-r；空/常数场的 r 固定为 0，所有 259 场纳入。输出、proposal absence、feature-repeat hash 与 state hash 必须不变。
+- **四要素与门：**选择口径为一次完整 259-val；paired bootstrap 10,000、seed 20260931。主门 `SAT+correct − SAT` CI 下界 >0，几何门 `SAT+correct − SAT+mis` CI 下界 >0；伴随为有效 ROI 数、IoU 均值及 correct/mis 特征差。两门通过仅授权“ROI 条件化质量/调制”热启动设计，绝不授权直接 AP 声称；任一失败为 `P8_NO_CONDITIONAL_ROI_SIGNAL`。
+
+## 附录 P：立项记录 MHBEV-FUS-20260920-P9（条件化边界风险冻结探针）
+
+**状态：预注册；冻结、只读。** P8 的 IoU 目标不是 E5 已证实的边界通道。P9 保持 P8 所有 checkpoint、RoI、80/259、DBEV、correct/mis、ridge 与不变量，只将监督目标替为预测实例与其最大-IoU GT 对的 raster boundary-F1（tol=3px）；低于 `0.60` 定义 boundary-bad。
+
+- **主指标：**259-scene per-scene Pearson-r 的 `SAT+correct − SAT` 与 `SAT+correct − SAT+mis` paired bootstrap CI（10,000, seed 20260931）；两下界均 >0 才通过。**伴随：**全 val 的 boundary-bad AUROC/AUPRC（以 `-predicted boundary-F1` 为风险）、预测实例数、bad prevalence 与 risk-coverage 曲线。选择口径固定为一次全量扫描。
+- **解释边界：**PASS 仅证明 UAV 可用于实例边界风险估计/选择性人工复核，不证明 mask 或 bbox AP 增益，也不授权检测器训练；FAIL 为 `P9_NO_BOUNDARY_RISK_SIGNAL`。
+
+## 附录 Q：立项记录 MHBEV-FUS-20260920-P10（多高度 P3 信息冻结探针）
+
+**状态：预注册；冻结、只读。** P10 在 E5 已通过的 P3/lattice/DBEV 契约上，只检验没有深度时的多高度假设是否增加边界可读信息；高度不是实际建筑高度。
+
+- **臂：**`SAT+H0`、`SAT+mean(H={0,4,7,10,15,22,32})`，和后者的整套 90°旋转错位几何 sham。每高度均按同一五视角/360m/FP32 合成 1024-d DBEV，再作高度均值，故 H0 与多高度严格同维，排除容量增益。
+- **端点/门：**同 E5 的 train-only ridge、80 valid train scenes、259 val、每场 boundary signed-distance Pearson-r；paired bootstrap 10,000、seed 20260932。`MultiH_correct−H0` 与 `MultiH_correct−MultiH_mis` 两个 CI 下界均 >0 为 PASS；伴随报告每高度有效视角数、跨高度 feature cosine/difference、parity/repeat hash/state。否则 `P10_NO_MULTIHEIGHT_MARGINAL_SIGNAL`，不得训练。
+
+## 附录 M：立项记录 MHBEV-FUS-20260919-H2（BEV→P2 热拟合注入筛查；冻结 detector、仅训注入器）
+
+**状态：预注册；实施须独立实施审核 PASS 后启动。** 依据 P6 影响面审计：P2 是唯一
+对边界对齐信息产生正响应的位点（oracle +0.0108 F1），refiner/coarse 位点无特异性
+（aligned≈mismatch 均有害），EMB 画布对抗性。H1 证明随机初始化分支在检测器损失下
+学不出 oracle 方向；E2 证明零门不能自举。H2 = 正确位点 × 正确初始化 × 正确监督的
+最小组合。
+
+### M.1 谱系、模块与热拟合
+
+- **谱系同 H1**（单流 r1 e86 覆盖 + r3 e85 冻结 drone/BEV）。
+- **注入模块（唯一可训练）：** `BEVP2Injector`：`conv 128→512 (1×1, no bias)` + 标量
+  γ（init=1.0，可训练），`P2' = P2 + γ·conv(BEV)`。仅注入 P2；P3 门保持 0；无
+  embedding gate。
+- **热拟合（本设计的核心）：** 在 80 train 场景的 cell 子集上，以闭式岭回归拟合
+  conv 权重 W，目标 `T[c] = σ̄_c · s_c[c] · sdf_z(cell)`（σ̄_c = 校准场景 x0 逐通道
+  std 均值；s_c = 通道符号；sdf_z = 256-res GT 符号距离场；λ=1e-2·trace 缩放），
+  拟合解整体缩放 τ=0.25 写入 conv（≈P5 的 α=0.25 oracle 响应区，BF1 +0.0065）。
+  拟合仅用 train 场景；val 禁止。拟合的 train cell 拟合 R²、val cell R² 归档。
+- **训练：** 与 H1 同（8 epoch、AdamW lr=1e-3/wd=0.01、accum 8、warmup 20、AMP、
+  materialized 全损失）。空 GT batch（002646）跳过。
+- **评估：** 每 epoch 完整 259 val；epoch-0 记录**两个**参考：
+  (a) 纯基线（γ=0 前向 = 精确单流）；(b) 热启动注入前向（γ=1 + 热拟合 conv）。
+  判读基准为 (a)；(b)−(a) 单独归档（热拟合近似保真度）。
+
+### M.2 预注册门（H2_SCREEN_PASS，全部满足）
+
+e∈{4,8}：(i) boundary-F1(e) − boundary-F1(纯基线 a) paired bootstrap（10k、seed
+20260927）95% CI 下界 > 0；(ii) AP75(e) − AP75(a) ≥ −0.003；(iii) γ(e) 偏离 init
+≥ 20% 且 engagement（|delta|/|P2| 范数比）> 0（注入通路活跃）；(iv) parity/hash/
+manifest 不变量通过。任一不满足 = `H2_SCREEN_NO_BOUNDARY_GAIN`。
+
+### M.3 端点与解释边界
+
+同 H1：boundary F1 共同主指标；AP75/mAP 次要且可 null。筛查口径；PASS 只授权
+另立全量训练臂提案。与 r2 的区别（预注册理由）：r2 = 零门+随机 conv+100 epoch
+全微调（门饿死在注入比 0.05%）；H2 = 热拟合 conv（第 0 步即边界信息性）+γ=1+
+冻结 detector 短程筛查+边界 F1 主指标——每个差异都由探针证据（E2/E4/E5/P5/P6/H1）
+单独支撑。
