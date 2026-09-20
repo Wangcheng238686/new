@@ -222,7 +222,7 @@ def main():
             bev=bev_learned.reshape(128, -1).T.cpu().numpy().astype(np.float16),
             direct=direct.reshape(1024, -1).T.cpu().numpy().astype(np.float16),
             directmis=directmis.reshape(1024, -1).T.cpu().numpy().astype(np.float16),
-            band=band, sdf=sdf, err=err, gt=gt_bin, pred=pred128_bin)
+            band=band, sdf=sdf.reshape(-1), err=err, gt=gt_bin, pred=pred128_bin)
 
     # ================= fit pass (train scenes) =================
     print("=== fit pass (train scenes) ===", flush=True)
