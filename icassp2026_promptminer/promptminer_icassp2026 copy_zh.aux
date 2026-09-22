@@ -14,17 +14,17 @@
 \citation{airwaysam}
 \citation{samrefiner}
 \@writefile{toc}{\contentsline {section}{\numberline {1} INTRODUCTION}{1}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Motivation for instance-local shape. (a) A candidate box specifies the spatial extent of adjacent buildings but does not explicitly provide a local shape condition for mask decoding (zoomed view). (b) Ground-truth instance masks reveal the local shape and boundary information needed to distinguish adjacent instances.}}{1}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces 实例局部形状的动机示例。(a) 候选框给出相邻建筑的空间范围，但未显式提供用于掩码解码的局部形状条件（局部放大）。(b) 真实实例掩码呈现了区分相邻实例所需的局部形状和边界信息。}}{1}{}\protected@file@percent }
 \newlabel{fig:motivation}{{1}{1}{}{figure.1}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Overview of PromptMiner-SAM2. The diagram shows the main data flow from the input image and candidate-region features through SAM2 mask decoding to final instance masks. CSPM mines local shape conditions and generates automatic prompts, whereas UDR selectively corrects uncertain regions in the initial masks.}}{2}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces PromptMiner-SAM2 的整体框架。图中展示了从输入影像、候选区域级特征和 SAM2 掩码解码到最终实例掩码的主要数据流。CSPM 负责挖掘局部形状条件并生成自动提示，UDR 负责对初始掩码中的不确定区域进行选择性修正。}}{2}{}\protected@file@percent }
 \newlabel{fig:arch}{{2}{2}{}{figure.2}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {2} METHOD}{2}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.1} Overall Architecture}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.2} Coarse-Shape Prompt Mining}{2}{}\protected@file@percent }
-\newlabel{eq:coarse}{{1}{2}{}{equation.1}{}}
 \citation{whu}
 \citation{nwpu}
 \citation{nwpu_instance}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2} Coarse-Shape Prompt Mining}{3}{}\protected@file@percent }
+\newlabel{eq:coarse}{{1}{3}{}{equation.1}{}}
 \newlabel{eq:native-decoding}{{2}{3}{}{equation.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3} Uncertainty-Guided Decoder-Tail Refinement}{3}{}\protected@file@percent }
 \newlabel{eq:udpr-selection}{{3}{3}{}{equation.3}{}}
@@ -33,7 +33,6 @@
 \newlabel{eq:udpr-scatter}{{6}{3}{}{equation.6}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {3} EXPERIMENTS}{3}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1} Experimental Setup}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2} Comparative Analysis}{3}{}\protected@file@percent }
 \citation{maskrcnn}
 \citation{msrcnn}
 \citation{htc}
@@ -44,16 +43,17 @@
 \citation{rs4d}
 \citation{rsiisn}
 \citation{rsprompter}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Sensitivity of $K$ on the NWPU VHR-10 dataset under a common development protocol.}}{4}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces 在统一开发协议下，$K$ 在 NWPU VHR-10 数据集上的敏感性分析。}}{4}{}\protected@file@percent }
 \newlabel{tab:k-sensitivity}{{1}{4}{}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2} Comparative Analysis}{4}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces NWPU VHR-10 数据集上的提示路径消融；$P$、$B$ 和 $M$ 分别表示点、框和稠密掩码提示，UDR 表示不确定性引导的解码器尾部细化。}}{4}{}\protected@file@percent }
+\newlabel{tab:ablation}{{3}{4}{}{table.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.3} Ablation Study}{4}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {4} CONCLUSION}{4}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Qualitative comparison on WHU and NWPU VHR-10. From left to right, the columns show the input image, ground truth, and predictions of (a) MaskDINO, (b) RSPrompter, (c) CondInst, (d) YOLO11, (e) HTC, (f) Mask R-CNN, (g) M2F, and PromptMiner-SAM2 (ours).}}{5}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces WHU 和 NWPU VHR-10 数据集上的定性比较。从左至右，各列依次为输入图像、真实标注、(a) MaskDINO、(b) RSPrompter、(c) CondInst、(d) YOLO11、(e) HTC、(f) Mask R-CNN、(g) M2F 以及 PromptMiner-SAM2（本文方法）的预测结果。}}{5}{}\protected@file@percent }
 \newlabel{fig:qualitative}{{3}{5}{}{figure.3}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Comparative analysis on the WHU dataset and the NWPU VHR-10 dataset. Each entry reports AP / AP$_{50}$ / AP$_{75}$ (\%) for the Bbox and Mask columns.}}{5}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces WHU 数据集和 NWPU VHR-10 数据集上的比较分析。边界框和掩码列的每个条目均报告 AP / AP$_{50}$ / AP$_{75}$（\%）。}}{5}{}\protected@file@percent }
 \newlabel{tab:comparison}{{2}{5}{}{table.2}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Prompt-path ablation on the NWPU VHR-10 dataset; $P$, $B$, and $M$ denote point, box, and dense-mask prompts, and UDR denotes uncertainty-guided decoder-tail refinement.}}{5}{}\protected@file@percent }
-\newlabel{tab:ablation}{{3}{5}{}{table.3}{}}
 \bibstyle{IEEEbib}
 \bibcite{rsiisn}{1}
 \bibcite{p2pformer}{2}
@@ -70,6 +70,7 @@
 \bibcite{rsprompter}{13}
 \bibcite{aopsam}{14}
 \bibcite{pasam}{15}
+\@writefile{toc}{\contentsline {section}{\numberline {5} References}{6}{}\protected@file@percent }
 \bibcite{samrefiner}{16}
 \bibcite{pointrend}{17}
 \bibcite{directsamrs}{18}
@@ -78,5 +79,4 @@
 \bibcite{nwpu}{21}
 \bibcite{nwpu_instance}{22}
 \bibcite{yolo11}{23}
-\@writefile{toc}{\contentsline {section}{\numberline {5} References}{6}{}\protected@file@percent }
-\gdef \@abspage@last{6}
+\gdef \@abspage@last{7}

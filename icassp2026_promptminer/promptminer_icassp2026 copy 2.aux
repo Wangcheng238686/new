@@ -1,0 +1,80 @@
+\relax 
+\citation{rsiisn}
+\citation{p2pformer}
+\citation{maskrcnn}
+\citation{condinst}
+\citation{mask2former}
+\citation{rs4d}
+\citation{diffusioninst}
+\citation{efficientis}
+\citation{sam}
+\citation{pasam}
+\citation{samrefiner}
+\citation{pointrend}
+\@writefile{toc}{\contentsline {section}{\numberline {1} INTRODUCTION}{1}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces An example of ambiguous instance separation in aerial imagery. (a) A proposal box covers neighboring buildings with similar appearance and a narrow contact region, as shown in the zoomed view. (b) Ground-truth masks distinguish the neighboring buildings as separate instances with clear boundaries.}}{1}{}\protected@file@percent }
+\newlabel{fig:motivation}{{1}{1}{}{figure.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Overview of the proposed PromptMiner-SAM2. SAM2 Hiera features support proposal extraction and provide image embeddings for mask decoding. Each detected box and its mask RoI feature drive coarse-shape prompt mining, which produces point, box, and dense-mask prompts. Uncertainty-guided decoder-tail refinement updates selected uncertain logits before mask post-processing.}}{2}{}\protected@file@percent }
+\newlabel{fig:arch}{{2}{2}{}{figure.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2} METHOD}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1} Coarse-Shape Prompt Mining}{2}{}\protected@file@percent }
+\newlabel{eq:coarse}{{1}{2}{}{equation.1}{}}
+\citation{whu}
+\citation{nwpu}
+\citation{nwpu_instance}
+\newlabel{eq:prompt-mining}{{2}{3}{}{equation.2}{}}
+\newlabel{eq:native-decoding}{{3}{3}{}{equation.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2} Uncertainty-Guided Refinement}{3}{}\protected@file@percent }
+\newlabel{eq:udpr-selection}{{4}{3}{}{equation.4}{}}
+\newlabel{eq:udpr-input}{{5}{3}{}{equation.5}{}}
+\newlabel{eq:udpr}{{6}{3}{}{equation.6}{}}
+\newlabel{eq:udpr-scatter}{{7}{3}{}{equation.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3} EXPERIMENTS}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1} Experimental Setup}{3}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Sensitivity of $K$ on the NWPU VHR-10 dataset under a common development protocol.}}{3}{}\protected@file@percent }
+\newlabel{tab:k-sensitivity}{{1}{3}{}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2} Comparative Analysis}{3}{}\protected@file@percent }
+\citation{maskrcnn}
+\citation{msrcnn}
+\citation{htc}
+\citation{condinst}
+\citation{yolo11}
+\citation{mask2former}
+\citation{maskdino}
+\citation{rs4d}
+\citation{rsiisn}
+\citation{rsprompter}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Prompt-path ablation on the NWPU VHR-10 dataset; $P$, $B$, and $M$ denote point, box, and dense-mask prompts, and UDPR denotes uncertainty-guided refinement.}}{4}{}\protected@file@percent }
+\newlabel{tab:ablation}{{3}{4}{}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3} Ablation Study}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4} CONCLUSION}{4}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Qualitative comparison on the WHU and NWPU VHR-10 datasets. From left to right, the columns show the input image, ground truth, predictions of (a) MaskDINO, (b) RSPrompter, (c) CondInst, (d) YOLO11, (e) HTC, (f) Mask R-CNN, (g) M2F, and PromptMiner-SAM2 (ours).}}{5}{}\protected@file@percent }
+\newlabel{fig:qualitative}{{3}{5}{}{figure.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Comparative analysis on the WHU dataset and the NWPU VHR-10 dataset. Each entry reports AP / AP$_{50}$ / AP$_{75}$ (\%) for the Bbox and Mask columns.}}{5}{}\protected@file@percent }
+\newlabel{tab:comparison}{{2}{5}{}{table.2}{}}
+\bibstyle{IEEEbib}
+\bibcite{rsiisn}{1}
+\bibcite{p2pformer}{2}
+\bibcite{maskrcnn}{3}
+\bibcite{msrcnn}{4}
+\bibcite{htc}{5}
+\bibcite{condinst}{6}
+\bibcite{mask2former}{7}
+\bibcite{maskdino}{8}
+\bibcite{rs4d}{9}
+\bibcite{sam}{10}
+\bibcite{sam2}{11}
+\bibcite{samrs}{12}
+\bibcite{rsprompter}{13}
+\bibcite{aopsam}{14}
+\bibcite{pasam}{15}
+\bibcite{samrefiner}{16}
+\bibcite{pointrend}{17}
+\@writefile{toc}{\contentsline {section}{\numberline {5} References}{6}{}\protected@file@percent }
+\bibcite{diffusioninst}{18}
+\bibcite{efficientis}{19}
+\bibcite{whu}{20}
+\bibcite{nwpu}{21}
+\bibcite{nwpu_instance}{22}
+\bibcite{yolo11}{23}
+\gdef \@abspage@last{7}

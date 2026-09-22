@@ -77,6 +77,10 @@ def main():
                     help='panel(a)不画GT蓝红轮廓(避免暗示逐实例边界已知)')
     ap.add_argument('--right-contour', action='store_true',
                     help='panel(b)掩码加彩色描边(默认无描边)')
+    ap.add_argument('--minimal', action='store_true',
+                    help='极简内容: 左仅候选框(无品红), 右仅掩码(无描边/框); 放大图由 --no-inset 单独控制')
+    ap.add_argument('--no-inset', action='store_true',
+                    help='不画放大图/源框/连线(两面板布局)')
     args = ap.parse_args()
 
     imgs, gt_all = load_gt(GT_JSON)
@@ -141,11 +145,12 @@ def main():
 
     # ---------- 左 panel (a) ----------
     left = crop.copy()
-    ov = left.copy(); ov[ga] = GLUE
-    left = cv2.addWeighted(ov, args.glue_alpha, left, 1 - args.glue_alpha, 0)
-    if not args.no_gt:
-        contour_pop(ma[y1:y2, x1:x2], BLUE, left)
-        contour_pop(mb[y1:y2, x1:x2], RED, left)
+    if not args.minimal:
+        ov = left.copy(); ov[ga] = GLUE
+        left = cv2.addWeighted(ov, args.glue_alpha, left, 1 - args.glue_alpha, 0)
+        if not args.no_gt:
+            contour_pop(ma[y1:y2, x1:x2], BLUE, left)
+            contour_pop(mb[y1:y2, x1:x2], RED, left)
     # 橙色 proposal box = 两实例 union bbox
     px1, py1 = int(min(xa, xb)) - x1, int(min(ya, yb)) - y1
     px2, py2 = int(max(xa+wa, xb+wb)) - x1, int(max(ya+ha_, yb+hb_)) - y1
@@ -167,18 +172,20 @@ def main():
     zx = max(Z, min(Wc - Z, zx)); zy = max(Z, min(Hc - Z, zy))
     zx1, zy1, zx2, zy2 = zx - Z, zy - Z, zx + Z, zy + Z
     src = crop[zy1:zy2, zx1:zx2].copy()
-    ovz = src.copy(); ovz[glue[zy1+y1:zy2+y1, zx1+x1:zx2+x1] > 0] = GLUE
-    src = cv2.addWeighted(ovz, args.glue_alpha, src, 1 - args.glue_alpha, 0)
-    if not args.no_gt:
-        contour_pop(ma[zy1+y1:zy2+y1, zx1+x1:zx2+x1], BLUE, src, 2)
-        contour_pop(mb[zy1+y1:zy2+y1, zx1+x1:zx2+x1], RED, src, 2)
+    if not args.minimal:
+        ovz = src.copy(); ovz[glue[zy1+y1:zy2+y1, zx1+x1:zx2+x1] > 0] = GLUE
+        src = cv2.addWeighted(ovz, args.glue_alpha, src, 1 - args.glue_alpha, 0)
+        if not args.no_gt:
+            contour_pop(ma[zy1+y1:zy2+y1, zx1+x1:zx2+x1], BLUE, src, 2)
+            contour_pop(mb[zy1+y1:zy2+y1, zx1+x1:zx2+x1], RED, src, 2)
     # inset 不贴进 panel (a) 内部, 而是作为独立放大图在合成阶段向左延伸出去,
     # 保证 (a)/(b) 底图尺寸一致, 避免误读为两块不同大小的影像.
     scale = min(2.6, (Hc - 12) / (zy2 - zy1))
     inset = cv2.resize(src, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
     # 源框(白衬底)
-    cv2.rectangle(left, (zx1, zy1), (zx2, zy2), WHITE, 3)
-    cv2.rectangle(left, (zx1, zy1), (zx2, zy2), DARK, 1)
+    if not args.no_inset:
+        cv2.rectangle(left, (zx1, zy1), (zx2, zy2), WHITE, 3)
+        cv2.rectangle(left, (zx1, zy1), (zx2, zy2), DARK, 1)
 
     # ---------- 右 panel (b) ----------
     right = crop.copy()
@@ -193,9 +200,10 @@ def main():
         if args.right_contour:
             contour_pop(m, color, right)
         # 逐实例检测框(我们两级检测的输出), 与左图单候选框形成对照
-        bx = mm.toBbox(rle)
-        cv2.rectangle(right, (int(bx[0]) - x1, int(bx[1]) - y1),
-                      (int(bx[0] + bx[2]) - x1, int(bx[1] + bx[3]) - y1), ORANGE, 2)
+        if not args.minimal:
+            bx = mm.toBbox(rle)
+            cv2.rectangle(right, (int(bx[0]) - x1, int(bx[1]) - y1),
+                          (int(bx[0] + bx[2]) - x1, int(bx[1] + bx[3]) - y1), ORANGE, 2)
 
     # ---------- 合成 + 标注(PIL) ----------
     GAP = 34
@@ -203,25 +211,33 @@ def main():
     sc = max(1.0, args.panel_h / Hc)
     L = cv2.resize(left, None, fx=sc, fy=sc, interpolation=cv2.INTER_LANCZOS4)
     R = cv2.resize(right, None, fx=sc, fy=sc, interpolation=cv2.INTER_LANCZOS4)
-    ins = cv2.resize(inset, None, fx=sc, fy=sc, interpolation=cv2.INTER_LANCZOS4)
     ph, pw = L.shape[:2]
-    ih, iw = ins.shape[:2]
-    ix0 = 2
-    iy = int(max(4, min(ph - ih - 4, zy * sc - ih / 2)))
-    ax0 = ix0 + iw + LINK  # panel (a) 左缘
     CAP = 0 if args.no_text else 40
-    canvas = np.full((ph + CAP, ax0 + pw + GAP + pw, 3), 255, np.uint8)
-    canvas[iy:iy+ih, ix0:ix0+iw] = ins
-    cv2.rectangle(canvas, (ix0-1, iy-1), (ix0+iw, iy+ih), WHITE, 2)
-    cv2.rectangle(canvas, (ix0-2, iy-2), (ix0+iw+1, iy+ih+1), DARK, 1)
-    canvas[0:ph, ax0:ax0+pw] = L
-    canvas[0:ph, ax0+pw+GAP:ax0+pw*2+GAP] = R
-    # 连线: 源框左侧两角 -> inset 右侧两角, 视觉向左延伸
-    for (sx, sy), (tx, ty) in [((ax0 + zx1 * sc, zy1 * sc), (ix0 + iw, iy)),
-                               ((ax0 + zx1 * sc, zy2 * sc), (ix0 + iw, iy + ih))]:
-        cv2.line(canvas, (int(sx), int(sy)), (int(tx), int(ty)), DARK, 1, cv2.LINE_AA)
-    cv2.arrowedLine(canvas, (ax0 + pw - 2, ph // 2), (ax0 + pw + GAP + 2, ph // 2),
-                    DARK, 2, cv2.LINE_AA, tipLength=0.4)
+    if args.no_inset:
+        ax0 = 0
+        canvas = np.full((ph + CAP, pw * 2 + GAP, 3), 255, np.uint8)
+        canvas[0:ph, 0:pw] = L
+        canvas[0:ph, pw+GAP:pw*2+GAP] = R
+        cv2.arrowedLine(canvas, (pw - 2, ph // 2), (pw + GAP + 2, ph // 2),
+                        DARK, 2, cv2.LINE_AA, tipLength=0.4)
+    else:
+        ins = cv2.resize(inset, None, fx=sc, fy=sc, interpolation=cv2.INTER_LANCZOS4)
+        ih, iw = ins.shape[:2]
+        ix0 = 2
+        iy = int(max(4, min(ph - ih - 4, zy * sc - ih / 2)))
+        ax0 = ix0 + iw + LINK  # panel (a) 左缘
+        canvas = np.full((ph + CAP, ax0 + pw + GAP + pw, 3), 255, np.uint8)
+        canvas[iy:iy+ih, ix0:ix0+iw] = ins
+        cv2.rectangle(canvas, (ix0-1, iy-1), (ix0+iw, iy+ih), WHITE, 2)
+        cv2.rectangle(canvas, (ix0-2, iy-2), (ix0+iw+1, iy+ih+1), DARK, 1)
+        canvas[0:ph, ax0:ax0+pw] = L
+        canvas[0:ph, ax0+pw+GAP:ax0+pw*2+GAP] = R
+        # 连线: 源框左侧两角 -> inset 右侧两角, 视觉向左延伸
+        for (sx, sy), (tx, ty) in [((ax0 + zx1 * sc, zy1 * sc), (ix0 + iw, iy)),
+                                   ((ax0 + zx1 * sc, zy2 * sc), (ix0 + iw, iy + ih))]:
+            cv2.line(canvas, (int(sx), int(sy)), (int(tx), int(ty)), DARK, 1, cv2.LINE_AA)
+        cv2.arrowedLine(canvas, (ax0 + pw - 2, ph // 2), (ax0 + pw + GAP + 2, ph // 2),
+                        DARK, 2, cv2.LINE_AA, tipLength=0.4)
     pil = Image.fromarray(cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB))
     if not args.no_text:
         d = ImageDraw.Draw(pil)
@@ -230,8 +246,9 @@ def main():
         d.text((6, ph + 8), '(a) coarse mask w/ ambiguous boundary', font=f, fill=(60, 60, 60))
         d.text((ax0 + pw + GAP + 6, ph + 8), '(b) instance-aware separation (Ours)', font=fb, fill=(20, 20, 20))
         # inset 内小标签(画布坐标)
-        d.text((ix0 + 8, iy + ih - 32), 'ambiguous', font=f, fill=(255, 255, 255),
-               stroke_width=1, stroke_fill=(0, 0, 0))
+        if not args.no_inset:
+            d.text((ix0 + 8, iy + ih - 32), 'ambiguous', font=f, fill=(255, 255, 255),
+                   stroke_width=1, stroke_fill=(0, 0, 0))
     out = cv2.cvtColor(np.array(pil), cv2.COLOR_RGB2BGR)
     cv2.imwrite(args.out, out)
     print(f'saved {args.out} | crop=({x1},{y1})-({x2},{y2}) {Wc}x{Hc} zoom=({zx+x1},{zy+y1}) '

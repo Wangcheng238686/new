@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1790064453.97532 "/home/wangcheng/project/new/icassp2026_promptminer/promptminer_icassp2026 copy.tex" "promptminer_icassp2026 copy.pdf" "promptminer_icassp2026 copy" 1790064454.83824 0
-  "/home/wangcheng/project/new/icassp2026_promptminer/promptminer_icassp2026 copy.tex" 1790064452.83045 25922 1c82614c6189be3a19cd01850db39f13 ""
+["pdflatex"] 1789739878.80628 "/home/wangcheng/project/new/icassp2026_promptminer/promptminer_icassp2026 copy 2.tex" "promptminer_icassp2026 copy 2.pdf" "promptminer_icassp2026 copy 2" 1789739879.65498 0
+  "/home/wangcheng/project/new/icassp2026_promptminer/promptminer_icassp2026 copy 2.tex" 1789739877.49887 25800 6e11b558391de95192aa71e57ff31ee9 ""
   "/home/wangcheng/texlive/2026/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/home/wangcheng/texlive/2026/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/courier/pcrr7t.tfm" 1136768653 960 379cc0019370a9e0208a0a3f949f847a ""
@@ -84,14 +84,14 @@
   "/home/wangcheng/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1784797699 5573048 a1fe2de5e9add9c7ebf1208dee71728d ""
   "/home/wangcheng/texlive/2026/texmf-var/web2c/pdftex/pdflatex.fmt" 1784797815 3656561 c09cff72596497c453183c95b32acbe2 ""
   "/home/wangcheng/texlive/2026/texmf.cnf" 1784797691.20691 595 22764776a8c7d1278ee86322c9675b97 ""
-  "promptminer_icassp2026 copy.aux" 1790064454.73446 4740 c62ddb24303ac36f4a4847430edf0f2f "pdflatex"
-  "promptminer_icassp2026 copy.tex" 1790064452.83045 25922 1c82614c6189be3a19cd01850db39f13 ""
+  "promptminer_icassp2026 copy 2.aux" 1789739879.55094 4673 461cf9960db57b615a9d8a0c569aaa05 "pdflatex"
+  "promptminer_icassp2026 copy 2.tex" 1789739877.49887 25800 6e11b558391de95192aa71e57ff31ee9 ""
   "spconf.sty" 1789401174.68851 8798 121ab5e33850ab4cf48fc2795d92b250 ""
   "teaser_300838_minimal_zoom.png" 1789738350.99306 999030 436fb3bbe09c9ee1aaba7c781e37b9ac ""
   "viz_grid_row_combined.png" 1789620449.38284 358057 bbc3af35f14533623786306bf18b1dba ""
-  "总体架构图.pdf" 1789980786.4802 657432 70fdcb799a722653b9ed976157b20e3b ""
+  "总体架构图.pdf" 1789620449.38684 657449 140bc84fc08808cce9a724372878073b ""
   (generated)
-  "promptminer_icassp2026 copy.aux"
-  "promptminer_icassp2026 copy.log"
-  "promptminer_icassp2026 copy.pdf"
+  "promptminer_icassp2026 copy 2.aux"
+  "promptminer_icassp2026 copy 2.log"
+  "promptminer_icassp2026 copy 2.pdf"
   (rewritten before read)
