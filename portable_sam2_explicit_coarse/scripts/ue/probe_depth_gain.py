@@ -252,7 +252,7 @@ def scene_record(point_dir, model, device, res=128):
     pred128 = cv2.resize(pm, (RES, RES), interpolation=cv2.INTER_NEAREST).reshape(-1) > 0
 
     return dict(satF=satF.astype(np.float16), height=height.astype(np.float16),
-                occ=occ.reshape(-1) > 0, occ_s=occ_s, occ_l=occ_l,
+                occ=occ.reshape(-1) > 0,
                 sdf=sdf, band=band, err=(occ.reshape(-1) > 0) != pred128,
                 scene=Path(point_dir).name, n_inst=n_inst, n_views=n_views,
                 hmap_med=med.astype(np.float32), hmap_std=std.astype(np.float32),
