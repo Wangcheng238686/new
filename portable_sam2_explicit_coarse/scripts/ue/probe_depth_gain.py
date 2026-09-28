@@ -142,11 +142,7 @@ def scene_record(point_dir, model, device, res=128):
     inst_p = Path(point_dir) / "satellite" / "instances.json"
     if not (exr_p.exists() and rgb_p.exists() and inst_p.exists()):
         return None
-    exr = cv2.imread(str(exr_p), cv2.IMREAD_UNCHANGED)
-    if exr is None:
-        return None
-    ch_scores = [len(np.unique(exr[:, :, c])) for c in range(exr.shape[2])]
-    ids = np.rint(exr[:, :, int(np.argmax(ch_scores))]).astype(np.int32)
+    ids = np.rint(_read_depth_exr_subprocess(str(exr_p))).astype(np.int32)
     inst = json.load(open(inst_p))["instances"]
     occ = np.zeros((res, res), np.uint8)
     n_inst = 0
@@ -314,6 +310,61 @@ def main():
         if n_used % 20 == 0:
             print(f"  scenes {n_used} ({time.time()-t0:.0f}s)", flush=True)
     print(f"usable scenes: fit={len(fit_rows)} val={len(val_rows)}", flush=True)
+
+    # ---- probe/model fitters ----
+    def fit_logistic(X, y, iters=300, lr=0.05):
+        mu = X.mean(0, keepdims=True); sd = X.std(0, keepdims=True) + 1e-4
+        Xt = torch.tensor((X - mu) / sd, dtype=torch.float32, device=device)
+        yt = torch.tensor(y, dtype=torch.float32, device=device)
+        lin = nn.Linear(X.shape[1], 1).to(device)
+        opt = torch.optim.Adam(lin.parameters(), lr=lr, weight_decay=0.1)
+        pos = float(yt.mean())
+        pw = float(min(max((1 - pos) / max(pos, 1e-6), 0.2), 5.0))
+        pwt = torch.tensor(pw, device=device)
+        for _ in range(iters):
+            opt.zero_grad()
+            F.binary_cross_entropy_with_logits(lin(Xt).squeeze(-1), yt, pos_weight=pwt).backward()
+            opt.step()
+        return dict(w=lin.weight.detach()[0].cpu().numpy(), b=float(lin.bias.item()),
+                    mu=mu[0], sd=sd[0], pos_weight=pw)
+
+    def score_logistic(pr, X):
+        return (X / pr["sd"] - pr["mu"] / pr["sd"]) @ pr["w"] + pr["b"]
+
+    def fit_ridge(X, y):
+        mu = X.mean(0, keepdims=True); sd = X.std(0, keepdims=True) + 1e-4
+        Xs_ = (X - mu) / sd
+        W = np.linalg.solve(Xs_.T @ Xs_ + np.eye(X.shape[1]), Xs_.T @ (y - y.mean()))
+        return dict(W=W, b=float(y.mean()), mu=mu[0], sd=sd[0])
+
+    def score_ridge(pr, X):
+        return (X / pr["sd"] - pr["mu"] / pr["sd"]) @ pr["W"] + pr["b"]
+
+    class MLP(nn.Module):
+        def __init__(self, din):
+            super().__init__()
+            self.net = nn.Sequential(nn.Linear(din, 256), nn.GELU(),
+                                     nn.Linear(256, 64), nn.GELU(), nn.Linear(64, 1))
+        def forward(self, x): return self.net(x).squeeze(-1)
+
+    def fit_mlp(X, y, iters=400, lr=1e-3):
+        mu = X.mean(0, keepdims=True); sd = X.std(0, keepdims=True) + 1e-4
+        Xt = torch.tensor((X - mu) / sd, dtype=torch.float32, device=device)
+        yt = torch.tensor(y, dtype=torch.float32, device=device)
+        net = MLP(X.shape[1]).to(device)
+        opt = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=1e-4)
+        for _ in range(iters):
+            opt.zero_grad()
+            F.mse_loss(net(Xt), yt).backward()
+            opt.step()
+        net.eval()
+        return dict(net=net, mu=mu[0], sd=sd[0])
+
+    def score_mlp(pr, X):
+        Xt = torch.tensor((X / pr["sd"] - pr["mu"] / pr["sd"]), dtype=torch.float32,
+                          device=device)
+        with torch.no_grad():
+            return pr["net"](Xt).squeeze(-1).cpu().numpy()
 
     # ---- fit matrices ----
     sat_fit = np.concatenate([r["satF"] for r in fit_rows]).astype(np.float32)
