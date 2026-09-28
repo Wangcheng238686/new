@@ -53,6 +53,7 @@ from mmdet.models.data_preprocessors import DetDataPreprocessor
 from mmdet.structures import DetDataSample
 from mmdet.structures.mask import BitmapMasks
 from sklearn.metrics import roc_auc_score
+from train.train_rsprompter_fusion import _attach_dual_stream_metainfo
 
 if "DetDataPreprocessor" not in MMENGINE_MODELS:
     MMENGINE_MODELS.register_module(name="DetDataPreprocessor", module=DetDataPreprocessor)
@@ -385,6 +386,13 @@ def main():
     json.dump(summary, (out / "summary.json").open("w"), indent=1)
     json.dump(per_scene, (out / "per_scene.json").open("w"), indent=1)
     print("saved", out / "summary.json", flush=True)
+
+
+def parse_center(point_dir):
+    name = Path(point_dir).name
+    x = float(name.split("_X_")[1].split("_Y_")[0])
+    y = float(name.split("_Y_")[-1])
+    return torch.tensor([x, y], dtype=torch.float32)
 
 
 def subprocess_git():
