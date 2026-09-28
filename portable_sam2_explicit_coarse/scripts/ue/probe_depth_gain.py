@@ -64,11 +64,39 @@ BOOT_SEED = 20260930
 BOOT_DRAWS = 10000
 
 
-def read_depth_exr(path):
+def _read_depth_exr_subprocess(path):
+    """cv2's EXR codec fails on some compression types; read via a fresh
+    subprocess with OPENCV_IO_ENABLE_OPENEXR and hand back float32 bytes."""
+    import tempfile
+    code = (
+        "import os, sys, numpy as np\n"
+        "os.environ['OPENCV_IO_ENABLE_OPENEXR'] = '1'\n"
+        "import cv2\n"
+        "im = cv2.imread(sys.argv[1], cv2.IMREAD_UNCHANGED)\n"
+        "if im is None: sys.exit(2)\n"
+        "if im.ndim == 3:\n"
+        "    best = None\n"
+        "    for c in range(im.shape[2]):\n"
+        "        ok = np.isfinite(im[:, :, c]) & (im[:, :, c] > 0)\n"
+        "        if best is None or int(ok.sum()) > best[0]: best = (int(ok.sum()), im[:, :, c])\n"
+        "    im = best[1]\n"
+        "np.save(sys.argv[2], im.astype(np.float32))\n"
+    )
+    with tempfile.TemporaryDirectory() as td:
+        npy = Path(td) / "z.npy"
+        r = subprocess.run([sys.executable, "-c", code, str(path), str(npy)],
+                           capture_output=True, text=True)
+        if r.returncode != 0 or not npy.exists():
+            raise OSError(f"subprocess EXR read failed for {path}: {r.stderr[-200:]}")
+        return np.load(str(npy))
+
+
+def read_depth_exr(view_dir):
     os.environ.setdefault("OPENCV_IO_ENABLE_OPENEXR", "1")
-    im = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+    path = str(Path(view_dir) / "depth_camera_z.0000.exr")
+    im = cv2.imread(path, cv2.IMREAD_UNCHANGED)
     if im is None:
-        raise OSError(f"cannot read EXR {path}")
+        im = _read_depth_exr_subprocess(path)
     if im.ndim == 3:   # pick the channel with the most finite-positive values
         best = None
         for c in range(im.shape[2]):
