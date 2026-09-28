@@ -1,14 +1,14 @@
 """MHBEV-FUS-20260921-DEPTH: does UAV-rendered DEPTH (height) carry marginal
 information for satellite segmentation beyond SAT features?
 
-New-standard strict-instance scenes (3502-3664): the UE instance-ID render is
-by-construction building GT; 5-view rendered depth gives per-cell world height.
+Scenes: the new-standard strict-instance renders (3502-3664). The UE instance
+EXR gives a binary building-foreground GT (per-instance IDs are not exposed);
+5-view rendered depth gives per-cell world height.
 
-Fit on the first 80 valid scenes, evaluate per-scene on the remaining ones.
-Targets / readouts:
+Fit on the first 80 valid scenes, evaluate per-scene on the rest.
+Readouts:
   R1  band-error AUC     (band cells, label = model prediction != GT)
   R2  sdf-field Pearson  (all cells, target = signed distance /8)
-  R3  small-occupancy AUC and large-occupancy AUC
 Arms: SAT (satellite P3 512-d) / HEIGHT (depth world-height stats 4-d) /
       SAT+HEIGHT (516-d).
 Gates: paired bootstrap (10k, seed 20260930) CI lower > 0 for
@@ -63,17 +63,17 @@ BOOT_SEED = 20260930
 BOOT_DRAWS = 10000
 
 
-def read_depth_exr(view_dir):
-    im = cv2.imread(str(Path(view_dir) / "depth_camera_z.0000.exr"), cv2.IMREAD_UNCHANGED)
+def read_depth_exr(path):
+    os.environ.setdefault("OPENCV_IO_ENABLE_OPENEXR", "1")
+    im = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
     if im is None:
-        raise OSError(f"cannot read EXR in {view_dir}")
-    if im.ndim == 3:
+        raise OSError(f"cannot read EXR {path}")
+    if im.ndim == 3:   # pick the channel with the most finite-positive values
         best = None
-        for ch in range(im.shape[2]):
-            c = im[:, :, ch]
-            ok = np.isfinite(c) & (c > 0)
+        for c in range(im.shape[2]):
+            ok = np.isfinite(im[:, :, c]) & (im[:, :, c] > 0)
             if best is None or int(ok.sum()) > best[0]:
-                best = (int(ok.sum()), c)
+                best = (int(ok.sum()), im[:, :, c])
         z = best[1].astype(np.float32)
     else:
         z = im.astype(np.float32)
@@ -100,8 +100,8 @@ def sdf_band_of(occ128):
     return sdf.reshape(-1), band.reshape(-1)
 
 
-def scene_records(point_dir, res=128):
-    """Decode strict-instance GT + per-cell height features for one point dir.
+def scene_record(point_dir, model, device, res=128):
+    """Decode strict-instance GT + height features + satellite P3 + model pred.
 
     World->cell binning uses the 360m contract directly:
       i = floor((0.5 - x_m/360) * res)   (satellite row, from world -x)
@@ -113,15 +113,13 @@ def scene_records(point_dir, res=128):
     inst_p = Path(point_dir) / "satellite" / "instances.json"
     if not (exr_p.exists() and rgb_p.exists() and inst_p.exists()):
         return None
-    os.environ.setdefault("OPENCV_IO_ENABLE_OPENEXR", "1")
     exr = cv2.imread(str(exr_p), cv2.IMREAD_UNCHANGED)
     if exr is None:
         return None
-    ids = np.rint(exr[:, :, 0] if exr.ndim == 3 else exr).astype(np.int32)
+    ch_scores = [len(np.unique(exr[:, :, c])) for c in range(exr.shape[2])]
+    ids = np.rint(exr[:, :, int(np.argmax(ch_scores))]).astype(np.int32)
     inst = json.load(open(inst_p))["instances"]
     occ = np.zeros((res, res), np.uint8)
-    occ_s = np.zeros((res, res), np.uint8)
-    occ_l = np.zeros((res, res), np.uint8)
     n_inst = 0
     for i in inst:
         lid = int(i["local_instance_id"])
@@ -132,26 +130,22 @@ def scene_records(point_dir, res=128):
         if m128.sum() == 0:
             continue
         occ = np.maximum(occ, m128)
-        tgt = occ_s if m512.sum() < 1250 else occ_l
-        np.maximum(tgt, m128, out=tgt)
         n_inst += 1
     if occ.sum() < 100 or n_inst == 0:
         return None
     sdf, band = sdf_band_of(occ)
 
-    # ---- height features from the 5 depth views ----
+    # ---- per-cell height stats: per-view cell mean, then across views ----
     oblique = Path(point_dir) / "oblique"
-    hz_cells, ok_cells = [], []
+    cell_means = []
     n_views = 0
+    Q = res * res
     for vd in sorted(oblique.iterdir()):
         exr_d = vd / "depth_camera_z.0000.exr"
         if not exr_d.exists():
             continue
-        try:
-            z, valid = read_depth_exr(vd)
-            K, c2w = load_camera(vd)
-        except Exception:
-            continue
+        z, valid = read_depth_exr(vd)
+        K, c2w = load_camera(vd)
         H, W = z.shape
         u, v = np.meshgrid(np.arange(W, dtype=np.float64),
                            np.arange(H, dtype=np.float64), indexing="xy")
@@ -159,31 +153,81 @@ def scene_records(point_dir, res=128):
         y = (v - K[1, 2]) / K[1, 1] * z
         pc = np.stack([x, y, z], -1)
         pw = pc @ c2w[:3, :3].T + c2w[:3, 3]            # world cm
-        wz = np.clip(pw[:, :, 2] / 100.0, -50, 500)     # world Z meters
-        i128 = np.clip(((0.5 - pw[:, :, 0] / 100.0 / 360.0) * res).astype(np.int64),
-                       0, res - 1)
-        j128 = np.clip(((pw[:, :, 1] / 100.0 / 360.0 + 0.5) * res).astype(np.int64),
-                       0, res - 1)
-        flat = i128 * res + j128
-        hz_cells.append((wz.reshape(-1), valid.reshape(-1), flat))
+        wz = np.clip(pw[:, :, 2] / 100.0, -50, 500)     # world Z, meters
+        xi = np.clip(((0.5 - pw[:, :, 0] / 100.0 / 360.0) * res).astype(np.int64),
+                     0, res - 1)
+        yi = np.clip(((pw[:, :, 1] / 100.0 / 360.0 + 0.5) * res).astype(np.int64),
+                     0, res - 1)
+        flat = yi * res + xi
+        okv = valid.reshape(-1)
+        wzf = wz.reshape(-1)
+        s = np.bincount(flat[okv], weights=wzf[okv], minlength=Q)
+        c = np.bincount(flat[okv], minlength=Q)
+        cell_means.append(np.where(c > 0, s / np.maximum(c, 1), np.nan))  # [Q]
         n_views += 1
     if n_views < 3:
         return None
-    Q = res * res
-    hz = np.stack([h for h, _, _ in hz_cells])           # [V,Q]
-    okm = np.stack([o for _, o, _ in hz_cells])
+    hz = np.stack(cell_means)                            # [V,Q], nan = no valid hit
     with np.errstate(invalid="ignore"):
-        med = np.nanmedian(np.where(okm, hz, np.nan), axis=0)
-        std = np.nanstd(np.where(okm, hz, np.nan), axis=0)
-        vmax = np.nanmax(np.where(okm, hz, np.nan), axis=0)
+        med = np.nanmedian(hz, axis=0)
+        std = np.nanstd(hz, axis=0)
+        vmax = np.nanmax(hz, axis=0)
+        vfrac = (~np.isnan(hz)).mean(0)
     med = np.nan_to_num(med, nan=0.0)
     std = np.nan_to_num(std, nan=0.0)
     vmax = np.nan_to_num(vmax, nan=0.0)
-    vfrac = okm.mean(0)
     height = np.stack([med, std, vmax, vfrac], 1).astype(np.float32)  # [Q,4]
-    return dict(occ=occ.reshape(-1) > 0, occ_s=occ_s.reshape(-1) > 0,
-                occ_l=occ_l.reshape(-1) > 0, sdf=sdf, band=band,
-                height=height, n_inst=n_inst, n_views=n_views)
+
+    # ---- satellite forward: P3 features + deployed-path prediction ----
+    sat512 = cv2.imread(str(rgb_p))
+    sat1024 = cv2.resize(sat512, (1024, 1024), interpolation=cv2.INTER_LINEAR)
+    ds = DetDataSample()
+    ds.set_metainfo(dict(img_shape=(1024, 1024), ori_shape=(512, 512),
+                         pad_shape=(1024, 1024), scale_factor=(2.0, 2.0)))
+    views = sorted(oblique.glob("view_yaw_*"))
+    rgb_views, intrs, extrs = [], [], []
+    for vd in views:
+        ij = json.load(open(vd / "camera_intrinsics.json"))
+        rgb_views.append(cv2.cvtColor(cv2.imread(str(vd / "oblique_rgb.0000.png")),
+                                      cv2.COLOR_BGR2RGB))
+        intrs.append(np.array([[ij["fx"], 0, ij["cx"]], [0, ij["fy"], ij["cy"]],
+                               [0, 0, 1]], dtype=np.float32))
+        extrs.append(np.asarray(json.load(open(vd / "camera_extrinsics.json"))
+                                ["world_to_camera_cv"], dtype=np.float32))
+    drone = torch.stack([torch.from_numpy(r).permute(2, 0, 1).float() / 255.0
+                         for r in rgb_views])[None].to(device)
+    batch = dict(drone_images=drone,
+                 intrinsics=torch.tensor(np.stack(intrs))[None].to(device),
+                 extrinsics=torch.tensor(np.stack(extrs))[None].to(device),
+                 scene_centers=torch.zeros(1, 2).to(device))
+    _attach_dual_stream_metainfo(ds, batch, 0)
+    rgb_t = torch.from_numpy(cv2.cvtColor(sat1024, cv2.COLOR_BGR2RGB)
+                             ).permute(2, 0, 1).float()[None].to(device)
+    proc = model.data_preprocessor({"inputs": rgb_t, "data_samples": [ds.to(device)]},
+                                   training=False)
+    inputs = proc["inputs"][0] if isinstance(proc["inputs"], (list, tuple)) else proc["inputs"]
+    with torch.no_grad():
+        vo = model.backbone(inputs)
+        x = model.neck(vo[1])
+        satF = x[1][0].float().reshape(512, -1).T.cpu().numpy()   # [Q,512]
+        outs = model.predict(inputs, proc["data_samples"], rescale=False)
+    inst_p = outs[0].pred_instances
+    pm = np.zeros((1024, 1024), np.uint8)
+    if inst_p is not None and len(inst_p.bboxes):
+        msk = inst_p.masks
+        pmasks = msk.to_ndarray() if isinstance(msk, BitmapMasks) else msk.cpu().numpy()
+        keep = inst_p.scores.cpu().numpy() >= 0.5
+        if keep.any():
+            for m in pmasks[keep]:
+                pm = np.maximum(pm, m.astype(np.uint8))
+    pred128 = cv2.resize(pm, (RES, RES), interpolation=cv2.INTER_NEAREST).reshape(-1) > 0
+
+    return dict(satF=satF.astype(np.float16), height=height.astype(np.float16),
+                occ=occ.reshape(-1) > 0, occ_s=occ_s, occ_l=occ_l,
+                sdf=sdf, band=band, err=(occ.reshape(-1) > 0) != pred128,
+                scene=Path(point_dir).name, n_inst=n_inst, n_views=n_views,
+                hmap_med=med.astype(np.float32), hmap_std=std.astype(np.float32),
+                pred128=pm)
 
 
 def main():
@@ -226,156 +270,50 @@ def main():
                     and (d / "satellite" / "satellite_instance_id.FinalImageM_PP_CustomStencil_GrayRaw.0000.exr").exists())
     print(f"complete scenes: {len(scenes)}", flush=True)
 
-    def sat_forward(sat512_bgr):
-        sat1024 = cv2.resize(sat512_bgr, (1024, 1024), interpolation=cv2.INTER_LINEAR)
-        ds = DetDataSample()
-        ds.set_metainfo(dict(img_shape=(1024, 1024), ori_shape=(512, 512),
-                             pad_shape=(1024, 1024), scale_factor=(2.0, 2.0)))
-        rgb = cv2.cvtColor(sat1024, cv2.COLOR_BGR2RGB)
-        t = torch.from_numpy(rgb).permute(2, 0, 1).float()[None].to(device)
-        proc = model.data_preprocessor({"inputs": t, "data_samples": [ds.to(device)]},
-                                       training=False)
-        inputs = proc["inputs"][0] if isinstance(proc["inputs"], (list, tuple)) else proc["inputs"]
-        return inputs, proc["data_samples"]
-
     fit_rows, val_rows = [], []
     n_used = 0
-    n_errlabel_fail = 0
     t0 = time.time()
     for pd_ in scenes:
-        rec = scene_records(pd_, RES)
+        rec = scene_record(pd_, model, device, RES)
         if rec is None:
             continue
-        sat512 = cv2.imread(str(pd_ / "satellite" / "satellite_rgb.0000.png"))
-        inputs, dss = sat_forward(sat512)
-        with torch.no_grad():
-            vo = model.backbone(inputs)
-            x = model.neck(vo[1])
-            satF = x[1][0].float().reshape(512, -1).T.cpu().numpy()   # [Q,512]
-            outs = model.predict(inputs, dss, rescale=False)
-        inst_p = outs[0].pred_instances
-        pm = np.zeros((1024, 1024), np.uint8)
-        if inst_p is not None and len(inst_p.bboxes):
-            msk = inst_p.masks
-            pmasks = msk.to_ndarray() if isinstance(msk, BitmapMasks) else msk.cpu().numpy()
-            keep = inst_p.scores.cpu().numpy() >= 0.5
-            if keep.any():
-                for m in pmasks[keep]:
-                    pm = np.maximum(pm, m.astype(np.uint8))
-        pred128 = cv2.resize(pm, (RES, RES), interpolation=cv2.INTER_NEAREST).reshape(-1) > 0
-
-        row = dict(satF=satF.astype(np.float16), height=rec["height"].astype(np.float16),
-                   occ=rec["occ"], occ_s=rec["occ_s"], occ_l=rec["occ_l"],
-                   sdf=rec["sdf"], band=rec["band"], err=(rec["occ"] != pred128),
-                   small=rec["occ_s"], large=rec["occ_l"], scene=pd_.name,
-                   n_inst=rec["n_inst"], n_views=rec["n_views"])
-        if len(fit_rows) < args.n_fit:
-            fit_rows.append(row)
+        if n_used < args.n_fit:
+            fit_rows.append(rec)
         else:
-            val_rows.append(row)
+            val_rows.append(rec)
         n_used = len(fit_rows) + len(val_rows)
         if n_used % 20 == 0:
             print(f"  scenes {n_used} ({time.time()-t0:.0f}s)", flush=True)
     print(f"usable scenes: fit={len(fit_rows)} val={len(val_rows)}", flush=True)
 
-    # ---- probes ----
-    def fit_logistic(X, y, iters=300, lr=0.05):
-        mu = X.mean(0, keepdims=True); sd = X.std(0, keepdims=True) + 1e-4
-        Xt = torch.tensor((X - mu) / sd, dtype=torch.float32, device=device)
-        yt = torch.tensor(y, dtype=torch.float32, device=device)
-        lin = nn.Linear(X.shape[1], 1).to(device)
-        opt = torch.optim.Adam(lin.parameters(), lr=lr, weight_decay=0.1)
-        pos = float(yt.mean())
-        pw = float(min(max((1 - pos) / max(pos, 1e-6), 0.2), 5.0))
-        pwt = torch.tensor(pw, device=device)
-        for _ in range(iters):
-            opt.zero_grad()
-            F.binary_cross_entropy_with_logits(lin(Xt).squeeze(-1), yt, pos_weight=pwt).backward()
-            opt.step()
-        return dict(w=lin.weight.detach()[0].cpu().numpy(), b=float(lin.bias.item()),
-                    mu=mu[0], sd=sd[0], pos_weight=pw)
-
-    def score_logistic(pr, X):
-        return (X / pr["sd"] - pr["mu"] / pr["sd"]) @ pr["w"] + pr["b"]
-
-    def fit_ridge(X, y):
-        mu = X.mean(0, keepdims=True); sd = X.std(0, keepdims=True) + 1e-4
-        Xs_ = (X - mu) / sd
-        W = np.linalg.solve(Xs_.T @ Xs_ + np.eye(X.shape[1]), Xs_.T @ (y - y.mean()))
-        return dict(W=W, b=float(y.mean()), mu=mu[0], sd=sd[0])
-
-    def score_ridge(pr, X):
-        return (X / pr["sd"] - pr["mu"] / pr["sd"]) @ pr["W"] + pr["b"]
-
-    class MLP(nn.Module):
-        def __init__(self, din):
-            super().__init__()
-            self.net = nn.Sequential(nn.Linear(din, 256), nn.GELU(),
-                                     nn.Linear(256, 64), nn.GELU(), nn.Linear(64, 1))
-        def forward(self, x): return self.net(x).squeeze(-1)
-
-    def fit_mlp(X, y, iters=400, lr=1e-3):
-        mu = X.mean(0, keepdims=True); sd = X.std(0, keepdims=True) + 1e-4
-        Xt = torch.tensor((X - mu) / sd, dtype=torch.float32, device=device)
-        yt = torch.tensor(y, dtype=torch.float32, device=device)
-        net = MLP(X.shape[1]).to(device)
-        opt = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=1e-4)
-        for _ in range(iters):
-            opt.zero_grad()
-            F.mse_loss(net(Xt), yt).backward()
-            opt.step()
-        net.eval()
-        return dict(net=net, mu=mu[0], sd=sd[0])
-
-    def score_mlp(pr, X):
-        Xt = torch.tensor((X / pr["sd"] - pr["mu"] / pr["sd"]), dtype=torch.float32,
-                          device=device)
-        with torch.no_grad():
-            return pr["net"](Xt).squeeze(-1).cpu().numpy()
-
-    # ---- build fit matrices ----
+    # ---- fit matrices ----
     sat_fit = np.concatenate([r["satF"] for r in fit_rows]).astype(np.float32)
     hgt_fit = np.concatenate([r["height"] for r in fit_rows]).astype(np.float32)
     cat_fit = np.concatenate([sat_fit, hgt_fit], 1)
     band_fit = np.concatenate([r["band"] for r in fit_rows])
     err_fit = np.concatenate([r["err"] for r in fit_rows]).astype(np.float32)
-    small_fit = np.concatenate([r["small"] for r in fit_rows]).astype(np.float32)
-    large_fit = np.concatenate([r["large"] for r in fit_rows]).astype(np.float32)
     sdf_fit = np.concatenate([r["sdf"] for r in fit_rows]).astype(np.float32)
-    small_fit_all = np.concatenate([r["small"] for r in fit_rows])  # for stratified label
 
-    # band-err fit set: band cells subsampled
-    bi = np.where(band_fit & ((err_fit > 0) | (small_fit > 0) | (large_fit > 0)))[0]
+    bi = np.where(band_fit)[0]
     if len(bi) < 1000:
         sys.exit("too few band cells in fit set")
     rng = np.random.RandomState(7000)
-    sel = rng.choice(bi, size=min(args.r1_cells * max(1, len(fit_rows) // 2), len(bi)),
-                     replace=False)
+    sel = rng.choice(bi, size=min(40000, len(bi)), replace=False)
     print(f"R1 fit cells (band): {len(sel)} err_rate={err_fit[sel].mean():.3f}", flush=True)
 
     probes_auc = {}
     for arm, X in (("SAT", sat_fit), ("HEIGHT", hgt_fit), ("SAT+HEIGHT", cat_fit)):
-        probes_auc[arm] = fit_logistic(X[sel], y_err[sel], device=device)
-    occ_s_fit = np.concatenate([r["occ_s"] for r in fit_rows])
-    occ_l_fit = np.concatenate([r["occ_l"] for r in fit_rows])
-    for strat, occv in (("small", occ_s_fit), ("large", occ_l_fit)):
-        pos = np.where(occv > 0)[0]
-        neg = np.where(occv == 0)[0]
-        if len(pos) < 500 or len(neg) < 500: continue
-        s = rng.choice(np.concatenate([pos, neg]), size=min(60000, len(pos) + len(neg)),
-                       replace=False)
-        for arm, X in (("SAT", sat_fit), ("HEIGHT", hgt_fit), ("SAT+HEIGHT", cat_fit)):
-            probes_auc[(arm, strat)] = fit_logistic(X[s], occv[s], device=device)
+        probes_auc[arm] = fit_logistic(X[sel], err_fit[sel], device=device)
 
-    # sdf fit set: 1500 cells/scene
-    sdf_sel, sdf_y = [], []
-    off = 0
+    # sdf fit cells: 1500 per scene
+    sdf_sel, off = [], 0
     for r in fit_rows:
         rng2 = np.random.RandomState(8000 + off)
         s = rng2.choice(r["sdf"].shape[0], size=args.r2_cells, replace=False)
-        sdf_sel.append(off + s); sdf_y.append(r["sdf"][s])
+        sdf_sel.append(off + s)
         off += r["sdf"].shape[0]
-    sdf_sel = np.concatenate(sdf_sel); sdf_y = np.concatenate(sdf_y).astype(np.float32)
+    sdf_sel = np.concatenate(sdf_sel)
+    sdf_y = sdf_fit[sdf_sel]
     r2_models = {}
     for arm, X in (("SAT", sat_fit), ("HEIGHT", hgt_fit), ("SAT+HEIGHT", cat_fit)):
         r2_models[arm] = fit_ridge(X[sdf_sel], sdf_y[sdf_sel])
@@ -384,31 +322,20 @@ def main():
         r2_mlp[arm] = fit_mlp(X[sdf_sel], sdf_y[sdf_sel], device=device)
     print("probes/models fitted", flush=True)
 
-    # ---- eval pass (val scenes) ----
-    def scene_arm_scores(row):
-        mats = dict(SAT=row["satF"].astype(np.float32),
-                    HEIGHT=row["height"].astype(np.float32))
-        mats["SAT+HEIGHT"] = np.concatenate([mats["SAT"], mats["HEIGHT"]], 1)
-        return mats
-
+    # ---- eval pass ----
     per_scene = {}
     n_eval = 0
     for row in val_rows:
-        mats = scene_arm_scores(row)
-        res = dict(scene=row["scene"], n_inst=row["n_inst"], n_views=row["n_views"])
+        mats = dict(SAT=row["satF"].astype(np.float32),
+                    HEIGHT=row["height"].astype(np.float32))
+        mats["SAT+HEIGHT"] = np.concatenate([mats["SAT"], mats["HEIGHT"]], 1)
+        res = dict(scene_index=n_eval, n_inst=row["n_inst"], n_views=row["n_views"])
+        band = row["band"]
         occb = row["occ"]
-        if len(np.unique(occb)) >= 2 and band.sum() >= 50:
+        if band.sum() >= 50 and len(np.unique(row["err"][band])) >= 2:
             for arm in ("SAT", "HEIGHT", "SAT+HEIGHT"):
                 sc = score_logistic(probes_auc[arm], mats[arm])
-                if len(np.unique(row["err"][band])) >= 2:
-                    res[f"R1_{arm}"] = float(roc_auc_score(row["err"][band], sc[band]))
-        for strat, occv in (("small", row["occ_s"]), ("large", row["occ_l"])):
-            if (arm_strat := (occv > 0)) is None: continue
-            if len(np.unique(occv)) < 2: continue
-            for arm in ("SAT", "HEIGHT", "SAT+HEIGHT"):
-                if (arm, strat) not in probes_auc: continue
-                sc = score_logistic(probes_auc[(arm, strat)], mats[arm])
-                res[f"R3_{arm}_{strat}"] = float(roc_auc_score(occv, sc))
+                res[f"R1_{arm}"] = float(roc_auc_score(row["err"][band], sc[band]))
         for arm in ("SAT", "HEIGHT", "SAT+HEIGHT"):
             sc = score_ridge(r2_models[arm], mats[arm])
             if np.std(sc) >= 1e-9:
@@ -418,9 +345,10 @@ def main():
                 res[f"R2_mlp_{arm}"] = float(np.corrcoef(sc, row["sdf"])[0, 1])
         per_scene[row["scene"]] = res
         n_eval += 1
-        if n_eval % 10 == 0: print(f"  eval {n_eval} ({time.time()-t0:.0f}s)", flush=True)
+        if n_eval % 10 == 0:
+            print(f"  eval {n_eval} ({time.time()-t0:.0f}s)", flush=True)
 
-    keys = sorted({k for r in per_scene.values() for k in r if k.startswith(("R1_", "R2_", "R3_"))})
+    keys = sorted({k for r in per_scene.values() for k in r if k.startswith(("R1_", "R2_"))})
     print("\n===== per-scene summary (mean±std) =====")
     summary = {}
     for k in keys:
@@ -437,24 +365,23 @@ def main():
         hi = float(np.percentile(d[idx].mean(1), 97.5))
         return dict(mean=float(d.mean()), ci=[lo, hi], improved=int((d > 0).sum()), n=len(d))
 
-    for strat in ("small", "large"):
-        a, b = f"R3_SAT+HEIGHT_{strat}", f"R3_SAT_{strat}"
+    for a, b in (("R1_SAT+HEIGHT", "R1_SAT"), ("R1_SAT+HEIGHT", "R1_HEIGHT"),
+                 ("R2_ridge_SAT+HEIGHT", "R2_ridge_SAT"),
+                 ("R2_mlp_SAT+HEIGHT", "R2_mlp_SAT")):
         try:
-            summary[f"R3 marginal {strat}"] = paired(a, b)
-            p = summary[f"R3 marginal {strat}"]
-            print(f"  R3 marginal {strat}: {p['mean']:+.4f} CI[{p['ci'][0]:+.4f},{p['ci'][1]:+.4f}] "
-                  f"improved {p['improved']}/{p['n']}")
+            p = paired(a, b)
+            summary[f"paired {a} - {b}"] = p
+            print(f"  paired {a} - {b}: {p['mean']:+.4f} "
+                  f"CI[{p['ci'][0]:+.4f},{p['ci'][1]:+.4f}] improved {p['improved']}/{p['n']}")
         except Exception as ex:
-            print(f"  R3 marginal {strat}: failed {ex}")
+            print(f"  paired {a} - {b}: failed {ex}")
 
     commit, dirty = subprocess_git()
     summary["manifest"] = dict(git_commit=commit, git_dirty=dirty, seed=SEED,
                                boot_seed=BOOT_SEED, single_ckpt=args.single_ckpt,
                                n_fit=len(fit_rows), n_eval=n_eval,
-                               scene_universe=len(scenes),
-                               eval_note=("eval scenes = depth-set scenes beyond the 80 fit "
-                                          "scenes; no overlap with the ue_coco_with_uav "
-                                          "labeled benchmark"))
+                               note=("depth-set scenes only; no overlap with the "
+                                     "ue_coco_with_uav labeled benchmark"))
     json.dump(summary, (out / "summary.json").open("w"), indent=1)
     json.dump(per_scene, (out / "per_scene.json").open("w"), indent=1)
     print("saved", out / "summary.json", flush=True)
