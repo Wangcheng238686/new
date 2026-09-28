@@ -191,7 +191,7 @@ def scene_record(point_dir, model, device, res=128):
         okv = valid.reshape(-1)
         wzf = wz.reshape(-1)
         s = np.bincount(flat.reshape(-1)[okv], weights=wzf[okv], minlength=Q)
-        c = np.bincount(flat[okv], minlength=Q)
+        c = np.bincount(flat.reshape(-1)[okv], minlength=Q)
         cell_means.append(np.where(c > 0, s / np.maximum(c, 1), np.nan))  # [Q]
         n_views += 1
     if n_views < 3:
