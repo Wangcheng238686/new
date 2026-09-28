@@ -26,6 +26,7 @@ import time
 from pathlib import Path
 
 os.environ.setdefault("OPENCV_IO_ENABLE_OPENEXR", "1")
+os.environ.setdefault("TMPDIR", "/data1/wangcheng/tmp_exr")
 os.environ.setdefault("EXPLICIT_PROMPT_MODE", "points_box_dense")
 os.environ.setdefault("P2_BOUNDARY_REFINER_ENABLED", "1")
 os.environ.setdefault("SAM_IMAGE_EMBED_STRIDE", "16")
