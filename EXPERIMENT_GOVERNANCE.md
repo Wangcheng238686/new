@@ -948,6 +948,13 @@ manifest（git commit/dirty、checkpoint SHA256、seeds）、可训练参数清�
 - **主判定：**每个非零高度相对 H0 的 259-scene paired bootstrap；为控制 6 个预注册比较，使用同时 bootstrap：每 draw 取六个非零高度增量的最大值，95% 分位数为家族阈值。只有至少一个非零 H 的 observed mean 超过阈值，且该 H 的 `correct−mis` 普通 paired-bootstrap CI 下界 >0，才为 `P11_NONZERO_HEIGHT_SIGNAL`。其余为 `P11_NO_NONZERO_HEIGHT_SIGNAL`。
 - **解释边界：**PASS 仅说明存在一个全局可读的固定非零高度，不说明实例高度或授权多高度训练；若所有 H 都不超 H0，则无深度下关闭固定高度扫描，后续只能等深度/可见性信息。
 
+## 附录 S：立项记录 MHBEV-FUS-20260921-P12（跨视角一致性高度选择冻结探针）
+
+**状态：预注册；冻结、只读。** P10/P11 仅否定全局固定高度/均值。P12 对每个 P3 cell 和固定 `H={0,4,7,10,15,22,32}m`，从五路 UAV 的冻结四层 FPN 采样完整 1024-d descriptor；以有效视图间的平均 pairwise cosine 为无监督 surface-consistency，选择最大一致性的高度 descriptor。不会读取 GT、不会训练或写 detector。
+
+- **臂和读出：**`SAT+H0`、`SAT+Hselect_correct`、`SAT+Hselect_mis`（每个高度的世界点统一旋转90°后，再独立做一致性选择）；E5 相同 80 train-valid/259-val、train-only ridge、P3 signed-boundary-distance Pearson-r。选高 tie 固定取更低 H；有效视图少于2时 descriptor 与 selection score 固定为零/-inf。正确/错位均由相同的可见性规则生成。
+- **四要素/门：**主门为 correct-select 相对 H0 和 relative mis 的 259-scene paired bootstrap 95% CI（10,000、seed 20260933）下界均 >0；伴随为 selected-height histogram、选择熵、有效视图 coverage、correct/mis height-map agreement、全量 repeat feature hash、model-state hash。一次完整扫描，不选温度/高度/场景。任一不变量失败为 INVALID；任一主门失败为 `P12_NO_SELF_SUPERVISED_HEIGHT_SELECTION_SIGNAL`，不训练。
+
 ## 附录 R：立项记录 MHBEV-FUS-20260919-H2（BEV→P2 热拟合注入筛查；冻结 detector、仅训注入器）
 
 **编号勘误：** 本立项原登记为附录 M（commit 2c86fbf），与 P6 立项（MHBEV-FUS-20260919-P6）的附录 M 编号冲突，重编号为附录 R。唯一实验 ID `MHBEV-FUS-20260919-H2` 不变。
@@ -1027,3 +1034,168 @@ UNSAFE（H1 监督被 SHAPE_DENSE_DETACH 切断、D2/C30 被饿死零门污染�
 两探针都是冻结特征线性/浅层读出，不构成端到端增益承诺；R1_PASS 授权"残差
 监督注入"训练臂提案，R2_UNLOCK 授权"加强分支容量"的训练臂提案；两者皆阴性
 则原始数据特征融合路线关闭（记录并转 D3/数据设计）。
+
+## 附录 T：立项记录 MHBEV-FUS-20260921-T1（UAV 辅助可见屋顶占据语义分割；冻结、只读）
+
+**状态：预注册；冻结、只读，不改 detector、不写 checkpoint。** 当前数据的唯一 GT
+类别是 `building` 的可见屋顶实例多边形；它没有 SG-BEV 所需的土地用途、楼层或材质
+真值。因此 T1 不把派生标签伪称为属性任务，而将全部实例并集为 `visible-rooftop
+building occupancy`，在 P3 128×128 网格上评估二类**语义分割**。这是与实例 AP 不同、
+但由当前数据严格支持的目标。它检验 SG-BEV 的核心可迁移命题：卫星给出屋顶空间骨架
+时，正确 UAV 几何是否为建筑区域/背景判别提供边际信息。
+
+### T.1 固定设计
+
+- 谱系与 E5 相同：双流 r3 e85 载入后以单流 r1 e86 覆盖 satellite/ROI 权重；冻结
+  satellite P3(512d) 和 z=0、360m、W2C、五视角、四层 frozen-UAV-FPN 的 direct
+  DBEV(1024d)。训练固定前 80 个有效 train scene，验证为完整 259 val。只读 feature
+  extraction 前后均调用标准 `model.predict`，并做 prediction typed parity、重复 feature
+  hash、state hash、no-proposal-write 审计。
+- 三臂为 `SAT`、`SAT+DBEV_correct`、`SAT+DBEV_mis`；mis 是整套 world point 围绕场景
+  中心旋转 90°，维数与训练样本完全相同。每训练场景以固定 seed 从 P3 cell 中等数抽取
+  最多 750 个 positive 和 750 个 negative；不足时取该类全部。仅 train 拟合
+  standardizer + L2 logistic regression（C=0.1，lbfgs，max_iter=2000），val 从不见 GT。
+- 标签 = 每个 128² cell 内任一 `building` roof-top 实例覆盖即 positive。每 val 场景对
+  全部 P3 cell 以固定 probability threshold 0.5 计算 building IoU、binary mIoU（building
+  IoU 和 background IoU 的均值）与 building F1；所有 259 场均纳入，不删空场/易场。
+
+### T.2 四要素与判定门
+
+- **主指标：**259 场逐场 binary mIoU 的 `correct−SAT` paired percentile bootstrap
+  95% CI，10,000 draws，seed `20260934`。**伴随指标：**building IoU、building F1、
+  `correct−mis` 的 mIoU CI、正类 prevalence、有效视角数、三臂 PR-AUC（后者不得取代
+  主指标）。
+- **选择口径：**一次完整 259-val 扫描；固定 z=0、C=0.1、阈值 0.5、80 train scene、
+  750/class/scene；不得选择高度、阈值、训练迭代、场景或 arm。
+- **T1_SEMANTIC_PASS：**所有审计不变量通过，且 `correct−SAT` 与 `correct−mis` 的
+  mIoU bootstrap CI 下界均 `> 0`，并且 correct building-IoU 不低于 SAT 0.002 以上。
+  否则为 `T1_NO_SEMANTIC_OCCUPANCY_GAIN`。PASS 仅授权另立端到端语义 occupancy
+  分支/多任务训练提案；不构成实例 AP 增益，也不授权把 GT instance mask 作为推理输入。
+
+### T.3 完成记录（2026-09-21）
+
+- **工件：**`/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_probe/MHBEV-FUS-20260921-T1-semantic-occupancy-rerun1/`；`summary.json` SHA256 为 `41bc69e7c147c30ecab0575e3e6cc856b23af6e7934d82a95b651ffea431f9e4`。
+- **结果：**`SAT` mIoU `0.864690`、building-IoU `0.860048`；`SAT+DBEV_correct` mIoU `0.861927`、building-IoU `0.857294`。主差 `correct−SAT` mIoU = `-0.002764`，10,000-draw paired bootstrap 95% CI `[-0.003631, -0.001884]`；building-IoU 差 `-0.002754`。虽 `correct−mis` mIoU = `+0.001427`，CI `[+0.000559,+0.002343]`，该几何 sham 对照只证明 correct 对齐强于错位，并不构成相对卫星单流的收益。
+- **审计：**全部 259 个 val scene 纳入（逐场景表 260 行含表头）；80 个 train scene 与 val 不相交；prediction typed parity、重复 feature hash、无 proposal 写入、模型状态不变和拟合工件均为 true（遥测 340 行含表头）。
+- **裁决：**`T1_NO_SEMANTIC_OCCUPANCY_GAIN`。关闭“在现有 RGB+固定高度 DBEV 契约下，将任务改为 roof occupancy mIoU 即可取得 UAV 边际增益”的路线；不得据此立端到端语义分支训练。
+
+## 附录 U：立项记录 MHBEV-FUS-20260921-U1（冻结相对深度的屋顶占据读出）
+
+**状态：预注册；冻结、只读；尚未开始。** T1 已证否冻结 UAV-RGB DBEV 对可见屋顶
+占据语义任务的边际收益。本实验唯一新增输入是官方 `Depth-Anything-V2-Small` 的冻结
+UAV **相对**深度图；不将它声称为真值或米制深度，不改变任一 detector 参数、proposal
+或预测。目的是检验预训练深度表征是否给当前数据唯一支持的派生目标带来真实指标收益。
+
+### U.1 固定设计
+
+- DAv2-Small 使用官方发布的 `vits` checkpoint（SHA256
+  `715fade13be8f229f8a70cc02066f656f2423a59effd0579197bbf57860e1378`），原始 UAV RGB
+  固定为 512×512，经官方 `Resize(lower_bound, multiple=14)` transform 后网络输入为
+  518×518，再双线性回采样为 512×512。所有 5 路 UAV 图逐图一次推理并缓存为 FP32 相对深度；每图以其自身的 1%/99% 分位数裁剪后线性
+  归一到 `[0,1]`，常数图固定零。该归一化不读取标签、相机外参或卫星图。
+- 保持 T1 所有其他固定项：同一 single-overlay/double-checkpoint 谱系、P3 128²、z=0/
+  360m/W2C/五视角、80 train/259 val、同一采样、标准化、逻辑回归、0.5 阈值、mIoU
+  计算及全部只读审计。每 P3 world cell 将同一直接采样坐标处的五路归一深度以有效视角
+  平均，补充为 1 个 `MDE` 通道；不从相对深度回投任意三维点，因而不假设未知尺度。
+- 臂固定为 `SAT`、`SAT+RGBDBEV`（T1 的 correct 臂）、`SAT+RGBDBEV+MDE_correct`、
+  `SAT+RGBDBEV+MDE_mis`。最后一臂将 world grid 围中心旋转 90° 后，对 RGB 和 MDE
+  同步重新采样；所有分类器独立 train-only 拟合。
+
+### U.2 四要素与门
+
+- **主指标：**完整 259-val 逐场 binary mIoU 的 `MDE_correct−SAT+RGBDBEV` paired
+  percentile bootstrap 95% CI（10,000 draws，seed `20260935`）。**伴随：**相对 `SAT`
+  的 mIoU CI、building-IoU/建筑 F1/PR-AUC、`MDE_correct−MDE_mis` CI、每图深度
+  非常数比例、深度 cache 哈希、标准预测 typed parity、重复 feature hash、state hash、
+  proposal absence。
+- **选择口径：**一次完整扫描；DAv2 官方 vits（固定 SHA）、原始 512→官方 transform 518
+  →512 输出、1/99 归一化、z=0、0.5 阈值、80 train scene 与每类每场最多 750 个样本均固定；
+  禁止更换模型、深度归一化、阈值、场景或高度，并记录每场实际采样数。
+- **U1_MDE_SEMANTIC_PASS：**所有不变量为 true；`MDE_correct−SAT+RGBDBEV`、
+  `MDE_correct−SAT` 与 `MDE_correct−MDE_mis` 的 mIoU CI 下界均 `>0`，且相对 `SAT`
+  的 building-IoU 增益 `>=0.002`。否则为 `U1_NO_MDE_SEMANTIC_GAIN`，关闭“off-the-
+  shelf 相对深度可直接替代新增深度渲染”的路线。PASS 只授权深度通道的端到端语义
+  occupancy 热启动；不构成 detector/instance-AP 增益。
+
+## 附录 V：立项记录 MHBEV-FUS-20260929-SZAB（小实例任务重定义 × P2 热拟合注入活机制 A/B）
+
+**状态：预注册；训练类（A 路由·模块叠加型，训练级）。实施须独立实施审核 PASS 后启动。**
+依据：H2_SCREEN_PASS（热拟合 P2 注入在冻结筛查下有边界增益）+ ORIG-AB（全量共适应，
+`finetune_p2_inject_ab.py`，20260920-A/B）已建立训练级双臂框架；其未加权 4-epoch 尺度
+分层基线（`ORIG-AB-sz`，仅加 AP_s/AP_m/AP_l 记录）显示普通注入对 `segm/AP_s` 无增益
+（e4：B 0.1623 vs A 0.1670），且全部冻结探针（P5/P6/D2/R1/DEPTH-R1）一致指向 UAV
+几何的边际信息集中在小建筑边界带。本实验把训练任务重定义为小实例加权目标，在同一
+双臂框架下做注入机制的因果度量。
+
+### V.1 谱系、数据与训练（两臂完全相同，唯一下变量 = 注入）
+
+- 谱系与 ORIG-AB 逐键相同：`configs/ue_dual_stream_p2p3_sparse.py`；dual r1 e85 先载入
+  后以单流 `ue_single_c5v2_control_tr128_va259_s44_r1/best_model_epoch86.pth` 覆盖；
+  `drone_encoder./geometry_bev.` 冻结，其余（LoRA+neck+RPN/ROI heads）可训；E5 式
+  最小二乘热拟合 conv（20 场景标定 + 80 场景拟合，FIT_SEED 20260925，1500 cell/场），
+  γ init 0.25 仅 B 臂存在；train=官方 `ue_coco_with_uav` train 全量 712 场景（seed 44，
+  subset 1.0），val=259 全量；6 epochs、AdamW lr 1e-4（inj 1e-3）、wd 0.01、accum 8、
+  warmup 40、cosine→0.1、AMP、seed 20260928；空 GT batch 跳过逻辑不变。
+- **脚本：**`scripts/ue/finetune_p2_inject_szab.py`（`finetune_p2_inject_ab.py` 的超集；
+  未加权脚本保持冻结以便指纹对照）。唯一非申报语义差异：热拟合采集循环在 20 标定 +
+  80 拟合场景收满后提前 `break`（原脚本继续空转前向剩余场景且不产出任何数）——采集集
+  逐位一致（同样取前 20/80 个非空 GT 场景），且该阶段两个 encoder 处于 eval、无随机
+  层、dataset 不消耗全局 RNG，故 RNG 流与拟合解不变；实施审核（C4）确认惰性。
+
+### V.2 任务重定义（两臂共同，属于任务定义而非臂变量）
+
+小实例加权损失：对 GT 实例 k，`a_k` = 1024² 输入画布上 GT mask 像素数（与 COCO AP_s
+的面积定义同源），`w_k = 1/sqrt(max(a_k,1))`，无上下限截断。逐 batch 归一化：
+
+1. **终末实例 mask 损失**（standard `mask_cross_entropy` 路径）：把"全像素普通均值"
+   替换为逐正样本 ROI 均值的加权均值 `Σ w_i L_i / Σ w_i`（w_i = 该 ROI 所分配 GT 的
+   w_k）。未加权时该式与原实现逐数值等价（每 ROI 像素数相同）。
+2. **bbox head cls/box 损失**：正样本 proposal 的 `label_weights` 与 `bbox_weights`
+   乘以其分配 GT 的 `w_k`；负样本权重不变；`avg_factor` 口径保持 mmdet 默认
+   （cls=非零权重计数、bbox=ROI 总数），即两损失变为对正样本的加权均值（分母不变）。
+3. **明确不加权**（保持原样）：RPN cls/box 损失（anchor 级，无实例语义）、coarse-mask
+   辅助损失、P2 boundary refiner 损失、评估协议（与全部既往 259-val 完全同口径）。
+
+### V.3 臂
+
+| 臂 | 唯一变化 | 输出目录 |
+|---|---|---|
+| A | 加权任务，无注入（`--inject 0`，γ/injector 不存在，extract_feat 纯基座） | `MHBEV-FUS-20260929-SZAB-A` |
+| B | 加权任务 + 热拟合 P2 注入（`--inject 1`） | `MHBEV-FUS-20260929-SZAB-B` |
+
+### V.4 指标四要素与判定门
+
+- **主指标：**last checkpoint（e6）259-val `segm AP_s`（COCO area<32²，标准推理）。
+- **伴随指标：**逐 epoch `segm AP/AP50/AP75/AP_s/AP_m/AP_l`、boundary-F1、逐场
+  small-instance mask-F1@0.5（小实例双侧同口径：GT 与预测均取 area<1024px²，预测另需
+  score≥0.5；按 IoU≥0.5 一对一贪心匹配，P=匹配数/小预测数、R=匹配数/小 GT 数；
+  双侧皆空记 1，单侧空记 0）；未加权基线
+  `ORIG-AB-sz` e4 对照仅作 context，不构成门。
+- **显著性：**逐场 small-mask-F1 的 `B−A` paired percentile bootstrap（10,000 draws，
+  seed 20260936，报告 95% CI）；两臂 val 顺序由同 seed 保证一致，按场索引配对。
+- **判定门 `SZAB_INJECT_PASS`（全部满足）：**
+  (i) `AP_s(B,e6) > AP_s(A,e6)` 且 small-mask-F1 `B−A` CI 下界 > 0；
+  (ii) 全局不退化守卫：`AP(B,e6)−AP(A,e6) ≥ −0.003` 且 `BF1(B,e6)−BF1(A,e6) ≥ −0.003`
+  （H2 (ii) 同款）；
+  (iii) B 臂注入通路活跃：γ(e6) 偏离 init ≥ 20% 且 engagement（训练期 `|delta|/|P2|`
+  范数比逐 epoch 均值）> 0；
+  (iv) 不变量：两臂 manifest 的 git commit、两个 ckpt SHA256、seed 三元组相同；除
+  `inject` 标志外臂间无任何行为差异（代码审计确认单变量键集）。
+  任一不满足 = `SZAB_INJECT_NO_SMALL_GAIN`。
+
+### V.5 遥测三件套
+
+1. **判读边界：**γ/engagement 与加权比遥测（逐 epoch `Σw`、加权/未加权 mask loss 比）
+   只证明通路与重定义活跃，不构成收益证据；结论只由 V.4 主指标 + 门判定。
+2. **标定校验：**warm-fit R² 归档；两臂初始模型 state（除 B 臂 injector/γ）hash 相等
+   写入 manifest；B 臂 `inject["enabled"]=0` 分支与 A 臂代码路径逐行同一。
+3. **机制遥测不替代结局验证：**所有 epoch 均以完整 259-val 标准推理评估（与 ORIG-AB
+   完全同口径），不以训练侧字段代替。
+
+### V.6 解释边界与端点
+
+PASS 仅授权结论"在小实例重定义任务下，热拟合 P2 注入具有因果活机制收益（AP_s 口径）"，
+并授权后续多 seed 复核或全预算训练提案；不构成全局 AP/BF1 增益主张。FAIL 关闭"当前
+P2 热拟合注入形态在小实例任务上的活机制路线"，转数据设计（UAV_DepthBackfill 渲染
+质量/实例分离）复盘。两臂各 6 epochs 约 3.5h，GPU 并行；工件全部落
+`/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_probe/`。
