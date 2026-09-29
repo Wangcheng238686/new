@@ -1,8 +1,10 @@
 """MHBEV-FUS-20260921-DEPTH: does UAV-rendered DEPTH (height) carry marginal
 information for satellite segmentation beyond SAT features?
 
-Scenes: the new-standard strict-instance renders (3502-3664). The UE instance
-EXR gives a binary building-foreground GT (per-instance IDs are not exposed);
+Scenes: the new-standard strict-instance renders (3502-3664). The satellite
+instance EXR stores per-instance ids on channel 0 as gray = local_instance_id/255
+(channels 0-2 identical; channel 3 is a constant-1 alpha and must NOT be picked
+up by any "best channel" heuristic), so ids = rint(ch0 * 255).
 5-view rendered depth gives per-cell world height.
 
 Fit on the first 80 valid scenes, evaluate per-scene on the rest.
@@ -92,6 +94,29 @@ def _read_depth_exr_subprocess(path):
         return np.load(str(npy))
 
 
+def _read_exr_ch0_subprocess(path):
+    """Channel 0 of an EXR via a fresh subprocess (cv2's in-process codec fails
+    on some compression types). Deliberately NOT best-channel: for the instance
+    EXR the all-ones alpha channel would win and silently destroy the ids."""
+    import tempfile
+    code = (
+        "import os, sys, numpy as np\n"
+        "os.environ['OPENCV_IO_ENABLE_OPENEXR'] = '1'\n"
+        "import cv2\n"
+        "im = cv2.imread(sys.argv[1], cv2.IMREAD_UNCHANGED)\n"
+        "if im is None: sys.exit(2)\n"
+        "ch0 = im[:, :, 0] if im.ndim == 3 else im\n"
+        "np.save(sys.argv[2], np.ascontiguousarray(ch0).astype(np.float32))\n"
+    )
+    with tempfile.TemporaryDirectory() as td:
+        npy = Path(td) / "c0.npy"
+        r = subprocess.run([sys.executable, "-c", code, str(path), str(npy)],
+                           capture_output=True, text=True)
+        if r.returncode != 0 or not npy.exists():
+            raise OSError(f"subprocess EXR ch0 read failed for {path}: {r.stderr[-200:]}")
+        return np.load(str(npy))
+
+
 def read_depth_exr(view_dir):
     os.environ.setdefault("OPENCV_IO_ENABLE_OPENEXR", "1")
     path = str(Path(view_dir) / "depth_camera_z.0000.exr")
@@ -143,12 +168,12 @@ def scene_record(point_dir, model, device, res=128):
     inst_p = Path(point_dir) / "satellite" / "instances.json"
     if not (exr_p.exists() and rgb_p.exists() and inst_p.exists()):
         return None
-    ids = np.rint(_read_depth_exr_subprocess(str(exr_p))).astype(np.int32)
-    inst = json.load(open(inst_p))["instances"]
+    ids = np.rint(_read_exr_ch0_subprocess(str(exr_p)) * 255.0).astype(np.int32)
+    if not inst_p.exists():
+        return None
     occ = np.zeros((res, res), np.uint8)
     n_inst = 0
-    for i in inst:
-        lid = int(i["local_instance_id"])
+    for lid in np.unique(ids[ids > 0]):
         m512 = (ids == lid).astype(np.uint8)
         if m512.sum() < 25:
             continue
@@ -158,6 +183,8 @@ def scene_record(point_dir, model, device, res=128):
         occ = np.maximum(occ, m128)
         n_inst += 1
     if occ.sum() < 100 or n_inst == 0:
+        return None
+    if occ.mean() > 0.95:   # near-full occ means the decode broke, not a real tile
         return None
     sdf, band = sdf_band_of(occ)
 
@@ -384,7 +411,7 @@ def main():
 
     probes_auc = {}
     for arm, X in (("SAT", sat_fit), ("HEIGHT", hgt_fit), ("SAT+HEIGHT", cat_fit)):
-        probes_auc[arm] = fit_logistic(X[sel], err_fit[sel], device=device)
+        probes_auc[arm] = fit_logistic(X[sel], err_fit[sel])
 
     # sdf fit cells: 1500 per scene
     sdf_sel, off = [], 0
@@ -397,10 +424,10 @@ def main():
     sdf_y = sdf_fit[sdf_sel]
     r2_models = {}
     for arm, X in (("SAT", sat_fit), ("HEIGHT", hgt_fit), ("SAT+HEIGHT", cat_fit)):
-        r2_models[arm] = fit_ridge(X[sdf_sel], sdf_y[sdf_sel])
+        r2_models[arm] = fit_ridge(X[sdf_sel], sdf_y)
     r2_mlp = {}
     for arm, X in (("SAT", sat_fit), ("HEIGHT", hgt_fit), ("SAT+HEIGHT", cat_fit)):
-        r2_mlp[arm] = fit_mlp(X[sdf_sel], sdf_y[sdf_sel], device=device)
+        r2_mlp[arm] = fit_mlp(X[sdf_sel], sdf_y)
     print("probes/models fitted", flush=True)
 
     # ---- eval pass ----
