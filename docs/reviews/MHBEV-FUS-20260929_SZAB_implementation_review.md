@@ -271,3 +271,48 @@ diff check of those lines is needed). C3–C8 are recorded and do not alter any 
 This review authorizes only the two preregistered SZAB arms (`--inject 0/1`,
 default limit flags, official output directories) — no detector, data, or
 hot-start modification.
+
+## Addendum (2026-09-30): V.7 amendment re-review
+
+**Verdict: PASS — the single-line V.7 amendment (bbox-path positive weights
+mean-normalized to 1 per batch) is correct, nan-safe, arm-neutral, and consistent
+across code, docstring, manifest and Appendix V.2.2/V.7.**
+
+Re-review of the uncommitted working-tree diff only (no full re-audit); line
+numbers are of `finetune_p2_inject_szab.py` at this state. Numeric checks run
+with `/data2/wangcheng/envs/cvt2/bin/python` on mmdet-shaped mocks per the
+2026-09-29 audit's verified call graph. `py_compile` passes.
+
+- **(a) Normalization — PASS.** szab:363 `w_roi = w_roi / w_roi.mean().clamp_min(1e-12)`.
+  Torch-verified: normalized positive mean == 1.0 (fp32 ~1e-8) and pairwise ratios
+  preserved (∝1/√area, scalar division). One `scale` feeds both paths
+  (szab:364-367; `scale[:, None]` for bbox_weights), negatives untouched
+  (label=1 / bbox=0), avg_factor unchanged (cls nonzero-weight count = total ROIs;
+  bbox = size(0)) — positive-weight sum equals the positive count on both cls and
+  bbox paths, restoring the unweighted pos:neg balance.
+- **(b) Mask path — PASS.** `sz_pos_roi_weights` (szab:318-324) still carries raw
+  `gt.sz_gt_w` (untouched by the diff); `SZWeightedMaskCE` is Σw-normalized
+  (szab:307,312), invariant to any positive rescaling — verified numerically
+  identical raw vs normalized (0.452941…). Telemetry `sz_mean_pos_roi_w`
+  (szab:625-626) derives from this raw mask-path w, so its semantics are unchanged
+  as V.7 states.
+- **(c) Zero-positive batch — PASS (nan-safe, torch-verified).** `mean(empty)` =
+  nan; `clamp_min` does NOT remove it (torch clamp propagates nan) — but the empty
+  tensor divided by nan stays 0-element, and `scale[pos_mask] = w_roi` with an
+  all-False mask assigns nothing: `scale` stays all-ones and finite; the szab:354
+  assert passes 0==0. The nan exists only transiently inside the 0-element tensor
+  and cannot reach any loss tensor (clamp_min is a no-op for this case, not the
+  actual guard — harmless).
+- **(d) Arm isolation — PASS.** The reweighting block (szab:287-368) is installed
+  unconditionally between the inject branches (szab:219 / 376); hooks at 328/339/368
+  are shared by `--inject 0/1`. The local `finetune_p2_inject_ab.py` changes are
+  additive readout only (AP_s/m/l, last.pth save) — no weighting there.
+- **(e) V.7 consistency — PASS.** Code (363 + comment 357-362), docstring (8-12),
+  manifest `sz_reweight.formula` (556-559), V.2.2 (gov:1153-1158) and V.7
+  (gov:1205-1216) all state the same operation. Abandoned-run names in V.7 match
+  the on-disk archives (`MHBEV-FUS-20260929-SZAB-{A,B}-abandoned-v1weighting-0930195934`).
+
+Non-blocking notes: the working tree also incidentally resolves prior C2
+(`sz_sum_w`/`sz_n_roi` exported, szab:623-624) and C3 (`_last_stats=None`,
+szab:588). Restarting the two arms under the amended code satisfies V.7's
+"independent re-review PASS" precondition.

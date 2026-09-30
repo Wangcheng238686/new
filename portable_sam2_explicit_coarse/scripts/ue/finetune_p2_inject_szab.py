@@ -5,8 +5,11 @@ small-building task redefinition applied to BOTH arms (Appendix V):
   - small-instance loss weighting w_k = 1/sqrt(mask pixel area @1024^2), applied to
     (i) the final instance mask loss (per-ROI weighted mean replacing the plain
     all-pixel mean; numerically identical to it when all w are equal) and
-    (ii) the bbox head cls/box losses (positive proposals' label/bbox weights scaled
-    by the assigned GT's w_k; negatives untouched; mmdet avg_factor untouched).
+    (ii) the bbox head cls/box losses: positive proposals' label/bbox weights
+    scaled by the assigned GT's w_k MEAN-NORMALIZED TO 1 over positives per batch
+    (Appendix V.7 amendment — raw w averages ~0.01 on this data and, against
+    weight-1 negatives in the count-based denominator, collapses the classifier),
+    negatives untouched; mmdet avg_factor untouched.
     RPN / coarse-mask / P2-boundary-refiner losses stay unweighted.
   - primary readout: last-epoch 259-val segm AP_s; per-scene small-instance
     mask-F1@0.5 (both sides area<1024px^2, pred score>=0.5, IoU>=0.5 greedy
@@ -351,6 +354,13 @@ def main():
         if int(pos_mask.sum()) != int(w_roi.numel()):
             raise RuntimeError(
                 f"sz pos/weight mismatch: {int(pos_mask.sum())} pos vs {int(w_roi.numel())} w")
+        # mean-normalize to 1 over positives: the cls/box denominator (mmdet
+        # avg_factor) also counts weight-1 negatives, so RAW w (mean ~0.01 on
+        # this data) crushes the positive-class signal ~100x and collapses the
+        # pretrained classifier (v1 runs: AP 0.731 -> 0.28 in one epoch).
+        # Normalizing keeps the preregistered 1/sqrt(area) shape among positives
+        # and restores the original positive:negative loss balance.
+        w_roi = w_roi / w_roi.mean().clamp_min(1e-12)
         scale = torch.ones_like(label_weights)
         scale[pos_mask] = w_roi
         return (labels, label_weights * scale,
@@ -544,7 +554,9 @@ def main():
         inject=bool(args.inject), git_commit=commit, git_dirty=dirty,
         experiment="MHBEV-FUS-20260929-SZAB", arm=("B" if args.inject else "A"),
         init_state_hash_shared=_h.hexdigest(),
-        sz_reweight=dict(formula="w_k = 1/sqrt(max(gt_mask_pixel_area@1024^2, 1))",
+        sz_reweight=dict(formula=("w_k = 1/sqrt(max(gt_mask_pixel_area@1024^2, 1)); "
+                                  "bbox-path positives mean-normalized to 1 per batch "
+                                  "(amendment V.7)"),
                          scope=["final_instance_mask_loss", "bbox_head_cls_box"],
                          unweighted=["rpn", "coarse_mask_aux", "p2_boundary_refiner"]),
         boot_seed=20260936, small_area_px=SMALL_AREA_PX,

@@ -1150,9 +1150,11 @@ UAV **相对**深度图；不将它声称为真值或米制深度，不改变任
 1. **终末实例 mask 损失**（standard `mask_cross_entropy` 路径）：把"全像素普通均值"
    替换为逐正样本 ROI 均值的加权均值 `Σ w_i L_i / Σ w_i`（w_i = 该 ROI 所分配 GT 的
    w_k）。未加权时该式与原实现逐数值等价（每 ROI 像素数相同）。
-2. **bbox head cls/box 损失**：正样本 proposal 的 `label_weights` 与 `bbox_weights`
-   乘以其分配 GT 的 `w_k`；负样本权重不变；`avg_factor` 口径保持 mmdet 默认
-   （cls=非零权重计数、bbox=ROI 总数），即两损失变为对正样本的加权均值（分母不变）。
+2. **bbox head cls/box 损失**（V.7 修订版）：正样本 proposal 的 `label_weights` 与
+   `bbox_weights` 乘以其分配 GT 的 `w_k` **按 batch 内正样本均值归一到 1**；负样本权重
+   不变；`avg_factor` 口径保持 mmdet 默认（cls=非零权重计数、bbox=ROI 总数）。归一化
+   保持正样本之间的 `1/√area` 相对形式，同时保持与未加权运行相同的正:负损失量级
+   （原始 w 在本数据上均值 ~0.010，相对权重为 1 的负样本会把正类信号压低约百倍）。
 3. **明确不加权**（保持原样）：RPN cls/box 损失（anchor 级，无实例语义）、coarse-mask
    辅助损失、P2 boundary refiner 损失、评估协议（与全部既往 259-val 完全同口径）。
 
@@ -1199,3 +1201,16 @@ PASS 仅授权结论"在小实例重定义任务下，热拟合 P2 注入具有�
 P2 热拟合注入形态在小实例任务上的活机制路线"，转数据设计（UAV_DepthBackfill 渲染
 质量/实例分离）复盘。两臂各 6 epochs 约 3.5h，GPU 并行；工件全部落
 `/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_probe/`。
+
+### V.7 修订与废弃记录
+
+- **2026-09-30 V.2.2 修订（如上）。** 原文"乘以 `w_k`（分母不变）即对正样本的加权均值"
+  在 cls 路径上不成立：分母（非零权重计数）同时计入权重为 1 的负样本。V1 运行
+  （2026-09-30 18:08–19:59，GPU 0/1，seed 不变）证实：`sz_mean_pos_roi_w ≈ 0.010`，
+  正类信号被压至负样本 ~1%，两臂 AP 于 epoch 1 从初始化 0.731 崩至 0.28-0.38，e5 仅
+  爬回 0.60-0.64，AP_s(0.10-0.11) 低于未加权基线同期(0.16-0.17)——任务重定义整体劣化，
+  与立项意图相反。两臂于 e5/e4 中止，工件归档为
+  `MHBEV-FUS-20260929-SZAB-{A,B}-abandoned-v1weighting-0930195934`（作废工件，非门判定
+  证据；臂内 B−A 方向仅供参考）。修订只改 bbox 路径一行：正样本权重除以 batch 内
+  正样本权重均值（mask 路径 Σ 归一化下数学不变，遥测 sz_ratio 口径不变）。
+  修订后须独立复核 PASS 方可重启。
