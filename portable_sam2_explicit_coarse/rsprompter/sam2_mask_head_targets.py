@@ -314,16 +314,6 @@ class _MaskHeadTargetsMixin:
                 target_size=mask_preds.shape[-2:],
                 device=mask_preds.device,
             )
-        elif self.roi_sam_enabled:
-            # ROI-SAM keeps the target on the decoder's native ROI grid instead
-            # of collapsing the 128x128 prediction to the historical 28x28
-            # Mask R-CNN target used by B0/B1.
-            mask_targets = self.get_coarse_targets(
-                sampling_results,
-                batch_gt_instances,
-                mask_size=mask_preds.shape[-2:],
-                prompt_pos_priors=final_mask_pos_priors,
-            )
         else:
             mask_targets = self.get_targets(
                 sampling_results=sampling_results,

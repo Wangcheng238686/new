@@ -50,7 +50,15 @@ class CoarseMaskLoss(nn.Module):
         self.weight = float(weight)
         self.bce_weight = float(bce_weight)
         self.dice_weight = float(dice_weight)
+        # boundary_weight/distance_weight stay accepted because checkpoint
+        # configs carry them; both entries run with them at 0 and the weighted
+        # boundary-loss branch is gone (the boundary METRIC below stays live).
         self.boundary_weight = float(boundary_weight)
+        if self.boundary_weight > 0:
+            raise ValueError(
+                "coarse_mask_loss_cfg.boundary_weight > 0 was a removed "
+                "ablation; BCE+Dice is the canonical coarse objective"
+            )
         self.distance_weight = float(distance_weight)
         self.bce_reduction = str(bce_reduction)
         self.dice_smooth = float(dice_smooth)
@@ -168,13 +176,6 @@ class CoarseMaskLoss(nn.Module):
 
         total = self.bce_weight * bce + self.dice_weight * dice
 
-        # ---- Boundary loss（min-pool erosion，可微）----
-        if self.boundary_weight > 0:
-            boundary_loss = self._boundary_loss(pred_prob, target_mask)
-            total = total + self.boundary_weight * boundary_loss
-        else:
-            boundary_loss = torch.zeros_like(total)
-
         # ---- Boundary metric（按需计算；默认关闭以避免无效 max-pool）----
         if self.compute_metrics:
             with torch.no_grad():
@@ -211,13 +212,6 @@ class CoarseMaskLoss(nn.Module):
         dilation = F.max_pool2d(padded, kernel_size=3, stride=1, padding=0)
         erosion = -F.max_pool2d(-padded, kernel_size=3, stride=1, padding=0)
         return (dilation - erosion).squeeze(1).clamp(0.0, 1.0)
-
-    def _boundary_loss(self, pred_prob: Tensor, target_mask: Tensor) -> Tensor:
-        """可微 boundary loss：pred_boundary 与 target_boundary 的 BCE。"""
-        pred_b = self._morphological_boundary(pred_prob)
-        with torch.no_grad():
-            target_b = self._morphological_boundary(target_mask)
-        return F.binary_cross_entropy(pred_b.clamp(0, 1), target_b.clamp(0, 1), reduction="mean")
 
     def _boundary_metric(self, pred_prob: Tensor, target_mask: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         """boundary F-score 的 tp/fp/fn（tolerance 容忍，no_grad）。
