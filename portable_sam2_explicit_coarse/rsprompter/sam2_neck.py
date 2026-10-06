@@ -1,179 +1,15 @@
-"""SAM2 feature aggregator and PAFPN necks (split from models_sam2)."""
+"""Detection-oriented FPN/PAN neck for SAM2 backbone_fpn features."""
 
-"""
-SAM2 Adapter for Portable SAM Fusion - Simplified Version
-直接使用SAM2的build_sam2函数加载模型
-"""
+from typing import Dict, Optional, Tuple
 
-from typing import Dict, List, Optional, Tuple
-
-import einops
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from mmengine.dist import is_main_process
+
 from mmengine.model import BaseModule
 from torch import Tensor
 
 from mmdet.registry import MODELS
-
-
-
-
-class RSFeatureAggregatorSAM2(BaseModule):
-    """Feature aggregator adapted for SAM2's output dimensions."""
-
-    in_channels_dict = {
-        "tiny": [192, 96, 48, 24],
-        "small": [384, 192, 96, 48],
-        "base": [768, 384, 192, 96],
-        "large": [1024, 512, 256, 128],
-        "base_plus": [896, 448, 224, 112],
-        # SAM2 Hiera 各 size 经 neck 聚合后各 stage 输出通道（FPN 输出统一 256）
-        "sam2_hiera_tiny": [256, 256, 256, 256],
-        "sam2_hiera_small": [256, 256, 256, 256],
-        "sam2_hiera_base": [256, 256, 256, 256],
-        "sam2_hiera_base_plus": [256, 256, 256, 256],
-        "sam2_hiera_large": [256, 256, 256, 256],  # FPN输出都是256维
-    }
-
-    def __init__(
-        self,
-        in_channels: str = "sam2_hiera_base",
-        hidden_channels: int = 64,
-        out_channels: int = 256,
-        select_layers: Optional[List[int]] = None,
-        init_cfg: Optional[Dict] = None,
-    ):
-        super().__init__(init_cfg=init_cfg)
-        if "sam2" in in_channels.lower():
-            model_size = in_channels
-        else:
-            model_size = "base_plus" if "base" in in_channels else "large" if "large" in in_channels else "small" if "small" in in_channels else "tiny"
-        # 审查 3.2：禁止 neck key 静默 fallback。未知 key 直接报错，避免隐藏拼写/型号错误。
-        if model_size not in self.in_channels_dict:
-            raise KeyError(
-                f"Unsupported SAM2 neck key: {model_size!r}. "
-                f"Expected one of {sorted(self.in_channels_dict.keys())}."
-            )
-        self.in_channels = self.in_channels_dict[model_size]
-        self.select_layers = select_layers or [0, 1, 2]
-
-        self.downconvs = nn.ModuleList()
-        for i_layer in self.select_layers:
-            if i_layer < len(self.in_channels):
-                in_ch = self.in_channels[i_layer]
-            else:
-                in_ch = self.in_channels[-1]
-
-            self.downconvs.append(
-                nn.Sequential(
-                    nn.Conv2d(in_ch, hidden_channels, 1),
-                    nn.BatchNorm2d(hidden_channels),
-                    nn.ReLU(inplace=True),
-                    nn.Conv2d(hidden_channels, hidden_channels, 3, padding=1),
-                    nn.BatchNorm2d(hidden_channels),
-                    nn.ReLU(inplace=True),
-                )
-            )
-
-        self.hidden_convs = nn.ModuleList()
-        for _ in self.select_layers:
-            self.hidden_convs.append(
-                nn.Sequential(
-                    nn.Conv2d(hidden_channels, hidden_channels, 3, padding=1),
-                    nn.BatchNorm2d(hidden_channels),
-                    nn.ReLU(inplace=True),
-                )
-            )
-
-        self.fusion_conv = nn.Sequential(
-            nn.Conv2d(hidden_channels, out_channels, 1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, 3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, 3, padding=1),
-        )
-
-    def forward(self, inputs) -> Tuple[Tensor, ...]:
-        if isinstance(inputs, tuple) and len(inputs) == 2 and isinstance(inputs[1], tuple):
-            inputs = inputs[1]
-        
-        if not inputs:
-            raise ValueError("Empty inputs to neck")
-
-        inputs = tuple(x.float() for x in inputs)
-
-        if is_main_process() and not hasattr(self, '_debug_printed'):
-            self._debug_printed = True
-            print(f"[DEBUG] RSFeatureAggregatorSAM2 inputs: {len(inputs)} tensors")
-            for i, t in enumerate(inputs):
-                print(f"  [{i}] shape={t.shape}, dtype={t.dtype}")
-
-        if len(inputs) == 1:
-            x = inputs[0]
-            x = self.fusion_conv(x)
-            feat_64 = x
-            feat_32 = torch.nn.functional.max_pool2d(feat_64, kernel_size=2, stride=2)
-            feat_16 = torch.nn.functional.max_pool2d(feat_32, kernel_size=2, stride=2)
-            feat_8 = torch.nn.functional.max_pool2d(feat_16, kernel_size=2, stride=2)
-            feat_4 = torch.nn.functional.max_pool2d(feat_8, kernel_size=2, stride=2)
-            # return features in order of increasing stride (4, 8, 16, 32, 64)
-            return (feat_64, feat_32, feat_16, feat_8, feat_4)
-
-        while len(inputs) < len(self.in_channels):
-            inputs = inputs + (inputs[-1],)
-        
-        inputs = [einops.rearrange(x, "b h w c -> b c h w") if x.dim() == 3 else x for x in inputs]
-
-        features = []
-        for idx, i_layer in enumerate(self.select_layers):
-            if i_layer < len(inputs):
-                x = inputs[i_layer]
-                if x.dim() == 3:
-                    x = x.permute(0, 2, 1)
-                features.append(self.downconvs[idx](x))
-
-        if not features:
-            raise ValueError("No features to process")
-
-        # Find largest feature map size
-        target_h, target_w = 0, 0
-        for feat in features:
-            if feat.shape[2] > target_h:
-                target_h = feat.shape[2]
-                target_w = feat.shape[3]
-        target_size = (target_h, target_w)
-
-        aligned_features = []
-        for feat in features:
-            if feat.shape[2:] != target_size:
-                feat = torch.nn.functional.interpolate(
-                    feat, size=target_size, mode='bilinear', align_corners=False
-                )
-            else:
-                feat = feat
-            aligned_features.append(feat)
-        
-        x = aligned_features[0]
-        for idx, hidden_conv in enumerate(self.hidden_convs[1:], 1):
-            if idx < len(aligned_features):
-                x = x + aligned_features[idx]
-            residual = hidden_conv(x)
-            x = x + residual
-        x = self.fusion_conv(x)
-        
-        feat_64 = x
-        feat_32 = torch.nn.functional.max_pool2d(feat_64, kernel_size=2, stride=2)
-        feat_16 = torch.nn.functional.max_pool2d(feat_32, kernel_size=2, stride=2)
-        feat_8 = torch.nn.functional.max_pool2d(feat_16, kernel_size=2, stride=2)
-        feat_4 = torch.nn.functional.max_pool2d(feat_8, kernel_size=2, stride=2)
-        
-        # return features in order of increasing stride (4, 8, 16, 32, 64)
-        return (feat_64, feat_32, feat_16, feat_8, feat_4)
-
 
 @MODELS.register_module()
 class RSSAM2PAFPN(BaseModule):
@@ -291,12 +127,6 @@ class RSSAM2PAFPN(BaseModule):
         while len(inputs) < self.num_levels:
             inputs = inputs + (inputs[-1],)
         inputs = inputs[:self.num_levels]
-
-        if is_main_process() and not hasattr(self, "_debug_printed"):
-            self._debug_printed = True
-            print(f"[DEBUG] RSSAM2PAFPN inputs: {len(inputs)} tensors")
-            for i, t in enumerate(inputs):
-                print(f"  [{i}] shape={t.shape}, dtype={t.dtype}")
 
         laterals = [conv(x) for conv, x in zip(self.lateral_convs, inputs)]
 
