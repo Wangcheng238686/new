@@ -10,6 +10,7 @@ auxiliary) plus their telemetry.
 from typing import Dict, List, Optional, Tuple
 
 import torch
+import torch.nn.functional as F
 
 from torch import Tensor
 
@@ -34,12 +35,29 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         super().__init__(*args, **kwargs)
         self.bbox_train_fp32 = bool(bbox_train_fp32)
         if with_extra_pe:
-            # Legacy positional-encoding injection arm; its SinePositionalEncoding
-            # pathway is gone, so enabling it must fail loudly.
-            raise ValueError(
-                "with_extra_pe belonged to a removed development arm and "
-                "cannot be enabled"
+            # Parameter-free spatial sine pattern added to every feature level
+            # before assigner/RPN/RoI consumption. Both paper checkpoints were
+            # trained with it on; it has no state-dict keys, so only forward
+            # equivalence can guard it.
+            out_channels = self.bbox_roi_extractor.out_channels
+            positional_encoding = dict(num_feats=out_channels // 2, normalize=True)
+            from mmdet.models import SinePositionalEncoding
+
+            self.extra_pe = SinePositionalEncoding(**positional_encoding)
+
+    def _inject_extra_pe(self, x: Tuple[Tensor]) -> Tuple[Tensor]:
+        if not hasattr(self, "extra_pe"):
+            return x
+        bs, _, h, w = x[0].shape
+        mask_pe = torch.zeros((bs, h, w), device=x[0].device, dtype=torch.bool)
+        img_feats_pe = self.extra_pe(mask_pe)
+        return tuple(
+            feat + F.interpolate(
+                img_feats_pe, size=feat.shape[-2:], mode="bilinear",
+                align_corners=False,
             )
+            for feat in x
+        )
 
     def get_prompt_debug_stats(self) -> Dict[str, object]:
         stats: Dict[str, object] = {}
@@ -394,6 +412,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         assert len(rpn_results_list) == len(batch_data_samples)
         outputs = unpack_gt_instances(batch_data_samples)
         batch_gt_instances, batch_gt_instances_ignore, _ = outputs
+        x = self._inject_extra_pe(x)
 
         num_imgs = len(batch_data_samples)
         sampling_results = []
@@ -509,6 +528,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         high_res_features=None,
     ) -> InstanceList:
         batch_img_metas = [data_samples.metainfo for data_samples in batch_data_samples]
+        x = self._inject_extra_pe(x)
 
         bbox_rescale = rescale if not self.with_mask else False
         results_list = self.predict_bbox(
