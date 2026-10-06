@@ -74,3 +74,51 @@ RCNN_SAMPLER_NUM=32、seed44）：全部 27 个 loss/遥测指标的 |new−ref|
 自噪声量级（GPU scatter 原子操作噪声），恒等量（TAIL/selected_count=416、changed_fraction、
 boundary_logit、det_weight）逐位一致；参数组表仅 quality_head→iou_head 改名（同参同 LR）。
 教训：bit 级对比在 GPU 原子操作下不可达，必须用同代码双跑标定噪声带。
+
+### R5 decoder_tail_refiner 575→228
+只留耦合 margin 容器：删 v1 BCE 损失、tailstop 隔离分支、confidence_gated*（A4/A5）
+全部构造/前向/损失/遥测与 DDP 空秩镜像；`mlp.{0,1,3}` 参数名逐字节保留（ckpt 兼容）；
+`_stop_margin_point_loss` 更名 `point_loss`（oracle 证据注释保留）。两 ckpt 尾配置实测
+`residual_v1_margin/K64/margin0.10/boundary−0.4054651` 完全一致。单测裁剪为 margin 契约
+（test_decoder_tail_stop_margin.py → test_decoder_tail_margin.py）。
+
+### R6 injector/dense_utils/helpers 992→432
+injector 351→127（只留 roi_only，删 RoIBoxEncoding/上下文投影/FiLM 族）；dense_prompt_utils
+350→123（删 signed/gaussian 变换与 scipy 依赖）；helpers 291→182（删 ROI-SAM 辅助、
+signed/gaussian 分支、gate 死档位、死诊断）。facade 同步（shape_prior 去 RoIBoxEncoding）。
+
+### R7 miner/neck/vision 1489→1142
+miner 593→473（删 point warmup 分级、固定对照 2P2N、点位 jitter；遥测键 warmup_stage=2/
+pjitter_count=0 常量保留）；neck 321→151（删 RSFeatureAggregatorSAM2 与 DEBUG 打印）；
+vision 545→518（删两个 prune 占位类）。
+
+### R8 targets/coarse_loss/detector
+targets 删 roi_sam 分支——**修复训练期隐患**：R3 已删 `roi_sam_enabled` 属性，loss_and_target
+的 elif 引用会在 roi_local 训练时 AttributeError（推理不经过 loss 路径，双门测不到）。
+coarse_loss 247→241（删 boundary_weight>0 损失分支；boundary METRIC 遥测保留——两 ckpt
+compute_metrics=True）。
+
+### R10 配置坍缩 + 指纹机器验证
+用"假 python"拦截器从真实启动链捕获最终 cfg.model 与命令行，生成静态配置：
+- `configs/a3sgm_whu1024.py` / `a3sgm_vhr10.py`：**architecture_fingerprint 与两论文 ckpt
+  训练期契约逐字节相等**（NWPU ID 差仅 `_udprk64` 历史尾缀，R1 规则覆盖）；
+- `configs/ablations/vhr10_{point_only,box_only,point_box,point_box_dense}.py`：论文消融
+  P/B/P+B/P+B+M 的 `_base_` delta（加减键；`_delete_=True` 使尾 cfg 解析为 `{}`=禁用，
+  与"键缺失"模型行为等价）；逐键与 env 管线 dump 相等。
+瘦启动器 `whu1024_a3sgm_roilocal_full_fast.sh`/`vhr10_a3sgm_matrix300.sh`（ABLATION_CONFIG
+可指 delta）；删 env 三层管线与解析 configs。静态冒烟（无模型 env）：28/30 指标落
+ref-ref2 噪声带，两个越界者（rpn_bbox/loss_bbox）在四跑全距内且 R9 new 跑同样越界。
+
+### R11 infer_from_checkpoint 1060→1023
+删 --disable-p2/--p2-beta/--disable-decoder-tail 探针旗标、DenseBR 拒载/迁移。
+**契约 compat 区（两个变体 + R1 旧 ID 规则）逐字节未动。**
+
+### R12 仓库级删除
+inference/probes 24 个、scripts/probes、baselines 外部基线 wrapper 47 个（图件脚本
+make_teaser/make_fig1_rows/layout_grid/pick_viz/dump_coarse/crop/scan 保留）、tools 灰件 3、
+legacy_baseline/ 整目录、顶层旧 tex/pdf/中文叙事 PDF/teaser 候选图/viz 中间产物、
+.worktrees 双 gitlink、refactor_golden（磁盘）。portable py+sh 40,149→14,807。
+
+## 最终行数（portable_sam2_explicit_coarse，py+sh）
+rsprompter 4,866（含全量遥测）｜trainer 2,960｜infer 1,023｜data 695｜tools/utils ~1,550｜
+smoke ~1,200｜configs+ablations ~1,400｜图件脚本 ~1,600｜入口/评测脚本 ~300。
