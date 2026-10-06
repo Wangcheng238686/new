@@ -8,6 +8,7 @@ import copy
 import json
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Tuple
@@ -308,6 +309,28 @@ def _targeted_sam2_checkpoint_override(
         decoder_cfg["checkpoint_path"] = checkpoint_path
 
 
+_TAIL_ID_SUFFIX = re.compile(r"^_udprk\d+$")
+
+
+def _is_legacy_pre_tail_id(saved_id: Any, resolved: Mapping[str, Any]) -> bool:
+    """True when the only architecture-ID difference is the decoder-tail suffix.
+
+    Commit eef70ca (2026-09-18) started appending ``_udprk{K}`` to tail-enabled
+    RD/G base IDs so tail models stop sharing an ID with tail-less ones.
+    Checkpoints trained before it (e.g. NWPU a3sgm, saved 2026-09-17) carry the
+    bare base ID. Only this exact naming gap is tolerated here; content equality
+    is still enforced by the fingerprint comparison at the call site, so the
+    rule can never mask a real config drift.
+    """
+    resolved_id = resolved.get("architecture_id")
+    if not isinstance(saved_id, str) or not isinstance(resolved_id, str):
+        return False
+    return bool(
+        resolved_id.startswith(saved_id)
+        and _TAIL_ID_SUFFIX.match(resolved_id[len(saved_id) :])
+    )
+
+
 def _resolve_model_config(
     args: argparse.Namespace,
     snapshot: Mapping[str, Any],
@@ -361,6 +384,19 @@ def _resolve_model_config(
                 saved.get("architecture_id") == resolved.get("architecture_id")
                 and saved.get("model_fingerprint") == resolved.get("model_fingerprint")
             ):
+                return config
+            # Naming-only compat for pre-eef70ca checkpoints: identical
+            # fingerprint plus the ID gap being exactly the tail suffix.
+            if (
+                saved.get("model_fingerprint") == resolved.get("model_fingerprint")
+                and _is_legacy_pre_tail_id(saved.get("architecture_id"), resolved)
+            ):
+                logger.warning(
+                    "Checkpoint predates the decoder-tail ID suffix: saved=%s "
+                    "accepted as %s (fingerprints identical)",
+                    saved.get("architecture_id"),
+                    resolved.get("architecture_id"),
+                )
                 return config
             # Compat: checkpoints saved before PROMPT_ENCODER_TRAIN_
             # MASK_DOWNSCALING was plumbed into the main config carry no
