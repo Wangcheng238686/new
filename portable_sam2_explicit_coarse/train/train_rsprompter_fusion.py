@@ -365,8 +365,6 @@ def _build_optimizer(
     no_mask_lr_mult: float = 0.1,
     prompt_encoder_lr_mult: float = 0.1,
     shape_prior_lr_mult: float = 1.0,
-    p2_boundary_refiner_lr_mult: float = 1.0,
-    quality_head_lr_mult: float = 1.0,
     decoder_tail_lr_mult: float = 1.0,
     weight_decay: float = 0.05,
 ) -> optim.Optimizer:
@@ -380,10 +378,8 @@ def _build_optimizer(
     names_prompt_encoder = []
     params_shape_prior = []
     names_shape_prior = []
-    params_p2_boundary_refiner = []
-    names_p2_boundary_refiner = []
-    params_quality_head = []
-    names_quality_head = []
+    params_iou_head = []
+    names_iou_head = []
     params_decoder_tail = []
     names_decoder_tail = []
     params_bbox_head = []
@@ -401,12 +397,11 @@ def _build_optimizer(
         elif match_name.startswith("backbone.") or match_name.startswith("shared_image_embedding."):
             params_sat_backbone.append(param)
             names_sat_backbone.append(name)
-        elif (
-            "roi_head.mask_head.mask_decoder.decoder.iou_prediction_head" in match_name
-            or "roi_head.mask_head.quality_head" in match_name
-        ):
-            params_quality_head.append(param)
-            names_quality_head.append(name)
+        elif "roi_head.mask_head.mask_decoder.decoder.iou_prediction_head" in match_name:
+            # The IoU head keeps its own group (historical C2-era contract)
+            # even though the quality-rerank module is gone.
+            params_iou_head.append(param)
+            names_iou_head.append(name)
         elif "roi_head.mask_head.mask_decoder" in match_name:
             params_mask_decoder.append(param)
             names_mask_decoder.append(name)
@@ -486,33 +481,10 @@ def _build_optimizer(
             }
         )
         audit_groups.append(("shape_prior", params_shape_prior, names_shape_prior, lr * shape_prior_lr_mult, weight_decay))
-    if params_p2_boundary_refiner:
-        param_groups.append(
-            {
-                "params": params_p2_boundary_refiner,
-                "lr": lr * p2_boundary_refiner_lr_mult,
-                "weight_decay": weight_decay,
-                "name": "p2_boundary_refiner",
-            }
-        )
-        audit_groups.append(
-            (
-                "p2_boundary_refiner",
-                params_p2_boundary_refiner,
-                names_p2_boundary_refiner,
-                lr * p2_boundary_refiner_lr_mult,
-                weight_decay,
-            )
-        )
-    if params_quality_head:
-        param_groups.append(
-            {
-                "params": params_quality_head,
-                "lr": lr * quality_head_lr_mult,
-                "name": "quality_head",
-            }
-        )
-        audit_groups.append(("quality_head", params_quality_head, names_quality_head, lr * quality_head_lr_mult, weight_decay))
+    if params_iou_head:
+        param_groups.append({"params": params_iou_head, "lr": lr,
+                             "name": "iou_head"})
+        audit_groups.append(("iou_head", params_iou_head, names_iou_head, lr, weight_decay))
     if params_decoder_tail:
         param_groups.append({"params": params_decoder_tail, "lr": lr * decoder_tail_lr_mult,
                              "weight_decay": weight_decay, "name": "decoder_tail"})
@@ -701,26 +673,6 @@ class ExponentialMovingAverage:
                 self.ema_state[key] = source.clone()
 
 
-def _get_quality_head(model: torch.nn.Module) -> torch.nn.Module:
-    model_core = model.module if hasattr(model, "module") else model
-    mask_head = getattr(getattr(model_core, "roi_head", None), "mask_head", None)
-    quality_head = getattr(mask_head, "quality_head", None)
-    if quality_head is None:
-        mask_decoder = getattr(mask_head, "mask_decoder", None)
-        decoder = getattr(mask_decoder, "decoder", None)
-        quality_head = getattr(decoder, "iou_prediction_head", None)
-    if quality_head is None or not getattr(mask_head, "quality_head_enabled", False):
-        raise RuntimeError("--train-quality-head-only requires QUALITY_HEAD_ENABLED=1")
-    return quality_head
-
-
-def _set_quality_head_only_train_mode(model: torch.nn.Module) -> None:
-    """Keep C2 deterministic while training the native SAM2 quality head."""
-    model_core = model.module if hasattr(model, "module") else model
-    model_core.eval()
-    _get_quality_head(model_core).train()
-
-
 def _log_trainable_state(model: torch.nn.Module):
     model_core = model.module if hasattr(model, "module") else model
     roi_head = getattr(model_core, "roi_head", None)
@@ -732,18 +684,9 @@ def _log_trainable_state(model: torch.nn.Module):
         "no_mask_embed": getattr(mask_head, "no_mask_embed", None) if mask_head is not None else None,
         "prompt_encoder": getattr(mask_head, "prompt_encoder", None) if mask_head is not None else None,
         "shape_injector": getattr(mask_head, "shape_injector", None) if mask_head is not None else None,
-        "p2_boundary_refiner": getattr(
-            mask_head, "p2_boundary_refiner", None
+        "decoder_tail_refiner": getattr(
+            mask_head, "decoder_tail_refiner", None
         ) if mask_head is not None else None,
-        "quality_head": _get_quality_head(model_core)
-        if mask_head is not None and getattr(mask_head, "quality_head_enabled", False)
-        else None,
-        "uav_roi_retriever": getattr(mask_head, "uav_roi_retriever", None) if mask_head is not None else None,
-        "uav_roi_gate": getattr(mask_head, "uav_roi_gate", None) if mask_head is not None else None,
-        "uav_roi_dense_prompt": getattr(mask_head, "uav_roi_dense_prompt", None) if mask_head is not None else None,
-        "uav_roi_prompt_adapter": getattr(mask_head, "uav_roi_prompt_adapter", None) if mask_head is not None else None,
-        "uav_prompt_adapter_sparse_scale": getattr(mask_head, "uav_prompt_adapter_sparse_scale", None) if mask_head is not None else None,
-        "uav_prompt_adapter_dense_scale": getattr(mask_head, "uav_prompt_adapter_dense_scale", None) if mask_head is not None else None,
     }
     for name, module in checks.items():
         if module is None:
@@ -757,6 +700,13 @@ def _log_trainable_state(model: torch.nn.Module):
             total = sum(p.numel() for p in params)
             trainable = sum(p.numel() for p in params if p.requires_grad)
         logger.info("Trainable state %-22s %d / %d", name, trainable, total)
+
+
+# Telemetry prefixes the prompt-debug channel prints (SP points, COARSE
+# aux loss, GATE/DENSE dense channel, TAIL margin tail, BOX/JITTER prompt
+# box bus, CONTEXT coarse head).
+_PROMPT_TELEMETRY_PREFIXES = {"SP", "COARSE", "JITTER", "GATE", "DENSE",
+                              "TAIL", "CONTEXT", "BOX"}
 
 
 def _log_uav_debug_stats(
@@ -806,12 +756,6 @@ _DENSE_RESIDUAL_MONITOR_KEYS = (
     "DENSECAP/roi_count",
     "DENSECAP/delta_abs_mean",
     "DENSECAP/delta_nonzero_ratio",
-    "GAUSSIAN/valid_ratio",
-    "GAUSSIAN/foreground_area_ratio",
-    "GAUSSIAN/edt_max",
-    "GAUSSIAN/center_x_normalized",
-    "GAUSSIAN/center_y_normalized",
-    "GAUSSIAN/canvas_area",
 )
 
 
@@ -865,44 +809,6 @@ def _reduce_dense_residual_monitor(
     return result
 
 
-_P2BR_EPOCH_FIELDS = (
-    "roi_count",
-    "valid_support_count",
-    "rejected_support_count",
-    "search_coverage_sum",
-    "delta_abs_sum",
-    "delta_nonzero_sum",
-    "delta_saturated_sum",
-    "support_pixel_sum",
-    "delta_saturated_support_pixel_sum",
-    "saturation_threshold",
-    "projected_feature_norm_sum",
-    "highpass_feature_norm_sum",
-    "raw_dice_sum",
-    "raw_iou_sum",
-    "refined_dice_sum",
-    "refined_iou_sum",
-    "raw_boundary_tp",
-    "raw_boundary_fp",
-    "raw_boundary_fn",
-    "refined_boundary_tp",
-    "refined_boundary_fp",
-    "refined_boundary_fn",
-    "boundary_loss_local_sum",
-    "boundary_loss_valid_roi_count",
-    "boundary_loss_support_pixels",
-    "boundary_loss_foreground_pixels",
-    # R1 correction-keep telemetry.  All are detached sums; the reducer
-    # performs the only division after aggregating all steps and DDP ranks.
-    "r1_corrective_pixel_sum",
-    "r1_error_pixel_sum",
-    "r1_low_confidence_pixel_sum",
-    "r1_error_low_confidence_pixel_sum",
-    "r1_keep_pixel_sum",
-    "r1_corrective_term_sum",
-    "r1_keep_term_sum",
-    "r1_valid_roi_count",
-)
 
 
 _P2BR_R1_GRAD_FIELDS = (
@@ -913,325 +819,8 @@ _P2BR_R1_GRAD_FIELDS = (
 )
 
 
-_PROMPT_PATHWAY_BRANCHES = ("dense", "p2br", "pe_mask_downscaling")
 _DENSECAP_GRAD_BRANCHES = ("trunk", "output")
 _DENSECAP_GRAD_TERMS = ("final_mask", "aux")
-
-
-def _prompt_pathway_parameters(model: torch.nn.Module) -> Dict[str, List[torch.nn.Parameter]]:
-    """Return the trainable parameters whose final-mask gradient we audit.
-
-    ``dense`` intentionally includes the coarse injector and the dense gate:
-    ShapePointMiner is hard/stop-gradient, so ``loss_mask`` can reach the
-    injector only through the differentiable dense-prompt route.  ``p2br`` is
-    kept separate so its auxiliary boundary loss can never masquerade as a
-    final-mask gradient in the diagnostics below.  ``pe_mask_downscaling``
-    covers the PromptEncoder mask-input convolution stack when (and only
-    when) PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING=1 unfreezes it — audited
-    separately so dense-group activity can never masquerade as PE adaptation.
-    """
-    model_core = model.module if hasattr(model, "module") else model
-    mask_head = getattr(getattr(model_core, "roi_head", None), "mask_head", None)
-    if mask_head is None:
-        return {branch: [] for branch in _PROMPT_PATHWAY_BRANCHES}
-    dense_params: List[torch.nn.Parameter] = []
-    shape_injector = getattr(mask_head, "shape_injector", None)
-    if shape_injector is not None:
-        dense_params.extend(
-            parameter for parameter in shape_injector.parameters() if parameter.requires_grad
-        )
-    dense_capacity = getattr(mask_head, "dense_capacity_head", None)
-    if dense_capacity is not None:
-        dense_params.extend(
-            parameter for parameter in dense_capacity.parameters() if parameter.requires_grad
-        )
-    dense_gate = getattr(mask_head, "shape_dense_alpha_raw", None)
-    if isinstance(dense_gate, torch.nn.Parameter) and dense_gate.requires_grad:
-        dense_params.append(dense_gate)
-    p2br = getattr(mask_head, "p2_boundary_refiner", None)
-    p2br_params = (
-        [parameter for parameter in p2br.parameters() if parameter.requires_grad]
-        if p2br is not None
-        else []
-    )
-    prompt_encoder = getattr(mask_head, "prompt_encoder", None)
-    mask_downscaling = getattr(prompt_encoder, "mask_downscaling", None)
-    pe_md_params = (
-        [
-            parameter
-            for parameter in mask_downscaling.parameters()
-            if parameter.requires_grad
-        ]
-        if mask_downscaling is not None
-        else []
-    )
-    return {
-        "dense": dense_params,
-        "p2br": p2br_params,
-        "pe_mask_downscaling": pe_md_params,
-    }
-
-
-def _densecap_gradient_parameters(
-    model: torch.nn.Module,
-) -> Dict[str, List[torch.nn.Parameter]]:
-    """Split H_delta into its feature trunk and zero-initialized output conv.
-
-    The existing ``dense`` pathway audit deliberately remains aggregate so its
-    historical denominator is stable.  DenseCap needs a second, finer audit:
-    with a zero-initialized final convolution, a nonzero mask gradient can be
-    confined to the output bias while the preceding capacity trunk is still
-    blocked.  The split is observational only and never affects the graph.
-    """
-    model_core = model.module if hasattr(model, "module") else model
-    mask_head = getattr(getattr(model_core, "roi_head", None), "mask_head", None)
-    dense_capacity = getattr(mask_head, "dense_capacity_head", None)
-    if dense_capacity is None:
-        return {branch: [] for branch in _DENSECAP_GRAD_BRANCHES}
-    net = getattr(dense_capacity, "net", None)
-    if net is None or len(net) == 0:
-        raise RuntimeError("DenseCap adapter must expose a non-empty sequential net")
-    output_ids = {id(parameter) for parameter in net[-1].parameters()}
-    all_params = [
-        parameter for parameter in dense_capacity.parameters() if parameter.requires_grad
-    ]
-    output_params = [parameter for parameter in all_params if id(parameter) in output_ids]
-    trunk_params = [parameter for parameter in all_params if id(parameter) not in output_ids]
-    if not output_params:
-        raise RuntimeError("DenseCap adapter output convolution has no trainable parameters")
-    return {"trunk": trunk_params, "output": output_params}
-
-
-def _new_densecap_gradient_monitor() -> Dict[str, float]:
-    fields: Dict[str, float] = {}
-    for branch in _DENSECAP_GRAD_BRANCHES:
-        for term in _DENSECAP_GRAD_TERMS:
-            fields.update({
-                f"{branch}_{term}_grad_sq_sum": 0.0,
-                f"{branch}_{term}_grad_nonzero_param_count": 0.0,
-                f"{branch}_{term}_grad_param_count": 0.0,
-                f"{branch}_{term}_grad_probe_count": 0.0,
-            })
-        fields.update({
-            f"{branch}_update_sq": 0.0,
-            f"{branch}_update_param_count": 0.0,
-        })
-    return fields
-
-
-def _accumulate_densecap_gradient_term(
-    loss: Any,
-    term: str,
-    branch_params: Dict[str, List[torch.nn.Parameter]],
-    monitor: Dict[str, float],
-) -> None:
-    if not isinstance(loss, torch.Tensor) or not loss.requires_grad:
-        return
-    flat_params = [
-        parameter for branch in _DENSECAP_GRAD_BRANCHES for parameter in branch_params[branch]
-    ]
-    if not flat_params:
-        return
-    gradients = torch.autograd.grad(loss, flat_params, retain_graph=True, allow_unused=True)
-    offset = 0
-    for branch in _DENSECAP_GRAD_BRANCHES:
-        params = branch_params[branch]
-        branch_grads = gradients[offset:offset + len(params)]
-        offset += len(params)
-        monitor[f"{branch}_{term}_grad_probe_count"] += 1.0
-        monitor[f"{branch}_{term}_grad_param_count"] += float(len(params))
-        for gradient in branch_grads:
-            if gradient is None:
-                continue
-            grad_sq = gradient.detach().float().square().sum()
-            if not torch.isfinite(grad_sq):
-                continue
-            monitor[f"{branch}_{term}_grad_sq_sum"] += float(grad_sq.item())
-            if float(grad_sq.item()) > 0.0:
-                monitor[f"{branch}_{term}_grad_nonzero_param_count"] += 1.0
-
-
-def _accumulate_densecap_gradient_probe(
-    model: torch.nn.Module,
-    final_mask_loss: Any,
-    dense_capacity_loss: Any,
-    monitor: Dict[str, float],
-) -> None:
-    """Probe both DenseCap losses before the production backward pass."""
-    branch_params = _densecap_gradient_parameters(model)
-    _accumulate_densecap_gradient_term(
-        final_mask_loss, "final_mask", branch_params, monitor
-    )
-    _accumulate_densecap_gradient_term(
-        dense_capacity_loss, "aux", branch_params, monitor
-    )
-
-
-def _snapshot_densecap_gradient_parameters(model: torch.nn.Module) -> Dict[str, List[Tensor]]:
-    return {
-        branch: [parameter.detach().float().clone() for parameter in parameters]
-        for branch, parameters in _densecap_gradient_parameters(model).items()
-    }
-
-
-def _accumulate_densecap_gradient_updates(
-    model: torch.nn.Module,
-    snapshot: Dict[str, List[Tensor]],
-    monitor: Dict[str, float],
-) -> None:
-    for branch, parameters in _densecap_gradient_parameters(model).items():
-        before_values = snapshot.get(branch, [])
-        if len(before_values) != len(parameters):
-            raise RuntimeError(f"DenseCap parameter set changed during epoch: {branch}")
-        monitor[f"{branch}_update_param_count"] += float(len(parameters))
-        for before, parameter in zip(before_values, parameters):
-            delta_sq = (parameter.detach().float() - before).square().sum()
-            if torch.isfinite(delta_sq):
-                monitor[f"{branch}_update_sq"] += float(delta_sq.item())
-
-
-def _reduce_densecap_gradient_monitor(
-    monitor: Dict[str, float], device: torch.device, distributed: bool
-) -> Dict[str, float]:
-    keys = tuple(monitor)
-    packed = torch.tensor([monitor[key] for key in keys], dtype=torch.float64, device=device)
-    world_size = 1
-    if distributed and dist.is_initialized():
-        dist.all_reduce(packed, op=dist.ReduceOp.SUM)
-        world_size = dist.get_world_size()
-    values = {key: float(packed[index].item()) for index, key in enumerate(keys)}
-    result: Dict[str, float] = {}
-    for branch in _DENSECAP_GRAD_BRANCHES:
-        for term in _DENSECAP_GRAD_TERMS:
-            probes = values[f"{branch}_{term}_grad_probe_count"]
-            params = values[f"{branch}_{term}_grad_param_count"]
-            result[f"{branch}_{term}_grad_group_l2_rms"] = (
-                math.sqrt(values[f"{branch}_{term}_grad_sq_sum"] / probes)
-                if probes > 0 else 0.0
-            )
-            result[f"{branch}_{term}_grad_nonzero_param_ratio"] = (
-                values[f"{branch}_{term}_grad_nonzero_param_count"] / params
-                if params > 0 else 0.0
-            )
-            result[f"{branch}_{term}_grad_probe_count"] = probes / float(world_size)
-        update_params = values[f"{branch}_update_param_count"]
-        result[f"{branch}_parameter_update_group_l2_rms"] = (
-            math.sqrt(values[f"{branch}_update_sq"] / float(world_size))
-            if update_params > 0 else 0.0
-        )
-        result[f"{branch}_parameter_count"] = update_params / float(world_size)
-    return result
-
-
-def _new_prompt_pathway_monitor() -> Dict[str, float]:
-    fields = {}
-    for branch in _PROMPT_PATHWAY_BRANCHES:
-        fields.update({
-            f"{branch}_final_grad_sq_sum": 0.0,
-            f"{branch}_final_grad_nonzero_param_count": 0.0,
-            f"{branch}_final_grad_param_count": 0.0,
-            f"{branch}_final_grad_probe_count": 0.0,
-            f"{branch}_update_sq": 0.0,
-            f"{branch}_update_param_count": 0.0,
-        })
-    return fields
-
-
-def _accumulate_prompt_pathway_final_grad_probe(
-    model: torch.nn.Module,
-    final_mask_loss: Any,
-    monitor: Dict[str, float],
-) -> None:
-    """Probe only ``loss_mask`` before total-loss backward, once per epoch/rank."""
-    branch_params = _prompt_pathway_parameters(model)
-    if not isinstance(final_mask_loss, torch.Tensor) or not final_mask_loss.requires_grad:
-        return
-    flat_params = [
-        parameter for branch in _PROMPT_PATHWAY_BRANCHES
-        for parameter in branch_params[branch]
-    ]
-    if not flat_params:
-        return
-    gradients = torch.autograd.grad(
-        final_mask_loss,
-        flat_params,
-        retain_graph=True,
-        allow_unused=True,
-    )
-    offset = 0
-    for branch in _PROMPT_PATHWAY_BRANCHES:
-        params = branch_params[branch]
-        branch_grads = gradients[offset:offset + len(params)]
-        offset += len(params)
-        monitor[f"{branch}_final_grad_probe_count"] += 1.0
-        monitor[f"{branch}_final_grad_param_count"] += float(len(params))
-        for gradient in branch_grads:
-            if gradient is None:
-                continue
-            grad_sq = gradient.detach().float().square().sum()
-            if not torch.isfinite(grad_sq):
-                continue
-            monitor[f"{branch}_final_grad_sq_sum"] += float(grad_sq.item())
-            if float(grad_sq.item()) > 0.0:
-                monitor[f"{branch}_final_grad_nonzero_param_count"] += 1.0
-
-
-def _snapshot_prompt_pathway_parameters(model: torch.nn.Module) -> Dict[str, List[Tensor]]:
-    return {
-        branch: [parameter.detach().float().clone() for parameter in parameters]
-        for branch, parameters in _prompt_pathway_parameters(model).items()
-    }
-
-
-def _accumulate_prompt_pathway_updates(
-    model: torch.nn.Module,
-    snapshot: Dict[str, List[Tensor]],
-    monitor: Dict[str, float],
-) -> None:
-    for branch, parameters in _prompt_pathway_parameters(model).items():
-        before_values = snapshot.get(branch, [])
-        if len(before_values) != len(parameters):
-            raise RuntimeError(f"prompt pathway parameter set changed during epoch: {branch}")
-        monitor[f"{branch}_update_param_count"] += float(len(parameters))
-        for before, parameter in zip(before_values, parameters):
-            delta_sq = (parameter.detach().float() - before).square().sum()
-            if torch.isfinite(delta_sq):
-                monitor[f"{branch}_update_sq"] += float(delta_sq.item())
-
-
-def _reduce_prompt_pathway_monitor(
-    monitor: Dict[str, float], device: torch.device, distributed: bool
-) -> Dict[str, float]:
-    keys = tuple(monitor)
-    packed = torch.tensor([monitor[key] for key in keys], dtype=torch.float64, device=device)
-    world_size = 1
-    if distributed and dist.is_initialized():
-        dist.all_reduce(packed, op=dist.ReduceOp.SUM)
-        world_size = dist.get_world_size()
-    values = {key: float(packed[index].item()) for index, key in enumerate(keys)}
-    result = {}
-    for branch in _PROMPT_PATHWAY_BRANCHES:
-        probes = values[f"{branch}_final_grad_probe_count"]
-        grad_params = values[f"{branch}_final_grad_param_count"]
-        update_params = values[f"{branch}_update_param_count"]
-        result[f"{branch}_final_mask_grad_group_l2_rms"] = (
-            math.sqrt(values[f"{branch}_final_grad_sq_sum"] / probes)
-            if probes > 0
-            else 0.0
-        )
-        result[f"{branch}_final_mask_grad_nonzero_param_ratio"] = (
-            values[f"{branch}_final_grad_nonzero_param_count"] / grad_params
-            if grad_params > 0
-            else 0.0
-        )
-        result[f"{branch}_parameter_update_group_l2_rms"] = (
-            math.sqrt(values[f"{branch}_update_sq"] / float(world_size))
-            if update_params > 0
-            else 0.0
-        )
-        result[f"{branch}_parameter_count"] = update_params / float(world_size)
-        result[f"{branch}_final_mask_grad_probe_count"] = probes / float(world_size)
-    return result
 
 
 def _verify_ddp_parameter_sync_after_first_update(
@@ -1268,232 +857,6 @@ def _stat_scalar(stats: Dict[str, Any], key: str) -> Optional[float]:
     if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
         return None
     return float(value)
-
-
-def _accumulate_p2br_epoch_monitor(
-    model: torch.nn.Module, sums: Dict[str, float]
-) -> None:
-    model_core = model.module if hasattr(model, "module") else model
-    getter = getattr(model_core, "get_prompt_debug_stats", None)
-    if getter is None:
-        return
-    stats = getter() or {}
-    roi_count = _stat_scalar(stats, "P2BR/roi_count")
-    if roi_count is None:
-        return
-    direct = {
-        "roi_count": "P2BR/roi_count",
-        "valid_support_count": "P2BR/valid_support_count",
-        "rejected_support_count": "P2BR/rejected_support_count",
-        "search_coverage_sum": "P2BR/search_coverage_sum",
-        "delta_abs_sum": "P2BR/delta_abs_sum",
-        "delta_nonzero_sum": "P2BR/delta_nonzero_sum",
-        "delta_saturated_sum": "P2BR/delta_saturated_sum",
-        "support_pixel_sum": "P2BR/support_pixel_sum",
-        "delta_saturated_support_pixel_sum": "P2BR/delta_saturated_support_pixel_sum",
-        "projected_feature_norm_sum": "P2BR/projected_feature_norm_sum",
-        "highpass_feature_norm_sum": "P2BR/highpass_feature_norm_sum",
-        "raw_boundary_tp": "COARSE/raw_boundary_tp",
-        "raw_boundary_fp": "COARSE/raw_boundary_fp",
-        "raw_boundary_fn": "COARSE/raw_boundary_fn",
-        "refined_boundary_tp": "COARSE/refined_boundary_tp",
-        "refined_boundary_fp": "COARSE/refined_boundary_fp",
-        "refined_boundary_fn": "COARSE/refined_boundary_fn",
-        "boundary_loss_local_sum": "COARSE/boundary_loss_local_sum",
-        "boundary_loss_valid_roi_count": "COARSE/loss_valid_roi_count",
-        "boundary_loss_support_pixels": "COARSE/loss_support_pixel_sum",
-        "boundary_loss_foreground_pixels": "COARSE/loss_support_foreground_sum",
-        "r1_corrective_pixel_sum": "COARSE/r1_corrective_pixel_sum",
-        "r1_error_pixel_sum": "COARSE/r1_error_pixel_sum",
-        "r1_low_confidence_pixel_sum": "COARSE/r1_low_confidence_pixel_sum",
-        "r1_error_low_confidence_pixel_sum": "COARSE/r1_error_low_confidence_pixel_sum",
-        "r1_keep_pixel_sum": "COARSE/r1_keep_pixel_sum",
-        "r1_corrective_term_sum": "COARSE/r1_corrective_term_sum",
-        "r1_keep_term_sum": "COARSE/r1_keep_term_sum",
-        "r1_valid_roi_count": "COARSE/r1_valid_roi_count",
-    }
-    for out_key, stat_key in direct.items():
-        value = _stat_scalar(stats, stat_key)
-        if value is not None:
-            sums[out_key] += value
-    for out_key, stat_key in (
-        ("raw_dice_sum", "COARSE/raw_dice_score"),
-        ("raw_iou_sum", "COARSE/raw_iou"),
-        ("refined_dice_sum", "COARSE/refined_dice_score"),
-        ("refined_iou_sum", "COARSE/refined_iou"),
-        # 阈值是每次前向的常数，乘 roi_count 累加、归约时除回，避免跨 step 求和放大
-        ("saturation_threshold", "P2BR/saturation_threshold"),
-    ):
-        value = _stat_scalar(stats, stat_key)
-        if value is not None:
-            sums[out_key] += value * roi_count
-
-
-def _reduce_p2br_epoch_monitor(
-    sums: Dict[str, float], device: torch.device, distributed: bool
-) -> Dict[str, float]:
-    packed = torch.tensor(
-        [sums[key] for key in _P2BR_EPOCH_FIELDS],
-        dtype=torch.float64,
-        device=device,
-    )
-    if distributed and dist.is_initialized():
-        dist.all_reduce(packed, op=dist.ReduceOp.SUM)
-    values = {
-        key: float(packed[index].item())
-        for index, key in enumerate(_P2BR_EPOCH_FIELDS)
-    }
-    roi_count = values["roi_count"]
-    if roi_count <= 0:
-        return {}
-    valid_count = max(values["valid_support_count"], 1.0)
-    loss_count = max(values["boundary_loss_valid_roi_count"], 1.0)
-
-    def _boundary_f1(prefix: str) -> float:
-        tp = values[f"{prefix}_boundary_tp"]
-        fp = values[f"{prefix}_boundary_fp"]
-        fn = values[f"{prefix}_boundary_fn"]
-        return (2.0 * tp) / max(2.0 * tp + fp + fn, 1e-12)
-
-    result = {
-        "roi_count": roi_count,
-        "valid_support_ratio": values["valid_support_count"] / roi_count,
-        "rejected_support_ratio": values["rejected_support_count"] / roi_count,
-        "search_coverage": values["search_coverage_sum"] / roi_count,
-        "delta_abs": values["delta_abs_sum"] / roi_count,
-        "delta_nonzero_ratio": values["delta_nonzero_sum"] / roi_count,
-        "delta_saturated_ratio": values["delta_saturated_sum"] / roi_count,
-        # Pooled in-support saturation: total saturated support pixels over
-        # total support pixels, summed across steps AND DDP ranks before the
-        # division — per-ROI mean-of-ratios would let empty/rejected-support
-        # ROIs (zero numerator AND denominator) dilute the ratio toward 0.
-        "delta_saturated_support_ratio": values["delta_saturated_support_pixel_sum"]
-        / max(values["support_pixel_sum"], 1.0),
-        "saturation_threshold": values["saturation_threshold"] / roi_count,
-        "projected_feature_norm": values["projected_feature_norm_sum"] / roi_count,
-        "highpass_feature_norm": values["highpass_feature_norm_sum"] / roi_count,
-        "raw_dice": values["raw_dice_sum"] / roi_count,
-        "raw_iou": values["raw_iou_sum"] / roi_count,
-        "refined_dice": values["refined_dice_sum"] / roi_count,
-        "refined_iou": values["refined_iou_sum"] / roi_count,
-        "raw_boundary_f1": _boundary_f1("raw"),
-        "refined_boundary_f1": _boundary_f1("refined"),
-        "boundary_loss_raw": values["boundary_loss_local_sum"] / loss_count,
-        "boundary_support_fg_ratio": values["boundary_loss_foreground_pixels"]
-        / max(values["boundary_loss_support_pixels"], 1.0),
-        "valid_count_for_norm": valid_count,
-    }
-    r1_count = values["r1_valid_roi_count"]
-    if r1_count > 0:
-        result.update(
-            {
-                "r1_corrective_support_ratio": values["r1_corrective_pixel_sum"]
-                / max(values["boundary_loss_support_pixels"], 1.0),
-                "r1_error_support_ratio": values["r1_error_pixel_sum"]
-                / max(values["boundary_loss_support_pixels"], 1.0),
-                "r1_low_confidence_support_ratio": values[
-                    "r1_low_confidence_pixel_sum"
-                ]
-                / max(values["boundary_loss_support_pixels"], 1.0),
-                "r1_error_low_confidence_support_ratio": values[
-                    "r1_error_low_confidence_pixel_sum"
-                ]
-                / max(values["boundary_loss_support_pixels"], 1.0),
-                "r1_keep_support_ratio": values["r1_keep_pixel_sum"]
-                / max(values["boundary_loss_support_pixels"], 1.0),
-                "r1_corrective_term": values["r1_corrective_term_sum"] / r1_count,
-                "r1_keep_term": values["r1_keep_term_sum"] / r1_count,
-                "r1_valid_roi_count": r1_count,
-            }
-        )
-    return result
-
-
-def _new_p2br_r1_gradient_monitor() -> Dict[str, float]:
-    """Create detached, once-per-epoch R1 auxiliary-gradient telemetry."""
-    return {key: 0.0 for key in _P2BR_R1_GRAD_FIELDS}
-
-
-def _accumulate_p2br_r1_gradient_probe(
-    model: torch.nn.Module,
-    corrective_term: Any,
-    keep_term: Any,
-    monitor: Dict[str, float],
-) -> bool:
-    """Probe R1 term gradients without adding a second loss or optimizer step.
-
-    The terms already have the production DDP normalization and auxiliary
-    weight applied.  This is deliberately called only once per finite epoch
-    batch, before the normal backward, with ``retain_graph=True``.
-    """
-    if not (
-        isinstance(corrective_term, torch.Tensor)
-        and isinstance(keep_term, torch.Tensor)
-        and corrective_term.requires_grad
-        and keep_term.requires_grad
-    ):
-        return False
-    parameters = _prompt_pathway_parameters(model)["p2br"]
-    if not parameters:
-        return False
-    corrective_grads = torch.autograd.grad(
-        corrective_term, parameters, retain_graph=True, allow_unused=True
-    )
-    keep_grads = torch.autograd.grad(
-        keep_term, parameters, retain_graph=True, allow_unused=True
-    )
-    corrective_sq = 0.0
-    keep_sq = 0.0
-    dot = 0.0
-    for corrective_grad, keep_grad in zip(corrective_grads, keep_grads):
-        if corrective_grad is not None:
-            corrective_sq += float(
-                corrective_grad.detach().float().square().sum().item()
-            )
-        if keep_grad is not None:
-            keep_sq += float(keep_grad.detach().float().square().sum().item())
-        if corrective_grad is not None and keep_grad is not None:
-            dot += float(
-                (corrective_grad.detach().float() * keep_grad.detach().float())
-                .sum()
-                .item()
-            )
-    monitor["probe_count"] += 1.0
-    monitor["corrective_grad_sq_sum"] += corrective_sq
-    monitor["keep_grad_sq_sum"] += keep_sq
-    monitor["gradient_dot_sum"] += dot
-    return True
-
-
-def _reduce_p2br_r1_gradient_monitor(
-    monitor: Dict[str, float], device: torch.device, distributed: bool
-) -> Dict[str, float]:
-    packed = torch.tensor(
-        [monitor[key] for key in _P2BR_R1_GRAD_FIELDS],
-        dtype=torch.float64,
-        device=device,
-    )
-    if distributed and dist.is_initialized():
-        dist.all_reduce(packed, op=dist.ReduceOp.SUM)
-    values = {
-        key: float(packed[index].item())
-        for index, key in enumerate(_P2BR_R1_GRAD_FIELDS)
-    }
-    probes = values["probe_count"]
-    if probes <= 0:
-        return {}
-    corrective_sq = values["corrective_grad_sq_sum"]
-    keep_sq = values["keep_grad_sq_sum"]
-    return {
-        "corrective_grad_group_l2_rms": math.sqrt(corrective_sq / probes),
-        "keep_grad_group_l2_rms": math.sqrt(keep_sq / probes),
-        # This energy-weighted cosine is calculated from summed parameter
-        # inner products/norms across all probed DDP ranks, not an average of
-        # rank-local cosines.  It is undefined only if either term is zero.
-        "gradient_cosine": values["gradient_dot_sum"]
-        / math.sqrt(max(corrective_sq * keep_sq, 1e-30)),
-        "probe_count": probes,
-    }
 
 
 def _save_checkpoint(
@@ -1611,11 +974,10 @@ def _load_init_checkpoint(
     source_state = ckpt.get("model", ckpt)
     model_to_load = model.module if hasattr(model, "module") else model
     target_state = model_to_load.state_dict()
-    from rsprompter.ckpt_migration import migrate_legacy_shape_gate_state_dict
-
-    source_state, migrations = migrate_legacy_shape_gate_state_dict(
-        source_state, target_state
-    )
+    # Historical legacy-key migration (shape_prompt_scale era) was removed
+    # with its arms; a3sgm checkpoints load with zero migrations.
+    migrations = 0
+    migration_pairs: list = []
 
     compatible = {}
     excluded = 0
@@ -1717,90 +1079,6 @@ _MASK_RAMP_LOSS_KEY_PREFIXES = (
 )
 
 
-def _mask_loss_ramp_factor(ramp_epochs: int, ramp_start: float, epoch_number: int) -> float:
-    """Linear mask-side loss ramp: ``ramp_start`` at epoch 1 -> 1.0 at
-    ``ramp_epochs`` (inclusive), flat 1.0 afterwards.  ``ramp_epochs <= 0``
-    disables the ramp (factor always 1.0, bit-identical legacy behaviour)."""
-    if ramp_epochs <= 0 or epoch_number >= ramp_epochs or ramp_epochs == 1:
-        return 1.0
-    frac = (epoch_number - 1) / (ramp_epochs - 1)
-    return ramp_start + (1.0 - ramp_start) * frac
-
-
-def _apply_mask_loss_ramp(loss_dict: dict, factor: float, device) -> dict:
-    """Scale the mask-side (fast-capacity branch) losses as one group.
-
-    Deliberately excludes every detection key and every debug/probe key:
-    only keys prefixed with a mask-family loss name move, and a
-    ``schedule/mask_ramp`` telemetry tensor is recorded the same way
-    ``schedule/det_weight`` is (it never enters the backward sum)."""
-    for key in list(loss_dict.keys()):
-        if key.startswith(_MASK_RAMP_LOSS_KEY_PREFIXES):
-            loss_dict[key] = _scale_loss_value(loss_dict[key], factor)
-    loss_dict["schedule/mask_ramp"] = torch.tensor(float(factor), device=device)
-    return loss_dict
-
-
-def _materialize_p2_boundary_refiner_loss(
-    loss_dict: dict,
-    model: torch.nn.Module,
-    distributed: bool,
-) -> dict:
-    """Convert local ROI sums into a four-rank global per-ROI mean.
-
-    DDP averages gradients across ranks. Multiplying the local sum by
-    ``world_size / global_count`` therefore yields the exact mean over all
-    valid ROIs in the current micro-batch. Gradient accumulation keeps the
-    historical equal-micro-batch contract.
-    """
-    local_sum = loss_dict.pop("_p2br_local_sum", None)
-    local_count = loss_dict.pop("_p2br_valid_count", None)
-    r1_corrective = loss_dict.pop("_p2br_r1_corrective_term_for_probe", None)
-    r1_keep = loss_dict.pop("_p2br_r1_keep_term_for_probe", None)
-    if local_sum is None and local_count is None:
-        if r1_corrective is not None or r1_keep is not None:
-            raise RuntimeError("received R1 probe metadata without P2 loss metadata")
-        return loss_dict
-    if not torch.is_tensor(local_sum) or not torch.is_tensor(local_count):
-        raise TypeError("P2 boundary refiner loss metadata must be tensors")
-    global_count = local_count.detach().float().clone()
-    world_size = 1
-    if distributed and dist.is_initialized():
-        dist.all_reduce(global_count, op=dist.ReduceOp.SUM)
-        world_size = dist.get_world_size()
-
-    model_core = model.module if hasattr(model, "module") else model
-    mask_head = getattr(getattr(model_core, "roi_head", None), "mask_head", None)
-    refiner = getattr(mask_head, "p2_boundary_refiner", None)
-    if refiner is None:
-        raise RuntimeError("received P2 refiner loss metadata without the module")
-    if float(global_count.item()) > 0:
-        normalized = local_sum * (
-            float(world_size) / float(global_count.item())
-        )
-    else:
-        normalized = local_sum * 0.0
-    loss_dict["loss_p2_boundary_refiner"] = (
-        float(refiner.boundary_loss_weight) * normalized
-    )
-    if (r1_corrective is None) != (r1_keep is None):
-        raise RuntimeError("R1 gradient probe metadata must contain both loss terms")
-    if r1_corrective is not None:
-        if not torch.is_tensor(r1_corrective) or not torch.is_tensor(r1_keep):
-            raise TypeError("R1 gradient probe metadata must be tensors")
-        # Keep the production auxiliary scaling exactly: these private keys
-        # are consumed by the once-per-epoch probe and contain no ``loss``
-        # substring, so they cannot be summed into backward a second time.
-        probe_scale = float(refiner.boundary_loss_weight) * (
-            float(world_size) / max(float(global_count.item()), 1.0)
-        )
-        if float(global_count.item()) <= 0:
-            probe_scale = 0.0
-        loss_dict["_p2br_r1_corrective_probe"] = r1_corrective * probe_scale
-        loss_dict["_p2br_r1_keep_probe"] = r1_keep * probe_scale
-    return loss_dict
-
-
 def _shard_val_loader(val_loader, rank: int, world_size: int) -> Tuple[Any, int]:
     """Rebuild the validation loader so each rank owns batches rank, rank+W, ...
 
@@ -1849,15 +1127,6 @@ def main():
     parser.add_argument("--resume-from", type=str, default=None)
     parser.add_argument("--init-from", type=str, default=None)
     parser.add_argument(
-        "--test-only",
-        action="store_true",
-        default=False,
-        help="Load weights via --resume-from and run COCO evaluation once on the "
-        "WHU test split (2.2 test/test + test.json), then exit. No training. "
-        "Requires --resume-from pointing at a checkpoint with a matching "
-        "architecture contract.",
-    )
-    parser.add_argument(
         "--allow-cross-arch-init",
         action="store_true",
         help="Explicitly allow INIT_FROM from a different or legacy architecture.",
@@ -1901,16 +1170,8 @@ def main():
         help="Deterministic fraction of WHU validation images to load; default 1.0.",
     )
 
-    parser.add_argument("--use-fsdp", action="store_true")
-    parser.add_argument("--fsdp-sharding", type=str, default="FULL_SHARD")
-    parser.add_argument("--fsdp-min-num-params", type=int, default=1000000)
 
     parser.add_argument("--freeze-bn", action="store_true")
-    parser.add_argument(
-        "--train-quality-head-only",
-        action="store_true",
-        help="Freeze C2 and optimize only the native SAM2 IoU quality head.",
-    )
 
     parser.add_argument("--image-size", type=int, nargs=2, default=[512, 512])
     parser.add_argument(
@@ -1963,23 +1224,15 @@ def main():
     parser.add_argument("--no-mask-lr-mult", type=float, default=1.0)
     parser.add_argument("--prompt-encoder-lr-mult", type=float, default=0.1)
     parser.add_argument("--shape-prior-lr-mult", type=float, default=1.0)
-    parser.add_argument("--p2-boundary-refiner-lr-mult", type=float, default=1.0)
-    parser.add_argument("--quality-head-lr-mult", type=float, default=1.0)
     parser.add_argument("--decoder-tail-lr-mult", type=float, default=1.0)
     parser.add_argument("--decoupled-aux-clip", action="store_true",
                         help="clip base params and each aux head separately at "
                              "max_norm 0.5 instead of one global clip; keeps the "
                              "base's clip semantics bit-identical to aux-free arms")
-    parser.add_argument("--train-decoder-tail-only", action="store_true",
-                        help="Freeze the A0 base and optimize only UDPR decoder_tail_refiner.")
-    parser.add_argument("--train-dense-capacity-only", action="store_true",
-                        help="Freeze A0 and optimize only the dense-only residual capacity head.")
     parser.add_argument("--grad-accum-steps", type=int, default=2)
-    parser.add_argument("--max-scenes", type=int, default=1000, help="Maximum number of scenes for scene-specific alignment")
     parser.add_argument("--warmup-epochs", type=int, default=0, help="Number of warmup epochs for learning rate scheduling")
     parser.add_argument("--warmup-iters", type=int, default=100, help="Number of warmup optimizer steps (overrides warmup-epochs if > 0)")
     parser.add_argument("--weight-decay", type=float, default=0.05, help="Weight decay for optimizer")
-    parser.add_argument("--dropout", type=float, default=0.0, help="Dropout rate for regularization")
     parser.add_argument("--max-train-batches", type=int, default=0)
     parser.add_argument("--max-val-batches", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
@@ -1992,80 +1245,10 @@ def main():
     parser.add_argument("--ema-eval", type=int, default=1, help="Use EMA shadow weights for validation")
     parser.add_argument("--ema-save-best", type=int, default=1, help="Save best_model using EMA shadow weights")
     parser.add_argument("--ema-eval-start-epoch", type=int, default=5, help="Start using EMA for eval after this epoch")
-    parser.add_argument("--uav-debug-stats", type=int, choices=[0, 1], default=0,
-                        help="Print per-scheme UAV diagnostic stats during training")
-    parser.add_argument("--uav-debug-stats-interval", type=int, default=50,
-                        help="Training iteration interval for UAV diagnostic stats")
     parser.add_argument("--prompt-debug-stats", type=int, choices=[0, 1], default=0,
                         help="Print shape-point/coarse-mask prompt diagnostics")
     parser.add_argument("--prompt-debug-stats-interval", type=int, default=50,
                         help="Training iteration interval for prompt diagnostics")
-    # UAV 双流 A/B/C/D 消融参数。默认 None 表示尊重 config/env 中的值；
-    # shell 脚本传入后会在这里覆盖 cfg, 方便同一份 config 切实验。
-    parser.add_argument("--uav-fpn-enabled", type=int, choices=[0, 1], default=None,
-                        help="方案 A: 是否启用 UAV BEV -> satellite FPN deformable fusion")
-    parser.add_argument("--uav-fpn-use-bottom-up", type=int, choices=[0, 1], default=None,
-                        help="方案 A: deformable fusion 后是否启用 bottom-up PAFPN 聚合")
-    parser.add_argument("--uav-fpn-num-heads", type=int, default=None,
-                        help="方案 A: FPN deformable fusion 的 attention head 数")
-    parser.add_argument("--uav-fpn-num-points", type=int, default=None,
-                        help="方案 A: 每个 head 在 UAV BEV 上采样的点数")
-    parser.add_argument("--uav-fpn-max-offset", type=float, default=None,
-                        help="方案 A: deformable sampling 相对偏移上限")
-    parser.add_argument("--uav-align-loss-weight", type=float, default=None,
-                        help="方案 A: UAV/卫星几何对齐辅助损失权重")
-    parser.add_argument("--uav-concentration-weight", type=float, default=None,
-                        help="方案 A: 采样点集中度辅助损失权重")
-    parser.add_argument("--uav-roi-retrieval-enabled", type=int, choices=[0, 1], default=None,
-                        help="B/C/D 公共前置: ROI 级 UAV BEV deformable retrieval")
-    parser.add_argument("--uav-roi-gate-enabled", type=int, choices=[0, 1], default=None,
-                        help="方案 B: 用 UAV ROI context 对 mask_head ROI feature 做 FiLM gate")
-    parser.add_argument("--uav-roi-dense-prompt-enabled", type=int, choices=[0, 1], default=None,
-                        help="方案 C: 用 UAV ROI dense prompt 替代 shape prior dense prompt")
-    parser.add_argument(
-        "--uav-roi-dense-combine",
-        type=str,
-        default=None,
-        choices=["exclusive", "replace"],
-        help="方案 C: 当前仅支持 replace/exclusive, 都表示替换 shape prior 而非融合",
-    )
-    parser.add_argument("--uav-roi-bev-dim", type=int, default=None,
-                        help="B/C/D retrieval 输入 BEV 通道数, 默认 128 BEV + 1 height/depth = 129")
-    parser.add_argument("--uav-roi-d-inner", type=int, default=None,
-                        help="B/C/D retrieval 内部 context 维度")
-    parser.add_argument("--uav-roi-num-heads", type=int, default=None,
-                        help="B/C/D retrieval 的 attention head 数")
-    parser.add_argument("--uav-roi-num-points", type=int, default=None,
-                        help="B/C/D retrieval 每个 head 采样点数")
-    parser.add_argument("--uav-roi-max-offset", type=float, default=None,
-                        help="B/C/D retrieval ROI 中心附近的最大归一化采样偏移")
-    parser.add_argument("--uav-roi-multi-scale", type=int, choices=[0, 1], default=None,
-                        help="B retrieval: 构造多层 BEV 金字塔并按 ROI 尺度选层")
-    parser.add_argument("--uav-roi-level-match", type=int, choices=[0, 1], default=None,
-                        help="B retrieval: 是否用 ROI 尺度匹配 BEV 层级")
-    parser.add_argument("--uav-roi-num-bev-levels", type=int, default=None,
-                        help="B retrieval: 多层 BEV 金字塔层数")
-    parser.add_argument("--uav-roi-finest-scale", type=float, default=None,
-                        help="B retrieval: ROI 分配到 P4 的尺度基准")
-    parser.add_argument("--uav-roi-offset-loss-weight", type=float, default=None,
-                        help="B retrieval: offset 范数辅助约束权重")
-    parser.add_argument("--uav-roi-attn-uniform-loss-weight", type=float, default=None,
-                        help="B retrieval: attention 防塌缩辅助约束权重")
-    parser.add_argument("--uav-roi-dense-scale-init", type=float, default=None,
-                        help="方案 C dense prompt scale 初值, 0 表示严格热启动")
-    parser.add_argument("--uav-roi-dense-mid-channels", type=int, default=None,
-                        help="方案 C dense prompt 小头的中间通道数")
-    parser.add_argument("--uav-roi-prompt-adapter-enabled", type=int, choices=[0, 1], default=None,
-                        help="方案 D: BEV-conditioned prompt adapter before SAM2 mask decoder")
-    parser.add_argument("--uav-roi-prompt-adapter-hidden-dim", type=int, default=None,
-                        help="方案 D prompt adapter MLP hidden dim")
-    parser.add_argument("--uav-roi-prompt-adapter-sparse-scale-init", type=float, default=None,
-                        help="方案 D sparse prompt delta scale 初值, 0 表示严格热启动")
-    parser.add_argument("--uav-roi-prompt-adapter-dense-scale-init", type=float, default=None,
-                        help="方案 D dense prompt delta scale 初值, 0 表示严格热启动")
-    parser.add_argument("--uav-roi-prompt-adapter-use-confidence", type=int, choices=[0, 1], default=None,
-                        help="方案 D: 是否用 confidence gate 缩放 BEV adapter delta")
-
     args = parser.parse_args()
 
     if int(args.det_loss_stage1_end) < 1:
@@ -2187,70 +1370,8 @@ def main():
             resolved_architecture["model_fingerprint"],
         )
 
-    # B/C/D 都依赖 ROI retrieval；C 还依赖 SAM2 PromptEncoder 的 masks= 通道。
-    # 这里再做一次联动兜底, 避免只改顶层镜像或只改 shell 参数导致半开配置。
-    if hasattr(cfg.model, 'max_scenes'):
-        cfg.model.max_scenes = args.max_scenes
     model = MODELS.build(cfg.model)
     model.to(device)
-
-    exclusive_scopes = sum(
-        int(flag)
-        for flag in (
-            args.train_quality_head_only,
-            args.train_decoder_tail_only,
-            args.train_dense_capacity_only,
-        )
-    )
-    if exclusive_scopes > 1:
-        raise RuntimeError(
-            "Experimental module-only training scopes are mutually exclusive"
-        )
-    if args.train_quality_head_only:
-        model.requires_grad_(False)
-        quality_head = _get_quality_head(model)
-        quality_head.requires_grad_(True)
-        _set_quality_head_only_train_mode(model)
-        if is_main:
-            model_core = model.module if hasattr(model, "module") else model
-            quality_mask_head = getattr(
-                getattr(model_core, "roi_head", None), "mask_head", None
-            )
-            quality_type = getattr(
-                quality_mask_head, "quality_head_type", "native_iou"
-            )
-            logger.info(
-                "Training scope: quality head only (%s); loaded C2 baseline is frozen in eval mode",
-                quality_type,
-            )
-    if args.train_decoder_tail_only:
-        model.requires_grad_(False)
-        mask_head = model.roi_head.mask_head
-        tail = getattr(mask_head, "decoder_tail_refiner", None)
-        if tail is None or not getattr(mask_head, "decoder_tail_enabled", False):
-            raise RuntimeError("--train-decoder-tail-only requires decoder_tail_refiner_cfg.enabled=True")
-        tail.requires_grad_(True)
-        trainable = [name for name, param in model.named_parameters() if param.requires_grad]
-        if not trainable or any("roi_head.mask_head.decoder_tail_refiner" not in name for name in trainable):
-            raise RuntimeError(f"UDPR freeze contract violated: trainable={trainable}")
-        if is_main:
-            logger.info("Training scope: UDPR only; A0 base frozen (%d trainable tensors)", len(trainable))
-    if args.train_dense_capacity_only:
-        model.requires_grad_(False)
-        mask_head = model.roi_head.mask_head
-        dense_capacity = getattr(mask_head, "dense_capacity_head", None)
-        if dense_capacity is None or not getattr(mask_head, "dense_capacity_enabled", False):
-            raise RuntimeError("--train-dense-capacity-only requires dense_capacity_cfg.enabled=True")
-        dense_capacity.requires_grad_(True)
-        trainable = [name for name, param in model.named_parameters() if param.requires_grad]
-        required = "roi_head.mask_head.dense_capacity_head"
-        if not trainable or any(required not in name for name in trainable):
-            raise RuntimeError(f"Dense-capacity freeze contract violated: trainable={trainable}")
-        if is_main:
-            logger.info(
-                "Training scope: dense capacity only; A0 base and sparse point source frozen (%d trainable tensors)",
-                len(trainable),
-            )
 
     model_for_preproc = model.module if hasattr(model, "module") else model
     data_preprocessor = model_for_preproc.data_preprocessor
@@ -2282,24 +1403,6 @@ def main():
             if device.startswith("cuda")
             else None,
             find_unused_parameters=True,
-        )
-
-    if distributed and args.use_fsdp:
-        from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
-        from torch.distributed.fsdp import ShardingStrategy
-
-        sharding = getattr(
-            ShardingStrategy, args.fsdp_sharding, ShardingStrategy.FULL_SHARD
-        )
-        ignored_modules = None
-        model_base = model.module if hasattr(model, "module") else model
-        model = FSDP(
-            model,
-            sharding_strategy=sharding,
-            device_id=int(device.split(":")[1]) if device.startswith("cuda") else None,
-            ignored_modules=ignored_modules,
-            use_orig_params=True,
-            min_num_params=int(args.fsdp_min_num_params),
         )
 
     from data import create_train_loader
@@ -2348,23 +1451,6 @@ def main():
     if train_ms_mode not in ("value", "range"):
         raise ValueError(
             f"TRAIN_MULTI_SCALE_MODE must be value or range, got {train_ms_mode}"
-        )
-
-    # --- mask-side loss ramp (branch two-timescale alignment; default off) ---
-    # MASK_LOSS_RAMP_EPOCHS=100 + MASK_LOSS_RAMP_START=0.2 scales the
-    # mask-family losses linearly 0.2 -> 1.0 over the first 100 epochs so the
-    # fast mask branch (pretrained decoder + prompts + tail) fits the maturing
-    # detector instead of a weak one.  Trainer-side only: no model-config or
-    # fingerprint change for any arm; 0/absent = bit-identical legacy runs.
-    mask_loss_ramp_epochs = int(os.environ.get("MASK_LOSS_RAMP_EPOCHS", "0") or 0)
-    mask_loss_ramp_start = float(os.environ.get("MASK_LOSS_RAMP_START", "1.0") or 1.0)
-    if mask_loss_ramp_epochs < 0:
-        raise ValueError(
-            f"MASK_LOSS_RAMP_EPOCHS must be >= 0, got {mask_loss_ramp_epochs}"
-        )
-    if not 0.0 <= mask_loss_ramp_start <= 1.0:
-        raise ValueError(
-            f"MASK_LOSS_RAMP_START must be in [0,1], got {mask_loss_ramp_start}"
         )
 
     train_loader, val_loader, train_dataset = (
@@ -2501,8 +1587,6 @@ def main():
         no_mask_lr_mult=args.no_mask_lr_mult,
         prompt_encoder_lr_mult=args.prompt_encoder_lr_mult,
         shape_prior_lr_mult=args.shape_prior_lr_mult,
-        p2_boundary_refiner_lr_mult=args.p2_boundary_refiner_lr_mult,
-        quality_head_lr_mult=args.quality_head_lr_mult,
         decoder_tail_lr_mult=args.decoder_tail_lr_mult,
         weight_decay=args.weight_decay,
     )
@@ -2703,49 +1787,8 @@ def main():
         "p2_boundary_refiner": dict(
             resolved_mask_head_cfg.get("p2_boundary_refiner_cfg", {})
         ),
-        "train_quality_head_only": int(args.train_quality_head_only),
-        "quality_head_enabled": os.environ.get("QUALITY_HEAD_ENABLED", "0"),
-        "quality_head_type": os.environ.get("QUALITY_HEAD_TYPE", "native_iou"),
-        "quality_head_loss_weight": os.environ.get("QUALITY_HEAD_LOSS_WEIGHT", "1.0"),
-        "quality_head_loss_beta": os.environ.get("QUALITY_HEAD_LOSS_BETA", "0.1"),
-        "quality_head_score_alpha": os.environ.get("QUALITY_HEAD_SCORE_ALPHA", "0.5"),
-        "quality_head_hidden_dim": os.environ.get("QUALITY_HEAD_HIDDEN_DIM", "256"),
-        "quality_head_detach_inputs": os.environ.get("QUALITY_HEAD_DETACH_INPUTS", "1"),
-        "bbox_arch": os.environ.get("AP75_BBOX_ARCH", ""),
-        "bbox_iou_loss_weight": os.environ.get("AP75_BBOX_IOU_LOSS_WEIGHT", ""),
         "init_from": args.init_from or "",
         "init_exclude_prefixes": args.init_exclude_prefixes,
-        "uav_fpn_enabled": args.uav_fpn_enabled,
-        "uav_fpn_use_bottom_up": args.uav_fpn_use_bottom_up,
-        "uav_fpn_num_heads": args.uav_fpn_num_heads,
-        "uav_fpn_num_points": args.uav_fpn_num_points,
-        "uav_fpn_max_offset": args.uav_fpn_max_offset,
-        "uav_align_loss_weight": args.uav_align_loss_weight,
-        "uav_concentration_weight": args.uav_concentration_weight,
-        "uav_roi_retrieval_enabled": args.uav_roi_retrieval_enabled,
-        "uav_roi_gate_enabled": args.uav_roi_gate_enabled,
-        "uav_roi_dense_prompt_enabled": args.uav_roi_dense_prompt_enabled,
-        "uav_roi_dense_combine": args.uav_roi_dense_combine,
-        "uav_roi_prompt_adapter_enabled": args.uav_roi_prompt_adapter_enabled,
-        "uav_roi_prompt_adapter_hidden_dim": args.uav_roi_prompt_adapter_hidden_dim,
-        "uav_roi_prompt_adapter_sparse_scale_init": args.uav_roi_prompt_adapter_sparse_scale_init,
-        "uav_roi_prompt_adapter_dense_scale_init": args.uav_roi_prompt_adapter_dense_scale_init,
-        "uav_roi_prompt_adapter_use_confidence": args.uav_roi_prompt_adapter_use_confidence,
-        "uav_roi_bev_dim": args.uav_roi_bev_dim,
-        "uav_roi_d_inner": args.uav_roi_d_inner,
-        "uav_roi_num_heads": args.uav_roi_num_heads,
-        "uav_roi_num_points": args.uav_roi_num_points,
-        "uav_roi_max_offset": args.uav_roi_max_offset,
-        "uav_roi_multi_scale": args.uav_roi_multi_scale,
-        "uav_roi_level_match": args.uav_roi_level_match,
-        "uav_roi_num_bev_levels": args.uav_roi_num_bev_levels,
-        "uav_roi_finest_scale": args.uav_roi_finest_scale,
-        "uav_roi_offset_loss_weight": args.uav_roi_offset_loss_weight,
-        "uav_roi_attn_uniform_loss_weight": args.uav_roi_attn_uniform_loss_weight,
-        "uav_roi_dense_scale_init": args.uav_roi_dense_scale_init,
-        "uav_roi_dense_mid_channels": args.uav_roi_dense_mid_channels,
-        "uav_debug_stats": args.uav_debug_stats,
-        "uav_debug_stats_interval": args.uav_debug_stats_interval,
         "seed": args.seed,
         "lr": args.lr,
         "batch_size": args.batch_size,
@@ -2765,7 +1808,6 @@ def main():
             "no_mask": args.no_mask_lr_mult,
             "prompt_encoder": args.prompt_encoder_lr_mult,
             "shape_prior": args.shape_prior_lr_mult,
-            "p2_boundary_refiner": args.p2_boundary_refiner_lr_mult,
         },
         "image_size": list(args.image_size),
         "mask_head_config": dict(cfg.model.roi_head.mask_head)
@@ -2811,8 +1853,6 @@ def main():
             if prefix.strip()
         )
         allowed_missing_prefixes = ()
-        if args.train_dense_capacity_only:
-            allowed_missing_prefixes = ("roi_head.mask_head.dense_capacity_head.",)
         init_stats = _load_init_checkpoint(
             Path(args.init_from),
             model,
@@ -2838,39 +1878,6 @@ def main():
                     "Checkpoint key migration (INIT_FROM): %s",
                     init_stats["migration_pairs"],
                 )
-        if args.train_decoder_tail_only:
-            missing_keys = tuple(init_stats.get("missing_keys", ()))
-            invalid_transfer = {
-                name: int(init_stats.get(name, 0))
-                for name in ("shape_mismatch", "unexpected", "migrated")
-                if int(init_stats.get(name, 0)) != 0
-            }
-            if not missing_keys or any(
-                not key.startswith("roi_head.mask_head.decoder_tail_refiner.")
-                for key in missing_keys
-            ) or invalid_transfer:
-                raise RuntimeError(
-                    "UDPR A0 heat-start must load an exact base and miss only newly "
-                    f"introduced tail keys, missing={missing_keys} invalid={invalid_transfer}"
-                )
-        if args.train_dense_capacity_only:
-            missing_keys = tuple(init_stats.get("missing_keys", ()))
-            invalid_transfer = {
-                name: int(init_stats.get(name, 0))
-                for name in ("shape_mismatch", "unexpected", "migrated")
-                if int(init_stats.get(name, 0)) != 0
-            }
-            if not missing_keys or any(
-                not key.startswith("roi_head.mask_head.dense_capacity_head.")
-                for key in missing_keys
-            ) or invalid_transfer:
-                raise RuntimeError(
-                    "Dense-capacity A0 heat-start must load an exact base and miss only "
-                    f"new adapter keys, missing={missing_keys} invalid={invalid_transfer}"
-                )
-    elif args.train_dense_capacity_only:
-        raise RuntimeError("--train-dense-capacity-only requires --init-from an A0 checkpoint")
-
     if args.resume_from:
         ckpt = _load_checkpoint(
             Path(args.resume_from),
@@ -2923,313 +1930,6 @@ def main():
                 best_composite_score,
             )
 
-    # ===== --test-only: evaluate on the held-out WHU test split, then exit =====
-    if args.test_only:
-        if not args.resume_from:
-            raise SystemExit("--test-only requires --resume-from to load weights.")
-        from data import create_test_loader
-
-        test_loader = create_test_loader(
-            data_root=args.data_root,
-            ann_file="2.4 annotation/annotation/test.json",
-            image_subdir="2.2 test/test",
-            image_size=tuple(args.image_size),
-            batch_size=int(args.val_batch_size),
-            num_workers=4,
-            seed=int(args.seed),
-        )
-        # Non-main ranks skip iteration to match the rank0_only validation
-        # contract (no NCCL collective held open during COCO eval).
-        if distributed and not is_main:
-            test_loader = None
-
-        model.eval()
-        if args.freeze_bn:
-            _set_norm_eval(model)
-
-        all_gt: List[dict] = []
-        all_dt: List[dict] = []
-        all_img_metas: List[dict] = []
-
-        if test_loader is not None:
-            if is_main:
-                logger.info(
-                    "Test-only evaluation: checkpoint=%s, test split=%d images",
-                    args.resume_from,
-                    len(test_loader.dataset),
-                )
-            model_for_eval = model.module if hasattr(model, "module") else model
-            # Runtime-only max_per_img override for dense scenes (>100
-            # instances per tile). Mutates the live test_cfg objects, so the
-            # config file and the architecture fingerprint stay untouched.
-            _test_max_per_img = int(os.environ.get("TEST_MAX_PER_IMG", "0") or 0)
-            if _test_max_per_img > 0:
-                _model_test_cfg = getattr(model_for_eval, "test_cfg", None)
-                if _model_test_cfg is not None and "rcnn" in _model_test_cfg:
-                    _model_test_cfg["rcnn"]["max_per_img"] = _test_max_per_img
-                _roi_test_cfg = getattr(
-                    getattr(model_for_eval, "roi_head", None), "test_cfg", None
-                )
-                if _roi_test_cfg is not None and "max_per_img" in _roi_test_cfg:
-                    _roi_test_cfg["max_per_img"] = _test_max_per_img
-                if is_main:
-                    logger.info(
-                        "TEST_MAX_PER_IMG=%d override applied (model-side cap)",
-                        _test_max_per_img,
-                    )
-            _test_eval_max_dets = (
-                [1, 10, _test_max_per_img] if _test_max_per_img > 0 else None
-            )
-            with torch.no_grad():
-                for batch_idx, batch in enumerate(test_loader):
-                    if args.max_val_batches > 0 and batch_idx >= args.max_val_batches:
-                        break
-                    imgs = batch["imgs"].to(device)
-                    img_metas = batch["img_metas"]
-                    gt_bboxes = [b.to(device) for b in batch["gt_bboxes"]]
-                    gt_labels = [l.to(device) for l in batch["gt_labels"]]
-                    gt_masks = batch["gt_masks"]
-
-                    data_samples = []
-                    for i in range(len(imgs)):
-                        ds = DetDataSample()
-                        ds.set_metainfo(img_metas[i])
-                        gt_instances = InstanceData()
-                        num_inst = len(gt_labels[i])
-                        if num_inst > 0:
-                            valid_mask = gt_labels[i] >= 0
-                            num_valid = int(valid_mask.sum().item())
-                            if num_valid > 0:
-                                valid_indices = (
-                                    valid_mask.nonzero().squeeze(-1)[:num_valid].cpu()
-                                )
-                                gt_instances.bboxes = gt_bboxes[i][valid_indices]
-                                gt_instances.labels = gt_labels[i][valid_indices]
-                                masks = gt_masks[i][valid_indices.cpu().numpy()]
-                                gt_instances.masks = BitmapMasks(
-                                    masks, *img_metas[i]["img_shape"]
-                                )
-                            else:
-                                gt_instances.bboxes = torch.zeros(
-                                    (0, 4), dtype=torch.float32, device=device
-                                )
-                                gt_instances.labels = torch.zeros(
-                                    (0,), dtype=torch.int64, device=device
-                                )
-                                gt_instances.masks = BitmapMasks(
-                                    np.zeros(
-                                        (0, *img_metas[i]["img_shape"]), dtype=np.uint8
-                                    ),
-                                    *img_metas[i]["img_shape"],
-                                )
-                        else:
-                            gt_instances.bboxes = torch.zeros(
-                                (0, 4), dtype=torch.float32, device=device
-                            )
-                            gt_instances.labels = torch.zeros(
-                                (0,), dtype=torch.int64, device=device
-                            )
-                            gt_instances.masks = BitmapMasks(
-                                np.zeros(
-                                    (0, *img_metas[i]["img_shape"]), dtype=np.uint8
-                                ),
-                                *img_metas[i]["img_shape"],
-                            )
-                        ds.gt_instances = gt_instances
-                        data_samples.append(ds.to(device))
-
-                    # Mirror the validation loop: run the model's
-                    # data_preprocessor (padding/normalization) before predict.
-                    processed = model_for_eval.data_preprocessor(
-                        {"inputs": imgs, "data_samples": data_samples},
-                        training=False,
-                    )
-                    model_inputs = processed["inputs"]
-                    data_samples = processed["data_samples"]
-
-                    outputs = model_for_eval.predict(
-                        model_inputs, data_samples, rescale=False
-                    )
-                    for j, output in enumerate(outputs):
-                        meta = img_metas[j]
-                        img_shape = meta["img_shape"]
-                        gt_inst = data_samples[j].gt_instances
-                        gt_np = _extract_instances_numpy(
-                            gt_inst, img_shape, encode_masks=True
-                        )
-                        all_gt.append(gt_np)
-                        pred_inst = (
-                            output.pred_instances
-                            if hasattr(output, "pred_instances")
-                            else output
-                        )
-                        pred_np = _extract_instances_numpy(
-                            pred_inst, img_shape, encode_masks=True
-                        )
-                        all_dt.append(pred_np)
-                        all_img_metas.append(meta)
-
-        if is_main:
-            total_gt = sum(len(g["labels"]) for g in all_gt)
-            total_dt = sum(len(d["scores"]) for d in all_dt if "scores" in d)
-            avg_mask_fill, avg_masks_per_image = _summarize_mask_density(all_dt)
-            logger.info(
-                "Test samples: GT=%d, DT=%d, avg_masks_per_image=%.2f, avg_mask_fill=%.4f",
-                total_gt,
-                total_dt,
-                avg_masks_per_image,
-                avg_mask_fill,
-            )
-            if total_gt > 0:
-                eval_categories = VHR10_CATEGORIES if args.use_vhr10_coco else None
-                coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
-                    all_gt, all_dt, all_img_metas, score_key="scores",
-                    categories=eval_categories,
-                )
-                if eval_bbox:
-                    bbox_metrics = run_coco_eval(
-                        coco_gt, coco_bbox_dt, iou_type="bbox",
-                        max_dets=_test_eval_max_dets,
-                    )
-                    logger.info(
-                        "Test bbox/mAP: %.4f bbox/mAP_75: %.4f",
-                        bbox_metrics.get("bbox/mAP", 0.0),
-                        bbox_metrics.get("bbox/mAP_75", 0.0),
-                    )
-                if segm_score_key == "scores":
-                    coco_segm_dt = coco_bbox_dt
-                else:
-                    _, coco_segm_dt = build_coco_gt_and_dt(
-                        all_gt,
-                        all_dt,
-                        all_img_metas,
-                        score_key=segm_score_key,
-                        categories=eval_categories,
-                    )
-                segm_metrics = run_coco_eval(
-                    coco_gt, coco_segm_dt, iou_type="segm",
-                    max_dets=_test_eval_max_dets,
-                )
-                logger.info(
-                    "Test segm/mAP: %.4f segm/mAP_50: %.4f segm/mAP_75: %.4f segm/mAP_s: %.4f segm/mAP_m: %.4f",
-                    segm_metrics.get("segm/mAP", 0.0),
-                    segm_metrics.get("segm/mAP_50", 0.0),
-                    segm_metrics.get("segm/mAP_75", 0.0),
-                    segm_metrics.get("segm/mAP_s", 0.0),
-                    segm_metrics.get("segm/mAP_m", 0.0),
-                )
-
-                # Full COCO stat dump: every metric key of both evals, plus a
-                # test_metrics.json next to the checkpoint dir for scripting.
-                _full_test_metrics = {}
-                if eval_bbox:
-                    _full_test_metrics.update(bbox_metrics)
-                _full_test_metrics.update(segm_metrics)
-                for _mk, _mv in _full_test_metrics.items():
-                    logger.info("Test metric %s: %.6f", _mk, float(_mv))
-                try:
-                    import json as _json
-
-                    _metrics_path = checkpoint_dir / "test_metrics.json"
-                    with _metrics_path.open("w", encoding="utf-8") as _mh:
-                        _json.dump(
-                            {
-                                "checkpoint": str(args.resume_from),
-                                "test_eval_max_dets": _test_eval_max_dets,
-                                "metrics": _full_test_metrics,
-                            },
-                            _mh,
-                            indent=2,
-                        )
-                    logger.info("Full test metrics written: %s", _metrics_path)
-                except Exception:
-                    logger.warning("Failed to write test_metrics.json", exc_info=True)
-
-                # Optional prediction visualization (TEST_VIS_OUT=<dir>).
-                # Records reuse the infer_from_checkpoint predictions.json
-                # contract (model-frame RLE + absolute file_name), which
-                # tools/visualize_instances.py pred mode rescales onto the
-                # stored images automatically.
-                _vis_out = os.environ.get("TEST_VIS_OUT", "").strip()
-                if _vis_out:
-                    _vis_thr = float(os.environ.get("TEST_VIS_SCORE_THR", "0.3"))
-                    _vis_limit = int(os.environ.get("TEST_VIS_LIMIT", "50"))
-                    _vis_records = []
-                    for _dt, _meta in zip(all_dt, all_img_metas):
-                        _fn = str(
-                            _meta.get("img_path") or _meta.get("filename") or ""
-                        )
-                        _rles = _dt.get("rles")
-                        if _rles is None and _dt.get("masks") is not None:
-                            _masks = _dt["masks"]
-                            if hasattr(_masks, "masks"):
-                                _masks = _masks.masks
-                            _rles = _masks_to_rles(_masks)
-                        for _bb, _sc, _rl in zip(
-                            _dt["bboxes"], _dt["scores"], _rles or []
-                        ):
-                            if float(_sc) < _vis_thr:
-                                continue
-                            _counts = _rl["counts"]
-                            if isinstance(_counts, bytes):
-                                _counts = _counts.decode("utf-8")
-                            _vis_records.append(
-                                {
-                                    "file_name": _fn,
-                                    "category_id": 1,
-                                    "bbox": [
-                                        float(_bb[0]),
-                                        float(_bb[1]),
-                                        float(_bb[2] - _bb[0]),
-                                        float(_bb[3] - _bb[1]),
-                                    ],
-                                    "score": float(_sc),
-                                    "segmentation": {
-                                        "size": _rl["size"],
-                                        "counts": _counts,
-                                    },
-                                }
-                            )
-                    _vis_dir = Path(_vis_out).expanduser().resolve()
-                    _vis_dir.mkdir(parents=True, exist_ok=True)
-                    _pred_json = _vis_dir / "predictions.json"
-                    import json as _vis_json
-
-                    with _pred_json.open("w", encoding="utf-8") as _vh:
-                        _vis_json.dump(_vis_records, _vh)
-                    logger.info(
-                        "Test visualization records: %d (score>=%.2f) -> %s",
-                        len(_vis_records),
-                        _vis_thr,
-                        _pred_json,
-                    )
-                    import subprocess
-                    import sys as _sys
-
-                    _project_root = Path(__file__).resolve().parents[1]
-                    _vis_cmd = [
-                        _sys.executable,
-                        "tools/visualize_instances.py",
-                        "pred",
-                        "--pred-json",
-                        str(_pred_json),
-                        "--out-dir",
-                        str(_vis_dir / "images"),
-                        "--limit",
-                        str(_vis_limit),
-                    ]
-                    logger.info("Visualization: %s", " ".join(_vis_cmd))
-                    subprocess.run(
-                        _vis_cmd, check=False, cwd=str(_project_root)
-                    )
-            else:
-                logger.warning("No valid GT in test split; skipping COCO eval.")
-            logger.info("Test-only evaluation complete. Exiting (no training).")
-        # Ensure all ranks reach the exit together.
-        if dist_info.get("world_size", 1) > 1:
-            dist.barrier()
-        return
-
     nonfinite_batches = 0
     # Validation order is deterministic within a run. Cache compact GT RLE
     # records after the first validation instead of rebuilding them every epoch.
@@ -3254,34 +1954,13 @@ def main():
                 sampler.set_epoch(epoch)
 
         model.train()
-        if args.train_decoder_tail_only:
-            # Keep frozen A0 stochastic/buffer behaviour fixed while the small
-            # residual classifier itself remains in train mode.
-            model.eval()
-            _get_model_core(model).roi_head.mask_head.decoder_tail_refiner.train()
-        if args.train_dense_capacity_only:
-            # Frozen A0 BatchNorm / dropout state is part of the point-source
-            # identity contract.  Only the new residual adapter may be train.
-            model.eval()
-            _get_model_core(model).roi_head.mask_head.dense_capacity_head.train()
-        if args.train_quality_head_only:
-            _set_quality_head_only_train_mode(model)
-        elif args.freeze_bn:
+        if args.freeze_bn:
             _set_norm_eval(model)
 
         total_loss = 0.0
         loss_meter = {}
         dense_monitor_sums = {key: 0.0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
         dense_monitor_counts = {key: 0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
-        p2br_monitor_sums = {key: 0.0 for key in _P2BR_EPOCH_FIELDS}
-        p2br_r1_gradient_monitor = _new_p2br_r1_gradient_monitor()
-        prompt_pathway_monitor = _new_prompt_pathway_monitor()
-        prompt_pathway_snapshot = _snapshot_prompt_pathway_parameters(model)
-        densecap_gradient_monitor = _new_densecap_gradient_monitor()
-        densecap_gradient_snapshot = _snapshot_densecap_gradient_parameters(model)
-        prompt_pathway_grad_probed = False
-        densecap_gradient_probed = False
-        p2br_r1_gradient_probed = False
         num_batches = 0
         grad_accum = args.grad_accum_steps
         train_batches_limit = len(train_loader)
@@ -3368,31 +2047,20 @@ def main():
                 # Invoke the DDP wrapper itself. Calling ``model.module.loss``
                 # bypasses DDP's reducer and makes each rank update independently.
                 loss_dict = model(model_inputs, data_samples, mode="loss")
-                loss_dict = _materialize_p2_boundary_refiner_loss(
-                    loss_dict, model, distributed
-                )
                 loss_dict = _apply_detection_loss_weight(
                     loss_dict, det_loss_weight, device
                 )
-                mask_ramp_factor = _mask_loss_ramp_factor(
-                    mask_loss_ramp_epochs, mask_loss_ramp_start, epoch_number
-                )
-                loss_dict = _apply_mask_loss_ramp(
-                    loss_dict, mask_ramp_factor, device
-                )
+                # Key-name filter matters: telemetry tensors (TAIL/*, SP/*)
+                # live in the same dict and must never join the loss sum.
                 loss_parts = []
                 for k, v in loss_dict.items():
                     if "loss" not in k:
                         continue
                     if isinstance(v, torch.Tensor):
-                        if not args.train_quality_head_only or v.requires_grad:
-                            loss_parts.append(v)
+                        loss_parts.append(v)
                     elif isinstance(v, (list, tuple)):
                         loss_parts.extend(
-                            x
-                            for x in v
-                            if isinstance(x, torch.Tensor)
-                            and (not args.train_quality_head_only or x.requires_grad)
+                            x for x in v if isinstance(x, torch.Tensor)
                         )
                 loss = sum(loss_parts) if loss_parts else torch.tensor(0.0, device=device)
                 # 审查 3.6 / 问题 10：loss 归一化按当前 batch 所属 accumulation group 的
@@ -3422,7 +2090,6 @@ def main():
             _accumulate_dense_residual_monitor(
                 model, dense_monitor_sums, dense_monitor_counts
             )
-            _accumulate_p2br_epoch_monitor(model, p2br_monitor_sums)
 
             finite_flag = torch.isfinite(loss).to(dtype=torch.int32)
             if distributed and dist.is_initialized():
@@ -3434,7 +2101,6 @@ def main():
                         name
                         for name, value in loss_dict.items()
                         if isinstance(value, torch.Tensor)
-                        and (not args.train_quality_head_only or value.requires_grad)
                         and not torch.isfinite(value).all()
                     ]
                     logger.error(
@@ -3454,62 +2120,14 @@ def main():
                     )
                 continue
 
-            # Probe the first finite local batch only. This isolates final-mask
-            # supervision from auxiliary losses without making every batch pay
-            # for a second autograd traversal.
-            if not prompt_pathway_grad_probed:
-                _accumulate_prompt_pathway_final_grad_probe(
-                    model, loss_dict.get("loss_mask"), prompt_pathway_monitor
-                )
-                prompt_pathway_grad_probed = True
-            if not densecap_gradient_probed:
-                _accumulate_densecap_gradient_probe(
-                    model,
-                    loss_dict.get("loss_mask"),
-                    loss_dict.get("loss_dense_capacity"),
-                    densecap_gradient_monitor,
-                )
-                densecap_gradient_probed = True
-            if not p2br_r1_gradient_probed:
-                p2br_r1_gradient_probed = _accumulate_p2br_r1_gradient_probe(
-                    model,
-                    loss_dict.get("_p2br_r1_corrective_probe"),
-                    loss_dict.get("_p2br_r1_keep_probe"),
-                    p2br_r1_gradient_monitor,
-                )
-
             global_step = epoch * max(1, train_batches_limit) + batch_idx + 1
-            if (
-                is_main
-                and (
-                    (
-                        args.uav_debug_stats
-                        and args.uav_debug_stats_interval > 0
-                        and global_step % args.uav_debug_stats_interval == 0
-                    )
-                    or (
-                        args.prompt_debug_stats
-                        and args.prompt_debug_stats_interval > 0
-                        and global_step % args.prompt_debug_stats_interval == 0
-                    )
-                )
-            ):
-                enabled_prefixes = set()
-                if (
-                    args.uav_debug_stats
-                    and args.uav_debug_stats_interval > 0
-                    and global_step % args.uav_debug_stats_interval == 0
-                ):
-                    enabled_prefixes.update({"A", "ROI", "B", "C", "D"})
-                if (
-                    args.prompt_debug_stats
-                    and args.prompt_debug_stats_interval > 0
-                    and global_step % args.prompt_debug_stats_interval == 0
-                ):
-                    enabled_prefixes.update(
-                        {"SP", "COARSE", "JITTER", "GATE", "DENSE", "DENSECAP", "P2BR", "TAIL", "CONTEXT", "BOX"}
-                    )
-                _log_uav_debug_stats(model, epoch, global_step, enabled_prefixes)
+            prompt_stats_due = (
+                args.prompt_debug_stats
+                and args.prompt_debug_stats_interval > 0
+                and global_step % args.prompt_debug_stats_interval == 0
+            )
+            if is_main and prompt_stats_due:
+                _log_uav_debug_stats(model, epoch, global_step, _PROMPT_TELEMETRY_PREFIXES)
             _seg_t3 = time.perf_counter() if _seg_timing else 0.0
             if _seg_timing:
                 _seg_sum["item"] += _seg_t3 - _seg_t2
@@ -3590,25 +2208,6 @@ def main():
             device=device,
             distributed=distributed,
         )
-        p2br_monitor_epoch = _reduce_p2br_epoch_monitor(
-            p2br_monitor_sums, device=device, distributed=distributed
-        )
-        p2br_r1_gradient_epoch = _reduce_p2br_r1_gradient_monitor(
-            p2br_r1_gradient_monitor, device=device, distributed=distributed
-        )
-        _accumulate_prompt_pathway_updates(
-            model, prompt_pathway_snapshot, prompt_pathway_monitor
-        )
-        prompt_pathway_epoch = _reduce_prompt_pathway_monitor(
-            prompt_pathway_monitor, device=device, distributed=distributed
-        )
-        _accumulate_densecap_gradient_updates(
-            model, densecap_gradient_snapshot, densecap_gradient_monitor
-        )
-        densecap_gradient_epoch = _reduce_densecap_gradient_monitor(
-            densecap_gradient_monitor, device=device, distributed=distributed
-        )
-
         if is_main:
             loss_str = []
             for k, v in loss_meter.items():
@@ -3627,172 +2226,6 @@ def main():
                     dense_monitor_epoch.get("DENSE/source_delta_ratio", float("nan")),
                     dense_monitor_epoch.get("DENSE/applied_delta_ratio", float("nan")),
                 )
-                if "GAUSSIAN/valid_ratio" in dense_monitor_epoch:
-                    logger.info(
-                        "Epoch %d Gaussian dense prompt: valid=%.2f%% "
-                        "fg_area=%.4f edt_max=%.4f center=(%.4f,%.4f) "
-                        "canvas_area=%.4f canvas[min/mean/max]=%.4f/%.4f/%.4f",
-                        epoch_number,
-                        100.0 * dense_monitor_epoch["GAUSSIAN/valid_ratio"],
-                        dense_monitor_epoch.get(
-                            "GAUSSIAN/foreground_area_ratio", float("nan")
-                        ),
-                        dense_monitor_epoch.get("GAUSSIAN/edt_max", float("nan")),
-                        dense_monitor_epoch.get(
-                            "GAUSSIAN/center_x_normalized", float("nan")
-                        ),
-                        dense_monitor_epoch.get(
-                            "GAUSSIAN/center_y_normalized", float("nan")
-                        ),
-                        dense_monitor_epoch.get(
-                            "GAUSSIAN/canvas_area", float("nan")
-                        ),
-                        dense_monitor_epoch.get("DENSE/canvas_min", float("nan")),
-                        dense_monitor_epoch.get("DENSE/canvas_mean", float("nan")),
-                        dense_monitor_epoch.get("DENSE/canvas_max", float("nan")),
-                    )
-                if "DENSECAP/roi_count" in dense_monitor_epoch:
-                    logger.info(
-                        "Epoch %d DenseCap residual: roi_count=%.3f "
-                        "delta_abs_mean=%.6f delta_nonzero_ratio=%.4f%%",
-                        epoch_number,
-                        dense_monitor_epoch["DENSECAP/roi_count"],
-                        dense_monitor_epoch.get("DENSECAP/delta_abs_mean", float("nan")),
-                        100.0 * dense_monitor_epoch.get(
-                            "DENSECAP/delta_nonzero_ratio", float("nan")
-                        ),
-                    )
-            if p2br_monitor_epoch:
-                logger.info(
-                    "Epoch %d P2 boundary refiner: raw_dice=%.4f refined_dice=%.4f "
-                    "raw_iou=%.4f refined_iou=%.4f raw_boundary_f1=%.4f "
-                    "refined_boundary_f1=%.4f",
-                    epoch_number,
-                    p2br_monitor_epoch["raw_dice"],
-                    p2br_monitor_epoch["refined_dice"],
-                    p2br_monitor_epoch["raw_iou"],
-                    p2br_monitor_epoch["refined_iou"],
-                    p2br_monitor_epoch["raw_boundary_f1"],
-                    p2br_monitor_epoch["refined_boundary_f1"],
-                )
-                logger.info(
-                    "Epoch %d P2 boundary support: valid=%.2f%% rejected=%.2f%% "
-                    "coverage=%.4f delta_abs=%.6f nonzero=%.2f%% saturated=%.2f%% "
-                    "sat_thr=%.4f saturated_in_support=%.2f%% "
-                    "p2_norm=%.4f highpass_norm=%.4f support_fg=%.2f%%",
-                    epoch_number,
-                    100.0 * p2br_monitor_epoch["valid_support_ratio"],
-                    100.0 * p2br_monitor_epoch["rejected_support_ratio"],
-                    p2br_monitor_epoch["search_coverage"],
-                    p2br_monitor_epoch["delta_abs"],
-                    100.0 * p2br_monitor_epoch["delta_nonzero_ratio"],
-                    100.0 * p2br_monitor_epoch["delta_saturated_ratio"],
-                    p2br_monitor_epoch["saturation_threshold"],
-                    100.0 * p2br_monitor_epoch["delta_saturated_support_ratio"],
-                    p2br_monitor_epoch["projected_feature_norm"],
-                    p2br_monitor_epoch["highpass_feature_norm"],
-                    100.0 * p2br_monitor_epoch["boundary_support_fg_ratio"],
-                )
-                logger.info(
-                    "Epoch %d P2 refinement gain: dice=%+.6f iou=%+.6f "
-                    "boundary_f1=%+.6f",
-                    epoch_number,
-                    p2br_monitor_epoch["refined_dice"] - p2br_monitor_epoch["raw_dice"],
-                    p2br_monitor_epoch["refined_iou"] - p2br_monitor_epoch["raw_iou"],
-                    p2br_monitor_epoch["refined_boundary_f1"]
-                    - p2br_monitor_epoch["raw_boundary_f1"],
-                )
-                if "r1_valid_roi_count" in p2br_monitor_epoch:
-                    logger.info(
-                        "Epoch %d P2 R1 supervision: corrective_support=%.2f%% "
-                        "error_support=%.2f%% low_confidence_support=%.2f%% "
-                        "error_low_confidence=%.2f%% keep_support=%.2f%% "
-                        "corrective_bce=%.6f keep_penalty=%.6f valid_rois=%.0f",
-                        epoch_number,
-                        100.0 * p2br_monitor_epoch["r1_corrective_support_ratio"],
-                        100.0 * p2br_monitor_epoch["r1_error_support_ratio"],
-                        100.0 * p2br_monitor_epoch["r1_low_confidence_support_ratio"],
-                        100.0 * p2br_monitor_epoch[
-                            "r1_error_low_confidence_support_ratio"
-                        ],
-                        100.0 * p2br_monitor_epoch["r1_keep_support_ratio"],
-                        p2br_monitor_epoch["r1_corrective_term"],
-                        p2br_monitor_epoch["r1_keep_term"],
-                        p2br_monitor_epoch["r1_valid_roi_count"],
-                    )
-                if p2br_r1_gradient_epoch:
-                    logger.info(
-                        "Epoch %d P2 R1 gradient probe: corrective_l2_rms=%.3e "
-                        "keep_l2_rms=%.3e cosine=%+.4f probes=%.0f",
-                        epoch_number,
-                        p2br_r1_gradient_epoch[
-                            "corrective_grad_group_l2_rms"
-                        ],
-                        p2br_r1_gradient_epoch["keep_grad_group_l2_rms"],
-                        p2br_r1_gradient_epoch["gradient_cosine"],
-                        p2br_r1_gradient_epoch["probe_count"],
-                    )
-            logger.info(
-                "Epoch %d prompt pathway: dense final_mask_grad_group_l2_rms=%.3e "
-                "active=%.2f%% update_group_l2_rms=%.3e params=%.0f probes=%.0f | "
-                "p2br final_mask_grad_group_l2_rms=%.3e active=%.2f%% update_group_l2_rms=%.3e "
-                "params=%.0f probes=%.0f | "
-                "pe_mask_downscaling final_mask_grad_group_l2_rms=%.3e "
-                "active=%.2f%% update_group_l2_rms=%.3e params=%.0f probes=%.0f",
-                epoch_number,
-                prompt_pathway_epoch["dense_final_mask_grad_group_l2_rms"],
-                100.0 * prompt_pathway_epoch["dense_final_mask_grad_nonzero_param_ratio"],
-                prompt_pathway_epoch["dense_parameter_update_group_l2_rms"],
-                prompt_pathway_epoch["dense_parameter_count"],
-                prompt_pathway_epoch["dense_final_mask_grad_probe_count"],
-                prompt_pathway_epoch["p2br_final_mask_grad_group_l2_rms"],
-                100.0 * prompt_pathway_epoch["p2br_final_mask_grad_nonzero_param_ratio"],
-                prompt_pathway_epoch["p2br_parameter_update_group_l2_rms"],
-                prompt_pathway_epoch["p2br_parameter_count"],
-                prompt_pathway_epoch["p2br_final_mask_grad_probe_count"],
-                prompt_pathway_epoch[
-                    "pe_mask_downscaling_final_mask_grad_group_l2_rms"
-                ],
-                100.0 * prompt_pathway_epoch[
-                    "pe_mask_downscaling_final_mask_grad_nonzero_param_ratio"
-                ],
-                prompt_pathway_epoch[
-                    "pe_mask_downscaling_parameter_update_group_l2_rms"
-                ],
-                prompt_pathway_epoch["pe_mask_downscaling_parameter_count"],
-                prompt_pathway_epoch[
-                    "pe_mask_downscaling_final_mask_grad_probe_count"
-                ],
-            )
-            if densecap_gradient_epoch["output_parameter_count"] > 0:
-                logger.info(
-                    "Epoch %d DenseCap gradient pathways: "
-                    "trunk final_mask_l2_rms=%.3e active=%.2f%% aux_l2_rms=%.3e "
-                    "aux_active=%.2f%% update_l2_rms=%.3e params=%.0f | "
-                    "output final_mask_l2_rms=%.3e active=%.2f%% aux_l2_rms=%.3e "
-                    "aux_active=%.2f%% update_l2_rms=%.3e params=%.0f",
-                    epoch_number,
-                    densecap_gradient_epoch["trunk_final_mask_grad_group_l2_rms"],
-                    100.0 * densecap_gradient_epoch[
-                        "trunk_final_mask_grad_nonzero_param_ratio"
-                    ],
-                    densecap_gradient_epoch["trunk_aux_grad_group_l2_rms"],
-                    100.0 * densecap_gradient_epoch[
-                        "trunk_aux_grad_nonzero_param_ratio"
-                    ],
-                    densecap_gradient_epoch["trunk_parameter_update_group_l2_rms"],
-                    densecap_gradient_epoch["trunk_parameter_count"],
-                    densecap_gradient_epoch["output_final_mask_grad_group_l2_rms"],
-                    100.0 * densecap_gradient_epoch[
-                        "output_final_mask_grad_nonzero_param_ratio"
-                    ],
-                    densecap_gradient_epoch["output_aux_grad_group_l2_rms"],
-                    100.0 * densecap_gradient_epoch[
-                        "output_aux_grad_nonzero_param_ratio"
-                    ],
-                    densecap_gradient_epoch["output_parameter_update_group_l2_rms"],
-                    densecap_gradient_epoch["output_parameter_count"],
-                )
             averaged_components = {
                 key: value / max(1, num_batches) for key, value in loss_meter.items()
             }
@@ -3802,22 +2235,15 @@ def main():
             )
             final_mask_component = float(averaged_components.get("loss_mask", 0.0))
             shape_component = float(averaged_components.get("loss_shape_prior", 0.0))
-            refiner_component = float(
-                averaged_components.get("loss_p2_boundary_refiner", 0.0)
-            )
-            component_total = (
-                det_component + final_mask_component + shape_component
-                + refiner_component
-            )
+            component_total = det_component + final_mask_component + shape_component
             if component_total > 0:
                 logger.info(
                     "Epoch %d primary loss shares: det=%.2f%% final_mask=%.2f%% "
-                    "shape=%.2f%% p2_boundary=%.2f%%",
+                    "shape=%.2f%%",
                     epoch_number,
                     100.0 * det_component / component_total,
                     100.0 * final_mask_component / component_total,
                     100.0 * shape_component / component_total,
-                    100.0 * refiner_component / component_total,
                 )
             logger.info(
                 "Epoch %d schedule: det_loss_weight=%.3f early_stop_start=%d min_delta=%.4g",
@@ -3825,12 +2251,6 @@ def main():
                 int(args.early_stopping_start_epoch),
                 float(args.early_stopping_min_delta),
             )
-            if mask_loss_ramp_epochs > 0:
-                logger.info(
-                    "Epoch %d schedule: mask_loss_ramp=%.3f (E1=%.3f -> E%d=1.0)",
-                    epoch_number, mask_ramp_factor, mask_loss_ramp_start,
-                    mask_loss_ramp_epochs,
-                )
             # Debug: log current learning rates
             lr_str = ", ".join([f"{k}={v:.2e}" for k, v in lr_groups.items()])
             logger.info(f"Epoch {epoch + 1} learning rates: {lr_str}")
