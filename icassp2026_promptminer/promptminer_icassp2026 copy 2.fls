@@ -2,8 +2,8 @@ PWD /home/wangcheng/project/new/icassp2026_promptminer
 INPUT /home/wangcheng/texlive/2026/texmf.cnf
 INPUT /home/wangcheng/texlive/2026/texmf-dist/web2c/texmf.cnf
 INPUT /home/wangcheng/texlive/2026/texmf-var/web2c/pdftex/pdflatex.fmt
-INPUT /home/wangcheng/project/new/icassp2026_promptminer/promptminer_icassp2026 copy.tex
-OUTPUT promptminer_icassp2026 copy.log
+INPUT /home/wangcheng/project/new/icassp2026_promptminer/promptminer_icassp2026 copy 2.tex
+OUTPUT promptminer_icassp2026 copy 2.log
 INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/base/article.cls
 INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/base/article.cls
 INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/base/size10.clo
@@ -58,10 +58,10 @@ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/map/fontname/texfonts.map
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmr7t.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
-INPUT ./promptminer_icassp2026 copy.aux
-INPUT ./promptminer_icassp2026 copy.aux
-INPUT promptminer_icassp2026 copy.aux
-OUTPUT promptminer_icassp2026 copy.aux
+INPUT ./promptminer_icassp2026 copy 2.aux
+INPUT ./promptminer_icassp2026 copy 2.aux
+INPUT promptminer_icassp2026 copy 2.aux
+OUTPUT promptminer_icassp2026 copy 2.aux
 INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
@@ -79,7 +79,7 @@ INPUT ./teaser_300838_minimal_zoom.png
 INPUT ./teaser_300838_minimal_zoom.png
 INPUT ./teaser_300838_minimal_zoom.png
 INPUT ./teaser_300838_minimal_zoom.png
-OUTPUT promptminer_icassp2026 copy.pdf
+OUTPUT promptminer_icassp2026 copy 2.pdf
 INPUT ./teaser_300838_minimal_zoom.png
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmr7t.tfm
 INPUT ./总体架构图.pdf
@@ -87,10 +87,6 @@ INPUT ./总体架构图.pdf
 INPUT ./总体架构图.pdf
 INPUT ./总体架构图.pdf
 INPUT ./总体架构图.pdf
-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ts1ptm.fd
-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ts1ptm.fd
-INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ts1ptm.fd
-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmr8c.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmb7t.vf
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmb8r.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map
@@ -107,7 +103,10 @@ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmbi7t.vf
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmbi8r.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmr7t.vf
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmr8r.tfm
-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmr8c.vf
+INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ts1ptm.fd
+INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ts1ptm.fd
+INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ts1ptm.fd
+INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmr8c.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsa.fd
@@ -122,6 +121,7 @@ INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/amsfonts/umsb.fd
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm7.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm5.tfm
+INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmr8c.vf
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmri7t.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmr9.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmr6.tfm
@@ -138,14 +138,14 @@ INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/symbols/
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmb7t.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmri7t.vf
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmri8r.tfm
+INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmb7t.vf
+INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmb8r.tfm
 INPUT ./viz_grid_row_combined.png
 INPUT ./viz_grid_row_combined.png
 INPUT ./viz_grid_row_combined.png
 INPUT ./viz_grid_row_combined.png
 INPUT ./viz_grid_row_combined.png
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmri7t.tfm
-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmb7t.vf
-INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmb8r.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/times/ptmri7t.vf
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/times/ptmri8r.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ot1pcr.fd
@@ -154,7 +154,7 @@ INPUT /home/wangcheng/texlive/2026/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/courier/pcrr7t.tfm
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/vf/adobe/courier/pcrr7t.vf
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/tfm/adobe/courier/pcrr8r.tfm
-INPUT promptminer_icassp2026 copy.aux
+INPUT promptminer_icassp2026 copy 2.aux
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb
 INPUT /home/wangcheng/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb

@@ -1,0 +1,365 @@
+% ICASSP 2026 short-paper draft distilled from main5.tex (single-stream path only).
+% Replace the placeholder author and affiliation fields before submission.
+\documentclass{article}
+\usepackage{spconf,amsmath,amssymb,graphicx,booktabs,multirow}
+\usepackage{placeins,float}
+\usepackage{cite}
+\usepackage{url}
+\newcommand{\metrictriplet}[3]{\makebox[3.1em][c]{#1}\hspace{0.5em}\makebox[3.1em][c]{#2}\hspace{0.5em}\makebox[3.1em][c]{#3}}
+\newcommand{\metricheader}{\makebox[3.1em][c]{AP}\hspace{0.5em}\makebox[3.1em][c]{AP$_{50}$}\hspace{0.5em}\makebox[3.1em][c]{AP$_{75}$}}
+\newcommand{\citerange}[2]{\mbox{\cite{#1}\textendash\kern-0.38em\cite{#2}}}
+
+\title{PROMPTMINER-SAM2: PROMPT MINING FOR\\REMOTE SENSING INSTANCE SEGMENTATION}
+\name{Anonymous Author(s)}
+\address{Anonymous Affiliation(s)}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Remote-sensing scenes often contain visually similar or adjacent instances that are difficult to separate under shadows and narrow inter-instance gaps.
+%Remote-sensing instance segmentation often involves similar or adjacent instances that are difficult to separate under shadows and narrow inter-instance gaps. 
+%Common proposal-box-driven methods provide insufficient shape cues for accurate instance-mask prediction.
+Common proposal-based methods can localize instances effectively, but a proposal box alone provides insufficient shape cues for accurate instance-mask prediction.
+To address this issue, we propose PromptMiner-SAM2, 
+a two-stage instance segmentation framework that mines proposal-level shape cues and injects them into prompt-conditioned SAM2 mask decoding.
+The coarse shape cues are first mined and serve as complementary instance-specific prompts for SAM2 mask prediction. 
+%To refine margin lines of instances, an uncertainty-guided decoder-tail module is designed to further correct uncertain local pixels. 
+To refine instance boundaries, an uncertainty-guided decoder-tail module is designed to identify uncertain local pixels and correct their predictions using local features and instance context.
+Experiments on the WHU and NWPU VHR-10 benchmarks show that PromptMiner-SAM2 achieves
+mask AP values of 73.4\% and 68.3\%, respectively, attaining the highest mask AP among the compared
+methods.
+\end{abstract}
+\begin{keywords}
+Instance segmentation, remote sensing imagery, SAM2, prompt mining, mask refinement
+\end{keywords}
+
+\section{INTRODUCTION}
+
+Remote-sensing instance segmentation supports cadastral mapping, urban planning, and post-disaster assessment~\cite{rsiisn},~\cite{p2pformer}. 
+%In dense aerial scenes, visually similar adjacent instances are difficult to separate under shadows, low contrast, and narrow inter-instance gaps. 
+In aerial imagery, shadows and low contrast often obscure object boundaries, while narrow inter-instance gaps leave little visual separation between adjacent instances.
+After localization, these ambiguities still need to be resolved during mask prediction, where a rectangular proposal box provides only a coarse spatial extent and insufficient shape cues for accurate instance-mask prediction. 
+Figure~\ref{fig:motivation} illustrates this limitation: the proposal box covers neighboring buildings with similar appearance and a narrow contact region, while the ground-truth masks distinguish them as separate instances.
+
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{teaser_300838_minimal_zoom.png}\par
+\vspace{-0.15em}
+{\small
+\makebox[.5\columnwidth][c]{(a)}%
+\makebox[.5\columnwidth][c]{(b)}\par}
+\vspace{-0.3em}
+\caption{An example of ambiguous instance separation in aerial imagery. (a) A proposal box covers neighboring buildings with similar appearance and a narrow contact region, as shown in the zoomed view. (b) Ground-truth masks distinguish the neighboring buildings as separate instances with clear boundaries.}
+\label{fig:motivation}
+\end{figure}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{总体架构图.pdf}
+\caption{Overview of the proposed PromptMiner-SAM2. SAM2 Hiera features support proposal extraction and provide image embeddings for mask decoding. Each detected box and its mask RoI feature drive coarse-shape prompt mining, which produces point, box, and dense-mask prompts. Uncertainty-guided decoder-tail refinement updates selected uncertain logits before mask post-processing.}
+\label{fig:arch}
+\end{figure*}
+
+Existing remote-sensing instance segmentation methods couple instance discovery with mask prediction through two-stage, one-stage, cascade, or conditional designs~\citerange{maskrcnn}{condinst}. Transformer-style frameworks provide another modeling route by using global sequence representations for set-based prediction~\citerange{mask2former}{rs4d}. Alternative instance representations have also been explored through diffusion-based filter denoising and architecture search for efficient prediction~\citerange{diffusioninst}{efficientis}. These approaches generally rely on rectangular proposals or generic instance queries, which provide limited target-shape cues when neighboring objects have similar appearance. Beyond these architectures, prompt-conditioned foundation models offer a complementary way to inject spatial constraints into mask decoding. SAM and SAM2 accept sparse or dense prompts, motivating remote-sensing adaptation and automatic prompt learning such as RSPrompter~\citerange{sam}{pasam}. Related refinement methods further exploit spatial cues: SAMRefiner derives multiple prompt types from an initial mask; PointRend focuses prediction on uncertain locations~\cite{samrefiner},~\cite{pointrend}. These studies highlight the value of explicit spatial cues for resolving ambiguous instance boundaries, motivating their closer integration with proposal-based mask prediction.
+
+These lines of work point to a common opportunity: prompt-conditioned decoders can benefit from instance-specific spatial cues beyond a rectangular extent. In a proposal-driven SAM2 pipeline, the detector already produces proposal-level features, but a box alone does not fully convey the shape of the localized instance for mask prediction. Preserving and transforming these cues into prompt-compatible guidance therefore becomes important for connecting instance discovery with accurate SAM2 mask decoding. To this end, we propose PromptMiner-SAM2, a two-stage framework that integrates proposal-based instance discovery with prompt-conditioned SAM2 segmentation.
+
+Specifically, our contributions are threefold:
+\begin{itemize}
+  \item We propose a proposal-driven two-stage framework for remote-sensing
+  instance segmentation, coupling SAM2 with detector-based proposal extraction
+  to connect instance discovery with prompt-conditioned mask decoding.
+  \item We propose the coarse-shape prompt mining module (CSPM), which converts
+  proposal-level shape estimates into complementary prompts to preserve
+  instance-specific cues for separating adjacent objects.
+  \item We design the uncertainty-guided decoder-tail refinement module (UDPR),
+  which targets ambiguous mask locations with localized residual corrections to
+  improve instance-mask delineation.
+\end{itemize}
+
+\section{METHOD}
+As depicted in Fig.~\ref{fig:arch}, PromptMiner-SAM2 couples a two-stage
+detector with the SAM2 prompt-to-mask interface. Hiera features feed the
+PAFPN/RPN/RoI pathway for proposal extraction, while the SAM2 mask decoder
+combines the image embedding with proposal-conditioned prompts. The resulting
+decoder features and mask logits are refined at uncertain locations, yielding
+the final instance masks for each detected proposal after post-processing.
+
+\subsection{Coarse-Shape Prompt Mining}
+CSPM converts each proposal's RoI feature into a local shape estimate and uses it to construct complementary
+geometric cues for SAM2. It outputs 2P2N point prompts, the proposal box, and a
+dense shape prompt in the image-aligned coordinate frame.
+
+\indent For each proposal, the coarse branch maps its RoI feature $X_r$ to a
+proposal-local shape logit map
+\begin{equation}
+C_r=f_{\mathrm{coarse}}(X_r),\qquad C_r\in\mathbb{R}^{1\times64\times64}.
+\label{eq:coarse}
+\end{equation}
+\indent Let $p_r=\sigma(C_r)$. PromptMiner derives a foreground support at probability
+$0.5$ from $p_r$, while retaining the signed logits $C_r$ for the dense prompt.
+It mines two positive and two negative points (2P2N) from this shared coarse
+shape. The first positive point is selected among confident foreground interior
+pixels ($p_r\geq0.6$) by its foreground confidence weighted by its normalized
+distance to the support boundary; the second follows the same criterion while
+remaining spatially separated from the first. The first negative point comes
+from the one-pixel outer ring with low foreground probability ($p_r\leq0.3$).
+The second is selected from background outside a dilation of the foreground
+support and is separated from the first positive and ring-negative points.
+
+\indent These four points encode complementary interior, exterior, and background
+cues. The 2P2N set maps them to signed prompts in the image frame.
+
+\indent Coordinates map to the image frame; signed logits are~resized and pasted into
+$b_r$'s mask-input canvas:
+\begin{equation}
+\mathcal{S}_r=\mathcal{M}(C_r,b_r),\qquad
+Q_r=\operatorname{Place}(C_r,b_r),
+\label{eq:prompt-mining}
+\end{equation}
+\indent Here, $\mathcal{M}$ denotes 2P2N selection and coordinate mapping, and
+$\operatorname{Place}$ is the resize-and-paste operation. The two corners of
+$b_r$ provide the box prompt. SAM2 jointly encodes the point, box, and
+dense-mask prompts, then decodes them with the image embedding in one pass:
+\begin{equation}
+Y_r^0=\mathcal{D}\bigl(\mathcal{E}_I(I),
+\widetilde{\mathcal{E}}_P(\mathcal{S}_r,b_r,Q_r)\bigr),
+\label{eq:native-decoding}
+\end{equation}
+\indent where $\mathcal{E}_I$, $\widetilde{\mathcal{E}}_P$, and $\mathcal{D}$ denote
+the SAM2 image encoder (including its decoder-side high-resolution features),
+complete SAM2 prompt-embedding pathway, and mask decoder, respectively.
+The pathway $\widetilde{\mathcal{E}}_P$ includes the SAM2 composition of
+the dense-mask embedding. $Q_r$ retains the signed rather than binarized
+coarse logits. Thus, the dense prompt preserves the spatial variation of the
+proposal-local shape, while the point and box prompts provide discrete
+geometric constraints to the same decoder.
+
+\subsection{Uncertainty-Guided Refinement}
+UDPR focuses on ambiguous locations in the initial SAM2 mask. It combines local decoder
+features with instance-level context to predict localized residual corrections.
+The same decoding pass returns an upscaled decoder feature map $U_r$, the
+first output mask token $t_r$, and decoder logit map $Y_r^0$.
+On the raster grid $\mathcal{G}_r$, UDPR visits the $K_r$ locations with
+the smallest logit magnitudes:
+\begin{equation}
+\begin{aligned}
+K_r&=\min(K,|\mathcal{G}_r|),\\
+\Omega_r&=\operatorname{BottomK}\bigl(|Y_r^0|,K_r\bigr),\qquad K=64,
+\end{aligned}
+\label{eq:udpr-selection}
+\end{equation}
+\indent where $\operatorname{BottomK}$ returns the $K_r$ indices in $\mathcal{G}_r$
+with the smallest logit magnitudes.
+\indent For each $i\in\Omega_r$, the aligned feature $z_i$ is gathered from $U_r$ and
+combined with the token, normalized location, local logit, and logit magnitude:
+\begin{equation}
+\phi_i=[z_i,t_r,Y^0_{r,i},x_i,y_i,|Y^0_{r,i}|].
+\label{eq:udpr-input}
+\end{equation}
+\indent The local feature describes the decoder output near $i$, the mask token
+conditions the update on the decoded instance, and the coordinate and logit
+terms specify the position and current decision state. A lightweight MLP $g$
+then predicts a bounded residual for each selected location:
+\begin{equation}
+\delta_i=2\tanh g(\phi_i),\qquad i\in\Omega_r,
+\label{eq:udpr}
+\end{equation}
+\indent The refined logit map is formed by scattering these residuals back to their
+original positions:
+\begin{equation}
+Y^1_{r,i}=\begin{cases}
+Y^0_{r,i}+\delta_i, & i\in\Omega_r,\\
+Y^0_{r,i}, & i\notin\Omega_r.
+\end{cases}
+\label{eq:udpr-scatter}
+\end{equation}
+\indent This selective update leaves all nonselected decoder logits unchanged and
+applies bounded residual corrections on the existing SAM2 decoder grid.
+
+\section{EXPERIMENTS}
+\subsection{Experimental Setup}
+Experiments use the WHU dataset~\cite{whu}, a single-class building benchmark
+with 2,943/627/2,220 training/validation/test images, and the NWPU VHR-10
+dataset~\cite{nwpu}, a ten-class benchmark. Because the latter provides
+detection annotations only, we use the publicly released instance masks of
+Su \textit{et al.}~\cite{nwpu_instance} and its 520/130
+train/evaluation split. 
+
+Our PyTorch implementation uses distributed data parallelism on four NVIDIA
+RTX 3090 GPUs, with one image per GPU and two-step gradient accumulation
+(effective batch size eight). Both benchmark runs initialize from SAM2
+Hiera-Base+ weights: base Hiera parameters remain frozen, while its LoRA
+adapters and the mask decoder are updated. We use AdamW with an initial
+learning rate of $5\times10^{-4}$ and cosine annealing; training uses
+cross-entropy, Smooth L1, binary cross-entropy, and Dice losses. A value of
+$K=64$ is selected by screening $K\in\{32,64,128\}$ under a common protocol; it achieves
+the highest overall bbox AP and mask AP in Table~\ref{tab:k-sensitivity} and
+is used in the main experiments.
+
+\begin{table}[H]
+\caption{Sensitivity of $K$ on the NWPU VHR-10 dataset under a common development protocol.}
+\label{tab:k-sensitivity}
+\centering
+\small
+\begin{tabular}{c ccc ccc}
+\toprule
+& \multicolumn{3}{c}{Bbox (\%)} & \multicolumn{3}{c}{Mask (\%)} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+$K$ & AP & AP$_{50}$ & AP$_{75}$ & AP & AP$_{50}$ & AP$_{75}$ \\
+\midrule
+32  & 69.38 & 91.69 & 79.03 & 64.94 & 92.91 & 70.01 \\
+64  & \textbf{70.35} & 92.23 & \textbf{81.65} & \textbf{66.65} & \textbf{94.15} & 71.97 \\
+128 & 70.13 & \textbf{92.42} & 81.32 & 65.97 & 93.71 & \textbf{72.22} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Comparative Analysis}
+PromptMiner-SAM2 is compared with 10 representative instance-segmentation
+methods. They are grouped into CNN-based methods (CNN) and global sequence
+modeling methods (GSM). CNN includes two-stage, one-stage, and cascade designs,
+whereas GSM includes Transformer-style mask prediction and foundation-model
+prompting. The \emph{Type} column in Table~\ref{tab:comparison} uses these two
+abbreviations.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{viz_grid_row_combined.png}\par
+\vspace{-0.15em}
+{\small
+\makebox[.1\textwidth][c]{Input}%
+\makebox[.1\textwidth][c]{GT}%
+\makebox[.1\textwidth][c]{(a)}%
+\makebox[.1\textwidth][c]{(b)}%
+\makebox[.1\textwidth][c]{(c)}%
+\makebox[.1\textwidth][c]{(d)}%
+\makebox[.1\textwidth][c]{(e)}%
+\makebox[.1\textwidth][c]{(f)}%
+\makebox[.1\textwidth][c]{(g)}%
+\makebox[.1\textwidth][c]{Ours}\par}
+\vspace{-0.3em}
+\caption{Qualitative comparison on the WHU and NWPU VHR-10 datasets. From left to right, the columns show the input image, ground truth, predictions of (a) MaskDINO, (b) RSPrompter, (c) CondInst, (d) YOLO11, (e) HTC, (f) Mask R-CNN, (g) M2F, and PromptMiner-SAM2 (ours).}
+\label{fig:qualitative}
+\end{figure*}
+
+\begin{table*}[t]
+\caption{Comparative analysis on the WHU dataset and the NWPU VHR-10 dataset. Each entry reports AP / AP$_{50}$ / AP$_{75}$ (\%) for the Bbox and Mask columns.}
+\label{tab:comparison}
+\centering
+\small
+\begingroup
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabular}{llcccc}
+\toprule
+& & \multicolumn{2}{c}{WHU} & \multicolumn{2}{c}{NWPU VHR-10} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+& & Bbox (\%) & Mask (\%) & Bbox (\%) & Mask (\%) \\
+\cmidrule(lr){3-3}\cmidrule(lr){4-4}\cmidrule(lr){5-5}\cmidrule(lr){6-6}
+Type & Method & \metricheader & \metricheader & \metricheader & \metricheader \\
+\midrule
+\multirow{5}{*}{\textit{CNN}} & Mask R-CNN~\cite{maskrcnn} & \metrictriplet{70.9}{89.9}{80.9} & \metrictriplet{68.2}{90.0}{80.0} & \metrictriplet{65.4}{90.2}{78.9} & \metrictriplet{63.0}{90.1}{71.2} \\
+& MS R-CNN~\cite{msrcnn} & \metrictriplet{68.8}{89.4}{80.0} & \metrictriplet{67.7}{89.6}{79.5} & \metrictriplet{67.8}{94.3}{83.8} & \metrictriplet{64.7}{93.6}{\textbf{80.8}} \\
+& HTC~\cite{htc} & \metrictriplet{72.7}{90.6}{82.5} & \metrictriplet{69.2}{90.7}{81.6} & \metrictriplet{58.9}{86.9}{67.7} & \metrictriplet{51.3}{84.6}{53.3} \\
+& CondInst~\cite{condinst} & \metrictriplet{74.2}{90.0}{82.4} & \metrictriplet{69.7}{90.2}{80.9} & \metrictriplet{65.0}{90.1}{79.6} & \metrictriplet{62.8}{90.7}{68.1} \\
+& YOLO11s-seg~\cite{yolo11} & \metrictriplet{\textbf{76.7}}{91.2}{\textbf{85.4}} & \metrictriplet{66.8}{91.3}{79.1} & \metrictriplet{71.0}{\textbf{94.4}}{79.5} & \metrictriplet{63.9}{93.9}{67.3} \\
+\midrule
+\multirow{5}{*}{\textit{GSM}} & Mask2Former~\cite{mask2former} & \metrictriplet{61.4}{82.7}{70.7} & \metrictriplet{64.5}{84.1}{75.6} & \metrictriplet{60.3}{77.9}{66.8} & \metrictriplet{61.5}{84.9}{67.8} \\
+& MaskDINO~\cite{maskdino} & \metrictriplet{73.3}{90.8}{82.7} & \metrictriplet{73.3}{90.3}{82.5} & \metrictriplet{65.7}{88.9}{74.2} & \metrictriplet{65.8}{89.6}{71.5} \\
+& RS4D-box~\cite{rs4d} & \metrictriplet{64.5}{87.6}{74.7} & \metrictriplet{64.1}{87.8}{75.2} & \metrictriplet{57.0}{82.5}{65.4} & \metrictriplet{54.3}{80.1}{57.6} \\
+& RSIISN~\cite{rsiisn} & \metrictriplet{74.1}{90.0}{84.4} & \metrictriplet{72.1}{90.1}{83.9} & \metrictriplet{66.7}{91.5}{78.4} & \metrictriplet{62.9}{89.7}{67.1} \\
+& RSPrompter~\cite{rsprompter} & \metrictriplet{72.5}{91.0}{81.7} & \metrictriplet{72.5}{\textbf{92.0}}{82.9} & \metrictriplet{70.3}{93.6}{81.0} & \metrictriplet{66.1}{92.7}{70.6} \\
+\midrule
+Ours & PromptMiner-SAM2 & \metrictriplet{76.4}{\textbf{91.5}}{\textbf{85.4}} & \metrictriplet{\textbf{73.4}}{91.4}{\textbf{85.5}} & \metrictriplet{\textbf{73.4}}{94.0}{\textbf{84.2}} & \metrictriplet{\textbf{68.3}}{\textbf{94.5}}{74.6} \\
+\bottomrule
+\end{tabular}
+\endgroup
+\end{table*}
+
+It can be concluded from Table~\ref{tab:comparison} that our method obtains
+the highest mask AP on the WHU dataset and the NWPU VHR-10 dataset, leading by
+0.1 and 2.2 points, respectively, over the strongest alternatives. Its WHU
+mask AP$_{75}$ is also the best, while the bbox results remain close to the
+leading YOLO11s-seg baseline. On the NWPU VHR-10 dataset, it leads the bbox AP,
+bbox AP$_{75}$, mask AP, and mask AP$_{50}$ comparisons; although mask AP$_{75}$
+is below the best value, it remains competitive with other GSM methods.
+
+Figure~\ref{fig:qualitative} compares predictions on the WHU dataset and the
+NWPU VHR-10 dataset. In the WHU row, touching roofs remain separated; in the
+NWPU row, object silhouettes are more complete with fewer merges.
+
+\begin{table}[H]
+\caption{Prompt-path ablation on the NWPU VHR-10 dataset; $P$, $B$, and $M$ denote point, box, and dense-mask prompts, and UDPR denotes uncertainty-guided refinement.}
+\label{tab:ablation}
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lcccccc}
+\toprule
+& \multicolumn{3}{c}{Bbox (\%)} & \multicolumn{3}{c}{Mask (\%)} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Variant & AP & AP$_{50}$ & AP$_{75}$ & AP & AP$_{50}$ & AP$_{75}$ \\
+\midrule
+$P$ & 71.81 & 93.60 & 81.89 & 63.15 & 92.56 & 67.73 \\
+$B$ & 72.14 & \textbf{94.34} & 82.24 & 65.25 & 94.12 & 69.02 \\
+$P{+}B$ & 71.74 & 93.52 & 81.68 & 66.94 & 93.93 & 72.73 \\
+$P{+}B{+}M$ & \textbf{73.76} & 93.80 & \textbf{84.69} & 66.35 & 93.66 & 71.61 \\
+$P{+}B{+}M$ + UDPR & 73.43 & 93.96 & 84.16 & \textbf{68.28} & \textbf{94.53} & \textbf{74.61} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ablation Study}
+\vspace{-0.35em}
+The effects of adding prompt types and decoder-tail refinement
+are summarized in Table~\ref{tab:ablation}. With only the box
+prompt $B$, mask AP is increased from 63.15\% to 65.25\%, and mask AP$_{75}$
+from 67.73\% to 69.02\%. With both discrete prompts ($P{+}B$), 66.94\% mask
+AP and 72.73\% mask AP$_{75}$ are obtained, showing complementary cues.
+
+With the dense-mask prompt, 66.35\% mask AP and 71.61\% mask AP$_{75}$ are
+obtained, while bbox AP and bbox AP$_{75}$ are 73.76\% and 84.69\%,
+respectively. For the complete $P{+}B{+}M{+}\mathrm{UDPR}$ configuration,
+68.28\% mask AP and 74.61\% mask AP$_{75}$ are obtained, the best mask
+results in this ablation.
+
+\section{CONCLUSION}
+This paper presents PromptMiner-SAM2, a framework that addresses ambiguous
+instance separation in overhead imagery by converting proposal-local shape cues
+into complementary prompts for SAM2 and refining uncertain mask locations. The
+resulting design improves remote-sensing instance segmentation, reaching 73.4\%
+mask AP on the WHU dataset and 68.3\% on the NWPU VHR-10 dataset. Future work
+can explore richer prompt-mining schemes, including cues that adapt to object
+scale and local scene context.
+
+\clearpage
+\bibliographystyle{IEEEbib}
+\begin{thebibliography}{99}
+\bibitem{rsiisn} W.~Ye, W.~Zhang, W.~Lei, W.~Zhang, X.~Chen, and Y.~Wang, ``Remote sensing image instance segmentation network with transformer and multi-scale feature representation,'' \textit{Expert Syst. Appl.}, vol.~234, Art.~no.~121007, 2023.
+\bibitem{p2pformer} T.~Zhang, S.~Wei, Y.~Zhou, M.~Luo, W.~Yu, and S.~Ji, ``P2PFormer: A primitive-to-polygon method for regular building contour extraction from remote sensing images,'' \textit{IEEE Trans. Geosci. Remote Sens.}, vol.~62, Art.~no.~4414012, 2024.
+\bibitem{maskrcnn} K.~He, G.~Gkioxari, P.~Doll\'ar, and R.~Girshick, ``Mask R-CNN,'' in \textit{Proc. IEEE Int. Conf. Comput. Vis. (ICCV)}, 2017, pp.~2961--2969.
+\bibitem{msrcnn} Z.~Huang, L.~Huang, Y.~Gong, C.~Huang, and X.~Wang, ``Mask scoring R-CNN,'' in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2019, pp.~6409--6418.
+\bibitem{htc} K.~Chen \textit{et al.}, ``Hybrid task cascade for instance segmentation,'' in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2019, pp.~4974--4983.
+\bibitem{condinst} Z.~Tian, C.~Shen, and H.~Chen, ``Conditional convolutions for instance segmentation,'' in \textit{Proc. Eur. Conf. Comput. Vis. (ECCV)}, 2020, pp.~282--298.
+\bibitem{mask2former} B.~Cheng, I.~Misra, A.~G.~Schwing, A.~Kirillov, and R.~Girdhar, ``Masked-attention mask transformer for universal image segmentation,'' in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2022, pp.~1290--1299.
+\bibitem{maskdino} F.~Li \textit{et al.}, ``Mask DINO: towards a unified transformer-based framework for object detection and segmentation,'' in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2023, pp.~3041--3050.
+\bibitem{rs4d} Q.~Yang, K.~Chen, J.~Xu, Z.~Shi, and Z.~Zou, ``Efficient remote sensing instance segmentation with linear-time state-space-distilled visual foundation models,'' \textit{IEEE Trans. Geosci. Remote Sens.}, vol.~64, Art.~no.~5625417, 2026.
+\bibitem{sam} A.~Kirillov \textit{et al.}, ``Segment Anything,'' in \textit{Proc. ICCV}, 2023, pp.~4015--4026.
+\bibitem{sam2} N.~Ravi \textit{et al.}, ``SAM 2: Segment anything in images and videos,'' in \textit{Proc. ICLR}, 2025.
+\bibitem{samrs} D.~Wang \textit{et al.}, ``SAMRS: scaling-up remote sensing segmentation dataset with Segment Anything Model,'' in \textit{Adv. Neural Inf. Process. Syst.}, vol.~36, 2023.
+\bibitem{rsprompter} K.~Chen \textit{et al.}, ``RSPrompter: learning to prompt for remote sensing instance segmentation based on visual foundation model,'' \textit{IEEE Trans. Geosci. Remote Sens.}, vol.~62, pp.~1--17, 2024.
+\bibitem{aopsam} Y.~Chen, M.~Son, C.~Hua, and J.-Y.~Kim, ``AoP-SAM: automation of prompts for efficient segmentation,'' in \textit{Proc. AAAI Conf. Artif. Intell.}, vol.~39, no.~2, pp.~2284--2292, 2025.
+\bibitem{pasam} Z.~Xie, B.~Guan, W.~Jiang, M.~Yi, Y.~Ding, H.~Lu, and L.~Zhang, ``PA-SAM: Prompt adapter SAM for high-quality image segmentation,'' in \textit{Proc. IEEE Int. Conf. Multimedia Expo (ICME)}, 2024, pp.~1--6.
+\bibitem{samrefiner} Y.~Lin, H.~Li, W.~Shao, Z.~Yang, J.~Zhao, X.~He, P.~Luo, and K.~Zhang, ``SAMRefiner: Taming Segment Anything Model for universal mask refinement,'' in \textit{Proc. Int. Conf. Learn. Represent. (ICLR)}, 2025.
+\bibitem{pointrend} A.~Kirillov, Y.~Wu, K.~He, and R.~Girshick, ``PointRend: Image segmentation as rendering,'' in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2020, pp.~9799--9808.
+\bibitem{diffusioninst} Z.~Gu, H.~Chen, Z.~Xu, J.~Lan, C.~Meng, and W.~Wang, ``DiffusionInst: Diffusion model for instance segmentation,'' in \textit{Proc. IEEE Int. Conf. Acoustics, Speech and Signal Processing (ICASSP)}, 2024, pp.~2730--2734, doi:10.1109/ICASSP48485.2024.10447191.
+\bibitem{efficientis} R.~Xia, D.~Zhang, Y.~Dong, J.~Zhao, W.~Liao, T.~He, and J.~Yan, ``Efficient architecture search for real-time instance segmentation,'' in \textit{Proc. IEEE Int. Conf. Acoustics, Speech and Signal Processing (ICASSP)}, 2024, pp.~3310--3314, doi:10.1109/ICASSP48485.2024.10446079.
+\bibitem{whu} X.~Xia, Z.~Sun, S.~Ji, P.~Dong, and W.~Li, ``WHU Building Dataset,'' 2018. [Online]. Available: \url{https://study.rsgis.whu.edu.cn/pages/download/}
+\bibitem{nwpu} G.~Cheng, J.~Han, P.~Zhou, and L.~Guo, ``Multi-class geospatial object detection and geographic image classification based on collection of part detectors,'' \textit{ISPRS J. Photogramm. Remote Sens.}, vol.~98, pp.~119--132, 2014.
+\bibitem{nwpu_instance} H.~Su, S.~Wei, M.~Yan, C.~Wang, J.~Shi, and X.~Zhang, ``Object detection and instance segmentation in remote sensing imagery based on precise Mask R-CNN,'' in \textit{Proc. IEEE Int. Geosci. Remote Sens. Symp. (IGARSS)}, 2019, pp.~1454--1457.
+\bibitem{yolo11} G.~Jocher and J.~Qiu, ``Ultralytics YOLO11,'' software, ver.~11.0.0, 2024. [Online]. Available: \url{https://github.com/ultralytics/ultralytics}
+\end{thebibliography}
+\end{document}
