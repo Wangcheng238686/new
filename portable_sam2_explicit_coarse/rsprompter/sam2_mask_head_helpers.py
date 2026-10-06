@@ -1,19 +1,14 @@
-"""Prompt-canvas / ROI-SAM / debug helper methods of the SAM2 mask head, as a plain mixin (split from models_sam2; no super(), no attributes)."""
+"""Prompt-canvas and point-token helper methods of the SAM2 mask head.
 
+Plain mixin (no super(), no module attributes): everything here operates on
+state owned by RSPrompterAnchorMaskHeadSAM2.
 """
-SAM2 Adapter for Portable SAM Fusion - Simplified Version
-直接使用SAM2的build_sam2函数加载模型
-"""
-
-import math
 from typing import Dict, Optional, Tuple
 
 import torch
 from torch import Tensor
 
-from mmcv.ops import RoIAlign
-
-
+from .dense_prompt_utils import paste_roi_to_full_canvas, transform_coarse_prompt
 
 
 class _MaskHeadPromptHelpers:
@@ -22,59 +17,15 @@ class _MaskHeadPromptHelpers:
         roi_mask_logits: Tensor,
         boxes: Tensor,
     ):
-        """批次2 子任务3：ROI-local coarse logits → full-image PE mask grid。
+        """ROI-local coarse logits -> full-image PE mask canvas (raw route).
 
-        处理顺序：ROI-local transform → resize 到 bbox 对应 prompt-grid → paste 到
-        full-image canvas → bbox 外 outside_fill_logit → 最终 clamp（若非 None）。
+        Order: ROI-local transform -> resize to the box's prompt-grid cells ->
+        paste onto the canvas -> outside fill (-> clamp if configured). Under
+        the sg contract the caller passes detach_input=True via config, which
+        cuts the dense channel away from the coarse head's training signal.
         """
-        from .dense_prompt_utils import (
-            gaussian_prompt_from_roi_coarse,
-            paste_roi_to_full_canvas,
-            transform_coarse_prompt,
-        )
         mask_h, mask_w = self._pe_mask_input_size()
         transform = str(self.dense_prompt_cfg.get("transform", "raw_logits"))
-        if transform in ("signed_binary", "signed_edt_confidence"):
-            from .dense_prompt_utils import signed_edt_confidence_prompt
-
-            signed_prompt, signed_valid = signed_edt_confidence_prompt(
-                roi_mask_logits,
-                tau=float(self.dense_prompt_cfg.get("signed_tau", 0.5)),
-                omega=float(self.dense_prompt_cfg.get("signed_omega", 8.0)),
-                edt_gamma=float(
-                    self.dense_prompt_cfg.get("signed_edt_gamma", 4.0)
-                ),
-                use_edt=(transform == "signed_edt_confidence"),
-            )
-            signed_canvas = paste_roi_to_full_canvas(
-                signed_prompt, boxes, mask_h, mask_w,
-                image_size=(
-                    self.prompt_encoder_image_size,
-                    self.prompt_encoder_image_size,
-                ),
-                outside_fill_logit=float(
-                    self.dense_prompt_cfg.get("outside_fill_logit", 0.0)
-                ),
-            )
-            stats = {"signed_empty_rois": int((~signed_valid).sum().item())}
-            return signed_canvas, signed_valid, stats
-        if transform == "gaussian_edt":
-            return gaussian_prompt_from_roi_coarse(
-                roi_mask_logits,
-                boxes,
-                mask_h=mask_h,
-                mask_w=mask_w,
-                image_size=(
-                    self.prompt_encoder_image_size,
-                    self.prompt_encoder_image_size,
-                ),
-                foreground_threshold=float(
-                    self.dense_prompt_cfg.get("foreground_threshold", 0.5)
-                ),
-                omega=float(self.dense_prompt_cfg.get("gaussian_omega", 15.0)),
-                gamma=float(self.dense_prompt_cfg.get("gaussian_gamma", 4.0)),
-            )
-        # 1. ROI-local transform（在 resize/paste 之前完成）
         transformed = transform_coarse_prompt(
             roi_mask_logits,
             transform=transform,
@@ -84,7 +35,6 @@ class _MaskHeadPromptHelpers:
             temperature=self.dense_prompt_cfg.get("temperature", 1.0),
             detach_input=bool(self.dense_prompt_cfg.get("detach_input", False)),
         )
-        # 2. paste 到 full-image canvas（PE mask 尺寸从 PE 属性读，不硬编码）
         prompt = paste_roi_to_full_canvas(
             transformed, boxes, mask_h, mask_w,
             image_size=(self.prompt_encoder_image_size, self.prompt_encoder_image_size),
@@ -104,18 +54,18 @@ class _MaskHeadPromptHelpers:
         boxes: Tensor,
         masks: Optional[Tensor],
     ):
-        """Select SAM2 PromptEncoder inputs for the explicit-mask ablation.
+        """Pick which prompt modalities reach the frozen PromptEncoder.
 
         The detector boxes remain the internal geometry for ROI extraction and
-        coordinate mapping in every mode.  This method controls only which
-        prompt modalities are exposed to the frozen PromptEncoder.
+        coordinate mapping in every mode; this controls only the modalities
+        exposed to the PE (the paper's P/B/P+B/P+B+M ablation axis).
         """
         if self.prompt_sparse_mode != "shape_point":
             raise RuntimeError(
                 "_select_explicit_prompt_inputs is only valid for shape_point"
             )
-        # A warm-up/all-invalid batch must be a true no-point prompt. Passing
-        # four label=-1 entries would create four learned not-a-point tokens.
+        # An all-invalid batch must be a true no-point prompt: passing four
+        # label=-1 entries would create four learned not-a-point tokens.
         points = (
             None
             if not self.explicit_use_point_prompt or bool((labels < 0).all())
@@ -139,22 +89,15 @@ class _MaskHeadPromptHelpers:
         )
 
     def _effective_shape_dense_alpha(self):
-        """批次2 子任务4：返回 shape dense gate 的有效值（三模式统一）。
+        """The bounded shape-dense gate value, or None for sparse-only runs.
 
-        - legacy_unbounded：self.shape_prompt_scale（可训练无界，旧实现）
-        - fixed：self.shape_dense_alpha（buffer，不训练）
-        - global_sigmoid：sigmoid(self.shape_dense_alpha_raw) ∈ (0,1)
-        - use_shape_dense=False：返回 None（forward 里据此跳过 dense 混合）
+        global_sigmoid is the only surviving mode: sigmoid(alpha_raw) in (0,1)
+        interpolates between the pretrained no-mask base and the shape dense
+        embedding.
         """
         if not self.use_shape_dense:
             return None
-        if self.shape_scale_mode == "legacy_unbounded":
-            return self.shape_prompt_scale
-        elif self.shape_scale_mode == "fixed":
-            return self.shape_dense_alpha
-        elif self.shape_scale_mode == "global_sigmoid":
-            return torch.sigmoid(self.shape_dense_alpha_raw)
-        return None
+        return torch.sigmoid(self.shape_dense_alpha_raw)
 
     def _dense_embedding_box_support(
         self, boxes: Tensor, spatial_size: Tuple[int, int], dtype: torch.dtype
@@ -177,11 +120,10 @@ class _MaskHeadPromptHelpers:
         return support.to(dtype=dtype)
 
     def _pe_mask_input_size(self) -> Tuple[int, int]:
-        """批次2 子任务3：读取 PromptEncoder 的 mask 输入尺寸（不硬编码）。
+        """Read the PromptEncoder's mask-input size instead of hardcoding it.
 
-        优先 self.prompt_encoder.mask_input_size（SAM2 PE 属性）；
-        若 PE 不存在则 fallback 到 prompt_encoder_embed_size*4（旧逻辑）。
-        不假设正方形（返回 (H,W)）。
+        Prefers the SAM2 PE attribute; falls back to embed_size*4 when no PE
+        exists. Does not assume square (returns (H, W)).
         """
         pe = getattr(self, "prompt_encoder", None)
         if pe is not None and hasattr(pe, "mask_input_size"):
@@ -189,15 +131,6 @@ class _MaskHeadPromptHelpers:
             return (int(mis[0]), int(mis[1]))
         es = self.prompt_encoder_embed_size
         return (es * 4, es * 4)
-
-    @staticmethod
-    def _debug_delta_ratio(after: Optional[Tensor], before: Optional[Tensor]) -> Optional[float]:
-        if after is None or before is None:
-            return None
-        with torch.no_grad():
-            denom = before.detach().float().norm().clamp_min(1e-6)
-            ratio = (after.detach().float() - before.detach().float()).norm() / denom
-            return float(ratio.item())
 
     def set_current_epoch(self, epoch_number: int) -> None:
         """Synchronize epoch-dependent point/loss schedules (1-based)."""
@@ -210,6 +143,7 @@ class _MaskHeadPromptHelpers:
             self.coarse_mask_loss_module.set_current_epoch(self.current_epoch)
 
     def _shape_point_gt_stats(self, coarse_targets: Tensor) -> Dict[str, Tensor]:
+        """GT-side point telemetry: do the mined points land in the true fg/bg?"""
         local_yx = self._last_shape_point_local_yx
         labels = self._last_shape_point_labels
         if local_yx is None or labels is None or coarse_targets.shape[0] == 0:
@@ -243,49 +177,6 @@ class _MaskHeadPromptHelpers:
         return out
 
     def get_uav_debug_stats(self) -> Dict[str, float]:
-        # UAV branch removed (doc §1). This stub is kept for backward
-        # compatibility with the legacy trainer logger call sites; it now
-        # surfaces the GT-point diagnostics previously written here.
+        # Historical name: the UAV branch is gone, and this now surfaces the
+        # forward telemetry bus (SP/DENSE/GATE/TAIL/PROMPT stats).
         return dict(getattr(self, "_last_uav_debug_stats", {}) or {})
-
-    def _roi_sam_local_boxes(self, boxes: Tensor) -> Tensor:
-        """Return canonical full-canvas boxes for ROI-local PromptEncoder input."""
-        local_boxes = torch.zeros_like(boxes)
-        local_boxes[:, 2:] = float(self.prompt_encoder_image_size)
-        return local_boxes
-
-    def _roi_sam_crop_feature(
-        self,
-        feature: Tensor,
-        boxes: Tensor,
-        roi_img_ids: Tensor,
-    ) -> Tensor:
-        """Normalize each proposal crop back to one native SAM2 feature canvas."""
-        if feature.dim() != 4:
-            raise ValueError(f"ROI-SAM feature must be BCHW, got {tuple(feature.shape)}")
-        if boxes.shape[0] != roi_img_ids.shape[0]:
-            raise ValueError("ROI-SAM boxes and roi_img_ids must have equal length")
-        if boxes.numel() == 0:
-            return feature.new_empty((0, feature.shape[1], *feature.shape[-2:]))
-        if int(roi_img_ids.min()) < 0 or int(roi_img_ids.max()) >= feature.shape[0]:
-            raise ValueError("ROI-SAM roi_img_ids contain an invalid image index")
-        height, width = feature.shape[-2:]
-        scale_x = float(width) / float(self.prompt_encoder_image_size)
-        scale_y = float(height) / float(self.prompt_encoder_image_size)
-        if not math.isclose(scale_x, scale_y, rel_tol=0.0, abs_tol=1e-8):
-            raise ValueError(
-                "ROI-SAM currently requires square images/features with one spatial scale"
-            )
-        rois = torch.cat(
-            [roi_img_ids.to(device=boxes.device, dtype=boxes.dtype)[:, None], boxes],
-            dim=1,
-        )
-        align = RoIAlign(
-            output_size=(height, width),
-            spatial_scale=scale_x,
-            sampling_ratio=int(self.roi_sam_cfg.sampling_ratio),
-            pool_mode="avg",
-            aligned=bool(self.roi_sam_cfg.aligned),
-        )
-        return align(feature, rois)
-
