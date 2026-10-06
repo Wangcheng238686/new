@@ -63,3 +63,14 @@ R8 detector/targets/coarse_loss/ckpt_utils/facades → R9 训练器瘦身（50 �
 R10 配置坍缩 _base_ 静态配置（指纹验证）→ R11 infer_from_checkpoint 清理 →
 R12 仓库级删除（probes/baselines wrapper/refactor_golden/legacy_baseline/顶层旧tex/.worktrees gitlink/
 197 skip-worktree 幽灵索引）→ R13 终文档 → 终局全量推理 diff + 主工作区单 commit。
+
+### R9 训练器瘦身（4540→2960）
+外科手术式删除（非重写——50 步门只覆盖早期训练，resume/选模/早停等深路径逐字保留）：
+UAV 参数族与镜像键、三个 module-only 训练域、quality/densecap/p2br 监视器函数族与
+epoch 日志、mask-loss ramp、_materialize_p2、ckpt_migration 调用、--test-only 评估链
+（入口脚本 R2 已删）、FSDP。iou_prediction_head 独立参数组保留（改名 iou_head，历史契约）。
+**等价验收（三跑校准）**：ref/旧码×2 + new/新码各 50 优化步（WHU 子集 2%、1024²、AMP、
+RCNN_SAMPLER_NUM=32、seed44）：全部 27 个 loss/遥测指标的 |new−ref| ≤ |ref−ref2| 同代码
+自噪声量级（GPU scatter 原子操作噪声），恒等量（TAIL/selected_count=416、changed_fraction、
+boundary_logit、det_weight）逐位一致；参数组表仅 quality_head→iou_head 改名（同参同 LR）。
+教训：bit 级对比在 GPU 原子操作下不可达，必须用同代码双跑标定噪声带。
