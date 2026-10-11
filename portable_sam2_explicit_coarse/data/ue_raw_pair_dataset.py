@@ -1,6 +1,7 @@
 """Raw strict HERO-UAV pairset reader with a manifest-authoritative B0 split."""
 import hashlib
 import json
+import re
 from pathlib import Path
 
 import cv2
@@ -10,6 +11,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 PAIR_SHA256 = "f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a"
+GRID = re.compile(r"_gx_(-?\d+)_gy_(-?\d+)_")
 
 
 class UERawPairDataset(Dataset):
@@ -27,7 +29,25 @@ class UERawPairDataset(Dataset):
         data = json.loads(split_manifest.read_text())
         if data.get("accepted_manifest_sha256") != PAIR_SHA256:
             raise RuntimeError("split does not belong to the registered pair manifest")
-        self.records = [x for x in data["scenes"] if x["split"] == self.split]
+        accepted_rows = [json.loads(x) for x in accepted.read_text().splitlines() if x]
+        accepted_by_scene = {r["scene_dir"]: r for r in accepted_rows}
+        if len(accepted_by_scene) != len(accepted_rows):
+            raise RuntimeError("accepted manifest contains duplicate scene names")
+        seen, expected_records = set(), []
+        for record in data["scenes"]:
+            scene = record.get("scene_dir")
+            m = GRID.search(str(scene))
+            if scene in seen or scene not in accepted_by_scene or not m:
+                raise RuntimeError("split contains duplicate, foreign, or malformed scene")
+            seen.add(scene)
+            gx, gy = int(m.group(1)), int(m.group(2))
+            rule = "test" if 2 <= gx <= 4 and -7 <= gy <= -5 else "val" if -7 <= gx <= -5 and -3 <= gy <= -1 else "train"
+            if (record.get("gx"), record.get("gy"), record.get("split")) != (gx, gy, rule):
+                raise RuntimeError("split record violates registered spatial rule")
+            expected_records.append(record)
+        if seen != set(accepted_by_scene):
+            raise RuntimeError("split is not a complete one-to-one view of accepted_pairs.jsonl")
+        self.records = [x for x in expected_records if x["split"] == self.split]
         expected = {"train": 949, "val": 100, "test": 151}[self.split]
         if len(self.records) != expected:
             raise RuntimeError(f"{self.split} expected {expected} scenes, got {len(self.records)}")

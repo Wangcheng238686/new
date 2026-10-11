@@ -397,7 +397,7 @@ def create_test_loader(
     num_workers: int = 4,
     seed: int = 42,
 ):
-    """Build a WHU-COCO test loader for standalone test-set evaluation.
+    """Build a held-out test loader for standalone test-set evaluation.
 
     Mirrors the validation loader built by ``create_train_loader`` (whu_coco
     branch) but points at the held-out test split: no augmentation, no subset
@@ -407,7 +407,10 @@ def create_test_loader(
     generator = torch.Generator()
     generator.manual_seed(int(seed))
 
-    test_dataset = WHUCocoInstanceDataset(
+    if ann_file == "__ue_raw_surface_test__":
+        test_dataset = UERawPairDataset(data_root, "test", load_uav=False)
+    else:
+        test_dataset = WHUCocoInstanceDataset(
         data_root=data_root,
         ann_file=ann_file,
         image_subdir=image_subdir,
@@ -419,7 +422,7 @@ def create_test_loader(
         vflip_prob=0.0,
         gaussian_noise_prob=0.0,
         random_erasing_prob=0.0,
-    )
+        )
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,

@@ -2155,6 +2155,7 @@ def main():
         "training_args": dict(vars(args)),
         "data_config": {
             "dataset_format": (
+                "ue_raw_surface" if args.use_ue_raw_surface else
                 "isaid_coco"
                 if args.use_isaid_coco
                 else ("whu_coco" if args.use_whu_coco else "labelme")
@@ -2162,6 +2163,8 @@ def main():
             "data_root": str(args.data_root),
             "image_size": list(args.image_size),
             "single_class": not args.use_isaid_coco,
+            "accepted_manifest_sha256": "f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a" if args.use_ue_raw_surface else "",
+            "split_manifest": "surfbev_b0_split.json" if args.use_ue_raw_surface else "",
             "validation": {
                 "ann_file": "2.4 annotation/annotation/validation.json",
                 "image_subdir": "2.3 valid/validation",
@@ -2459,7 +2462,7 @@ def main():
 
         test_loader = create_test_loader(
             data_root=args.data_root,
-            ann_file="2.4 annotation/annotation/test.json",
+            ann_file="__ue_raw_surface_test__" if args.use_ue_raw_surface else "2.4 annotation/annotation/test.json",
             image_subdir="2.2 test/test",
             image_size=tuple(args.image_size),
             batch_size=int(args.val_batch_size),
