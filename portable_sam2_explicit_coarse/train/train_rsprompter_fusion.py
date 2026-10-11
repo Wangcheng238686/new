@@ -2773,10 +2773,15 @@ def main():
 
             model_inputs = imgs
 
-            model_for_loss = model.module if hasattr(model, "module") else model
-
             with torch.amp.autocast("cuda", enabled=amp_enabled):
-                loss_dict = model_for_loss.loss(model_inputs, data_samples)
+                # Route DDP through its forward wrapper. Calling .module.loss()
+                # bypasses DDP's reducer setup and leaves rank-local gradients
+                # unsynchronized despite a nominal multi-GPU launch.
+                if distributed and not args.use_fsdp:
+                    loss_dict = model(model_inputs, data_samples, mode="loss")
+                else:
+                    model_for_loss = model.module if hasattr(model, "module") else model
+                    loss_dict = model_for_loss.loss(model_inputs, data_samples)
                 loss_dict = _materialize_p2_boundary_refiner_loss(
                     loss_dict, model, distributed
                 )
