@@ -156,8 +156,8 @@ def create_train_loader(
     if dataset_format == "ue_raw_surface":
         if use_drone:
             raise ValueError("B0 raw SurfaceBEV loader must not load UAV payloads")
-        train_dataset = UERawPairDataset(data_root, "train", load_uav=False)
-        val_dataset = UERawPairDataset(data_root, "val", load_uav=False)
+        train_dataset = UERawPairDataset(data_root, "train", load_uav=False, image_size=image_size)
+        val_dataset = UERawPairDataset(data_root, "val", load_uav=False, image_size=image_size)
         collate_fn = rtmdet_collate_fn
         val_loader = DataLoader(val_dataset, batch_size=val_batch_size or batch_size,
                                 shuffle=False, num_workers=num_workers, collate_fn=collate_fn,
@@ -408,7 +408,7 @@ def create_test_loader(
     generator.manual_seed(int(seed))
 
     if ann_file == "__ue_raw_surface_test__":
-        test_dataset = UERawPairDataset(data_root, "test", load_uav=False)
+        test_dataset = UERawPairDataset(data_root, "test", load_uav=False, image_size=image_size)
     else:
         test_dataset = WHUCocoInstanceDataset(
         data_root=data_root,

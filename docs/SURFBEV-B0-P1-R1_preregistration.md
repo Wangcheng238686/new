@@ -11,9 +11,13 @@ raster，绝不从 `instances.json` 补全不可见实例。
 
 ## B0
 
-卫星单流 RSPrompter/SAM2、512x512、100 epoch、seed 44/45。每 seed 的 last checkpoint
-是唯一口径；val 仅监控，test 在协议冻结后各执行一次。主指标 test segm AP；伴随 bbox AP、
+卫星单流 RSPrompter/SAM2、1024x1024、100 epoch、seed 44/45。512x512 原始卫星 RGB
+双线性上采样，strict instance-ID 以最近邻上采样后提取 mask/bbox；UAV 深度和相机仍按原始
+512x512 坐标解释。每 seed 的 last checkpoint
+是唯一口径；禁用早停并保存 epoch100 的 `last_model_epoch100.pth`。val 仅监控，test 在协议冻结后各执行一次。主指标 test segm AP；伴随 bbox AP、
 segm/bbox AP75、面积三分位 segm AP、预测数与 GT 数。B0 不读取 UAV 文件。
+面积三分位仅用于描述 test，按 test strict mask 的实际像素面积计算 1/3 与 2/3 分位边界，
+在 COCOeval 的每个固定面积段分别汇总 AP；不用于选择权重或阈值。
 
 ## P1
 

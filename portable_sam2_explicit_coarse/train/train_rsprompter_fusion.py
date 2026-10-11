@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import hashlib
 import gc
 import logging
 import math
@@ -237,6 +238,35 @@ def run_coco_eval(coco_gt, coco_dt, iou_type: str = "bbox") -> OrderedDict:
     for name, val in zip(metric_names, coco_eval.stats):
         results[f"{prefix}/{name}"] = float(val)
     return results
+
+
+def run_segm_area_tertiles(coco_gt, coco_dt) -> Dict[str, float]:
+    """Descriptive AP for three held-out strict-mask area quantiles."""
+    from pycocotools import mask as mask_util
+    from pycocotools.cocoeval import COCOeval
+
+    annotations = coco_gt.dataset["annotations"]
+    areas = np.asarray([float(mask_util.area(a["segmentation"])) for a in annotations])
+    if not len(areas):
+        raise ValueError("cannot compute test area tertiles without GT masks")
+    q1, q2 = (float(v) for v in np.quantile(areas, [1 / 3, 2 / 3]))
+    if not 0 < q1 < q2:
+        raise ValueError(f"degenerate test mask-area tertiles: {q1}, {q2}")
+    # COCOeval uses the GT annotation's area to define its area ranges.
+    for ann, area in zip(annotations, areas):
+        ann["area"] = float(area)
+    evaluator = COCOeval(coco_gt, coco_dt, iouType="segm")
+    evaluator.params.areaRng = [[0, float("inf")], [0, q1], [q1, q2], [q2, float("inf")]]
+    evaluator.params.areaRngLbl = ["all", "lower", "middle", "upper"]
+    evaluator.evaluate()
+    evaluator.accumulate()
+    precision = evaluator.eval["precision"]  # IoU, recall, class, area, maxDet
+    result = {"mask_area_q33_px": q1, "mask_area_q67_px": q2}
+    for i, name in enumerate(("lower", "middle", "upper"), start=1):
+        valid = precision[:, :, :, i, -1]
+        valid = valid[valid > -1]
+        result[f"segm/mAP_area_tertile_{name}"] = float(valid.mean()) if len(valid) else float("nan")
+    return result
 
 
 def _env_flag(name: str, default: str = "0") -> bool:
@@ -2163,15 +2193,24 @@ def main():
             "data_root": str(args.data_root),
             "image_size": list(args.image_size),
             "single_class": not args.use_isaid_coco,
-            "accepted_manifest_sha256": "f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a" if args.use_ue_raw_surface else "",
+            "accepted_manifest_sha256": (
+                hashlib.sha256((Path(args.data_root) / "accepted_pairs.jsonl").read_bytes()).hexdigest()
+                if args.use_ue_raw_surface else ""
+            ),
             "split_manifest": "surfbev_b0_split.json" if args.use_ue_raw_surface else "",
+            "split_manifest_sha256": (
+                hashlib.sha256((Path(args.data_root) / "surfbev_b0_split.json").read_bytes()).hexdigest()
+                if args.use_ue_raw_surface else ""
+            ),
             "validation": {
-                "ann_file": "2.4 annotation/annotation/validation.json",
-                "image_subdir": "2.3 valid/validation",
+                "split": "val" if args.use_ue_raw_surface else "",
+                "ann_file": "" if args.use_ue_raw_surface else "2.4 annotation/annotation/validation.json",
+                "image_subdir": "" if args.use_ue_raw_surface else "2.3 valid/validation",
             },
             "test": {
-                "ann_file": "2.4 annotation/annotation/test.json",
-                "image_subdir": "2.2 test/test",
+                "split": "test" if args.use_ue_raw_surface else "",
+                "ann_file": "" if args.use_ue_raw_surface else "2.4 annotation/annotation/test.json",
+                "image_subdir": "" if args.use_ue_raw_surface else "2.2 test/test",
             },
         },
         "runtime_config": {
@@ -2618,6 +2657,9 @@ def main():
                     "Test segm/mAP: %.4f",
                     segm_metrics.get("segm/mAP", 0.0),
                 )
+                if args.use_ue_raw_surface:
+                    area_metrics = run_segm_area_tertiles(coco_gt, coco_segm_dt)
+                    logger.info("Test strict-mask area tertiles: %s", area_metrics)
             else:
                 logger.warning("No valid GT in test split; skipping COCO eval.")
             logger.info("Test-only evaluation complete. Exiting (no training).")

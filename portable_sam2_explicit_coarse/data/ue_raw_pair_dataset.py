@@ -15,11 +15,14 @@ GRID = re.compile(r"_gx_(-?\d+)_gy_(-?\d+)_")
 
 
 class UERawPairDataset(Dataset):
-    """512px strict visible-roof instances; UAV payload is opt-in only."""
-    def __init__(self, root, split, load_uav=False, split_manifest=None):
+    """Strict visible-roof instances resized for the satellite model."""
+    def __init__(self, root, split, load_uav=False, split_manifest=None, image_size=(1024, 1024)):
         self.root = Path(root)
         self.split = str(split)
         self.load_uav = bool(load_uav)
+        self.image_size = tuple(image_size)
+        if self.image_size != (1024, 1024):
+            raise ValueError("SURFBEV-B0 requires the registered 1024x1024 satellite input")
         if self.split not in {"train", "val", "test"}:
             raise ValueError(f"invalid split {split!r}")
         accepted = self.root / "accepted_pairs.jsonl"
@@ -86,10 +89,12 @@ class UERawPairDataset(Dataset):
         ids = self._ids(sat / "satellite_instance_id_clean.png")
         if ids.shape != (512, 512):
             raise RuntimeError(f"invalid strict ID shape for {rec['scene_dir']}")
+        image = cv2.resize(image, self.image_size, interpolation=cv2.INTER_LINEAR)
+        ids = cv2.resize(ids, self.image_size, interpolation=cv2.INTER_NEAREST)
         masks, boxes = self._instances(ids)
         item = dict(img=torch.from_numpy(image).permute(2, 0, 1).float(),
-                    img_metas=dict(img_shape=(512, 512), ori_shape=(512, 512), pad_shape=(512, 512),
-                                   batch_input_shape=(512, 512), scale_factor=(1., 1.),
+                    img_metas=dict(img_shape=(1024, 1024), ori_shape=(512, 512), pad_shape=(1024, 1024),
+                                   batch_input_shape=(1024, 1024), scale_factor=(2., 2.),
                                    filename=str(sat / "satellite_rgb.0000.png"), scene_id=rec["scene_dir"],
                                    gx=rec["gx"], gy=rec["gy"]),
                     gt_bboxes=torch.tensor(boxes, dtype=torch.float32).reshape(-1, 4),
