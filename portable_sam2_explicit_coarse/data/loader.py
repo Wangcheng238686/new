@@ -14,6 +14,7 @@ from .satellite_drone_dataset import (
     build_scene_id_mapping,
 )
 from .ue_dual_stream_dataset import UEDualStreamDataset, ue_dual_collate
+from .ue_raw_pair_dataset import UERawPairDataset
 
 
 logger = logging.getLogger(__name__)
@@ -152,7 +153,19 @@ def create_train_loader(
 ):
     generator = torch.Generator()
     generator.manual_seed(int(seed))
-    if dataset_format == "ue_dual":
+    if dataset_format == "ue_raw_surface":
+        if use_drone:
+            raise ValueError("B0 raw SurfaceBEV loader must not load UAV payloads")
+        train_dataset = UERawPairDataset(data_root, "train", load_uav=False)
+        val_dataset = UERawPairDataset(data_root, "val", load_uav=False)
+        collate_fn = rtmdet_collate_fn
+        val_loader = DataLoader(val_dataset, batch_size=val_batch_size or batch_size,
+                                shuffle=False, num_workers=num_workers, collate_fn=collate_fn,
+                                pin_memory=True, drop_last=False,
+                                persistent_workers=num_workers > 0,
+                                worker_init_fn=_seed_worker, generator=generator)
+        logger.info("UE raw SurfaceBEV B0 split: train=%d val=%d", len(train_dataset), len(val_dataset))
+    elif dataset_format == "ue_dual":
         # UE has its own official train/val/test directories and calibrated five
         # UAV views; never apply random geometry augmentation to this path.
         train_dataset = UEDualStreamDataset(

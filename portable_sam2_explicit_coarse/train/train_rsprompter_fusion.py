@@ -1499,6 +1499,8 @@ def main():
                         help="Use official calibrated UE train/val splits.")
     parser.add_argument("--use-ue-data", action="store_true", default=False,
                         help="Use official UE train/val splits without enabling UAV fusion.")
+    parser.add_argument("--use-ue-raw-surface", action="store_true", default=False,
+                        help="Use the manifest-authoritative raw HERO pairset B0 spatial split; UAV I/O is forbidden.")
     parser.add_argument(
         "--use-whu-coco",
         action="store_true",
@@ -1973,7 +1975,7 @@ def main():
             batch_size=args.batch_size,
             # Horizontal flip is safe for dual-stream after fix:
             # only intrinsics cx is adjusted (cx -> W-cx); extrinsics are unchanged.
-            flip_prob=0.0 if args.use_ue_data else 0.5,
+            flip_prob=0.0 if (args.use_ue_data or args.use_ue_raw_surface) else 0.5,
             vflip_prob=0.0,
             gaussian_noise_prob=0.0,
             gaussian_noise_std=0.02,
@@ -1993,7 +1995,7 @@ def main():
             random_sample=args.random_sample,
             normalize_drone=args.normalize_drone,
             dataset_format=(
-                "ue_dual" if args.use_ue_data else "isaid_coco"
+                "ue_raw_surface" if args.use_ue_raw_surface else "ue_dual" if args.use_ue_data else "isaid_coco"
                 if args.use_isaid_coco
                 else ("whu_coco" if args.use_whu_coco else "labelme")
             ),
