@@ -1531,6 +1531,9 @@ def main():
                         help="Use official UE train/val splits without enabling UAV fusion.")
     parser.add_argument("--use-ue-raw-surface", action="store_true", default=False,
                         help="Use the manifest-authoritative raw HERO pairset B0 spatial split; UAV I/O is forbidden.")
+    parser.add_argument("--raw-split-manifest", type=str, default="surfbev_b0_split_v2.json",
+                        choices=("surfbev_b0_split.json", "surfbev_b0_split_v2.json"),
+                        help="Registered raw SurfaceBEV split filename under --data-root.")
     parser.add_argument(
         "--use-whu-coco",
         action="store_true",
@@ -2008,7 +2011,7 @@ def main():
             flip_prob=0.0 if (args.use_ue_data or args.use_ue_raw_surface) else 0.5,
             vflip_prob=0.0,
             gaussian_noise_prob=0.0,
-            gaussian_noise_std=0.02,
+            gaussian_noise_std=0.0 if args.use_ue_raw_surface else 0.02,
             random_erasing_prob=0.0,
             random_erasing_scale=(0.02, 0.15),
             random_erasing_ratio=(0.3, 3.3),
@@ -2022,13 +2025,14 @@ def main():
             world_size=int(dist_info.get("world_size", 1)),
             val_ratio=args.val_ratio,
             val_batch_size=args.val_batch_size,
-            random_sample=args.random_sample,
+            random_sample=False if args.use_ue_raw_surface else args.random_sample,
             normalize_drone=args.normalize_drone,
             dataset_format=(
                 "ue_raw_surface" if args.use_ue_raw_surface else "ue_dual" if args.use_ue_data else "isaid_coco"
                 if args.use_isaid_coco
                 else ("whu_coco" if args.use_whu_coco else "labelme")
             ),
+            raw_split_manifest=args.raw_split_manifest,
             whu_train_ann_file=os.environ.get(
                 "WHU_TRAIN_ANN_FILE", "2.4 annotation/annotation/train.json"
             ),
@@ -2192,14 +2196,15 @@ def main():
             ),
             "data_root": str(args.data_root),
             "image_size": list(args.image_size),
+            "augmentation_contract": "none" if args.use_ue_raw_surface else "dataset_specific",
             "single_class": not args.use_isaid_coco,
             "accepted_manifest_sha256": (
                 hashlib.sha256((Path(args.data_root) / "accepted_pairs.jsonl").read_bytes()).hexdigest()
                 if args.use_ue_raw_surface else ""
             ),
-            "split_manifest": "surfbev_b0_split.json" if args.use_ue_raw_surface else "",
+            "split_manifest": args.raw_split_manifest if args.use_ue_raw_surface else "",
             "split_manifest_sha256": (
-                hashlib.sha256((Path(args.data_root) / "surfbev_b0_split.json").read_bytes()).hexdigest()
+                hashlib.sha256((Path(args.data_root) / args.raw_split_manifest).read_bytes()).hexdigest()
                 if args.use_ue_raw_surface else ""
             ),
             "validation": {
@@ -2450,6 +2455,10 @@ def main():
             scaler,
             expected_architecture=resolved_architecture,
         )
+        if args.use_ue_raw_surface:
+            saved_data = (ckpt.get("config_snapshot") or {}).get("data_config") or {}
+            if saved_data.get("split_manifest_sha256") != config_snapshot["data_config"]["split_manifest_sha256"]:
+                raise RuntimeError("raw SurfaceBEV checkpoint split hash differs from requested split")
         start_epoch = int(ckpt.get("epoch", 0)) + 1
         best = ckpt.get("best_metrics", {}) or {}
         best_val_loss = float(best.get("best_val_loss", best_val_loss))
@@ -2507,6 +2516,7 @@ def main():
             batch_size=int(args.val_batch_size),
             num_workers=4,
             seed=int(args.seed),
+            raw_split_manifest=args.raw_split_manifest,
         )
         # Non-main ranks skip iteration to match the rank0_only validation
         # contract (no NCCL collective held open during COCO eval).

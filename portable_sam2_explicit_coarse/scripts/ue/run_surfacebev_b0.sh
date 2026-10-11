@@ -51,7 +51,7 @@ if [[ "${B0_PREFLIGHT_ONLY:-0}" == "1" ]]; then
 fi
 exec /home/wangcheng/miniconda3/bin/conda run --no-capture-output -n cvt2 python train/train_rsprompter_fusion.py \
   --config configs/ue_raw_hero_b0.py --run-tag "$RUN_TAG" --data-root "$UE_DATA_ROOT" \
-  --use-ue-raw-surface --image-size 1024 1024 --batch-size 1 --grad-accum-steps 8 \
+  --use-ue-raw-surface --raw-split-manifest surfbev_b0_split.json --image-size 1024 1024 --batch-size 1 --grad-accum-steps 8 \
   --epochs 100 --early-stopping-patience 0 --lr 5e-4 --weight-decay 0.05 --warmup-iters 100 --seed "$B0_SEED" \
   --val-batch-size 1 --val-every-n-epochs 1 --compute-val-loss 0 --amp 1 \
   --ema-enabled 0 --ema-eval 0 --ema-save-best 0 --checkpoint-dir "$WORK_DIR" --gpu-id 0
