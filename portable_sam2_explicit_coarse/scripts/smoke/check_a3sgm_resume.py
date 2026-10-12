@@ -37,14 +37,17 @@ def _run_phase(python: str, gpu: str, out_dir: Path, extra: list) -> str:
     env["CUDA_VISIBLE_DEVICES"] = gpu
     env["SAM2_CKPT"] = os.environ.get("SAM2_CKPT", DEFAULT_SAM2_CKPT)
     env["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-    env["RCNN_SAMPLER_NUM"] = "32"
+    env["GATE_CONFIG"] = os.environ.get(
+        "GATE_CONFIG",
+        "/tmp/a3sgm_gate_cfg.py",  # sampler-num=16 delta to fit contended GPUs
+    )
     env["SAVE_LAST_CHECKPOINT"] = "1"
     dataset_args = os.environ.get(
         "RESUME_GATE_DATASET_ARGS", "--dataset whu"
     ).split()
     command = [
         python, "train/train_rsprompter_fusion.py",
-        "--config", "configs/a3sgm_whu1024.py",
+        "--config", env["GATE_CONFIG"],
         "--data-root", WHU_DATA_ROOT,
         *dataset_args,
         "--image-size", "1024", "1024",

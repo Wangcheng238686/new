@@ -189,3 +189,7 @@ RCNN_SAMPLER_NUM=32、seed 44）。**过程发现并修复一处真回归**：R3
 原子噪声尺度下不构成行为差异证据；loss_mask/tail/coarse 全部 OK。
 教训：通道纯度重构必须枚举通道内**值的类型空间**（Tensor/list），
 "只挑 Tensor"对 mmdet 约定不成立。
+
+## R8 补遗
+- 修复 R2 的 sam2_decoder 三处残留 allow_decoder_fallback 引用（构造期/加载期/前向期全部改为硬错——DDP 门实证捕获）。
+- 训练门（DDP/resume）改用 sampler-num=16 的 `_base_` delta 配置（/tmp/a3sgm_gate_cfg.py，可 GATE_CONFIG 覆盖），在 GPU 被外部任务占压（每卡仅 ~11GiB 可用）时仍可运行；此前 RCNN_SAMPLER_NUM env 已随配置坍缩失效，静态配置内采样器 num=256。
