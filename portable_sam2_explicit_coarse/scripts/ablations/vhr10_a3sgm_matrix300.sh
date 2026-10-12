@@ -53,7 +53,7 @@ exec "${PYTHON}" -m torch.distributed.run \
   train/train_rsprompter_fusion.py \
   --config "${CONFIG}" \
   --data-root "${VHR10_DATA_ROOT}" \
-  --use-vhr10-coco \
+  --dataset vhr10 \
   --image-size 1024 1024 \
   --batch-size "${BATCH_SIZE}" \
   --grad-accum-steps "${GRAD_ACCUM_STEPS}" \
@@ -74,7 +74,7 @@ exec "${PYTHON}" -m torch.distributed.run \
   --early-stopping-min-delta "${EARLY_STOPPING_MIN_DELTA}" \
   --early-stopping-smooth-window "${EARLY_STOPPING_SMOOTH_WINDOW}" \
   --amp "${AMP}" \
-  --ema-enabled 1 --ema-decay 0.999 --ema-eval 0 --ema-save-best 0 \
+  --ema-enabled 1 --ema-decay 0.999 --ema-eval 0 \
   --seed 44 \
   --prompt-debug-stats 1 --prompt-debug-stats-interval 50 \
   "${RESUME_ARGS[@]}"

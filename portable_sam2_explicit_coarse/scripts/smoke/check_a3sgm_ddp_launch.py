@@ -51,9 +51,9 @@ def main() -> None:
     # Static config carries the model form; the sampler cap only shrinks the
     # train-time RoI budget (train_cfg is not part of the deployed contract).
     env["RCNN_SAMPLER_NUM"] = "32"
-    # Dataset flag name: --use-whu-coco today, --dataset whu after the R5 rename.
+    # Dataset selection flag (renamed from the dual --use-*-coco switches).
     dataset_args = os.environ.get(
-        "DDP_GATE_DATASET_ARGS", "--use-whu-coco"
+        "DDP_GATE_DATASET_ARGS", "--dataset whu"
     ).split()
 
     command = [

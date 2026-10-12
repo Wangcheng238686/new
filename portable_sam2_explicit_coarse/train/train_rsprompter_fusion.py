@@ -358,8 +358,8 @@ def _is_main_process(rank: int) -> bool:
 def _build_optimizer(
     model: torch.nn.Module,
     lr: float,
-    sat_backbone_lr_mult: float,
-    sat_other_lr_mult: float,
+    backbone_lr_mult: float,
+    other_lr_mult: float,
     bbox_head_lr_mult: float,
     mask_decoder_lr_mult: float = 0.05,
     no_mask_lr_mult: float = 0.1,
@@ -368,8 +368,8 @@ def _build_optimizer(
     decoder_tail_lr_mult: float = 1.0,
     weight_decay: float = 0.05,
 ) -> optim.Optimizer:
-    params_sat_backbone = []
-    names_sat_backbone = []
+    params_backbone = []
+    names_backbone = []
     params_mask_decoder = []
     names_mask_decoder = []
     params_no_mask = []
@@ -384,8 +384,8 @@ def _build_optimizer(
     names_decoder_tail = []
     params_bbox_head = []
     names_bbox_head = []
-    params_sat_other = []
-    names_sat_other = []
+    params_other = []
+    names_other = []
 
     for name, param in model.named_parameters():
         if not param.requires_grad:
@@ -395,8 +395,8 @@ def _build_optimizer(
             params_decoder_tail.append(param)
             names_decoder_tail.append(name)
         elif match_name.startswith("backbone.") or match_name.startswith("shared_image_embedding."):
-            params_sat_backbone.append(param)
-            names_sat_backbone.append(name)
+            params_backbone.append(param)
+            names_backbone.append(name)
         elif "roi_head.mask_head.mask_decoder.decoder.iou_prediction_head" in match_name:
             # The IoU head keeps its own group (historical C2-era contract)
             # even though the quality-rerank module is gone.
@@ -425,20 +425,20 @@ def _build_optimizer(
             params_bbox_head.append(param)
             names_bbox_head.append(name)
         else:
-            params_sat_other.append(param)
-            names_sat_other.append(name)
+            params_other.append(param)
+            names_other.append(name)
 
     param_groups = []
     audit_groups = []
-    if params_sat_backbone:
+    if params_backbone:
         param_groups.append(
             {
-                "params": params_sat_backbone,
-                "lr": lr * sat_backbone_lr_mult,
-                "name": "sat_backbone",
+                "params": params_backbone,
+                "lr": lr * backbone_lr_mult,
+                "name": "backbone",
             }
         )
-        audit_groups.append(("sat_backbone", params_sat_backbone, names_sat_backbone, lr * sat_backbone_lr_mult, weight_decay))
+        audit_groups.append(("backbone", params_backbone, names_backbone, lr * backbone_lr_mult, weight_decay))
     if params_mask_decoder:
         param_groups.append(
             {
@@ -496,15 +496,15 @@ def _build_optimizer(
             }
         )
         audit_groups.append(("bbox_head", params_bbox_head, names_bbox_head, lr * bbox_head_lr_mult, weight_decay))
-    if params_sat_other:
+    if params_other:
         param_groups.append(
             {
-                "params": params_sat_other,
-                "lr": lr * sat_other_lr_mult,
-                "name": "sat_other",
+                "params": params_other,
+                "lr": lr * other_lr_mult,
+                "name": "other",
             }
         )
-        audit_groups.append(("sat_other", params_sat_other, names_sat_other, lr * sat_other_lr_mult, weight_decay))
+        audit_groups.append(("other", params_other, names_other, lr * other_lr_mult, weight_decay))
     if not param_groups:
         raise RuntimeError(
             "No trainable parameters found. Check freezing / requires_grad."
@@ -705,16 +705,16 @@ _PROMPT_TELEMETRY_PREFIXES = {"SP", "COARSE", "JITTER", "GATE", "DENSE",
                               "TAIL", "CONTEXT", "BOX"}
 
 
-def _log_uav_debug_stats(
+def _log_forward_telemetry(
     model: torch.nn.Module,
     epoch: int,
     step: int,
     enabled_prefixes: Optional[set] = None,
 ) -> None:
     model_core = model.module if hasattr(model, "module") else model
-    getter = getattr(model_core, "get_prompt_debug_stats", None)
+    getter = getattr(model_core, "get_telemetry", None)
     if getter is None:
-        getter = getattr(model_core, "get_uav_debug_stats", None)
+        getter = getattr(model_core, "get_forward_telemetry", None)
     if getter is None:
         return
     stats = getter()
@@ -762,7 +762,7 @@ def _accumulate_dense_residual_monitor(
 ) -> None:
     """Accumulate detached dense-residual diagnostics from the latest forward."""
     model_core = model.module if hasattr(model, "module") else model
-    getter = getattr(model_core, "get_prompt_debug_stats", None)
+    getter = getattr(model_core, "get_telemetry", None)
     if getter is None:
         return
     stats = getter() or {}
@@ -1063,9 +1063,7 @@ def main():
         description="portable_sam_fusion: RSPrompter(SAM) + Drone semantic guidance"
     )
     parser.add_argument("--config", type=str, required=True)
-    parser.add_argument(
-        "--data-root", type=str, default="/data/wangcheng/dataset/university-test/S"
-    )
+    parser.add_argument("--data-root", type=str, required=True)
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--epochs", type=int, default=80)
     parser.add_argument("--lr", type=float, default=5e-4)
@@ -1085,25 +1083,12 @@ def main():
         default="",
         help="Comma-separated model state prefixes excluded from --init-from",
     )
-    parser.add_argument("--gpu-id", type=int, default=0)
 
     parser.add_argument(
-        "--use-whu-coco",
-        action="store_true",
-        default=False,
-        help="使用 WHU 公开数据集（COCO 格式，自带 train/validation 划分）",
-    )
-    parser.add_argument(
-        "--use-vhr10-coco",
-        action="store_true",
-        default=False,
-        help="使用 NWPU VHR-10 数据集（COCO 实例掩码版，10 类）",
-    )
-    parser.add_argument(
-        "--subset-ratio",
-        type=float,
-        default=None,
-        help="Deprecated compatibility alias: set both train and val subset ratios.",
+        "--dataset",
+        choices=("whu", "vhr10"),
+        default="whu",
+        help="Dataset protocol: WHU-1024 (1 class) or NWPU VHR-10 (10 classes).",
     )
     parser.add_argument(
         "--train-subset-ratio",
@@ -1155,8 +1140,8 @@ def main():
         help="Abort after this many synchronized non-finite batches; 0 disables abort.",
     )
 
-    parser.add_argument("--sat-backbone-lr-mult", type=float, default=1.0)
-    parser.add_argument("--sat-other-lr-mult", type=float, default=1.0)
+    parser.add_argument("--backbone-lr-mult", type=float, default=1.0)
+    parser.add_argument("--other-lr-mult", type=float, default=1.0)
     parser.add_argument(
         "--bbox-head-lr-mult",
         type=float,
@@ -1186,7 +1171,6 @@ def main():
     parser.add_argument("--ema-decay", type=float, default=0.999, help="EMA decay in (0,1)")
     parser.add_argument("--ema-update-every", type=int, default=1, help="Update EMA every N optimizer steps")
     parser.add_argument("--ema-eval", type=int, default=1, help="Use EMA shadow weights for validation")
-    parser.add_argument("--ema-save-best", type=int, default=1, help="Save best_model using EMA shadow weights")
     parser.add_argument("--ema-eval-start-epoch", type=int, default=5, help="Start using EMA for eval after this epoch")
     parser.add_argument("--prompt-debug-stats", type=int, choices=[0, 1], default=0,
                         help="Print shape-point/coarse-mask prompt diagnostics")
@@ -1258,9 +1242,7 @@ def main():
     control_group = dist_info.get("control_group")
 
     if torch.cuda.is_available():
-        device = (
-            f"cuda:{dist_info['local_rank']}" if distributed else f"cuda:{args.gpu_id}"
-        )
+        device = f"cuda:{dist_info['local_rank']}" if distributed else "cuda:0"
     else:
         device = "cpu"
 
@@ -1339,13 +1321,6 @@ def main():
 
     train_subset_ratio = float(args.train_subset_ratio)
     val_subset_ratio = float(args.val_subset_ratio)
-    if args.subset_ratio is not None:
-        if args.train_subset_ratio != 1.0 or args.val_subset_ratio != 1.0:
-            raise ValueError(
-                "--subset-ratio cannot be combined with --train-subset-ratio "
-                "or --val-subset-ratio"
-            )
-        train_subset_ratio = val_subset_ratio = float(args.subset_ratio)
     for name, value in (
         ("train_subset_ratio", train_subset_ratio),
         ("val_subset_ratio", val_subset_ratio),
@@ -1412,7 +1387,7 @@ def main():
             rank=rank,
             world_size=int(dist_info.get("world_size", 1)),
             val_batch_size=args.val_batch_size,
-            dataset_format=("vhr10_coco" if args.use_vhr10_coco else "whu_coco"),
+            dataset_format=("vhr10_coco" if (args.dataset == "vhr10") else "whu_coco"),
             vhr10_train_ann_file=os.environ.get(
                 "VHR10_TRAIN_ANN_FILE", "coco_split/instances_train.json"
             ),
@@ -1510,8 +1485,8 @@ def main():
     optimizer = _build_optimizer(
         model.module if hasattr(model, "module") else model,
         lr=args.lr,
-        sat_backbone_lr_mult=args.sat_backbone_lr_mult,
-        sat_other_lr_mult=args.sat_other_lr_mult,
+        backbone_lr_mult=args.backbone_lr_mult,
+        other_lr_mult=args.other_lr_mult,
         bbox_head_lr_mult=args.bbox_head_lr_mult,
         mask_decoder_lr_mult=args.mask_decoder_lr_mult,
         no_mask_lr_mult=args.no_mask_lr_mult,
@@ -1603,11 +1578,11 @@ def main():
         # resolved_hyperparameters git_* lines).
         "git_state": _capture_git_state(),
         "data_config": {
-            "dataset_format": ("vhr10_coco" if args.use_vhr10_coco else "whu_coco"),
+            "dataset_format": ("vhr10_coco" if (args.dataset == "vhr10") else "whu_coco"),
             "data_root": str(args.data_root),
             "image_size": list(args.image_size),
-            "single_class": not args.use_vhr10_coco,
-            "num_classes": 10 if args.use_vhr10_coco else 1,
+            "single_class": not (args.dataset == "vhr10"),
+            "num_classes": 10 if (args.dataset == "vhr10") else 1,
             "validation": (
                 {
                     "ann_file": os.environ.get(
@@ -1617,7 +1592,7 @@ def main():
                         "VHR10_VAL_IMG_SUBDIR", "positive image set"
                     ),
                 }
-                if args.use_vhr10_coco
+                if (args.dataset == "vhr10")
                 else {
                     "ann_file": "2.4 annotation/annotation/validation.json",
                     "image_subdir": "2.3 valid/validation",
@@ -1632,7 +1607,7 @@ def main():
                         "VHR10_VAL_IMG_SUBDIR", "positive image set"
                     ),
                 }
-                if args.use_vhr10_coco
+                if (args.dataset == "vhr10")
                 else {
                     "ann_file": "2.4 annotation/annotation/test.json",
                     "image_subdir": "2.2 test/test",
@@ -1714,8 +1689,8 @@ def main():
         "effective_batch_size": args.batch_size * args.grad_accum_steps * max(1, int(os.environ.get("WORLD_SIZE", "1"))),
         "weight_decay": args.weight_decay,
         "lr_mults": {
-            "sat_backbone": args.sat_backbone_lr_mult,
-            "sat_other": args.sat_other_lr_mult,
+            "backbone": args.backbone_lr_mult,
+            "other": args.other_lr_mult,
             "bbox_head": args.bbox_head_lr_mult,
             "mask_decoder": args.mask_decoder_lr_mult,
             "no_mask": args.no_mask_lr_mult,
@@ -1753,7 +1728,7 @@ def main():
             logger.info(
                 "EMA enabled: decay=%.4f update_every=%d eval=%d save_best=%d eval_start_epoch=%d",
                 float(args.ema_decay), int(args.ema_update_every),
-                int(args.ema_eval), int(args.ema_save_best), int(args.ema_eval_start_epoch),
+                int(args.ema_eval), int(args.ema_eval_start_epoch),
             )
 
     if args.resume_from and args.init_from:
@@ -2028,7 +2003,7 @@ def main():
                 and global_step % args.prompt_debug_stats_interval == 0
             )
             if is_main and prompt_stats_due:
-                _log_uav_debug_stats(model, epoch, global_step, _PROMPT_TELEMETRY_PREFIXES)
+                _log_forward_telemetry(model, epoch, global_step, _PROMPT_TELEMETRY_PREFIXES)
             _seg_t3 = time.perf_counter() if _seg_timing else 0.0
             if _seg_timing:
                 _seg_sum["item"] += _seg_t3 - _seg_t2
@@ -2464,7 +2439,7 @@ def main():
                 # The segmentation score contract is stored in cfg.model and
                 # consumed identically by validation and checkpoint inference.
                 # Bbox candidate selection/ranking always remains detector-score based.
-                eval_categories = VHR10_CATEGORIES if args.use_vhr10_coco else None
+                eval_categories = VHR10_CATEGORIES if (args.dataset == "vhr10") else None
                 coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
                     all_gt, all_dt, all_img_metas, score_key="scores",
                     categories=eval_categories,

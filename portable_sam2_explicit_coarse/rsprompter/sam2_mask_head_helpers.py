@@ -176,7 +176,7 @@ class _MaskHeadPromptHelpers:
             out[f"SP/{name}_gt_valid_count"] = valid.sum().detach()
         return out
 
-    def get_uav_debug_stats(self) -> Dict[str, float]:
+    def get_forward_telemetry(self) -> Dict[str, float]:
         # Historical name: the UAV branch is gone, and this now surfaces the
         # forward telemetry bus (SP/DENSE/GATE/TAIL/PROMPT stats).
-        return dict(getattr(self, "_last_uav_debug_stats", {}) or {})
+        return dict(getattr(self, "_forward_telemetry", {}) or {})

@@ -40,7 +40,7 @@ def _run_phase(python: str, gpu: str, out_dir: Path, extra: list) -> str:
     env["RCNN_SAMPLER_NUM"] = "32"
     env["SAVE_LAST_CHECKPOINT"] = "1"
     dataset_args = os.environ.get(
-        "RESUME_GATE_DATASET_ARGS", "--use-whu-coco"
+        "RESUME_GATE_DATASET_ARGS", "--dataset whu"
     ).split()
     command = [
         python, "train/train_rsprompter_fusion.py",

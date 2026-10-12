@@ -291,9 +291,9 @@ class _MaskHeadTargetsMixin:
             mask_size=target_size, prompt_pos_priors=prompt_pos_priors,
         )
         gt_point_stats = self._shape_point_gt_stats(coarse_targets)
-        if not hasattr(self, "_last_uav_debug_stats") or self._last_uav_debug_stats is None:
-            self._last_uav_debug_stats = {}
-        self._last_uav_debug_stats.update(gt_point_stats)
+        if not hasattr(self, "_forward_telemetry") or self._forward_telemetry is None:
+            self._forward_telemetry = {}
+        self._forward_telemetry.update(gt_point_stats)
         return self.coarse_mask_loss_module(shape_prior_mask_logits, coarse_targets)
 
     def loss_and_target(

@@ -60,16 +60,16 @@ class RSPrompterAnchor(MaskRCNN):
             for param in module.parameters():
                 param.requires_grad = False
 
-    def get_prompt_debug_stats(self) -> Dict[str, object]:
+    def get_telemetry(self) -> Dict[str, object]:
         roi_head = getattr(self, "roi_head", None)
-        if roi_head is None or not hasattr(roi_head, "get_prompt_debug_stats"):
+        if roi_head is None or not hasattr(roi_head, "get_telemetry"):
             return {}
-        return roi_head.get_prompt_debug_stats()
+        return roi_head.get_telemetry()
 
     # Backward-compatible training logger entry.  The canonical single-stream
     # shape-point model has no UAV branch, but the legacy logger calls this name.
-    def get_uav_debug_stats(self) -> Dict[str, object]:
-        return self.get_prompt_debug_stats()
+    def get_forward_telemetry(self) -> Dict[str, object]:
+        return self.get_telemetry()
 
     def get_image_wide_positional_embeddings(self, size):
         pos_embed = self.shared_image_embedding.get_dense_pe()

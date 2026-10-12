@@ -59,11 +59,11 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             for feat in x
         )
 
-    def get_prompt_debug_stats(self) -> Dict[str, object]:
+    def get_telemetry(self) -> Dict[str, object]:
         stats: Dict[str, object] = {}
         mask_head = getattr(self, "mask_head", None)
-        if mask_head is not None and hasattr(mask_head, "get_uav_debug_stats"):
-            stats.update(mask_head.get_uav_debug_stats())
+        if mask_head is not None and hasattr(mask_head, "get_forward_telemetry"):
+            stats.update(mask_head.get_forward_telemetry())
         for key, value in (getattr(self, "_last_coarse_stats", {}) or {}).items():
             stats[f"COARSE/{key}"] = value
         stats.update(getattr(self, "_last_box_jitter_stats", {}) or {})
@@ -128,7 +128,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         # A dedicated mask_roi_extractor is part of the architecture contract;
         # the shared-extractor variant belonged to removed baseline arms.
         mask_feats = self.mask_roi_extractor(x[: self.mask_roi_extractor.num_inputs], rois)
-        mask_head_out = self.mask_head(
+        head_out = self.mask_head(
             mask_feats,
             image_embeddings=image_embeddings,
             image_positional_embeddings=image_positional_embeddings,
@@ -139,23 +139,10 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             prompt_rois=rois,
             renderer_features=x,
         )
-        if len(mask_head_out) != 6:
-            raise RuntimeError(
-                "Canonical mask head must return 6 values, got "
-                f"{len(mask_head_out)}"
-            )
-        (
-            mask_preds,
-            iou_predictions,
-            coarse_outputs,
-            _uav_aux_losses,  # always {} since the UAV branch was removed
-            quality_predictions,
-            mask_tokens,
-        ) = mask_head_out
         return dict(
-            mask_preds=mask_preds,
-            coarse_outputs=coarse_outputs,
-            tail_outputs=getattr(self.mask_head, "_last_tail_outputs", None),
+            mask_preds=head_out.mask_logits,
+            coarse_outputs=head_out.coarse_outputs,
+            tail_outputs=head_out.tail_outputs,
         )
 
     def mask_loss(
@@ -261,7 +248,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             tail_loss, tail_stats = self.mask_head.decoder_tail_refiner.empty_point_loss(zero)
             losses["loss_decoder_tail"] = tail_loss
             telemetry.update(tail_stats)
-            self.mask_head._last_uav_debug_stats = dict(tail_stats)
+            self.mask_head._forward_telemetry = dict(tail_stats)
         return losses, telemetry
 
     def _apply_tail_loss(
@@ -296,12 +283,12 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         telemetry.update(tail_stats)
         # Append target-aware tail telemetry after the standard target is
         # available; the forward snapshot is logged later in this iteration.
-        current_debug = getattr(self.mask_head, "_last_uav_debug_stats", {}) or {}
+        current_debug = getattr(self.mask_head, "_forward_telemetry", {}) or {}
         current_debug.update({
             key: value.detach() if torch.is_tensor(value) else value
             for key, value in tail_stats.items()
         })
-        self.mask_head._last_uav_debug_stats = current_debug
+        self.mask_head._forward_telemetry = current_debug
 
     def _apply_coarse_loss(
         self,

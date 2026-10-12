@@ -19,6 +19,7 @@ full_image) and both predict paths below are load-bearing for the two paper
 checkpoints.
 """
 
+import dataclasses
 import os
 import sys
 from typing import Dict, Optional
@@ -54,6 +55,20 @@ from .sam2_mask_head_targets import _MaskHeadTargetsMixin
 # arms and are gone. The final-mask supervision coordinate contract, however,
 # has two live values (see class docstring).
 _VALID_EXPLICIT_PROMPT_MODES = {"points", "box", "points_box", "points_box_dense"}
+
+
+@dataclasses.dataclass
+class MaskHeadOutput:
+    """What the mask head's forward hands to the RoI head.
+
+    Only the three fields with real consumers survive the cleanup; the
+    historical 6-tuple carried a permanently-empty aux-loss slot, a
+    duplicated iou tensor, and tokens/feats that nothing read.
+    """
+
+    mask_logits: Tensor          # refined decoder logits [N,1,H,W] (z')
+    coarse_outputs: Optional[Dict[str, Tensor]]  # coarse head dict (raw_logits)
+    tail_outputs: Optional[Dict[str, Tensor]]    # UDPR write-back internals
 
 
 @MODELS.register_module()
@@ -667,8 +682,7 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         prompt_rois=None,
         renderer_features=None,
     ):
-        """One decoder pass per RoI. Returns the 6-tuple
-        ``(mask_logits, iou_predictions, coarse_outputs, {}, quality, tokens)``.
+        """One decoder pass per RoI; see MaskHeadOutput for the return contract.
 
         ``p2_feature``/``prompt_rois``/``renderer_features`` are legacy call
         slots kept so the RoI head's calling convention stays stable; the
@@ -771,22 +785,15 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
             self._last_tail_outputs = None
         h, w = low_res_masks.shape[-2:]
         low_res_masks = low_res_masks.reshape(roi_bs, -1, h, w)
-        iou_predictions = iou_predictions.reshape(roi_bs, -1)
-        mask_tokens_out = mask_tokens_out.reshape(
-            roi_bs, -1, mask_tokens_out.shape[-1]
-        )
         # Telemetry bus for the trainer (detached: never retains the graph).
-        self._last_uav_debug_stats = {
+        self._forward_telemetry = {
             key: value.detach() if torch.is_tensor(value) else value
             for key, value in debug_stats.items()
         }
-        return (
-            low_res_masks,
-            iou_predictions,
-            coarse_outputs,
-            {},  # aux-losses slot kept for the 6-tuple contract; UAV removed
-            iou_predictions,
-            mask_tokens_out,
+        return MaskHeadOutput(
+            mask_logits=low_res_masks,
+            coarse_outputs=coarse_outputs,
+            tail_outputs=self._last_tail_outputs,
         )
 
     def _forward_coarse(
