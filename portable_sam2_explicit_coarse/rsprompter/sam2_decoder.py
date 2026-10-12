@@ -43,10 +43,11 @@ class RSSAM2MaskDecoderWrapper(BaseModule):
         if init_cfg is not None and checkpoint_path is None:
             checkpoint_path = init_cfg.get("checkpoint")
 
-        if checkpoint_path and os.path.exists(checkpoint_path):
-            self._load_sam2_decoder(checkpoint_path)
-        elif not self.allow_decoder_fallback:
-            raise FileNotFoundError(f"SAM2 decoder checkpoint not found: {checkpoint_path}")
+        if not (checkpoint_path and os.path.exists(checkpoint_path)):
+            raise FileNotFoundError(
+                f"SAM2 decoder checkpoint not found: {checkpoint_path}"
+            )
+        self._load_sam2_decoder(checkpoint_path)
 
     def _load_sam2_decoder(self, checkpoint_path: str):
         """Load SAM2 decoder from checkpoint."""
@@ -119,10 +120,7 @@ class RSSAM2MaskDecoderWrapper(BaseModule):
         except Exception as e:
             if is_main_process():
                 print(f"Failed to load SAM2 decoder: {e}")
-            if self.allow_decoder_fallback:
-                self.decoder = None
-            else:
-                raise
+            raise
 
     def _capture_upscaled_embedding(self, _module, _inputs, output):
         self._captured_upscaled_embedding = output
@@ -208,22 +206,15 @@ class RSSAM2MaskDecoderWrapper(BaseModule):
                     high_res_features=processed_high_res,
                 )
         except Exception as e:
-            if not self.allow_decoder_fallback:
-                raise RuntimeError(
-                    "SAM2 decoder forward failed with "
-                    f"image_embeddings={tuple(image_embeddings.shape)}, "
-                    f"image_pe={tuple(image_positional_embeddings_pe.shape)}, "
-                    f"sparse={tuple(sparse_prompt_embeddings.shape)}, "
-                    f"dense={tuple(dense_prompt_embeddings.shape)}, "
-                    f"high_res={[tuple(f.shape) for f in high_res_features] if high_res_features is not None else None}, "
-                    f"processed_high_res={[tuple(f.shape) for f in processed_high_res] if processed_high_res is not None else None}"
-                ) from e
-            if is_main_process():
-                print(f"Warning: SAM2 decoder forward failed, using zero-mask fallback: {e}")
-            h = w = image_embeddings.shape[2]
-            low_res_masks = torch.zeros(batch_size, 1, h, w, device=image_embeddings.device)
-            iou_predictions = torch.ones(batch_size, 1, device=image_embeddings.device)
-            mask_tokens_out = None
+            raise RuntimeError(
+                "SAM2 decoder forward failed with "
+                f"image_embeddings={tuple(image_embeddings.shape)}, "
+                f"image_pe={tuple(image_positional_embeddings_pe.shape)}, "
+                f"sparse={tuple(sparse_prompt_embeddings.shape)}, "
+                f"dense={tuple(dense_prompt_embeddings.shape)}, "
+                f"high_res={[tuple(f.shape) for f in high_res_features] if high_res_features is not None else None}, "
+                f"processed_high_res={[tuple(f.shape) for f in processed_high_res] if processed_high_res is not None else None}"
+            ) from e
         attn_weights = None
 
         if self.capture_upscaled_embedding:
