@@ -214,19 +214,20 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             rcnn_train_cfg=self.train_cfg,
             final_mask_pos_priors=prompt_pos_priors,
         )
-        mask_results.update(loss_mask=mask_loss_and_target["loss_mask"])
-        mask_results["loss_mask"].update(
-            mask_loss_and_target.get("debug_stats", {})
-        )
+        losses = dict(mask_loss_and_target["loss_mask"])
+        telemetry = dict(mask_loss_and_target.get("debug_stats", {}))
         self._apply_tail_loss(
-            mask_results, mask_loss_and_target,
+            losses, telemetry, mask_results, mask_loss_and_target,
             sampling_results, batch_gt_instances, prompt_pos_priors,
         )
         self._apply_coarse_loss(
-            mask_results,
+            losses, telemetry, mask_results,
             sampling_results, batch_gt_instances, prompt_pos_priors,
         )
-        return mask_results
+        # Loss-vs-telemetry channel split: the returned dict contains ONLY
+        # backward-able loss tensors; every diagnostic tensor rides the
+        # telemetry channel so callers never filter by key-name substrings.
+        return losses, telemetry
 
     def _empty_rank_losses(self, x: Tuple[Tensor]) -> dict:
         """Loss bookkeeping for a rank with no positive proposals.
@@ -253,15 +254,20 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             "JITTER/area_ratio_count": zero,
         }
         losses = dict(loss_mask=0 * x[0].sum())
+        telemetry: Dict[str, object] = {}
         if getattr(self.mask_head, "decoder_tail_enabled", False):
+            # Mirror the non-empty rank's two _global_tail_bce collectives so
+            # a sparse rank neither deadlocks its peers nor misreports fields.
             tail_loss, tail_stats = self.mask_head.decoder_tail_refiner.empty_point_loss(zero)
             losses["loss_decoder_tail"] = tail_loss
-            losses.update(tail_stats)
+            telemetry.update(tail_stats)
             self.mask_head._last_uav_debug_stats = dict(tail_stats)
-        return dict(loss_mask=losses)
+        return losses, telemetry
 
     def _apply_tail_loss(
         self,
+        losses: dict,
+        telemetry: dict,
         mask_results: dict,
         mask_loss_and_target: dict,
         sampling_results: List[SamplingResult],
@@ -286,8 +292,8 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         tail_loss, tail_stats = self.mask_head.decoder_tail_refiner.point_loss(
             tail_outputs, tail_targets
         )
-        mask_results["loss_mask"]["loss_decoder_tail"] = tail_loss
-        mask_results["loss_mask"].update(tail_stats)
+        losses["loss_decoder_tail"] = tail_loss
+        telemetry.update(tail_stats)
         # Append target-aware tail telemetry after the standard target is
         # available; the forward snapshot is logged later in this iteration.
         current_debug = getattr(self.mask_head, "_last_uav_debug_stats", {}) or {}
@@ -299,6 +305,8 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
 
     def _apply_coarse_loss(
         self,
+        losses: dict,
+        telemetry: dict,
         mask_results: dict,
         sampling_results: List[SamplingResult],
         batch_gt_instances: InstanceList,
@@ -319,7 +327,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             coarse_outputs["raw_logits"], sampling_results, batch_gt_instances,
             prompt_pos_priors=prompt_pos_priors,
         )
-        mask_results["loss_shape_prior"] = {"loss_shape_prior": coarse_loss}
+        losses["loss_shape_prior"] = coarse_loss
         if not hasattr(self, "_last_coarse_stats") or self._last_coarse_stats is None:
             self._last_coarse_stats = {}
         raw_stats = {key: value.detach() for key, value in coarse_stats.items()}
@@ -361,13 +369,23 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             )
             sampling_results.append(sampling_result)
 
-        losses = dict()
+        losses: Dict[str, object] = {}
+        # Per-iteration telemetry stash: every diagnostic tensor produced on
+        # this rank's loss path (detection metrics, TAIL/*, COARSE/*-derived
+        # values) lands here, never inside the returned loss dict.
+        self._loss_telemetry: Dict[str, object] = {}
         if self.with_bbox:
             bbox_results = self.bbox_loss(x, sampling_results)
-            losses.update(bbox_results["loss_bbox"])
+            for key, value in bbox_results["loss_bbox"].items():
+                # mmdet mixes metric tensors (e.g. "acc") into the loss dict;
+                # only genuine losses belong in the backward channel.
+                if key.startswith("loss_"):
+                    losses[key] = value
+                else:
+                    self._loss_telemetry[f"DET/{key}"] = value
 
         if self.with_mask:
-            mask_results = self.mask_loss(
+            mask_losses, mask_telemetry = self.mask_loss(
                 x,
                 sampling_results,
                 batch_gt_instances,
@@ -376,9 +394,8 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                 high_res_features=high_res_features,
                 batch_img_metas=[sample.metainfo for sample in batch_data_samples],
             )
-            losses.update(mask_results["loss_mask"])
-            if "loss_shape_prior" in mask_results:
-                losses.update(mask_results["loss_shape_prior"])
+            losses.update(mask_losses)
+            self._loss_telemetry.update(mask_telemetry)
         return losses
 
     def predict_mask(

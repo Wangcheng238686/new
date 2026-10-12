@@ -72,7 +72,5 @@ exec "${PYTHON}" -m torch.distributed.run \
   --prompt-encoder-lr-mult 0.0 \
   --warmup-iters "${WARMUP_ITERS}" \
   --weight-decay 0.05 \
-  --det-loss-stage1-end 5 --det-loss-stage2-end 10 \
-  --det-loss-weight-stage1 1.0 --det-loss-weight-stage2 1.0 --det-loss-weight-stage3 1.0 \
   --prompt-debug-stats 1 --prompt-debug-stats-interval 50 \
   "${RESUME_ARGS[@]}"

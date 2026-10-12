@@ -1027,35 +1027,6 @@ def _set_model_current_epoch(model, epoch_number: int) -> None:
             setter(int(epoch_number))
 
 
-def _detection_loss_weight(args, epoch_number: int) -> float:
-    if epoch_number <= int(args.det_loss_stage1_end):
-        return float(args.det_loss_weight_stage1)
-    if epoch_number <= int(args.det_loss_stage2_end):
-        return float(args.det_loss_weight_stage2)
-    return float(args.det_loss_weight_stage3)
-
-
-def _scale_loss_value(value, scale: float):
-    if isinstance(value, torch.Tensor):
-        return value * float(scale)
-    if isinstance(value, list):
-        return [_scale_loss_value(item, scale) for item in value]
-    if isinstance(value, tuple):
-        return tuple(_scale_loss_value(item, scale) for item in value)
-    return value
-
-
-def _apply_detection_loss_weight(loss_dict: dict, scale: float, device) -> dict:
-    """Scale detector losses as one group without changing their ratios."""
-    for key in list(loss_dict.keys()):
-        if key in _CANONICAL_DETECTION_LOSS_KEYS or key.startswith("loss_rpn_"):
-            loss_dict[key] = _scale_loss_value(loss_dict[key], scale)
-    loss_dict["schedule/det_weight"] = torch.tensor(
-        float(scale), device=device
-    )
-    return loss_dict
-
-
 def _shard_val_loader(val_loader, rank: int, world_size: int) -> Tuple[Any, int]:
     """Rebuild the validation loader so each rank owns batches rank, rank+W, ...
 
@@ -1177,11 +1148,6 @@ def main():
         default=5,
         help="Moving-average window for the resolved early-stopping metric.",
     )
-    parser.add_argument("--det-loss-stage1-end", type=int, default=5)
-    parser.add_argument("--det-loss-stage2-end", type=int, default=10)
-    parser.add_argument("--det-loss-weight-stage1", type=float, default=1.0)
-    parser.add_argument("--det-loss-weight-stage2", type=float, default=1.0)
-    parser.add_argument("--det-loss-weight-stage3", type=float, default=1.0)
     parser.add_argument(
         "--max-nonfinite-batches",
         type=int,
@@ -1228,19 +1194,6 @@ def main():
                         help="Training iteration interval for prompt diagnostics")
     args = parser.parse_args()
 
-    if int(args.det_loss_stage1_end) < 1:
-        raise ValueError("det_loss_stage1_end must be >= 1")
-    if int(args.det_loss_stage2_end) <= int(args.det_loss_stage1_end):
-        raise ValueError(
-            "det_loss_stage2_end must be greater than det_loss_stage1_end"
-        )
-    for _name in (
-        "det_loss_weight_stage1",
-        "det_loss_weight_stage2",
-        "det_loss_weight_stage3",
-    ):
-        if float(getattr(args, _name)) < 0:
-            raise ValueError(f"{_name} must be non-negative")
     if int(args.early_stopping_start_epoch) < 1:
         raise ValueError("early_stopping_start_epoch must be >= 1")
     if int(args.early_stopping_patience) < 0:
@@ -1712,13 +1665,6 @@ def main():
         "early_stopping_smooth_window": int(
             args.early_stopping_smooth_window
         ),
-        "det_loss_schedule": {
-            "stage1_end": int(args.det_loss_stage1_end),
-            "stage2_end": int(args.det_loss_stage2_end),
-            "stage1_weight": float(args.det_loss_weight_stage1),
-            "stage2_weight": float(args.det_loss_weight_stage2),
-            "stage3_weight": float(args.det_loss_weight_stage3),
-        },
         "point_warmup": {
             "enabled": bool(resolved_point_warmup.get("enabled", False)),
             "no_point_epochs": int(
@@ -1914,7 +1860,6 @@ def main():
     for epoch in range(start_epoch, args.epochs):
         epoch_number = epoch + 1
         _set_model_current_epoch(model, epoch_number)
-        det_loss_weight = _detection_loss_weight(args, epoch_number)
         if distributed:
             sampler = getattr(train_loader, "sampler", None)
             if isinstance(sampler, DistributedSampler):
@@ -2014,22 +1959,13 @@ def main():
                 # Invoke the DDP wrapper itself. Calling ``model.module.loss``
                 # bypasses DDP's reducer and makes each rank update independently.
                 loss_dict = model(model_inputs, data_samples, mode="loss")
-                loss_dict = _apply_detection_loss_weight(
-                    loss_dict, det_loss_weight, device
-                )
-                # Key-name filter matters: telemetry tensors (TAIL/*, SP/*)
-                # live in the same dict and must never join the loss sum.
-                loss_parts = []
-                for k, v in loss_dict.items():
-                    if "loss" not in k:
-                        continue
-                    if isinstance(v, torch.Tensor):
-                        loss_parts.append(v)
-                    elif isinstance(v, (list, tuple)):
-                        loss_parts.extend(
-                            x for x in v if isinstance(x, torch.Tensor)
-                        )
-                loss = sum(loss_parts) if loss_parts else torch.tensor(0.0, device=device)
+                # The loss channel contains ONLY backward-able losses by
+                # construction, so every tensor joins the sum — no key-name
+                # filtering to drift out of sync with the model side.
+                loss = sum(
+                    value for value in loss_dict.values()
+                    if isinstance(value, torch.Tensor)
+                ) if any(isinstance(v, torch.Tensor) for v in loss_dict.values()) else torch.tensor(0.0, device=device)
                 # 审查 3.6 / 问题 10：loss 归一化按当前 batch 所属 accumulation group 的
                 # 真实长度，而非固定 grad_accum。之前只在最后一个 batch 修正分母，导致
                 # 末组前面的 batch（如 batch_idx=4,5，末组真实只有 3 个）仍除以 grad_accum，
@@ -2043,17 +1979,15 @@ def main():
             if _seg_timing:
                 _seg_sum["prep"] += _seg_t1 - _seg_t0
                 _seg_sum["fwd"] += _seg_t2 - _seg_t1
-            # Record detailed losses
+            # Record losses plus this iteration's loss-path telemetry.
             for k, v in loss_dict.items():
                 if isinstance(v, torch.Tensor):
-                    val = v.detach().item()
-                    loss_meter[k] = loss_meter.get(k, 0.0) + val
-                elif isinstance(v, list):
-                    # Handle case where loss might be a list of tensors (though rare in final output dict)
-                    val = sum(
-                        x.detach().item() for x in v if isinstance(x, torch.Tensor)
-                    )
-                    loss_meter[k] = loss_meter.get(k, 0.0) + val
+                    loss_meter[k] = loss_meter.get(k, 0.0) + v.detach().item()
+            core = model.module if hasattr(model, "module") else model
+            telemetry_stash = getattr(core.roi_head, "_loss_telemetry", None) or {}
+            for k, v in telemetry_stash.items():
+                if isinstance(v, torch.Tensor):
+                    loss_meter[k] = loss_meter.get(k, 0.0) + v.detach().item()
             _accumulate_dense_residual_monitor(
                 model, dense_monitor_sums, dense_monitor_counts
             )
@@ -2213,8 +2147,8 @@ def main():
                     100.0 * shape_component / component_total,
                 )
             logger.info(
-                "Epoch %d schedule: det_loss_weight=%.3f early_stop_start=%d min_delta=%.4g",
-                epoch_number, det_loss_weight,
+                "Epoch %d schedule: early_stop_start=%d min_delta=%.4g",
+                epoch_number,
                 int(args.early_stopping_start_epoch),
                 float(args.early_stopping_min_delta),
             )
@@ -2370,24 +2304,10 @@ def main():
                     # ---- Compute loss ----
                     if args.compute_val_loss and val_batch_has_valid_gt:
                         loss_dict = model_for_eval.loss(model_inputs, data_samples)
-                        loss_dict = _apply_detection_loss_weight(
-                            loss_dict, det_loss_weight, device
-                        )
-                        val_loss_parts = []
-                        for k, v in loss_dict.items():
-                            if "loss" not in k.lower():
-                                continue
-                            if isinstance(v, torch.Tensor):
-                                val_loss_parts.append(v)
-                            elif isinstance(v, (list, tuple)):
-                                val_loss_parts.extend(
-                                    x for x in v if isinstance(x, torch.Tensor)
-                                )
-                        loss = (
-                            sum(val_loss_parts)
-                            if val_loss_parts
-                            else torch.tensor(0.0, device=device)
-                        )
+                        loss = sum(
+                            value for value in loss_dict.values()
+                            if isinstance(value, torch.Tensor)
+                        ) if any(isinstance(v, torch.Tensor) for v in loss_dict.values()) else torch.tensor(0.0, device=device)
                         total_val_loss += float(loss.detach().item())
                         val_batches += 1
 
