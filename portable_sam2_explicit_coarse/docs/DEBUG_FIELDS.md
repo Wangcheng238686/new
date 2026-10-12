@@ -17,7 +17,9 @@
 | `TAIL/*` | UDPR 启用时的 latest-forward / selected-point loss 字段；前者由 debug-interval 输出，后者也进入 epoch detailed losses | 仅说明 tail 的选点和残差/监督实际发生；不能替代 paired validation 效用。 |
 
 `loss_mask` 指最终 SAM2 MaskDecoder 的 mask loss；它不包含 `loss_shape_prior` 或
-`loss_decoder_tail`。
+`loss_decoder_tail`。第二轮重构后模型 loss 通道只含纯损失键（loss_rpn_*/loss_cls/
+loss_bbox/loss_mask/loss_decoder_tail/loss_shape_prior），训练器对损失通道无过滤
+全量求和；mmdet 的 `acc` 等指标键以 `DET/acc` 进入遥测通道。
 
 ## 2. Dense prompt 字段
 

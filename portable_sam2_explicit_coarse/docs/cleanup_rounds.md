@@ -136,3 +136,45 @@ smoke ~1,200｜configs+ablations ~1,400｜图件脚本 ~1,600｜入口/评测脚
 说明：WHU 全量 2220 图推理在当前主机被 OOM killer 截杀（掩膜累积 ~120GB，他人占 62GB），
 改用前 600 图前缀等价（27% 测试集、5.15 万条预测全对）；NWPU 为完整验证集。
 模型行为与清理前**逐位等价**由此关闭。
+
+---
+
+# 第二轮激进重构（cleanup2/radical-refactor，2026-10-12 起）
+
+判据：数学逐位不变 / 7 权重可加载 / loss 数值不变 / 契约 compat 区逐字节不动；
+允许变化：日志键名与排版（命名归正）、内部函数签名。
+
+## 新增回归门（R1）
+- `check_a3sgm_ddp_launch.py`：2-rank torchrun × 3 步——**上线即捕获 R1 修复的
+  use_fsdp 孤儿引用**（上轮删 FSDP 参数时 DDP 条件没同步，torchrun 一发即
+  AttributeError；单进程冒烟测不出此类缺陷）。
+- `check_a3sgm_resume.py`：2ep 训练存 last_checkpoint → RESUME 续 1ep（保存/恢复/
+  snapshot 合并链）。注意 last_checkpoint 仅非最终 epoch 写（最终 epoch 写 last_model）。
+- 加载门扩至 7 权重（+消融四臂 P/B/PB/PBM，护栏 ID 修剪后的 r1_c3/pafpn_coarse_* 分支）。
+
+## R2 死码剥除（审计实证后删）
+infer 两个 env 恢复函数（17 env 键全库零消费者）；roi_head share_extractor 双路径/
+mask_prompt_box_cfg 4 死键/BOX 写死零占位/loss_roi_* 死转发/bbox_feats 死参；
+detector transformers 依赖（全库唯一 import 服务两处永假 isinstance）；
+mask head 11 墓碑参数（6 个 ckpt 不带+5 个 kwargs 吞）+不可能状态验证+roi_mask_size；
+契约 architecture_id 修剪 9 处不可达分支（指纹函数未动；6 配置 ID+2 指纹硬编码比对通过）；
+trainer 4 组死常量+snapshot 死镜像键；decoder ALLOW_DECODER_FALLBACK 死开关。
+
+## R3 losses/遥测分通道（核心设计变更）
+roi_head.mask_loss 返回 (losses, telemetry)；loss() 只返回纯损失——mmdet 混入的
+`acc` 指标键剥入 `DET/*` 遥测；trainer 对损失通道**无过滤全量求和**（"loss"子串
+过滤与 train/val 大小写不一致这类 bug 从设计上灭绝）；遥测经 `roi_head._loss_telemetry`
+stash 计量进 epoch 日志（键序与数值不变）；det-loss 三段 staging（恒 1.0）全家清除。
+
+## R4 MaskHeadOutput + 命名归正
+mask head 返回值 6 元组→dataclass（mask_logits/coarse_outputs/tail_outputs 三个
+有消费者的字段；消灭恒空 {} 槽、iou 复制槽、_last_tail_outputs 侧信道）。
+遥测总线 uav*→telemetry 家族；--sat-*-lr-mult→--backbone/other-lr-mult（优化器组名
+同改）；--use-*-coco→--dataset {whu,vhr10}；删 --gpu-id/--ema-save-best/--subset-ratio
+别名与陈旧 data-root 默认。
+
+## R6 训练器结构化
+_parse_args（139 行 argparse+校验）与 _build_config_snapshot（188 行快照组装，5 个
+选择旋钮显式返回）抽为函数；训练/验证两段语义相同的 GT 构建块合一为
+`_build_gt_data_samples`。main() 2959→2630 行内聚（保留 epoch 主循环在 main 内——
+其与 DDP 顺序契约强耦合，拆出风险大于收益）。
