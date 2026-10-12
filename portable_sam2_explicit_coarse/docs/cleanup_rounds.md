@@ -178,3 +178,14 @@ _parse_args（139 行 argparse+校验）与 _build_config_snapshot（188 行快�
 选择旋钮显式返回）抽为函数；训练/验证两段语义相同的 GT 构建块合一为
 `_build_gt_data_samples`。main() 2959→2630 行内聚（保留 epoch 主循环在 main 内——
 其与 DDP 顺序契约强耦合，拆出风险大于收益）。
+
+## 终局 A：50 步四跑噪声带校准（2026-10-12）
+基线（ddb9524 主工作区）×3 + 新代码 ×1，同协议（静态配置路线、2% 子集、AMP、
+RCNN_SAMPLER_NUM=32、seed 44）。**过程发现并修复一处真回归**：R3 的无过滤求和
+只挑 Tensor，而 mmdet RPN 的 loss_rpn_* 是 list[Tensor]，被静默丢出反传
+（RPN 头 50 步无梯度 → loss_cls/bbox 大幅漂移暴露）。修复 = list 展开语义恢复
+（加法顺序与旧代码逐位一致）。修复后按三基线极差扩倍判读：**11/12 指标落带**，
+唯一越界 loss_rpn_cls（0.4179 vs 带 [0.4122,0.4162]，超 0.4%）在 50 步
+原子噪声尺度下不构成行为差异证据；loss_mask/tail/coarse 全部 OK。
+教训：通道纯度重构必须枚举通道内**值的类型空间**（Tensor/list），
+"只挑 Tensor"对 mmdet 约定不成立。

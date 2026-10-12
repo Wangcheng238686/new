@@ -1990,11 +1990,18 @@ def main():
                 loss_dict = model(model_inputs, data_samples, mode="loss")
                 # The loss channel contains ONLY backward-able losses by
                 # construction, so every tensor joins the sum — no key-name
-                # filtering to drift out of sync with the model side.
-                loss = sum(
-                    value for value in loss_dict.values()
-                    if isinstance(value, torch.Tensor)
-                ) if any(isinstance(v, torch.Tensor) for v in loss_dict.values()) else torch.tensor(0.0, device=device)
+                # filtering to drift out of sync with the model side.  mmdet
+                # RPN emits per-image lists; extend preserves the historical
+                # addition order bit-for-bit.
+                loss_parts = []
+                for value in loss_dict.values():
+                    if isinstance(value, torch.Tensor):
+                        loss_parts.append(value)
+                    elif isinstance(value, (list, tuple)):
+                        loss_parts.extend(
+                            item for item in value if isinstance(item, torch.Tensor)
+                        )
+                loss = sum(loss_parts) if loss_parts else torch.tensor(0.0, device=device)
                 # 审查 3.6 / 问题 10：loss 归一化按当前 batch 所属 accumulation group 的
                 # 真实长度，而非固定 grad_accum。之前只在最后一个 batch 修正分母，导致
                 # 末组前面的 batch（如 batch_idx=4,5，末组真实只有 3 个）仍除以 grad_accum，
@@ -2012,6 +2019,10 @@ def main():
             for k, v in loss_dict.items():
                 if isinstance(v, torch.Tensor):
                     loss_meter[k] = loss_meter.get(k, 0.0) + v.detach().item()
+                elif isinstance(v, (list, tuple)):
+                    loss_meter[k] = loss_meter.get(k, 0.0) + sum(
+                        item.detach().item() for item in v if isinstance(item, torch.Tensor)
+                    )
             core = model.module if hasattr(model, "module") else model
             telemetry_stash = getattr(core.roi_head, "_loss_telemetry", None) or {}
             for k, v in telemetry_stash.items():
@@ -2288,10 +2299,15 @@ def main():
                     # ---- Compute loss ----
                     if args.compute_val_loss and val_batch_has_valid_gt:
                         loss_dict = model_for_eval.loss(model_inputs, data_samples)
-                        loss = sum(
-                            value for value in loss_dict.values()
-                            if isinstance(value, torch.Tensor)
-                        ) if any(isinstance(v, torch.Tensor) for v in loss_dict.values()) else torch.tensor(0.0, device=device)
+                        loss_parts = []
+                        for value in loss_dict.values():
+                            if isinstance(value, torch.Tensor):
+                                loss_parts.append(value)
+                            elif isinstance(value, (list, tuple)):
+                                loss_parts.extend(
+                                    item for item in value if isinstance(item, torch.Tensor)
+                                )
+                        loss = sum(loss_parts) if loss_parts else torch.tensor(0.0, device=device)
                         total_val_loss += float(loss.detach().item())
                         val_batches += 1
 
