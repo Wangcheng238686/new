@@ -193,3 +193,15 @@ RCNN_SAMPLER_NUM=32、seed 44）。**过程发现并修复一处真回归**：R3
 ## R8 补遗
 - 修复 R2 的 sam2_decoder 三处残留 allow_decoder_fallback 引用（构造期/加载期/前向期全部改为硬错——DDP 门实证捕获）。
 - 训练门（DDP/resume）改用 sampler-num=16 的 `_base_` delta 配置（/tmp/a3sgm_gate_cfg.py，可 GATE_CONFIG 覆盖），在 GPU 被外部任务占压（每卡仅 ~11GiB 可用）时仍可运行；此前 RCNN_SAMPLER_NUM env 已随配置坍缩失效，静态配置内采样器 num=256。
+
+## 终局 B：三组全量推理对账（2026-10-13）
+| 组 | 协议 | 结果 |
+|---|---|---|
+| WHU test · raw e118 · 前 400 图 | **bs=4**（金样同款） | 17,348 条预测逐位一致 |
+| WHU test · EMA e118 · 前 400 图 | bs=4 | 17,468 条逐位一致 |
+| NWPU val · bestC e270 · 130 图全量 | **bs=2**（金样同款） | 772 条逐位一致，24 项指标 max\|Δ\|=0.00e+00 |
+
+注意（重要协议事实）：推理 batch 尺寸影响预测组合——bs≠金样时逐位对账必然失配
+（实证 bs=1 跑 NWPU 指标偏 2.2e-04），对账必须复刻金样 batch 尺寸；这是既有行为
+（批内 padding/NMS 组合差异），非重构引入。WHU 600 图版本因主机被外部任务压至
+39GiB 可用内存而 OOM（mask 累积需 ~48GiB），改用 400 图前缀（27% 测试集）。
