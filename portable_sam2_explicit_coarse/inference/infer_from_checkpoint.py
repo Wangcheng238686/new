@@ -149,68 +149,6 @@ def _snapshot(checkpoint: Mapping[str, Any]) -> Dict[str, Any]:
     return dict(value) if isinstance(value, Mapping) else {}
 
 
-def _restore_architecture_environment(snapshot: Mapping[str, Any]) -> None:
-    mapping = {
-        "prompt_generator_mode": "PROMPT_GENERATOR_MODE",
-        "explicit_prompt_mode": "EXPLICIT_PROMPT_MODE",
-        "prompt_sparse_mode": "PROMPT_SPARSE_MODE",
-        "prompt_encoder_enabled": "PROMPT_ENCODER_ENABLED",
-        "shape_prior_enabled": "SHAPE_PRIOR_ENABLED",
-        "explicit_use_box_prompt": "EXPLICIT_USE_BOX_PROMPT",
-        "use_shape_dense": "USE_SHAPE_DENSE",
-        "prompt_mode": "PROMPT_MODE",
-        "neck_type": "NECK_TYPE",
-        "prompt_dense_mode": "PROMPT_DENSE_MODE",
-        "p2_boundary_refiner_enabled": "P2_BOUNDARY_REFINER_ENABLED",
-    }
-    for snapshot_key, env_key in mapping.items():
-        value = snapshot.get(snapshot_key)
-        if value not in (None, ""):
-            os.environ[env_key] = str(value)
-
-
-def _restore_embedded_architecture_environment(
-    model_config: Mapping[str, Any],
-) -> None:
-    """Restore config-factory switches omitted by early schema-v2 snapshots."""
-    stride = model_config.get("sam_image_embedding_stride")
-    if stride not in (None, ""):
-        os.environ["SAM_IMAGE_EMBED_STRIDE"] = str(stride)
-
-    roi_head = model_config.get("roi_head", {})
-    head = roi_head.get("mask_head", {}) if isinstance(roi_head, Mapping) else {}
-    if not isinstance(head, Mapping):
-        return
-    final_mode = head.get("final_mask_coordinate_mode")
-    if final_mode not in (None, ""):
-        os.environ["FINAL_MASK_COORDINATE_MODE"] = str(final_mode)
-    p2_cfg = head.get("p2_boundary_refiner_cfg", {})
-    if isinstance(p2_cfg, Mapping) and p2_cfg.get("enabled") is not None:
-        os.environ["P2_BOUNDARY_REFINER_ENABLED"] = (
-            "1" if bool(p2_cfg["enabled"]) else "0"
-        )
-    # Unlike a generic optional config key, R3 must be explicitly reset for
-    # legacy checkpoints: otherwise a caller shell left at `=1` would rebuild
-    # an A0/PB snapshot as R3 before strict fingerprint validation.
-    renderer_cfg = head.get("canvas_renderer_cfg", {})
-    renderer_enabled = (
-        isinstance(renderer_cfg, Mapping) and bool(renderer_cfg.get("enabled", False))
-    )
-    os.environ["CANVAS_RENDERER_ENABLED"] = "1" if renderer_enabled else "0"
-    if renderer_enabled and renderer_cfg.get("loss_weight") is not None:
-        os.environ["CANVAS_RENDERER_LOSS_WEIGHT"] = str(renderer_cfg["loss_weight"])
-    else:
-        os.environ.pop("CANVAS_RENDERER_LOSS_WEIGHT", None)
-    dense_cfg = head.get("dense_prompt_cfg", {})
-    if isinstance(dense_cfg, Mapping):
-        transform = dense_cfg.get("transform")
-        if transform not in (None, ""):
-            os.environ["SHAPE_DENSE_TRANSFORM"] = str(transform)
-        detach = dense_cfg.get("detach_input")
-        if detach is not None:
-            os.environ["SHAPE_DENSE_DETACH"] = "1" if bool(detach) else "0"
-
-
 def _prebuild_config_compat_variant(
     model_config: Mapping[str, Any], snapshot: Mapping[str, Any]
 ) -> Dict[str, Any]:
@@ -307,12 +245,10 @@ def _resolve_model_config(
     args: argparse.Namespace,
     snapshot: Mapping[str, Any],
 ) -> Tuple[Dict[str, Any], str]:
-    _restore_architecture_environment(snapshot)
     saved = snapshot.get("model_config")
     if isinstance(saved, Mapping) and saved:
         model_config = copy.deepcopy(dict(saved))
         source = "checkpoint.config_snapshot.model_config"
-        _restore_embedded_architecture_environment(model_config)
     else:
         fallback = args.config or snapshot.get("config_path")
         if not fallback:

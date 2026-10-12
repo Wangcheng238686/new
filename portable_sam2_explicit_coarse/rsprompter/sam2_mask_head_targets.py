@@ -219,10 +219,7 @@ class _MaskHeadTargetsMixin:
             pos_priors_list = [res.pos_priors for res in sampling_results]
         gt_masks = [res.masks for res in batch_gt_instances]
         device = pos_priors_list[0].device if pos_priors_list else torch.device("cpu")
-        if mask_size is None:
-            roi_h = roi_w = self.roi_mask_size
-        else:
-            roi_h, roi_w = int(mask_size[0]), int(mask_size[1])
+        roi_h, roi_w = int(mask_size[0]), int(mask_size[1])
         coarse_targets_list = []
         for pos_priors, pos_gt_inds, gt_mask in zip(
             pos_priors_list, pos_assigned_gt_inds, gt_masks

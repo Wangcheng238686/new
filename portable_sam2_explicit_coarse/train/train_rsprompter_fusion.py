@@ -844,17 +844,6 @@ def _verify_ddp_parameter_sync_after_first_update(
     return float(local_max.item())
 
 
-def _stat_scalar(stats: Dict[str, Any], key: str) -> Optional[float]:
-    value = stats.get(key)
-    if torch.is_tensor(value):
-        if value.numel() != 1:
-            return None
-        value = float(value.detach().float().item())
-    if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
-        return None
-    return float(value)
-
-
 def _save_checkpoint(
     path: Path,
     model: torch.nn.Module,
@@ -1065,14 +1054,6 @@ def _apply_detection_loss_weight(loss_dict: dict, scale: float, device) -> dict:
         float(scale), device=device
     )
     return loss_dict
-
-
-_MASK_RAMP_LOSS_KEY_PREFIXES = (
-    "loss_mask",
-    "loss_shape_prior",
-    "loss_decoder_tail",
-    "loss_p2_boundary_refiner",
-)
 
 
 def _shard_val_loader(val_loader, rank: int, world_size: int) -> Tuple[Any, int]:
@@ -1716,18 +1697,10 @@ def main():
         },
         "train_subset_ratio": float(train_subset_ratio),
         "val_subset_ratio": float(val_subset_ratio),
-        "prompt_generator_mode": os.environ.get(
-            "PROMPT_GENERATOR_MODE", "explicit_mask"
-        ),
+        # Display-only mirror of the prompt form (the whole env-mirror family
+        # is gone: nothing re-reads these keys at checkpoint load time).
         "explicit_prompt_mode": os.environ.get("EXPLICIT_PROMPT_MODE", ""),
-        "prompt_sparse_mode": os.environ.get("PROMPT_SPARSE_MODE", ""),
-        "prompt_encoder_enabled": os.environ.get("PROMPT_ENCODER_ENABLED", ""),
-        "shape_prior_enabled": os.environ.get("SHAPE_PRIOR_ENABLED", ""),
-        "explicit_use_box_prompt": os.environ.get("EXPLICIT_USE_BOX_PROMPT", ""),
-        "use_shape_dense": os.environ.get("USE_SHAPE_DENSE", ""),
-        "prompt_mode": os.environ.get("PROMPT_MODE", ""),
         "neck_type": os.environ.get("NECK_TYPE", ""),
-        "prompt_dense_mode": os.environ.get("PROMPT_DENSE_MODE", ""),
         "eval_bbox": int(eval_bbox),
         "save_bbox_best_metric": save_bbox_best_metric,
         "save_composite_best": int(save_composite_best),
@@ -1775,8 +1748,6 @@ def main():
             "mode": resolved_shape_prior.get("shape_scale_mode", ""),
             "init": resolved_shape_prior.get("prompt_scale_init", ""),
         },
-        "freeze_decoder": os.environ.get("FREEZE_DECODER", ""),
-        "freeze_no_mask": os.environ.get("FREEZE_NO_MASK", ""),
         "shape_prior_loss_weight": float(
             resolved_mask_head_cfg.get("shape_prior_loss_weight", 0.0)
         ),

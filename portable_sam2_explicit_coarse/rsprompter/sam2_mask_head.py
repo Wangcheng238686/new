@@ -88,7 +88,6 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         final_mask_loss_cfg: Optional[Dict] = None,
         roi_sam_cfg: Optional[Dict] = None,
         mask_coordinate_mode: Optional[str] = None,
-        roi_mask_size: int = 28,
         checkpoint_load_cfg: Optional[Dict] = None,
         coarse_mask_loss_cfg: Optional[Dict] = None,
         dense_prompt_cfg: Optional[Dict] = None,
@@ -184,9 +183,6 @@ class RSPrompterAnchorMaskHeadSAM2(_MaskHeadPromptHelpers, _MaskHeadTargetsMixin
         self.prompt_encoder_image_size = int(prompt_encoder_image_size)
         self.prompt_encoder_embed_size = int(prompt_encoder_embed_size)
         self.prompt_encoder_mask_size = self.prompt_encoder_embed_size * 4
-        # Historical Mask R-CNN knob; every target builder passes its own
-        # mask_size explicitly, so this is only kept as an accepted attribute.
-        self.roi_mask_size = int(roi_mask_size)
 
         # --- final-mask coordinate contract --------------------------------
         # Coarse logits are always ROI-local; the final SAM2 logits use either
