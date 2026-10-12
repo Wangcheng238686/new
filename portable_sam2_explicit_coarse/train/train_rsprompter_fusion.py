@@ -411,9 +411,6 @@ def _build_optimizer(
         elif "roi_head.mask_head.prompt_encoder" in match_name:
             params_prompt_encoder.append(param)
             names_prompt_encoder.append(name)
-        elif "roi_head.mask_head.p2_boundary_refiner" in match_name:
-            params_p2_boundary_refiner.append(param)
-            names_p2_boundary_refiner.append(name)
         elif (
             "roi_head.mask_head.shape_injector" in match_name
             or "roi_head.mask_head.shape_prompt_scale" in match_name
@@ -1391,7 +1388,7 @@ def main():
     if args.freeze_bn:
         _set_norm_eval(model)
 
-    if distributed and not args.use_fsdp:
+    if distributed:
         from torch.nn.parallel import DistributedDataParallel as DDP
 
         # find_unused_parameters=True：PE freeze_all=True 后有参数不收梯度，
