@@ -187,6 +187,66 @@ def _extract_instances_numpy(
     return out
 
 
+
+def _build_gt_data_samples(
+    imgs: torch.Tensor,
+    img_metas: List[dict],
+    gt_bboxes: List[torch.Tensor],
+    gt_labels: List[torch.Tensor],
+    gt_masks,
+    device: torch.device,
+) -> List[DetDataSample]:
+    """Wrap a dataset batch's GT into DetDataSamples on ``device``.
+
+    Shared by the training and validation loops (previously two
+    semantically-identical inline blocks).  Padding labels are dropped;
+    empty images get empty GT.
+    """
+    data_samples: List[DetDataSample] = []
+    for i in range(len(imgs)):
+        ds = DetDataSample()
+        ds.set_metainfo(img_metas[i])
+        gt_instances = InstanceData()
+        num_inst = len(gt_labels[i])
+        if num_inst > 0:
+            valid_mask = gt_labels[i] >= 0
+            num_valid = int(valid_mask.sum().item())
+            if num_valid > 0:
+                valid_indices = (
+                    valid_mask.nonzero().squeeze(-1)[:num_valid].cpu()
+                )
+                gt_instances.bboxes = gt_bboxes[i][valid_indices]
+                gt_instances.labels = gt_labels[i][valid_indices]
+                masks = gt_masks[i][valid_indices.cpu().numpy()]
+                gt_instances.masks = BitmapMasks(
+                    masks, *img_metas[i]["img_shape"]
+                )
+            else:
+                gt_instances.bboxes = torch.zeros(
+                    (0, 4), dtype=torch.float32, device=device
+                )
+                gt_instances.labels = torch.zeros(
+                    (0,), dtype=torch.int64, device=device
+                )
+                gt_instances.masks = BitmapMasks(
+                    np.zeros((0, *img_metas[i]["img_shape"]), dtype=np.uint8),
+                    *img_metas[i]["img_shape"],
+                )
+        else:
+            gt_instances.bboxes = torch.zeros(
+                (0, 4), dtype=torch.float32, device=device
+            )
+            gt_instances.labels = torch.zeros(
+                (0,), dtype=torch.int64, device=device
+            )
+            gt_instances.masks = BitmapMasks(
+                np.zeros((0, *img_metas[i]["img_shape"]), dtype=np.uint8),
+                *img_metas[i]["img_shape"],
+            )
+        ds.gt_instances = gt_instances
+        data_samples.append(ds.to(device))
+    return data_samples
+
 def _summarize_mask_density(all_dt: List[dict]) -> Tuple[float, float]:
     """Return average binary mask fill ratio and masks per validation image."""
     weighted_fill = 0.0
@@ -358,8 +418,8 @@ def _is_main_process(rank: int) -> bool:
 def _build_optimizer(
     model: torch.nn.Module,
     lr: float,
-    sat_backbone_lr_mult: float,
-    sat_other_lr_mult: float,
+    backbone_lr_mult: float,
+    other_lr_mult: float,
     bbox_head_lr_mult: float,
     mask_decoder_lr_mult: float = 0.05,
     no_mask_lr_mult: float = 0.1,
@@ -368,8 +428,8 @@ def _build_optimizer(
     decoder_tail_lr_mult: float = 1.0,
     weight_decay: float = 0.05,
 ) -> optim.Optimizer:
-    params_sat_backbone = []
-    names_sat_backbone = []
+    params_backbone = []
+    names_backbone = []
     params_mask_decoder = []
     names_mask_decoder = []
     params_no_mask = []
@@ -384,8 +444,8 @@ def _build_optimizer(
     names_decoder_tail = []
     params_bbox_head = []
     names_bbox_head = []
-    params_sat_other = []
-    names_sat_other = []
+    params_other = []
+    names_other = []
 
     for name, param in model.named_parameters():
         if not param.requires_grad:
@@ -395,8 +455,8 @@ def _build_optimizer(
             params_decoder_tail.append(param)
             names_decoder_tail.append(name)
         elif match_name.startswith("backbone.") or match_name.startswith("shared_image_embedding."):
-            params_sat_backbone.append(param)
-            names_sat_backbone.append(name)
+            params_backbone.append(param)
+            names_backbone.append(name)
         elif "roi_head.mask_head.mask_decoder.decoder.iou_prediction_head" in match_name:
             # The IoU head keeps its own group (historical C2-era contract)
             # even though the quality-rerank module is gone.
@@ -411,9 +471,6 @@ def _build_optimizer(
         elif "roi_head.mask_head.prompt_encoder" in match_name:
             params_prompt_encoder.append(param)
             names_prompt_encoder.append(name)
-        elif "roi_head.mask_head.p2_boundary_refiner" in match_name:
-            params_p2_boundary_refiner.append(param)
-            names_p2_boundary_refiner.append(name)
         elif (
             "roi_head.mask_head.shape_injector" in match_name
             or "roi_head.mask_head.shape_prompt_scale" in match_name
@@ -428,20 +485,20 @@ def _build_optimizer(
             params_bbox_head.append(param)
             names_bbox_head.append(name)
         else:
-            params_sat_other.append(param)
-            names_sat_other.append(name)
+            params_other.append(param)
+            names_other.append(name)
 
     param_groups = []
     audit_groups = []
-    if params_sat_backbone:
+    if params_backbone:
         param_groups.append(
             {
-                "params": params_sat_backbone,
-                "lr": lr * sat_backbone_lr_mult,
-                "name": "sat_backbone",
+                "params": params_backbone,
+                "lr": lr * backbone_lr_mult,
+                "name": "backbone",
             }
         )
-        audit_groups.append(("sat_backbone", params_sat_backbone, names_sat_backbone, lr * sat_backbone_lr_mult, weight_decay))
+        audit_groups.append(("backbone", params_backbone, names_backbone, lr * backbone_lr_mult, weight_decay))
     if params_mask_decoder:
         param_groups.append(
             {
@@ -499,15 +556,15 @@ def _build_optimizer(
             }
         )
         audit_groups.append(("bbox_head", params_bbox_head, names_bbox_head, lr * bbox_head_lr_mult, weight_decay))
-    if params_sat_other:
+    if params_other:
         param_groups.append(
             {
-                "params": params_sat_other,
-                "lr": lr * sat_other_lr_mult,
-                "name": "sat_other",
+                "params": params_other,
+                "lr": lr * other_lr_mult,
+                "name": "other",
             }
         )
-        audit_groups.append(("sat_other", params_sat_other, names_sat_other, lr * sat_other_lr_mult, weight_decay))
+        audit_groups.append(("other", params_other, names_other, lr * other_lr_mult, weight_decay))
     if not param_groups:
         raise RuntimeError(
             "No trainable parameters found. Check freezing / requires_grad."
@@ -708,16 +765,16 @@ _PROMPT_TELEMETRY_PREFIXES = {"SP", "COARSE", "JITTER", "GATE", "DENSE",
                               "TAIL", "CONTEXT", "BOX"}
 
 
-def _log_uav_debug_stats(
+def _log_forward_telemetry(
     model: torch.nn.Module,
     epoch: int,
     step: int,
     enabled_prefixes: Optional[set] = None,
 ) -> None:
     model_core = model.module if hasattr(model, "module") else model
-    getter = getattr(model_core, "get_prompt_debug_stats", None)
+    getter = getattr(model_core, "get_telemetry", None)
     if getter is None:
-        getter = getattr(model_core, "get_uav_debug_stats", None)
+        getter = getattr(model_core, "get_forward_telemetry", None)
     if getter is None:
         return
     stats = getter()
@@ -765,7 +822,7 @@ def _accumulate_dense_residual_monitor(
 ) -> None:
     """Accumulate detached dense-residual diagnostics from the latest forward."""
     model_core = model.module if hasattr(model, "module") else model
-    getter = getattr(model_core, "get_prompt_debug_stats", None)
+    getter = getattr(model_core, "get_telemetry", None)
     if getter is None:
         return
     stats = getter() or {}
@@ -845,17 +902,6 @@ def _verify_ddp_parameter_sync_after_first_update(
         )
     dist.all_reduce(local_max, op=dist.ReduceOp.MAX)
     return float(local_max.item())
-
-
-def _stat_scalar(stats: Dict[str, Any], key: str) -> Optional[float]:
-    value = stats.get(key)
-    if torch.is_tensor(value):
-        if value.numel() != 1:
-            return None
-        value = float(value.detach().float().item())
-    if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
-        return None
-    return float(value)
 
 
 def _save_checkpoint(
@@ -1041,43 +1087,6 @@ def _set_model_current_epoch(model, epoch_number: int) -> None:
             setter(int(epoch_number))
 
 
-def _detection_loss_weight(args, epoch_number: int) -> float:
-    if epoch_number <= int(args.det_loss_stage1_end):
-        return float(args.det_loss_weight_stage1)
-    if epoch_number <= int(args.det_loss_stage2_end):
-        return float(args.det_loss_weight_stage2)
-    return float(args.det_loss_weight_stage3)
-
-
-def _scale_loss_value(value, scale: float):
-    if isinstance(value, torch.Tensor):
-        return value * float(scale)
-    if isinstance(value, list):
-        return [_scale_loss_value(item, scale) for item in value]
-    if isinstance(value, tuple):
-        return tuple(_scale_loss_value(item, scale) for item in value)
-    return value
-
-
-def _apply_detection_loss_weight(loss_dict: dict, scale: float, device) -> dict:
-    """Scale detector losses as one group without changing their ratios."""
-    for key in list(loss_dict.keys()):
-        if key in _CANONICAL_DETECTION_LOSS_KEYS or key.startswith("loss_rpn_"):
-            loss_dict[key] = _scale_loss_value(loss_dict[key], scale)
-    loss_dict["schedule/det_weight"] = torch.tensor(
-        float(scale), device=device
-    )
-    return loss_dict
-
-
-_MASK_RAMP_LOSS_KEY_PREFIXES = (
-    "loss_mask",
-    "loss_shape_prior",
-    "loss_decoder_tail",
-    "loss_p2_boundary_refiner",
-)
-
-
 def _shard_val_loader(val_loader, rank: int, world_size: int) -> Tuple[Any, int]:
     """Rebuild the validation loader so each rank owns batches rank, rank+W, ...
 
@@ -1109,14 +1118,13 @@ def _shard_val_loader(val_loader, rank: int, world_size: int) -> Tuple[Any, int]
     return shard, total
 
 
-def main():
+def _parse_args() -> argparse.Namespace:
+    """Command line; validation errors fail fast before imports."""
     parser = argparse.ArgumentParser(
         description="portable_sam_fusion: RSPrompter(SAM) + Drone semantic guidance"
     )
     parser.add_argument("--config", type=str, required=True)
-    parser.add_argument(
-        "--data-root", type=str, default="/data/wangcheng/dataset/university-test/S"
-    )
+    parser.add_argument("--data-root", type=str, required=True)
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--epochs", type=int, default=80)
     parser.add_argument("--lr", type=float, default=5e-4)
@@ -1136,25 +1144,12 @@ def main():
         default="",
         help="Comma-separated model state prefixes excluded from --init-from",
     )
-    parser.add_argument("--gpu-id", type=int, default=0)
 
     parser.add_argument(
-        "--use-whu-coco",
-        action="store_true",
-        default=False,
-        help="使用 WHU 公开数据集（COCO 格式，自带 train/validation 划分）",
-    )
-    parser.add_argument(
-        "--use-vhr10-coco",
-        action="store_true",
-        default=False,
-        help="使用 NWPU VHR-10 数据集（COCO 实例掩码版，10 类）",
-    )
-    parser.add_argument(
-        "--subset-ratio",
-        type=float,
-        default=None,
-        help="Deprecated compatibility alias: set both train and val subset ratios.",
+        "--dataset",
+        choices=("whu", "vhr10"),
+        default="whu",
+        help="Dataset protocol: WHU-1024 (1 class) or NWPU VHR-10 (10 classes).",
     )
     parser.add_argument(
         "--train-subset-ratio",
@@ -1199,11 +1194,6 @@ def main():
         default=5,
         help="Moving-average window for the resolved early-stopping metric.",
     )
-    parser.add_argument("--det-loss-stage1-end", type=int, default=5)
-    parser.add_argument("--det-loss-stage2-end", type=int, default=10)
-    parser.add_argument("--det-loss-weight-stage1", type=float, default=1.0)
-    parser.add_argument("--det-loss-weight-stage2", type=float, default=1.0)
-    parser.add_argument("--det-loss-weight-stage3", type=float, default=1.0)
     parser.add_argument(
         "--max-nonfinite-batches",
         type=int,
@@ -1211,8 +1201,8 @@ def main():
         help="Abort after this many synchronized non-finite batches; 0 disables abort.",
     )
 
-    parser.add_argument("--sat-backbone-lr-mult", type=float, default=1.0)
-    parser.add_argument("--sat-other-lr-mult", type=float, default=1.0)
+    parser.add_argument("--backbone-lr-mult", type=float, default=1.0)
+    parser.add_argument("--other-lr-mult", type=float, default=1.0)
     parser.add_argument(
         "--bbox-head-lr-mult",
         type=float,
@@ -1242,7 +1232,6 @@ def main():
     parser.add_argument("--ema-decay", type=float, default=0.999, help="EMA decay in (0,1)")
     parser.add_argument("--ema-update-every", type=int, default=1, help="Update EMA every N optimizer steps")
     parser.add_argument("--ema-eval", type=int, default=1, help="Use EMA shadow weights for validation")
-    parser.add_argument("--ema-save-best", type=int, default=1, help="Save best_model using EMA shadow weights")
     parser.add_argument("--ema-eval-start-epoch", type=int, default=5, help="Start using EMA for eval after this epoch")
     parser.add_argument("--prompt-debug-stats", type=int, choices=[0, 1], default=0,
                         help="Print shape-point/coarse-mask prompt diagnostics")
@@ -1250,19 +1239,6 @@ def main():
                         help="Training iteration interval for prompt diagnostics")
     args = parser.parse_args()
 
-    if int(args.det_loss_stage1_end) < 1:
-        raise ValueError("det_loss_stage1_end must be >= 1")
-    if int(args.det_loss_stage2_end) <= int(args.det_loss_stage1_end):
-        raise ValueError(
-            "det_loss_stage2_end must be greater than det_loss_stage1_end"
-        )
-    for _name in (
-        "det_loss_weight_stage1",
-        "det_loss_weight_stage2",
-        "det_loss_weight_stage3",
-    ):
-        if float(getattr(args, _name)) < 0:
-            raise ValueError(f"{_name} must be non-negative")
     if int(args.early_stopping_start_epoch) < 1:
         raise ValueError("early_stopping_start_epoch must be >= 1")
     if int(args.early_stopping_patience) < 0:
@@ -1276,6 +1252,202 @@ def main():
     if int(args.val_every_n_epochs) < 1:
         raise ValueError("val_every_n_epochs must be >= 1")
 
+    return args
+
+
+def _build_config_snapshot(args, cfg, resolved_architecture, sam2_identity,
+                              dist_info, control_group, train_flip_prob,
+                              train_vflip_prob, train_ms_resize_prob,
+                              train_ms_mode, train_ms_img_scale,
+                              train_subset_ratio, val_subset_ratio,
+                              warmup_iters, optimizer_steps_per_epoch,
+                              total_optimizer_steps):
+    """Assemble the self-describing snapshot stored in every checkpoint.
+
+    Also returns the five env-derived selection knobs that main()
+    consumes afterwards (eval/bbox-best/composite/early-stop specs).
+    """
+    # === 构建训练 config 快照 (保存到 checkpoint, 推理时可直接加载) ===
+    eval_bbox = _env_flag("EVAL_BBOX", "1")
+    # Historical WHU1024 baseline reports/selects bbox/mAP as its primary bbox
+    # metric.  Keep mAP_75 in the detailed metrics, but do not silently use it
+    # as the headline or best-bbox checkpoint criterion.
+    save_bbox_best_metric = os.environ.get("SAVE_BBOX_BEST_METRIC", "bbox/mAP")
+    save_composite_best = _env_flag("SAVE_COMPOSITE_BEST", "0")
+    composite_metric_spec = os.environ.get(
+        "SAVE_COMPOSITE_WEIGHTS", "0.5*bbox/mAP_75+0.5*segm/mAP_75"
+    )
+    early_stopping_metric_spec = os.environ.get(
+        "EARLY_STOPPING_METRIC", "segm/mAP"
+    )
+    resolved_mask_head_cfg = cfg.model.roi_head.mask_head
+    resolved_point_warmup = dict(
+        resolved_mask_head_cfg.get("point_warmup_cfg", {})
+    )
+    resolved_shape_point_miner = dict(
+        resolved_mask_head_cfg.get("shape_point_miner_cfg", {})
+    )
+    resolved_coarse_loss = dict(
+        resolved_mask_head_cfg.get("coarse_mask_loss_cfg", {})
+    )
+    resolved_shape_prior = dict(
+        resolved_mask_head_cfg.get("shape_prior_cfg", {})
+    )
+    config_snapshot = {
+        "checkpoint_schema_version": 2,
+        "architecture_contract": dict(resolved_architecture),
+        "config_path": str(args.config),
+        "training_args": dict(vars(args)),
+        "train_augmentation": {
+            "flip_prob": train_flip_prob,
+            "vflip_prob": train_vflip_prob,
+            "multi_scale_resize_prob": train_ms_resize_prob,
+            "multi_scale_mode": train_ms_mode,
+            "multi_scale_img_scale": train_ms_img_scale,
+        },
+        # HEAD alone cannot identify the executed code when the working tree
+        # is dirty; carry the dirty flag + diff fingerprint so a checkpoint
+        # uniquely pins its code state (same fields as the runner's
+        # resolved_hyperparameters git_* lines).
+        "git_state": _capture_git_state(),
+        "data_config": {
+            "dataset_format": ("vhr10_coco" if (args.dataset == "vhr10") else "whu_coco"),
+            "data_root": str(args.data_root),
+            "image_size": list(args.image_size),
+            "single_class": not (args.dataset == "vhr10"),
+            "num_classes": 10 if (args.dataset == "vhr10") else 1,
+            "validation": (
+                {
+                    "ann_file": os.environ.get(
+                        "VHR10_VAL_ANN_FILE", "coco_split/instances_val.json"
+                    ),
+                    "image_subdir": os.environ.get(
+                        "VHR10_VAL_IMG_SUBDIR", "positive image set"
+                    ),
+                }
+                if (args.dataset == "vhr10")
+                else {
+                    "ann_file": "2.4 annotation/annotation/validation.json",
+                    "image_subdir": "2.3 valid/validation",
+                }
+            ),
+            "test": (
+                {
+                    "ann_file": os.environ.get(
+                        "VHR10_VAL_ANN_FILE", "coco_split/instances_val.json"
+                    ),
+                    "image_subdir": os.environ.get(
+                        "VHR10_VAL_IMG_SUBDIR", "positive image set"
+                    ),
+                }
+                if (args.dataset == "vhr10")
+                else {
+                    "ann_file": "2.4 annotation/annotation/test.json",
+                    "image_subdir": "2.2 test/test",
+                }
+            ),
+        },
+        "runtime_config": {
+            "sam2_repo": os.environ.get("SAM2_REPO", ""),
+            "sam2_checkpoint": os.environ.get("SAM2_CKPT", ""),
+            "sam2_checkpoint_sha256": sam2_identity[1],
+            "sam2_model_size": os.environ.get("SAM2_MODEL_SIZE", ""),
+            "ddp_timeout_seconds": _resolve_ddp_timeout_seconds(),
+            "ddp_control_backend": "gloo" if control_group is not None else "none",
+            "ddp_control_timeout_seconds": _resolve_ddp_control_timeout_seconds(),
+        },
+        "train_subset_ratio": float(train_subset_ratio),
+        "val_subset_ratio": float(val_subset_ratio),
+        # Display-only mirror of the prompt form (the whole env-mirror family
+        # is gone: nothing re-reads these keys at checkpoint load time).
+        "explicit_prompt_mode": os.environ.get("EXPLICIT_PROMPT_MODE", ""),
+        "neck_type": os.environ.get("NECK_TYPE", ""),
+        "eval_bbox": int(eval_bbox),
+        "save_bbox_best_metric": save_bbox_best_metric,
+        "save_composite_best": int(save_composite_best),
+        "composite_metric_spec": composite_metric_spec,
+        "early_stopping_metric_spec": early_stopping_metric_spec,
+        "early_stopping_patience": int(args.early_stopping_patience),
+        "early_stopping_start_epoch": int(args.early_stopping_start_epoch),
+        "early_stopping_min_delta": float(args.early_stopping_min_delta),
+        "early_stopping_smooth_window": int(
+            args.early_stopping_smooth_window
+        ),
+        "point_warmup": {
+            "enabled": bool(resolved_point_warmup.get("enabled", False)),
+            "no_point_epochs": int(
+                resolved_point_warmup.get("no_point_epochs", 0)
+            ),
+            "one_pair_epochs": int(
+                resolved_point_warmup.get("one_pair_epochs", 0)
+            ),
+            "full_2p2n_start_epoch": int(
+                resolved_point_warmup.get("full_2p2n_start_epoch", 1)
+            ),
+        },
+        "shape_point_mining": {
+            "adaptive_validity": bool(
+                resolved_shape_point_miner.get("adaptive_validity", False)
+            ),
+        },
+        "shape_loss_schedule": {
+            "mode": resolved_coarse_loss.get("schedule_mode", "fixed"),
+            "fixed_weight": float(resolved_coarse_loss.get("weight", 0.0)),
+            "ranges": [
+                dict(item)
+                for item in resolved_coarse_loss.get("weight_schedule", [])
+            ],
+        },
+        "shape_dense_gate": {
+            "mode": resolved_shape_prior.get("shape_scale_mode", ""),
+            "init": resolved_shape_prior.get("prompt_scale_init", ""),
+        },
+        "shape_prior_loss_weight": float(
+            resolved_mask_head_cfg.get("shape_prior_loss_weight", 0.0)
+        ),
+        "p2_boundary_refiner": dict(
+            resolved_mask_head_cfg.get("p2_boundary_refiner_cfg", {})
+        ),
+        "init_from": args.init_from or "",
+        "init_exclude_prefixes": args.init_exclude_prefixes,
+        "seed": args.seed,
+        "lr": args.lr,
+        "batch_size": args.batch_size,
+        "grad_accum_steps": args.grad_accum_steps,
+        "epochs": args.epochs,
+        "warmup_iters": warmup_iters,
+        # 问题 10：scheduler 真实进度依据（optimizer step 维度）
+        "optimizer_steps_per_epoch": optimizer_steps_per_epoch,
+        "total_optimizer_steps": total_optimizer_steps,
+        "effective_batch_size": args.batch_size * args.grad_accum_steps * max(1, int(os.environ.get("WORLD_SIZE", "1"))),
+        "weight_decay": args.weight_decay,
+        "lr_mults": {
+            "backbone": args.backbone_lr_mult,
+            "other": args.other_lr_mult,
+            "bbox_head": args.bbox_head_lr_mult,
+            "mask_decoder": args.mask_decoder_lr_mult,
+            "no_mask": args.no_mask_lr_mult,
+            "prompt_encoder": args.prompt_encoder_lr_mult,
+            "shape_prior": args.shape_prior_lr_mult,
+        },
+        "image_size": list(args.image_size),
+        "mask_head_config": dict(cfg.model.roi_head.mask_head)
+            if hasattr(cfg.model.roi_head, "mask_head") else {},
+        "neck_config": dict(cfg.model.get("neck", {})),
+        # 完整解析后的 cfg.model (含 type/backbone/roi_head/...): 推理时可据此直接重建模型,
+        # 无需再传 .py config 或重设环境变量。新字段, 旧 ckpt 没有时推理脚本自动 fallback。
+        "model_config": cfg.model.to_dict(),
+    }
+
+    knobs = (
+        eval_bbox, save_bbox_best_metric, save_composite_best,
+        composite_metric_spec, early_stopping_metric_spec,
+    )
+    return config_snapshot, knobs
+
+
+def main():
+    args = _parse_args()
     project_root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(project_root))
 
@@ -1327,9 +1499,7 @@ def main():
     control_group = dist_info.get("control_group")
 
     if torch.cuda.is_available():
-        device = (
-            f"cuda:{dist_info['local_rank']}" if distributed else f"cuda:{args.gpu_id}"
-        )
+        device = f"cuda:{dist_info['local_rank']}" if distributed else "cuda:0"
     else:
         device = "cpu"
 
@@ -1391,7 +1561,7 @@ def main():
     if args.freeze_bn:
         _set_norm_eval(model)
 
-    if distributed and not args.use_fsdp:
+    if distributed:
         from torch.nn.parallel import DistributedDataParallel as DDP
 
         # find_unused_parameters=True：PE freeze_all=True 后有参数不收梯度，
@@ -1408,13 +1578,6 @@ def main():
 
     train_subset_ratio = float(args.train_subset_ratio)
     val_subset_ratio = float(args.val_subset_ratio)
-    if args.subset_ratio is not None:
-        if args.train_subset_ratio != 1.0 or args.val_subset_ratio != 1.0:
-            raise ValueError(
-                "--subset-ratio cannot be combined with --train-subset-ratio "
-                "or --val-subset-ratio"
-            )
-        train_subset_ratio = val_subset_ratio = float(args.subset_ratio)
     for name, value in (
         ("train_subset_ratio", train_subset_ratio),
         ("val_subset_ratio", val_subset_ratio),
@@ -1481,7 +1644,7 @@ def main():
             rank=rank,
             world_size=int(dist_info.get("world_size", 1)),
             val_batch_size=args.val_batch_size,
-            dataset_format=("vhr10_coco" if args.use_vhr10_coco else "whu_coco"),
+            dataset_format=("vhr10_coco" if (args.dataset == "vhr10") else "whu_coco"),
             vhr10_train_ann_file=os.environ.get(
                 "VHR10_TRAIN_ANN_FILE", "coco_split/instances_train.json"
             ),
@@ -1579,8 +1742,8 @@ def main():
     optimizer = _build_optimizer(
         model.module if hasattr(model, "module") else model,
         lr=args.lr,
-        sat_backbone_lr_mult=args.sat_backbone_lr_mult,
-        sat_other_lr_mult=args.sat_other_lr_mult,
+        backbone_lr_mult=args.backbone_lr_mult,
+        other_lr_mult=args.other_lr_mult,
         bbox_head_lr_mult=args.bbox_head_lr_mult,
         mask_decoder_lr_mult=args.mask_decoder_lr_mult,
         no_mask_lr_mult=args.no_mask_lr_mult,
@@ -1628,195 +1791,16 @@ def main():
     amp_enabled = bool(args.amp) and torch.cuda.is_available()
     scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)
 
-    # === 构建训练 config 快照 (保存到 checkpoint, 推理时可直接加载) ===
-    eval_bbox = _env_flag("EVAL_BBOX", "1")
-    # Historical WHU1024 baseline reports/selects bbox/mAP as its primary bbox
-    # metric.  Keep mAP_75 in the detailed metrics, but do not silently use it
-    # as the headline or best-bbox checkpoint criterion.
-    save_bbox_best_metric = os.environ.get("SAVE_BBOX_BEST_METRIC", "bbox/mAP")
-    save_composite_best = _env_flag("SAVE_COMPOSITE_BEST", "0")
-    composite_metric_spec = os.environ.get(
-        "SAVE_COMPOSITE_WEIGHTS", "0.5*bbox/mAP_75+0.5*segm/mAP_75"
+    config_snapshot, (
+        eval_bbox, save_bbox_best_metric, save_composite_best,
+        composite_metric_spec, early_stopping_metric_spec,
+    ) = _build_config_snapshot(
+        args, cfg, resolved_architecture, sam2_identity, dist_info,
+        control_group, train_flip_prob, train_vflip_prob,
+        train_ms_resize_prob, train_ms_mode, train_ms_img_scale,
+        train_subset_ratio, val_subset_ratio, warmup_iters,
+        optimizer_steps_per_epoch, total_optimizer_steps,
     )
-    early_stopping_metric_spec = os.environ.get(
-        "EARLY_STOPPING_METRIC", "segm/mAP"
-    )
-    resolved_mask_head_cfg = cfg.model.roi_head.mask_head
-    resolved_point_warmup = dict(
-        resolved_mask_head_cfg.get("point_warmup_cfg", {})
-    )
-    resolved_shape_point_miner = dict(
-        resolved_mask_head_cfg.get("shape_point_miner_cfg", {})
-    )
-    resolved_coarse_loss = dict(
-        resolved_mask_head_cfg.get("coarse_mask_loss_cfg", {})
-    )
-    resolved_shape_prior = dict(
-        resolved_mask_head_cfg.get("shape_prior_cfg", {})
-    )
-    config_snapshot = {
-        "checkpoint_schema_version": 2,
-        "architecture_contract": dict(resolved_architecture),
-        "config_path": str(args.config),
-        "training_args": dict(vars(args)),
-        "train_augmentation": {
-            "flip_prob": train_flip_prob,
-            "vflip_prob": train_vflip_prob,
-            "multi_scale_resize_prob": train_ms_resize_prob,
-            "multi_scale_mode": train_ms_mode,
-            "multi_scale_img_scale": train_ms_img_scale,
-        },
-        # HEAD alone cannot identify the executed code when the working tree
-        # is dirty; carry the dirty flag + diff fingerprint so a checkpoint
-        # uniquely pins its code state (same fields as the runner's
-        # resolved_hyperparameters git_* lines).
-        "git_state": _capture_git_state(),
-        "data_config": {
-            "dataset_format": ("vhr10_coco" if args.use_vhr10_coco else "whu_coco"),
-            "data_root": str(args.data_root),
-            "image_size": list(args.image_size),
-            "single_class": not args.use_vhr10_coco,
-            "num_classes": 10 if args.use_vhr10_coco else 1,
-            "validation": (
-                {
-                    "ann_file": os.environ.get(
-                        "VHR10_VAL_ANN_FILE", "coco_split/instances_val.json"
-                    ),
-                    "image_subdir": os.environ.get(
-                        "VHR10_VAL_IMG_SUBDIR", "positive image set"
-                    ),
-                }
-                if args.use_vhr10_coco
-                else {
-                    "ann_file": "2.4 annotation/annotation/validation.json",
-                    "image_subdir": "2.3 valid/validation",
-                }
-            ),
-            "test": (
-                {
-                    "ann_file": os.environ.get(
-                        "VHR10_VAL_ANN_FILE", "coco_split/instances_val.json"
-                    ),
-                    "image_subdir": os.environ.get(
-                        "VHR10_VAL_IMG_SUBDIR", "positive image set"
-                    ),
-                }
-                if args.use_vhr10_coco
-                else {
-                    "ann_file": "2.4 annotation/annotation/test.json",
-                    "image_subdir": "2.2 test/test",
-                }
-            ),
-        },
-        "runtime_config": {
-            "sam2_repo": os.environ.get("SAM2_REPO", ""),
-            "sam2_checkpoint": os.environ.get("SAM2_CKPT", ""),
-            "sam2_checkpoint_sha256": sam2_identity[1],
-            "sam2_model_size": os.environ.get("SAM2_MODEL_SIZE", ""),
-            "ddp_timeout_seconds": _resolve_ddp_timeout_seconds(),
-            "ddp_control_backend": "gloo" if control_group is not None else "none",
-            "ddp_control_timeout_seconds": _resolve_ddp_control_timeout_seconds(),
-        },
-        "train_subset_ratio": float(train_subset_ratio),
-        "val_subset_ratio": float(val_subset_ratio),
-        "prompt_generator_mode": os.environ.get(
-            "PROMPT_GENERATOR_MODE", "explicit_mask"
-        ),
-        "explicit_prompt_mode": os.environ.get("EXPLICIT_PROMPT_MODE", ""),
-        "prompt_sparse_mode": os.environ.get("PROMPT_SPARSE_MODE", ""),
-        "prompt_encoder_enabled": os.environ.get("PROMPT_ENCODER_ENABLED", ""),
-        "shape_prior_enabled": os.environ.get("SHAPE_PRIOR_ENABLED", ""),
-        "explicit_use_box_prompt": os.environ.get("EXPLICIT_USE_BOX_PROMPT", ""),
-        "use_shape_dense": os.environ.get("USE_SHAPE_DENSE", ""),
-        "prompt_mode": os.environ.get("PROMPT_MODE", ""),
-        "neck_type": os.environ.get("NECK_TYPE", ""),
-        "prompt_dense_mode": os.environ.get("PROMPT_DENSE_MODE", ""),
-        "eval_bbox": int(eval_bbox),
-        "save_bbox_best_metric": save_bbox_best_metric,
-        "save_composite_best": int(save_composite_best),
-        "composite_metric_spec": composite_metric_spec,
-        "early_stopping_metric_spec": early_stopping_metric_spec,
-        "early_stopping_patience": int(args.early_stopping_patience),
-        "early_stopping_start_epoch": int(args.early_stopping_start_epoch),
-        "early_stopping_min_delta": float(args.early_stopping_min_delta),
-        "early_stopping_smooth_window": int(
-            args.early_stopping_smooth_window
-        ),
-        "det_loss_schedule": {
-            "stage1_end": int(args.det_loss_stage1_end),
-            "stage2_end": int(args.det_loss_stage2_end),
-            "stage1_weight": float(args.det_loss_weight_stage1),
-            "stage2_weight": float(args.det_loss_weight_stage2),
-            "stage3_weight": float(args.det_loss_weight_stage3),
-        },
-        "point_warmup": {
-            "enabled": bool(resolved_point_warmup.get("enabled", False)),
-            "no_point_epochs": int(
-                resolved_point_warmup.get("no_point_epochs", 0)
-            ),
-            "one_pair_epochs": int(
-                resolved_point_warmup.get("one_pair_epochs", 0)
-            ),
-            "full_2p2n_start_epoch": int(
-                resolved_point_warmup.get("full_2p2n_start_epoch", 1)
-            ),
-        },
-        "shape_point_mining": {
-            "adaptive_validity": bool(
-                resolved_shape_point_miner.get("adaptive_validity", False)
-            ),
-        },
-        "shape_loss_schedule": {
-            "mode": resolved_coarse_loss.get("schedule_mode", "fixed"),
-            "fixed_weight": float(resolved_coarse_loss.get("weight", 0.0)),
-            "ranges": [
-                dict(item)
-                for item in resolved_coarse_loss.get("weight_schedule", [])
-            ],
-        },
-        "shape_dense_gate": {
-            "mode": resolved_shape_prior.get("shape_scale_mode", ""),
-            "init": resolved_shape_prior.get("prompt_scale_init", ""),
-        },
-        "freeze_decoder": os.environ.get("FREEZE_DECODER", ""),
-        "freeze_no_mask": os.environ.get("FREEZE_NO_MASK", ""),
-        "shape_prior_loss_weight": float(
-            resolved_mask_head_cfg.get("shape_prior_loss_weight", 0.0)
-        ),
-        "p2_boundary_refiner": dict(
-            resolved_mask_head_cfg.get("p2_boundary_refiner_cfg", {})
-        ),
-        "init_from": args.init_from or "",
-        "init_exclude_prefixes": args.init_exclude_prefixes,
-        "seed": args.seed,
-        "lr": args.lr,
-        "batch_size": args.batch_size,
-        "grad_accum_steps": args.grad_accum_steps,
-        "epochs": args.epochs,
-        "warmup_iters": warmup_iters,
-        # 问题 10：scheduler 真实进度依据（optimizer step 维度）
-        "optimizer_steps_per_epoch": optimizer_steps_per_epoch,
-        "total_optimizer_steps": total_optimizer_steps,
-        "effective_batch_size": args.batch_size * args.grad_accum_steps * max(1, int(os.environ.get("WORLD_SIZE", "1"))),
-        "weight_decay": args.weight_decay,
-        "lr_mults": {
-            "sat_backbone": args.sat_backbone_lr_mult,
-            "sat_other": args.sat_other_lr_mult,
-            "bbox_head": args.bbox_head_lr_mult,
-            "mask_decoder": args.mask_decoder_lr_mult,
-            "no_mask": args.no_mask_lr_mult,
-            "prompt_encoder": args.prompt_encoder_lr_mult,
-            "shape_prior": args.shape_prior_lr_mult,
-        },
-        "image_size": list(args.image_size),
-        "mask_head_config": dict(cfg.model.roi_head.mask_head)
-            if hasattr(cfg.model.roi_head, "mask_head") else {},
-        "neck_config": dict(cfg.model.get("neck", {})),
-        # 完整解析后的 cfg.model (含 type/backbone/roi_head/...): 推理时可据此直接重建模型,
-        # 无需再传 .py config 或重设环境变量。新字段, 旧 ckpt 没有时推理脚本自动 fallback。
-        "model_config": cfg.model.to_dict(),
-    }
-
     start_epoch = 0
     best_val_loss = float("inf")
     best_train_loss = float("inf")
@@ -1839,7 +1823,7 @@ def main():
             logger.info(
                 "EMA enabled: decay=%.4f update_every=%d eval=%d save_best=%d eval_start_epoch=%d",
                 float(args.ema_decay), int(args.ema_update_every),
-                int(args.ema_eval), int(args.ema_save_best), int(args.ema_eval_start_epoch),
+                int(args.ema_eval), int(args.ema_eval_start_epoch),
             )
 
     if args.resume_from and args.init_from:
@@ -1946,7 +1930,6 @@ def main():
     for epoch in range(start_epoch, args.epochs):
         epoch_number = epoch + 1
         _set_model_current_epoch(model, epoch_number)
-        det_loss_weight = _detection_loss_weight(args, epoch_number)
         if distributed:
             sampler = getattr(train_loader, "sampler", None)
             if isinstance(sampler, DistributedSampler):
@@ -1982,50 +1965,9 @@ def main():
             gt_labels = [l.to(device) for l in batch["gt_labels"]]
             gt_masks = batch["gt_masks"]
 
-            # Prepare data_samples and move to device
-            data_samples: List[DetDataSample] = []
-            for i in range(len(imgs)):
-                ds = DetDataSample()
-                ds.set_metainfo(img_metas[i])
-                gt_instances = InstanceData()
-                num_inst = len(gt_labels[i])
-                if num_inst > 0:
-                    valid_mask = gt_labels[i] >= 0
-                    num_valid = int(valid_mask.sum().item())
-                    if num_valid > 0:
-                        valid_indices = (
-                            valid_mask.nonzero().squeeze(-1)[:num_valid].cpu()
-                        )
-                        gt_instances.bboxes = gt_bboxes[i][valid_indices]
-                        gt_instances.labels = gt_labels[i][valid_indices]
-                        masks = gt_masks[i][valid_indices.cpu().numpy()]
-                        gt_instances.masks = BitmapMasks(
-                            masks, *img_metas[i]["img_shape"]
-                        )
-                    else:
-                        gt_instances.bboxes = torch.zeros(
-                            (0, 4), dtype=torch.float32, device=device
-                        )
-                        gt_instances.labels = torch.zeros(
-                            (0,), dtype=torch.int64, device=device
-                        )
-                        gt_instances.masks = BitmapMasks(
-                            np.zeros((0, *img_metas[i]["img_shape"]), dtype=np.uint8),
-                            *img_metas[i]["img_shape"],
-                        )
-                else:
-                    gt_instances.bboxes = torch.zeros(
-                        (0, 4), dtype=torch.float32, device=device
-                    )
-                    gt_instances.labels = torch.zeros(
-                        (0,), dtype=torch.int64, device=device
-                    )
-                    gt_instances.masks = BitmapMasks(
-                        np.zeros((0, *img_metas[i]["img_shape"]), dtype=np.uint8),
-                        *img_metas[i]["img_shape"],
-                    )
-                ds.gt_instances = gt_instances
-                data_samples.append(ds.to(device))
+            data_samples = _build_gt_data_samples(
+                imgs, img_metas, gt_bboxes, gt_labels, gt_masks, device
+            )
 
             # Match the historical WHU1024 baseline: empty-GT training batches
             # still enter the detector loss. A rank-local early continue here
@@ -2046,20 +1988,18 @@ def main():
                 # Invoke the DDP wrapper itself. Calling ``model.module.loss``
                 # bypasses DDP's reducer and makes each rank update independently.
                 loss_dict = model(model_inputs, data_samples, mode="loss")
-                loss_dict = _apply_detection_loss_weight(
-                    loss_dict, det_loss_weight, device
-                )
-                # Key-name filter matters: telemetry tensors (TAIL/*, SP/*)
-                # live in the same dict and must never join the loss sum.
+                # The loss channel contains ONLY backward-able losses by
+                # construction, so every tensor joins the sum — no key-name
+                # filtering to drift out of sync with the model side.  mmdet
+                # RPN emits per-image lists; extend preserves the historical
+                # addition order bit-for-bit.
                 loss_parts = []
-                for k, v in loss_dict.items():
-                    if "loss" not in k:
-                        continue
-                    if isinstance(v, torch.Tensor):
-                        loss_parts.append(v)
-                    elif isinstance(v, (list, tuple)):
+                for value in loss_dict.values():
+                    if isinstance(value, torch.Tensor):
+                        loss_parts.append(value)
+                    elif isinstance(value, (list, tuple)):
                         loss_parts.extend(
-                            x for x in v if isinstance(x, torch.Tensor)
+                            item for item in value if isinstance(item, torch.Tensor)
                         )
                 loss = sum(loss_parts) if loss_parts else torch.tensor(0.0, device=device)
                 # 审查 3.6 / 问题 10：loss 归一化按当前 batch 所属 accumulation group 的
@@ -2075,17 +2015,19 @@ def main():
             if _seg_timing:
                 _seg_sum["prep"] += _seg_t1 - _seg_t0
                 _seg_sum["fwd"] += _seg_t2 - _seg_t1
-            # Record detailed losses
+            # Record losses plus this iteration's loss-path telemetry.
             for k, v in loss_dict.items():
                 if isinstance(v, torch.Tensor):
-                    val = v.detach().item()
-                    loss_meter[k] = loss_meter.get(k, 0.0) + val
-                elif isinstance(v, list):
-                    # Handle case where loss might be a list of tensors (though rare in final output dict)
-                    val = sum(
-                        x.detach().item() for x in v if isinstance(x, torch.Tensor)
+                    loss_meter[k] = loss_meter.get(k, 0.0) + v.detach().item()
+                elif isinstance(v, (list, tuple)):
+                    loss_meter[k] = loss_meter.get(k, 0.0) + sum(
+                        item.detach().item() for item in v if isinstance(item, torch.Tensor)
                     )
-                    loss_meter[k] = loss_meter.get(k, 0.0) + val
+            core = model.module if hasattr(model, "module") else model
+            telemetry_stash = getattr(core.roi_head, "_loss_telemetry", None) or {}
+            for k, v in telemetry_stash.items():
+                if isinstance(v, torch.Tensor):
+                    loss_meter[k] = loss_meter.get(k, 0.0) + v.detach().item()
             _accumulate_dense_residual_monitor(
                 model, dense_monitor_sums, dense_monitor_counts
             )
@@ -2126,7 +2068,7 @@ def main():
                 and global_step % args.prompt_debug_stats_interval == 0
             )
             if is_main and prompt_stats_due:
-                _log_uav_debug_stats(model, epoch, global_step, _PROMPT_TELEMETRY_PREFIXES)
+                _log_forward_telemetry(model, epoch, global_step, _PROMPT_TELEMETRY_PREFIXES)
             _seg_t3 = time.perf_counter() if _seg_timing else 0.0
             if _seg_timing:
                 _seg_sum["item"] += _seg_t3 - _seg_t2
@@ -2245,8 +2187,8 @@ def main():
                     100.0 * shape_component / component_total,
                 )
             logger.info(
-                "Epoch %d schedule: det_loss_weight=%.3f early_stop_start=%d min_delta=%.4g",
-                epoch_number, det_loss_weight,
+                "Epoch %d schedule: early_stop_start=%d min_delta=%.4g",
+                epoch_number,
                 int(args.early_stopping_start_epoch),
                 float(args.early_stopping_min_delta),
             )
@@ -2324,54 +2266,9 @@ def main():
                     gt_labels = [l.to(device) for l in batch["gt_labels"]]
                     gt_masks = batch["gt_masks"]
 
-                    # Prepare data_samples and move to device
-                    data_samples = []
-                    for i in range(len(imgs)):
-                        ds = DetDataSample()
-                        ds.set_metainfo(img_metas[i])
-                        gt_instances = InstanceData()
-                        num_inst = len(gt_labels[i])
-                        if num_inst > 0:
-                            valid_mask = gt_labels[i] >= 0
-                            num_valid = int(valid_mask.sum().item())
-                            if num_valid > 0:
-                                valid_indices = (
-                                    valid_mask.nonzero().squeeze(-1)[:num_valid].cpu()
-                                )
-                                gt_instances.bboxes = gt_bboxes[i][valid_indices]
-                                gt_instances.labels = gt_labels[i][valid_indices]
-                                masks = gt_masks[i][valid_indices.cpu().numpy()]
-                                gt_instances.masks = BitmapMasks(
-                                    masks, *img_metas[i]["img_shape"]
-                                )
-                            else:
-                                gt_instances.bboxes = torch.zeros(
-                                    (0, 4), dtype=torch.float32, device=device
-                                )
-                                gt_instances.labels = torch.zeros(
-                                    (0,), dtype=torch.int64, device=device
-                                )
-                                gt_instances.masks = BitmapMasks(
-                                    np.zeros(
-                                        (0, *img_metas[i]["img_shape"]), dtype=np.uint8
-                                    ),
-                                    *img_metas[i]["img_shape"],
-                                )
-                        else:
-                            gt_instances.bboxes = torch.zeros(
-                                (0, 4), dtype=torch.float32, device=device
-                            )
-                            gt_instances.labels = torch.zeros(
-                                (0,), dtype=torch.int64, device=device
-                            )
-                            gt_instances.masks = BitmapMasks(
-                                np.zeros(
-                                    (0, *img_metas[i]["img_shape"]), dtype=np.uint8
-                                ),
-                                *img_metas[i]["img_shape"],
-                            )
-                        ds.gt_instances = gt_instances
-                        data_samples.append(ds.to(device))
+                    data_samples = _build_gt_data_samples(
+                        imgs, img_metas, gt_bboxes, gt_labels, gt_masks, device
+                    )
 
                     # Optional validation loss is a second model forward. Public
                     # ablation runners disable it for fast point screening; all
@@ -2402,24 +2299,15 @@ def main():
                     # ---- Compute loss ----
                     if args.compute_val_loss and val_batch_has_valid_gt:
                         loss_dict = model_for_eval.loss(model_inputs, data_samples)
-                        loss_dict = _apply_detection_loss_weight(
-                            loss_dict, det_loss_weight, device
-                        )
-                        val_loss_parts = []
-                        for k, v in loss_dict.items():
-                            if "loss" not in k.lower():
-                                continue
-                            if isinstance(v, torch.Tensor):
-                                val_loss_parts.append(v)
-                            elif isinstance(v, (list, tuple)):
-                                val_loss_parts.extend(
-                                    x for x in v if isinstance(x, torch.Tensor)
+                        loss_parts = []
+                        for value in loss_dict.values():
+                            if isinstance(value, torch.Tensor):
+                                loss_parts.append(value)
+                            elif isinstance(value, (list, tuple)):
+                                loss_parts.extend(
+                                    item for item in value if isinstance(item, torch.Tensor)
                                 )
-                        loss = (
-                            sum(val_loss_parts)
-                            if val_loss_parts
-                            else torch.tensor(0.0, device=device)
-                        )
+                        loss = sum(loss_parts) if loss_parts else torch.tensor(0.0, device=device)
                         total_val_loss += float(loss.detach().item())
                         val_batches += 1
 
@@ -2576,7 +2464,7 @@ def main():
                 # The segmentation score contract is stored in cfg.model and
                 # consumed identically by validation and checkpoint inference.
                 # Bbox candidate selection/ranking always remains detector-score based.
-                eval_categories = VHR10_CATEGORIES if args.use_vhr10_coco else None
+                eval_categories = VHR10_CATEGORIES if (args.dataset == "vhr10") else None
                 coco_gt, coco_bbox_dt = build_coco_gt_and_dt(
                     all_gt, all_dt, all_img_metas, score_key="scores",
                     categories=eval_categories,

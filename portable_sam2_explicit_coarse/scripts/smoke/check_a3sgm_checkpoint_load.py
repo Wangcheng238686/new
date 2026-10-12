@@ -31,10 +31,16 @@ DEFAULT_CKPT_ROOT = (
 #   predates the decoder-tail ID suffix, so it also regression-tests the
 #   legacy pre-tail ID compat rule in infer_from_checkpoint.
 # - WHU best (E118, raw + EMA) is the a3sgm WHU full run.
+# The four ablation arms guard the paper's NWPU ablation table (P/B/P+B/P+M)
+# and the pruned architecture_id() branches (r1_c3 + pafpn_coarse_* IDs).
 CHECKPOINTS = [
     ("nwpu_a3sgm_best_composite", "vhr10_p2v2_matrix300_a3sgm_pbm_sg_udprk64tm_tr1.0_va1.0/best_composite_model_epoch270.pth", "model"),
     ("whu_a3sgm_best_e118", "whu1024_a3sgm_roilocal_full_fast_tr1.0_va1.0/best_model_epoch118.pth", "model"),
     ("whu_a3sgm_best_e118_ema", "whu1024_a3sgm_roilocal_full_fast_tr1.0_va1.0/best_model_epoch118.pth", "ema"),
+    ("nwpu_ablation_p", "vhr10_p2v2_matrix300_p_point_tr1.0_va1.0/best_model_epoch155.pth", "model"),
+    ("nwpu_ablation_b", "vhr10_p2v2_matrix300_b_box_tr1.0_va1.0/best_model_epoch185.pth", "model"),
+    ("nwpu_ablation_pb", "vhr10_p2v2_matrix300_pb_tr1.0_va1.0/best_model_epoch155.pth", "model"),
+    ("nwpu_ablation_a0_sg", "vhr10_p2v2_matrix300_a0_sg_tr1.0_va1.0/best_model_epoch155.pth", "model"),
 ]
 
 

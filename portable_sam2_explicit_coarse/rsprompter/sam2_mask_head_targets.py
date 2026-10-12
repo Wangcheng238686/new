@@ -219,10 +219,7 @@ class _MaskHeadTargetsMixin:
             pos_priors_list = [res.pos_priors for res in sampling_results]
         gt_masks = [res.masks for res in batch_gt_instances]
         device = pos_priors_list[0].device if pos_priors_list else torch.device("cpu")
-        if mask_size is None:
-            roi_h = roi_w = self.roi_mask_size
-        else:
-            roi_h, roi_w = int(mask_size[0]), int(mask_size[1])
+        roi_h, roi_w = int(mask_size[0]), int(mask_size[1])
         coarse_targets_list = []
         for pos_priors, pos_gt_inds, gt_mask in zip(
             pos_priors_list, pos_assigned_gt_inds, gt_masks
@@ -294,9 +291,9 @@ class _MaskHeadTargetsMixin:
             mask_size=target_size, prompt_pos_priors=prompt_pos_priors,
         )
         gt_point_stats = self._shape_point_gt_stats(coarse_targets)
-        if not hasattr(self, "_last_uav_debug_stats") or self._last_uav_debug_stats is None:
-            self._last_uav_debug_stats = {}
-        self._last_uav_debug_stats.update(gt_point_stats)
+        if not hasattr(self, "_forward_telemetry") or self._forward_telemetry is None:
+            self._forward_telemetry = {}
+        self._forward_telemetry.update(gt_point_stats)
         return self.coarse_mask_loss_module(shape_prior_mask_logits, coarse_targets)
 
     def loss_and_target(

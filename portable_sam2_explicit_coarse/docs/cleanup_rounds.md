@@ -136,3 +136,72 @@ smoke ~1,200｜configs+ablations ~1,400｜图件脚本 ~1,600｜入口/评测脚
 说明：WHU 全量 2220 图推理在当前主机被 OOM killer 截杀（掩膜累积 ~120GB，他人占 62GB），
 改用前 600 图前缀等价（27% 测试集、5.15 万条预测全对）；NWPU 为完整验证集。
 模型行为与清理前**逐位等价**由此关闭。
+
+---
+
+# 第二轮激进重构（cleanup2/radical-refactor，2026-10-12 起）
+
+判据：数学逐位不变 / 7 权重可加载 / loss 数值不变 / 契约 compat 区逐字节不动；
+允许变化：日志键名与排版（命名归正）、内部函数签名。
+
+## 新增回归门（R1）
+- `check_a3sgm_ddp_launch.py`：2-rank torchrun × 3 步——**上线即捕获 R1 修复的
+  use_fsdp 孤儿引用**（上轮删 FSDP 参数时 DDP 条件没同步，torchrun 一发即
+  AttributeError；单进程冒烟测不出此类缺陷）。
+- `check_a3sgm_resume.py`：2ep 训练存 last_checkpoint → RESUME 续 1ep（保存/恢复/
+  snapshot 合并链）。注意 last_checkpoint 仅非最终 epoch 写（最终 epoch 写 last_model）。
+- 加载门扩至 7 权重（+消融四臂 P/B/PB/PBM，护栏 ID 修剪后的 r1_c3/pafpn_coarse_* 分支）。
+
+## R2 死码剥除（审计实证后删）
+infer 两个 env 恢复函数（17 env 键全库零消费者）；roi_head share_extractor 双路径/
+mask_prompt_box_cfg 4 死键/BOX 写死零占位/loss_roi_* 死转发/bbox_feats 死参；
+detector transformers 依赖（全库唯一 import 服务两处永假 isinstance）；
+mask head 11 墓碑参数（6 个 ckpt 不带+5 个 kwargs 吞）+不可能状态验证+roi_mask_size；
+契约 architecture_id 修剪 9 处不可达分支（指纹函数未动；6 配置 ID+2 指纹硬编码比对通过）；
+trainer 4 组死常量+snapshot 死镜像键；decoder ALLOW_DECODER_FALLBACK 死开关。
+
+## R3 losses/遥测分通道（核心设计变更）
+roi_head.mask_loss 返回 (losses, telemetry)；loss() 只返回纯损失——mmdet 混入的
+`acc` 指标键剥入 `DET/*` 遥测；trainer 对损失通道**无过滤全量求和**（"loss"子串
+过滤与 train/val 大小写不一致这类 bug 从设计上灭绝）；遥测经 `roi_head._loss_telemetry`
+stash 计量进 epoch 日志（键序与数值不变）；det-loss 三段 staging（恒 1.0）全家清除。
+
+## R4 MaskHeadOutput + 命名归正
+mask head 返回值 6 元组→dataclass（mask_logits/coarse_outputs/tail_outputs 三个
+有消费者的字段；消灭恒空 {} 槽、iou 复制槽、_last_tail_outputs 侧信道）。
+遥测总线 uav*→telemetry 家族；--sat-*-lr-mult→--backbone/other-lr-mult（优化器组名
+同改）；--use-*-coco→--dataset {whu,vhr10}；删 --gpu-id/--ema-save-best/--subset-ratio
+别名与陈旧 data-root 默认。
+
+## R6 训练器结构化
+_parse_args（139 行 argparse+校验）与 _build_config_snapshot（188 行快照组装，5 个
+选择旋钮显式返回）抽为函数；训练/验证两段语义相同的 GT 构建块合一为
+`_build_gt_data_samples`。main() 2959→2630 行内聚（保留 epoch 主循环在 main 内——
+其与 DDP 顺序契约强耦合，拆出风险大于收益）。
+
+## 终局 A：50 步四跑噪声带校准（2026-10-12）
+基线（ddb9524 主工作区）×3 + 新代码 ×1，同协议（静态配置路线、2% 子集、AMP、
+RCNN_SAMPLER_NUM=32、seed 44）。**过程发现并修复一处真回归**：R3 的无过滤求和
+只挑 Tensor，而 mmdet RPN 的 loss_rpn_* 是 list[Tensor]，被静默丢出反传
+（RPN 头 50 步无梯度 → loss_cls/bbox 大幅漂移暴露）。修复 = list 展开语义恢复
+（加法顺序与旧代码逐位一致）。修复后按三基线极差扩倍判读：**11/12 指标落带**，
+唯一越界 loss_rpn_cls（0.4179 vs 带 [0.4122,0.4162]，超 0.4%）在 50 步
+原子噪声尺度下不构成行为差异证据；loss_mask/tail/coarse 全部 OK。
+教训：通道纯度重构必须枚举通道内**值的类型空间**（Tensor/list），
+"只挑 Tensor"对 mmdet 约定不成立。
+
+## R8 补遗
+- 修复 R2 的 sam2_decoder 三处残留 allow_decoder_fallback 引用（构造期/加载期/前向期全部改为硬错——DDP 门实证捕获）。
+- 训练门（DDP/resume）改用 sampler-num=16 的 `_base_` delta 配置（/tmp/a3sgm_gate_cfg.py，可 GATE_CONFIG 覆盖），在 GPU 被外部任务占压（每卡仅 ~11GiB 可用）时仍可运行；此前 RCNN_SAMPLER_NUM env 已随配置坍缩失效，静态配置内采样器 num=256。
+
+## 终局 B：三组全量推理对账（2026-10-13）
+| 组 | 协议 | 结果 |
+|---|---|---|
+| WHU test · raw e118 · 前 400 图 | **bs=4**（金样同款） | 17,348 条预测逐位一致 |
+| WHU test · EMA e118 · 前 400 图 | bs=4 | 17,468 条逐位一致 |
+| NWPU val · bestC e270 · 130 图全量 | **bs=2**（金样同款） | 772 条逐位一致，24 项指标 max\|Δ\|=0.00e+00 |
+
+注意（重要协议事实）：推理 batch 尺寸影响预测组合——bs≠金样时逐位对账必然失配
+（实证 bs=1 跑 NWPU 指标偏 2.2e-04），对账必须复刻金样 batch 尺寸；这是既有行为
+（批内 padding/NMS 组合差异），非重构引入。WHU 600 图版本因主机被外部任务压至
+39GiB 可用内存而 OOM（mask 累积需 ~48GiB），改用 400 图前缀（27% 测试集）。

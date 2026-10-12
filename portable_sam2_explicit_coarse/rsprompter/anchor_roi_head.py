@@ -59,11 +59,11 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             for feat in x
         )
 
-    def get_prompt_debug_stats(self) -> Dict[str, object]:
+    def get_telemetry(self) -> Dict[str, object]:
         stats: Dict[str, object] = {}
         mask_head = getattr(self, "mask_head", None)
-        if mask_head is not None and hasattr(mask_head, "get_uav_debug_stats"):
-            stats.update(mask_head.get_uav_debug_stats())
+        if mask_head is not None and hasattr(mask_head, "get_forward_telemetry"):
+            stats.update(mask_head.get_forward_telemetry())
         for key, value in (getattr(self, "_last_coarse_stats", {}) or {}).items():
             stats[f"COARSE/{key}"] = value
         stats.update(getattr(self, "_last_box_jitter_stats", {}) or {})
@@ -82,8 +82,6 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         _ratio("SP/mean_point_distance", "SP/point_distance_sum", "SP/point_pair_count")
         _ratio("SP/point_overlap_ratio", "SP/point_overlap_count", "SP/point_pair_count")
         _ratio("JITTER/area_ratio_mean", "JITTER/area_ratio_sum", "JITTER/area_ratio_count")
-        _ratio("BOX/fallback_ratio", "BOX/fallback_count", "BOX/num_rois")
-        _ratio("BOX/refined_proposal_iou", "BOX/refined_proposal_iou_sum", "BOX/refined_valid_count")
         _ratio("SP/p1_valid_ratio", "SP/p1_valid_count", "SP/roi_count")
         _ratio("SP/p2_valid_ratio", "SP/p2_valid_count", "SP/roi_count")
         _ratio("SP/n1_valid_ratio", "SP/n1_valid_count", "SP/roi_count")
@@ -122,78 +120,35 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
     def _mask_forward(
         self,
         x: Tuple[Tensor],
-        rois: Tensor = None,
-        pos_inds: Optional[Tensor] = None,
-        bbox_feats: Optional[Tensor] = None,
+        rois: Tensor,
         image_embeddings=None,
         image_positional_embeddings=None,
         high_res_features=None,
-        roi_img_ids_override: Optional[Tensor] = None,
-        boxes_override: Optional[Tensor] = None,
     ) -> dict:
-        assert (rois is not None) ^ (pos_inds is not None and bbox_feats is not None)
-        if rois is not None:
-            mask_feats = self.mask_roi_extractor(x[: self.mask_roi_extractor.num_inputs], rois)
-            if self.with_shared_head:
-                mask_feats = self.shared_head(mask_feats)
-        else:
-            assert bbox_feats is not None
-            mask_feats = bbox_feats[pos_inds]
-
-        if rois is not None:
-            prompt_rois = rois
-        elif roi_img_ids_override is not None and boxes_override is not None:
-            prompt_rois = torch.cat(
-                [roi_img_ids_override[:, None].to(boxes_override.dtype), boxes_override],
-                dim=1,
-            )
-        else:
-            prompt_rois = None
-
-        mask_head_out = self.mask_head(
+        # A dedicated mask_roi_extractor is part of the architecture contract;
+        # the shared-extractor variant belonged to removed baseline arms.
+        mask_feats = self.mask_roi_extractor(x[: self.mask_roi_extractor.num_inputs], rois)
+        head_out = self.mask_head(
             mask_feats,
             image_embeddings=image_embeddings,
             image_positional_embeddings=image_positional_embeddings,
-            roi_img_ids=(
-                rois[:, 0]
-                if rois is not None
-                else roi_img_ids_override
-            ),
+            roi_img_ids=rois[:, 0],
             high_res_features=high_res_features,
-            boxes=rois[:, 1:] if rois is not None else boxes_override,
+            boxes=rois[:, 1:],
             p2_feature=x[0],
-            prompt_rois=prompt_rois,
+            prompt_rois=rois,
             renderer_features=x,
         )
-        if len(mask_head_out) != 6:
-            raise RuntimeError(
-                "Canonical mask head must return 6 values, got "
-                f"{len(mask_head_out)}"
-            )
-        (
-            mask_preds,
-            iou_predictions,
-            coarse_outputs,
-            _uav_aux_losses,  # always {} since the UAV branch was removed
-            quality_predictions,
-            mask_tokens,
-        ) = mask_head_out
         return dict(
-            mask_preds=mask_preds,
-            mask_feats=mask_feats,
-            iou_predictions=iou_predictions,
-            quality_predictions=quality_predictions,
-            mask_tokens=mask_tokens,
-            coarse_outputs=coarse_outputs,
-            tail_outputs=getattr(self.mask_head, "_last_tail_outputs", None),
+            mask_preds=head_out.mask_logits,
+            coarse_outputs=head_out.coarse_outputs,
+            tail_outputs=head_out.tail_outputs,
         )
 
     def mask_loss(
         self,
         x: Tuple[Tensor],
         sampling_results: List[SamplingResult],
-        bbox_feats: Tensor,
-        bbox_results: Optional[dict],
         batch_gt_instances: InstanceList,
         image_embeddings=None,
         image_positional_embeddings=None,
@@ -204,32 +159,19 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         if len(original_pos_rois) == 0:
             return self._empty_rank_losses(x)
 
-        prompt_box_cfg = dict(
-            getattr(self.mask_head, "mask_prompt_box_cfg", {}) or {}
-        )
-        train_box_source = str(
-            prompt_box_cfg.get("train_box_source", "proposal")
-        )
-        # Proposal boxes are the only supported prompt source: no canonical
-        # config uses a SABL bbox head anymore.
-        if train_box_source != "proposal":
-            raise ValueError(
-                f"Unsupported train_box_source={train_box_source!r}; "
-                "only 'proposal' is supported"
-            )
         jitter_cfg = dict(getattr(self.mask_head, "box_prompt_cfg", {}) or {})
         if float(jitter_cfg.get("jitter_prob", 0.0)) > 0.0:
             raise ValueError(
                 "box prompt jitter belonged to a removed arm and cannot be "
                 "enabled in the a3sgm-only codebase"
             )
-        zero = original_pos_rois.new_zeros(())
+        # Box/prompt telemetry: proposal boxes are the only prompt source, so
+        # only the RoI count is real; the fallback/IoU placeholders of the
+        # removed refined-box machinery are gone.
         self._last_prompt_box_stats = {
             "BOX/num_rois": original_pos_rois.new_tensor(float(len(original_pos_rois))),
-            "BOX/fallback_count": zero,
-            "BOX/refined_proposal_iou_sum": zero,
-            "BOX/refined_valid_count": zero,
         }
+        zero = original_pos_rois.new_zeros(())
         self._last_box_jitter_stats = {
             "JITTER/num_rois": original_pos_rois.new_tensor(float(len(original_pos_rois))),
             "JITTER/num_jittered": zero,
@@ -239,36 +181,18 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             "JITTER/area_ratio_count": original_pos_rois.new_tensor(float(len(original_pos_rois))),
         }
 
-        prompt_rois = original_pos_rois
+        pos_rois = original_pos_rois
         pos_counts = [res.pos_priors.shape[0] for res in sampling_results]
-        prompt_pos_priors = list(prompt_rois[:, 1:].split(pos_counts, dim=0))
-        # From this point onward every mask/prompt operation uses prompt_rois.
+        prompt_pos_priors = list(pos_rois[:, 1:].split(pos_counts, dim=0))
+        # From this point onward every mask/prompt operation uses pos_rois.
         # Sampling assignments and bbox losses remain tied to sampling_results.
-        pos_rois = prompt_rois
-
-        if not self.share_roi_extractor:
-            mask_results = self._mask_forward(
-                x,
-                pos_rois,
-                image_embeddings=image_embeddings,
-                image_positional_embeddings=image_positional_embeddings,
-                high_res_features=high_res_features,
-            )
-        else:
-            pos_inds = []
-            device = bbox_feats.device
-            for res in sampling_results:
-                pos_inds.append(torch.ones(res.pos_priors.shape[0], device=device, dtype=torch.uint8))
-                pos_inds.append(torch.zeros(res.neg_priors.shape[0], device=device, dtype=torch.uint8))
-            pos_inds = torch.cat(pos_inds)
-            mask_results = self._mask_forward(
-                x,
-                pos_inds=pos_inds,
-                bbox_feats=bbox_feats,
-                high_res_features=high_res_features,
-                roi_img_ids_override=pos_rois[:, 0] if len(pos_rois) > 0 else None,
-                boxes_override=pos_rois[:, 1:] if len(pos_rois) > 0 else None,
-            )
+        mask_results = self._mask_forward(
+            x,
+            pos_rois,
+            image_embeddings=image_embeddings,
+            image_positional_embeddings=image_positional_embeddings,
+            high_res_features=high_res_features,
+        )
 
         mask_loss_and_target = self.mask_head.loss_and_target(
             mask_preds=mask_results["mask_preds"],
@@ -277,19 +201,20 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             rcnn_train_cfg=self.train_cfg,
             final_mask_pos_priors=prompt_pos_priors,
         )
-        mask_results.update(loss_mask=mask_loss_and_target["loss_mask"])
-        mask_results["loss_mask"].update(
-            mask_loss_and_target.get("debug_stats", {})
-        )
+        losses = dict(mask_loss_and_target["loss_mask"])
+        telemetry = dict(mask_loss_and_target.get("debug_stats", {}))
         self._apply_tail_loss(
-            mask_results, mask_loss_and_target,
+            losses, telemetry, mask_results, mask_loss_and_target,
             sampling_results, batch_gt_instances, prompt_pos_priors,
         )
         self._apply_coarse_loss(
-            mask_results,
+            losses, telemetry, mask_results,
             sampling_results, batch_gt_instances, prompt_pos_priors,
         )
-        return mask_results
+        # Loss-vs-telemetry channel split: the returned dict contains ONLY
+        # backward-able loss tensors; every diagnostic tensor rides the
+        # telemetry channel so callers never filter by key-name substrings.
+        return losses, telemetry
 
     def _empty_rank_losses(self, x: Tuple[Tensor]) -> dict:
         """Loss bookkeeping for a rank with no positive proposals.
@@ -306,12 +231,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             "boundary_fp": zero,
             "boundary_fn": zero,
         }
-        self._last_prompt_box_stats = {
-            "BOX/num_rois": zero,
-            "BOX/fallback_count": zero,
-            "BOX/refined_proposal_iou_sum": zero,
-            "BOX/refined_valid_count": zero,
-        }
+        self._last_prompt_box_stats = {"BOX/num_rois": zero}
         self._last_box_jitter_stats = {
             "JITTER/num_rois": zero,
             "JITTER/num_jittered": zero,
@@ -321,15 +241,20 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             "JITTER/area_ratio_count": zero,
         }
         losses = dict(loss_mask=0 * x[0].sum())
+        telemetry: Dict[str, object] = {}
         if getattr(self.mask_head, "decoder_tail_enabled", False):
+            # Mirror the non-empty rank's two _global_tail_bce collectives so
+            # a sparse rank neither deadlocks its peers nor misreports fields.
             tail_loss, tail_stats = self.mask_head.decoder_tail_refiner.empty_point_loss(zero)
             losses["loss_decoder_tail"] = tail_loss
-            losses.update(tail_stats)
-            self.mask_head._last_uav_debug_stats = dict(tail_stats)
-        return dict(loss_mask=losses)
+            telemetry.update(tail_stats)
+            self.mask_head._forward_telemetry = dict(tail_stats)
+        return losses, telemetry
 
     def _apply_tail_loss(
         self,
+        losses: dict,
+        telemetry: dict,
         mask_results: dict,
         mask_loss_and_target: dict,
         sampling_results: List[SamplingResult],
@@ -354,19 +279,21 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         tail_loss, tail_stats = self.mask_head.decoder_tail_refiner.point_loss(
             tail_outputs, tail_targets
         )
-        mask_results["loss_mask"]["loss_decoder_tail"] = tail_loss
-        mask_results["loss_mask"].update(tail_stats)
+        losses["loss_decoder_tail"] = tail_loss
+        telemetry.update(tail_stats)
         # Append target-aware tail telemetry after the standard target is
         # available; the forward snapshot is logged later in this iteration.
-        current_debug = getattr(self.mask_head, "_last_uav_debug_stats", {}) or {}
+        current_debug = getattr(self.mask_head, "_forward_telemetry", {}) or {}
         current_debug.update({
             key: value.detach() if torch.is_tensor(value) else value
             for key, value in tail_stats.items()
         })
-        self.mask_head._last_uav_debug_stats = current_debug
+        self.mask_head._forward_telemetry = current_debug
 
     def _apply_coarse_loss(
         self,
+        losses: dict,
+        telemetry: dict,
         mask_results: dict,
         sampling_results: List[SamplingResult],
         batch_gt_instances: InstanceList,
@@ -387,7 +314,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             coarse_outputs["raw_logits"], sampling_results, batch_gt_instances,
             prompt_pos_priors=prompt_pos_priors,
         )
-        mask_results["loss_shape_prior"] = {"loss_shape_prior": coarse_loss}
+        losses["loss_shape_prior"] = coarse_loss
         if not hasattr(self, "_last_coarse_stats") or self._last_coarse_stats is None:
             self._last_coarse_stats = {}
         raw_stats = {key: value.detach() for key, value in coarse_stats.items()}
@@ -429,34 +356,33 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             )
             sampling_results.append(sampling_result)
 
-        losses = dict()
+        losses: Dict[str, object] = {}
+        # Per-iteration telemetry stash: every diagnostic tensor produced on
+        # this rank's loss path (detection metrics, TAIL/*, COARSE/*-derived
+        # values) lands here, never inside the returned loss dict.
+        self._loss_telemetry: Dict[str, object] = {}
         if self.with_bbox:
             bbox_results = self.bbox_loss(x, sampling_results)
-            losses.update(bbox_results["loss_bbox"])
+            for key, value in bbox_results["loss_bbox"].items():
+                # mmdet mixes metric tensors (e.g. "acc") into the loss dict;
+                # only genuine losses belong in the backward channel.
+                if key.startswith("loss_"):
+                    losses[key] = value
+                else:
+                    self._loss_telemetry[f"DET/{key}"] = value
 
         if self.with_mask:
-            mask_results = self.mask_loss(
+            mask_losses, mask_telemetry = self.mask_loss(
                 x,
                 sampling_results,
-                bbox_results["bbox_feats"],
-                bbox_results,
                 batch_gt_instances,
                 image_embeddings=image_embeddings,
                 image_positional_embeddings=image_positional_embeddings,
                 high_res_features=high_res_features,
                 batch_img_metas=[sample.metainfo for sample in batch_data_samples],
             )
-            losses.update(mask_results["loss_mask"])
-            if "loss_shape_prior" in mask_results:
-                losses.update(mask_results["loss_shape_prior"])
-            for loss_name, loss_value in mask_results.items():
-                # The full_image roi-balanced final-mask loss reports its
-                # components as loss_roi_* dicts.
-                if (
-                    loss_name.startswith("loss_roi_")
-                    and isinstance(loss_value, dict)
-                ):
-                    losses.update(loss_value)
+            losses.update(mask_losses)
+            self._loss_telemetry.update(mask_telemetry)
         return losses
 
     def predict_mask(

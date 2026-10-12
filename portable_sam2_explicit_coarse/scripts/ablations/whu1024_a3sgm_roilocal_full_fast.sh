@@ -47,7 +47,7 @@ exec "${PYTHON}" -m torch.distributed.run \
   train/train_rsprompter_fusion.py \
   --config configs/a3sgm_whu1024.py \
   --data-root "${WHU1024_DATA_ROOT}" \
-  --use-whu-coco \
+  --dataset whu \
   --image-size 1024 1024 \
   --batch-size "${BATCH_SIZE}" \
   --grad-accum-steps "${GRAD_ACCUM_STEPS}" \
@@ -58,7 +58,7 @@ exec "${PYTHON}" -m torch.distributed.run \
   --val-batch-size 4 \
   --seed 44 \
   --amp "${AMP}" \
-  --ema-enabled 1 --ema-decay 0.999 --ema-eval 0 --ema-save-best 0 \
+  --ema-enabled 1 --ema-decay 0.999 --ema-eval 0 \
   --ema-update-every 1 --ema-eval-start-epoch 5 \
   --val-every-n-epochs "${VAL_EVERY_N_EPOCHS}" \
   --compute-val-loss 0 \
@@ -66,13 +66,11 @@ exec "${PYTHON}" -m torch.distributed.run \
   --early-stopping-start-epoch "${EARLY_STOPPING_START_EPOCH}" \
   --early-stopping-min-delta "${EARLY_STOPPING_MIN_DELTA}" \
   --early-stopping-smooth-window "${EARLY_STOPPING_SMOOTH_WINDOW}" \
-  --sat-backbone-lr-mult 1.0 --sat-other-lr-mult 1.0 \
+  --backbone-lr-mult 1.0 --other-lr-mult 1.0 \
   --mask-decoder-lr-mult 1.0 --no-mask-lr-mult 1.0 \
   --shape-prior-lr-mult 1.0 \
   --prompt-encoder-lr-mult 0.0 \
   --warmup-iters "${WARMUP_ITERS}" \
   --weight-decay 0.05 \
-  --det-loss-stage1-end 5 --det-loss-stage2-end 10 \
-  --det-loss-weight-stage1 1.0 --det-loss-weight-stage2 1.0 --det-loss-weight-stage3 1.0 \
   --prompt-debug-stats 1 --prompt-debug-stats-interval 50 \
   "${RESUME_ARGS[@]}"

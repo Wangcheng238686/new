@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """从 Ours (PromptMiner-SAM2) 管线导出 proposal 框 + coarse mask, 供 teaser panel(a) 使用.
 
-原理: monkeypatch SAM2MaskHead._forward_coarse_p2, 捕获每张图 predict 时 mask head
+原理: monkeypatch SAM2MaskHead._forward_coarse, 捕获每张图 predict 时 mask head
 收到的 boxes(全图坐标) 与 coarse_outputs(raw/refined logits, ROI-local).
 导出: 每条 proposal 的框/分数 + coarse mask(整图 RLE) + 匹配的最终检测分数.
 用法: python dump_coarse_teaser.py --stems 300838,310401 --out coarse_teaser/
@@ -92,13 +92,13 @@ def main():
     # --- 捕获 coarse 输出 + 挖掘点 ---
     import rsprompter.sam2_mask_head as smh
     from rsprompter.shape_point_miner import ShapePointMiner
-    orig_p2 = smh.RSPrompterAnchorMaskHeadSAM2._forward_coarse_p2
+    orig_p2 = smh.RSPrompterAnchorMaskHeadSAM2._forward_coarse
     orig_mine = ShapePointMiner.forward
     captures = []
     point_captures = []
 
-    def patched(self, x, image_embeddings, boxes, roi_img_ids, p2f, pr, rf, dbg):
-        out = orig_p2(self, x, image_embeddings, boxes, roi_img_ids, p2f, pr, rf, dbg)
+    def patched(self, x, image_embeddings, boxes, roi_img_ids, dbg):
+        out = orig_p2(self, x, image_embeddings, boxes, roi_img_ids, dbg)
         _, coarse_outputs, _, _ = out
         if boxes is not None and coarse_outputs is not None:
             captures.append({
@@ -115,7 +115,7 @@ def main():
                                float(pe_size) if not torch.is_tensor(pe_size) else float(pe_size)))
         return coords, labels, stats
 
-    smh.RSPrompterAnchorMaskHeadSAM2._forward_coarse_p2 = patched
+    smh.RSPrompterAnchorMaskHeadSAM2._forward_coarse = patched
     ShapePointMiner.forward = patched_mine
     roi_sam = bool(getattr(model.roi_head.mask_head, 'roi_sam_enabled', False))
 
@@ -189,7 +189,7 @@ def main():
                     })
             records[stem] = prop
             print(f'{stem}: proposals={len(prop)} final_dets={len(pb)}')
-    smh.RSPrompterAnchorMaskHeadSAM2._forward_coarse_p2 = orig_p2
+    smh.RSPrompterAnchorMaskHeadSAM2._forward_coarse = orig_p2
 
     json.dump(records, open(out_dir / 'coarse_dump.json', 'w'))
     print(f'saved -> {out_dir / "coarse_dump.json"}')

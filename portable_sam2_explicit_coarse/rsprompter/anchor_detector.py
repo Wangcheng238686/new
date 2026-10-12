@@ -6,7 +6,6 @@ from typing import Dict, Tuple
 import torch
 
 from torch import Tensor, nn
-from transformers.models.sam.modeling_sam import SamVisionEncoderOutput
 
 from mmdet.models import MaskRCNN
 from mmdet.registry import MODELS
@@ -61,16 +60,16 @@ class RSPrompterAnchor(MaskRCNN):
             for param in module.parameters():
                 param.requires_grad = False
 
-    def get_prompt_debug_stats(self) -> Dict[str, object]:
+    def get_telemetry(self) -> Dict[str, object]:
         roi_head = getattr(self, "roi_head", None)
-        if roi_head is None or not hasattr(roi_head, "get_prompt_debug_stats"):
+        if roi_head is None or not hasattr(roi_head, "get_telemetry"):
             return {}
-        return roi_head.get_prompt_debug_stats()
+        return roi_head.get_telemetry()
 
     # Backward-compatible training logger entry.  The canonical single-stream
     # shape-point model has no UAV branch, but the legacy logger calls this name.
-    def get_uav_debug_stats(self) -> Dict[str, object]:
-        return self.get_prompt_debug_stats()
+    def get_forward_telemetry(self) -> Dict[str, object]:
+        return self.get_telemetry()
 
     def get_image_wide_positional_embeddings(self, size):
         pos_embed = self.shared_image_embedding.get_dense_pe()
@@ -99,20 +98,18 @@ class RSPrompterAnchor(MaskRCNN):
             int(batch_inputs.shape[-2]) // self.sam_image_embedding_stride,
             int(batch_inputs.shape[-1]) // self.sam_image_embedding_stride,
         )
+        # RSSAM2VisionEncoder always returns (feature, hidden_states_tuple).
         candidates = []
-        if isinstance(vision_outputs, tuple):
-            if torch.is_tensor(vision_outputs[0]):
-                candidates.append(vision_outputs[0])
-            if len(vision_outputs) > 1 and isinstance(
-                vision_outputs[1], (list, tuple)
-            ):
-                candidates.extend(
-                    feature
-                    for feature in vision_outputs[1]
-                    if torch.is_tensor(feature)
-                )
-        elif isinstance(vision_outputs, SamVisionEncoderOutput):
+        if torch.is_tensor(vision_outputs[0]):
             candidates.append(vision_outputs[0])
+        if len(vision_outputs) > 1 and isinstance(
+            vision_outputs[1], (list, tuple)
+        ):
+            candidates.extend(
+                feature
+                for feature in vision_outputs[1]
+                if torch.is_tensor(feature)
+            )
         matches = [
             feature for feature in candidates if feature.shape[-2:] == expected_hw
         ]
@@ -127,12 +124,7 @@ class RSPrompterAnchor(MaskRCNN):
 
     def extract_feat(self, batch_inputs: Tensor) -> Tuple[Tensor]:
         vision_outputs = self.backbone(batch_inputs)
-        if isinstance(vision_outputs, SamVisionEncoderOutput):
-            vision_hidden_states = vision_outputs[1]
-        elif isinstance(vision_outputs, tuple):
-            vision_hidden_states = vision_outputs
-        else:
-            raise NotImplementedError
+        vision_hidden_states = vision_outputs
         image_embeddings = self._select_sam_image_embeddings(
             vision_outputs, batch_inputs
         )

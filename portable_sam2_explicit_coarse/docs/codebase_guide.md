@@ -65,7 +65,7 @@ NWPU VHR-10 matrix300（full_image + roi_balanced_dice、PE 下采样栈 0.1×LR
 
 | 接口 | 入参 → 返回 | 副作用 |
 |---|---|---|
-| `RSPrompterAnchorMaskHeadSAM2.forward(x, image_embeddings, image_positional_embeddings, roi_img_ids, high_res_features, boxes, …)` | RoI 特征 [N,512,14,14] 等 → 6 元组 `(mask_logits z′, iou, coarse_outputs, {}, quality=iou, mask_tokens)` | 写 `self._last_tail_outputs`（尾损失输入）与 `_last_uav_debug_stats`（遥测总线） |
+| `RSPrompterAnchorMaskHeadSAM2.forward(x, image_embeddings, image_positional_embeddings, roi_img_ids, high_res_features, boxes, …)` | RoI 特征 [N,512,14,14] 等 → `MaskHeadOutput(mask_logits z′, coarse_outputs, tail_outputs)` dataclass | 写 `self._forward_telemetry`（遥测总线，detached） |
 | `DecoderTailPointRefiner.forward(logits[N,1,H,W], upscaled[N,32,H,W], mask_tokens[N,1,256])` | → `(refined z′, {indices, delta, selected_abs, refined/base_selected_logits, base_logits_detached})` | 无（耦合容器：不 detach，梯度可达主干） |
 | `DecoderTailPointRefiner.point_loss(tail_outputs, targets)` | → `(loss, TAIL/* 遥测 dict)`；DDP 全局正负点归一 | 两次 all_reduce（空秩经 `empty_point_loss` 镜像） |
 | `ShapePointMiner.forward(coarse_logits[N,1,64,64], boxes[N,4], image_size)` | → `(coords[N,4,2], labels[N,4]∈{1,0,-1}, SP/* 统计)`；全程 no_grad | 写 `_last_local_yx/_labels`（GT 遥测用） |
