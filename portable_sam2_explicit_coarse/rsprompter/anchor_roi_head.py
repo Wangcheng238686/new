@@ -1,4 +1,11 @@
-"""RoI head wiring prompt construction, box jitter and the mask-forward path."""
+"""RoI head: sampling, the mask-forward path, loss wiring, and prediction.
+
+Owns everything that happens around the mask head during training and
+inference: assigner/sampler, bbox loss (optional fp32), the prompt-box
+contract (proposal boxes only), the per-RoI mask forward, and aggregation of
+the three a3sgm training losses (final mask, decoder-tail margin, coarse
+auxiliary) plus their telemetry.
+"""
 
 from typing import Dict, List, Optional, Tuple
 
@@ -15,6 +22,7 @@ from mmdet.structures import DetDataSample, SampleList
 from mmdet.structures.bbox import bbox2roi
 from mmdet.utils import InstanceList
 
+
 @MODELS.register_module()
 class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
     def __init__(
@@ -27,11 +35,29 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         super().__init__(*args, **kwargs)
         self.bbox_train_fp32 = bool(bbox_train_fp32)
         if with_extra_pe:
+            # Parameter-free spatial sine pattern added to every feature level
+            # before assigner/RPN/RoI consumption. Both paper checkpoints were
+            # trained with it on; it has no state-dict keys, so only forward
+            # equivalence can guard it.
             out_channels = self.bbox_roi_extractor.out_channels
             positional_encoding = dict(num_feats=out_channels // 2, normalize=True)
             from mmdet.models import SinePositionalEncoding
 
             self.extra_pe = SinePositionalEncoding(**positional_encoding)
+
+    def _inject_extra_pe(self, x: Tuple[Tensor]) -> Tuple[Tensor]:
+        if not hasattr(self, "extra_pe"):
+            return x
+        bs, _, h, w = x[0].shape
+        mask_pe = torch.zeros((bs, h, w), device=x[0].device, dtype=torch.bool)
+        img_feats_pe = self.extra_pe(mask_pe)
+        return tuple(
+            feat + F.interpolate(
+                img_feats_pe, size=feat.shape[-2:], mode="bilinear",
+                align_corners=False,
+            )
+            for feat in x
+        )
 
     def get_prompt_debug_stats(self) -> Dict[str, object]:
         stats: Dict[str, object] = {}
@@ -148,7 +174,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             mask_preds,
             iou_predictions,
             coarse_outputs,
-            uav_aux_losses,
+            _uav_aux_losses,  # always {} since the UAV branch was removed
             quality_predictions,
             mask_tokens,
         ) = mask_head_out
@@ -159,7 +185,6 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             quality_predictions=quality_predictions,
             mask_tokens=mask_tokens,
             coarse_outputs=coarse_outputs,
-            uav_aux_losses=uav_aux_losses,
             tail_outputs=getattr(self.mask_head, "_last_tail_outputs", None),
         )
 
@@ -177,65 +202,26 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
     ) -> dict:
         original_pos_rois = bbox2roi([res.pos_priors for res in sampling_results])
         if len(original_pos_rois) == 0:
-            # Do not leak diagnostics from the previous batch when this rank has
-            # no positive proposals.
-            zero = x[0].new_zeros(())
-            self._last_coarse_stats = {
-                "dice": zero,
-                "iou": zero,
-                "boundary_tp": zero,
-                "boundary_fp": zero,
-                "boundary_fn": zero,
-            }
-            self._last_prompt_box_stats = {
-                "BOX/num_rois": zero,
-                "BOX/fallback_count": zero,
-                "BOX/refined_proposal_iou_sum": zero,
-                "BOX/refined_valid_count": zero,
-            }
-            self._last_box_jitter_stats = {
-                "JITTER/num_rois": zero,
-                "JITTER/num_jittered": zero,
-                "JITTER/mean_iou": zero,
-                "JITTER/fallback_count": zero,
-                "JITTER/area_ratio_sum": zero,
-                "JITTER/area_ratio_count": zero,
-            }
-            losses = dict(loss_mask=0 * x[0].sum())
-            if getattr(self.mask_head, "decoder_tail_enabled", False):
-                # Match the two UDPR DDP collectives taken on non-empty ranks.
-                # Without this, a sparse rank could deadlock its peers while
-                # they normalize selected-point BCE across the world.
-                tail_loss, tail_stats = self.mask_head.decoder_tail_refiner.empty_point_loss(zero)
-                losses["loss_decoder_tail"] = tail_loss
-                losses.update(tail_stats)
-                self.mask_head._last_uav_debug_stats = dict(tail_stats)
-            dense_capacity = getattr(self.mask_head, "dense_capacity_head", None)
-            if dense_capacity is not None:
-                # DDP ranks with no positive RoI must still touch every
-                # adapter parameter.  This mirrors the non-empty adapter
-                # auxiliary path without changing the scalar loss.
-                empty_adapter_loss = zero
-                for parameter in dense_capacity.parameters():
-                    empty_adapter_loss = empty_adapter_loss + parameter.sum() * 0.0
-                losses["loss_dense_capacity"] = empty_adapter_loss
-            return dict(loss_mask=losses)
+            return self._empty_rank_losses(x)
 
-        prompt_rois = original_pos_rois
-        prompt_pos_priors = None
         prompt_box_cfg = dict(
             getattr(self.mask_head, "mask_prompt_box_cfg", {}) or {}
         )
         train_box_source = str(
             prompt_box_cfg.get("train_box_source", "proposal")
         )
-        # The legacy SABL-refined box source was removed: no canonical config
-        # uses a SABL bbox head, so proposal boxes are the only supported
-        # prompt box source.
+        # Proposal boxes are the only supported prompt source: no canonical
+        # config uses a SABL bbox head anymore.
         if train_box_source != "proposal":
             raise ValueError(
                 f"Unsupported train_box_source={train_box_source!r}; "
                 "only 'proposal' is supported"
+            )
+        jitter_cfg = dict(getattr(self.mask_head, "box_prompt_cfg", {}) or {})
+        if float(jitter_cfg.get("jitter_prob", 0.0)) > 0.0:
+            raise ValueError(
+                "box prompt jitter belonged to a removed arm and cannot be "
+                "enabled in the a3sgm-only codebase"
             )
         zero = original_pos_rois.new_zeros(())
         self._last_prompt_box_stats = {
@@ -244,39 +230,16 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             "BOX/refined_proposal_iou_sum": zero,
             "BOX/refined_valid_count": zero,
         }
+        self._last_box_jitter_stats = {
+            "JITTER/num_rois": original_pos_rois.new_tensor(float(len(original_pos_rois))),
+            "JITTER/num_jittered": zero,
+            "JITTER/mean_iou": original_pos_rois.new_tensor(1.0),
+            "JITTER/fallback_count": zero,
+            "JITTER/area_ratio_sum": original_pos_rois.new_tensor(float(len(original_pos_rois))),
+            "JITTER/area_ratio_count": original_pos_rois.new_tensor(float(len(original_pos_rois))),
+        }
 
-        jitter_cfg = dict(getattr(self.mask_head, "box_prompt_cfg", {}) or {})
-        jitter_prob = float(jitter_cfg.get("jitter_prob", 0.0))
-        if self.training and jitter_prob > 0.0:
-            if batch_img_metas is None:
-                raise ValueError("box prompt jitter requires batch_img_metas")
-            if self.share_roi_extractor:
-                raise RuntimeError(
-                    "box prompt jitter requires a dedicated mask_roi_extractor so "
-                    "RoIAlign and prompt boxes use the same jittered RoIs"
-                )
-            from .box_jitter import jitter_rois
-            prompt_rois, self._last_box_jitter_stats = jitter_rois(
-                prompt_rois,
-                batch_img_metas,
-                jitter_prob=jitter_prob,
-                jitter_scale=float(jitter_cfg.get("jitter_scale", 0.05)),
-                min_box_size=float(jitter_cfg.get("min_box_size", 2.0)),
-                min_iou_with_original=float(
-                    jitter_cfg.get("min_iou_with_original", 0.5)
-                ),
-            )
-        else:
-            zero = original_pos_rois.new_zeros(())
-            self._last_box_jitter_stats = {
-                "JITTER/num_rois": original_pos_rois.new_tensor(float(len(original_pos_rois))),
-                "JITTER/num_jittered": zero,
-                "JITTER/mean_iou": original_pos_rois.new_tensor(1.0),
-                "JITTER/fallback_count": zero,
-                "JITTER/area_ratio_sum": original_pos_rois.new_tensor(float(len(original_pos_rois))),
-                "JITTER/area_ratio_count": original_pos_rois.new_tensor(float(len(original_pos_rois))),
-            }
-
+        prompt_rois = original_pos_rois
         pos_counts = [res.pos_priors.shape[0] for res in sampling_results]
         prompt_pos_priors = list(prompt_rois[:, 1:].split(pos_counts, dim=0))
         # From this point onward every mask/prompt operation uses prompt_rois.
@@ -318,223 +281,124 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         mask_results["loss_mask"].update(
             mask_loss_and_target.get("debug_stats", {})
         )
-        tail_outputs = mask_results.get("tail_outputs")
-        if tail_outputs is not None:
-            if self.mask_head.final_mask_coordinate_mode == "full_image":
-                tail_targets = mask_loss_and_target["mask_targets"]
-            else:
-                # roi_local keeps the historical 28x28 final-mask targets; the
-                # tail's selected-point indices live on the decoder's native
-                # ROI grid, so its point loss needs per-RoI GT crops at that
-                # native resolution (reusing the C2-R target builder).
-                tail_targets = self.mask_head.get_coarse_targets(
-                    sampling_results,
-                    batch_gt_instances,
-                    mask_size=tail_outputs["base_logits_detached"].shape[-2:],
-                    prompt_pos_priors=prompt_pos_priors,
-                )
-            tail_loss, tail_stats = self.mask_head.decoder_tail_refiner.point_loss(
-                tail_outputs, tail_targets
-            )
-            mask_results["loss_mask"]["loss_decoder_tail"] = tail_loss
-            mask_results["loss_mask"].update(tail_stats)
-            # The forward snapshot is logged later in this same iteration.
-            # Append target-aware Tail telemetry here, after the standard
-            # assigned-GT full-image target is available.
-            current_debug = getattr(self.mask_head, "_last_uav_debug_stats", {}) or {}
-            current_debug.update({
-                key: value.detach() if torch.is_tensor(value) else value
-                for key, value in tail_stats.items()
-            })
-            self.mask_head._last_uav_debug_stats = current_debug
-        if getattr(self.mask_head, "quality_head_enabled", False):
-            mask_targets = mask_loss_and_target["mask_targets"]
-            quality_preds = mask_results["quality_predictions"]
-            resized_mask_preds = F.interpolate(
-                mask_results["mask_preds"],
-                size=mask_targets.shape[-2:],
-                mode="bilinear",
-                align_corners=False,
-            )
-            pos_labels = torch.cat(
-                [res.pos_gt_labels for res in sampling_results]
-            )
-            if self.mask_head.class_agnostic:
-                selected_mask_preds = resized_mask_preds[:, 0]
-                selected_quality_preds = quality_preds[:, 0]
-            else:
-                row = torch.arange(pos_labels.shape[0], device=pos_labels.device)
-                mask_columns = pos_labels.clamp_max(resized_mask_preds.shape[1] - 1)
-                quality_columns = pos_labels.clamp_max(quality_preds.shape[1] - 1)
-                selected_mask_preds = resized_mask_preds[row, mask_columns]
-                selected_quality_preds = quality_preds[row, quality_columns]
-
-            with torch.no_grad():
-                target = mask_targets.float()
-                mask_probability = torch.sigmoid(selected_mask_preds.float())
-                target_mask = mask_probability
-                if self.mask_head.quality_head_type == "ap_ordinal":
-                    target_mask = (mask_probability >= 0.5).to(target.dtype)
-                intersection = (target_mask * target).flatten(1).sum(1)
-                union = (
-                    target_mask.flatten(1).sum(1)
-                    + target.flatten(1).sum(1)
-                    - intersection
-                )
-                quality_targets = (intersection / union.clamp_min(1e-6)).clamp(0, 1)
-
-            if self.mask_head.quality_head_type == "ap_ordinal":
-                thresholds = selected_quality_preds.new_tensor(
-                    self.mask_head.quality_head.thresholds
-                )
-                ordinal_targets = (
-                    quality_targets[:, None] >= thresholds[None]
-                ).to(selected_quality_preds.dtype)
-                quality_loss = F.binary_cross_entropy_with_logits(
-                    selected_quality_preds.float(), ordinal_targets.float()
-                )
-            else:
-                quality_loss = F.smooth_l1_loss(
-                    selected_quality_preds.float(),
-                    quality_targets,
-                    beta=self.mask_head.quality_head_loss_beta,
-                )
-            mask_results["loss_mask_quality"] = {
-                "loss_mask_quality": self.mask_head.quality_head_loss_weight
-                * quality_loss
-            }
-
-        # === ROI-local coarse-mask supervision ===
-        # CoarseMaskLoss operates at the prediction's native resolution. Binary
-        # GT crops are resized with nearest-neighbour interpolation, and the
-        # same prompt_pos_priors used by mask RoIAlign/prompts are used for the
-        # crop when training-time box jitter is enabled.
-        coarse_outputs = mask_results.get("coarse_outputs")
-        if coarse_outputs is not None:
-            raw_coarse_logits = coarse_outputs["raw_logits"]
-            refined_coarse_logits = coarse_outputs["refined_logits"]
-            sp_weight = getattr(self.mask_head, "shape_prior_loss_weight", 0.0)
-            if sp_weight > 0 and hasattr(self.mask_head, "coarse_mask_loss"):
-                coarse_loss, coarse_stats = self.mask_head.coarse_mask_loss(
-                    raw_coarse_logits, sampling_results, batch_gt_instances,
-                    prompt_pos_priors=prompt_pos_priors,
-                )
-                mask_results["loss_shape_prior"] = {"loss_shape_prior": coarse_loss}
-                dense_capacity_logits = coarse_outputs.get("dense_capacity_logits")
-                dense_capacity_weight = float(
-                    getattr(self.mask_head, "dense_capacity_aux_weight", 0.0)
-                )
-                if dense_capacity_logits is not None and dense_capacity_weight > 0:
-                    if not hasattr(self, "_last_coarse_stats") or self._last_coarse_stats is None:
-                        self._last_coarse_stats = {}
-                    dense_capacity_loss, dense_capacity_stats = self.mask_head.coarse_mask_loss(
-                        dense_capacity_logits, sampling_results, batch_gt_instances,
-                        prompt_pos_priors=prompt_pos_priors,
-                    )
-                    # coarse_mask_loss already carries ShapePrior's configured
-                    # weight.  Re-scale it to the adapter's independently
-                    # recorded weight without introducing another loss type.
-                    dense_capacity_loss = dense_capacity_loss * (
-                        dense_capacity_weight / max(float(sp_weight), 1e-12)
-                    )
-                    mask_results["loss_dense_capacity"] = {
-                        "loss_dense_capacity": dense_capacity_loss
-                    }
-                    self._last_coarse_stats.update({
-                        f"dense_capacity_{key}": value.detach()
-                        for key, value in dense_capacity_stats.items()
-                    })
-                if not hasattr(self, "_last_coarse_stats") or self._last_coarse_stats is None:
-                    self._last_coarse_stats = {}
-                raw_stats = {k: v.detach() for k, v in coarse_stats.items()}
-                self._last_coarse_stats.update(raw_stats)
-                self._last_coarse_stats.update({
-                    "raw_dice_score": 1.0 - raw_stats["dice"],
-                    "raw_iou": raw_stats["iou"],
-                    "raw_boundary_tp": raw_stats["boundary_tp"],
-                    "raw_boundary_fp": raw_stats["boundary_fp"],
-                    "raw_boundary_fn": raw_stats["boundary_fn"],
-                })
-
-                if self.mask_head.p2_boundary_refiner is not None:
-                    coarse_targets = self.mask_head.get_coarse_targets(
-                        sampling_results,
-                        batch_gt_instances,
-                        mask_size=raw_coarse_logits.shape[-2:],
-                        prompt_pos_priors=prompt_pos_priors,
-                    )
-                    local_sum, local_count, boundary_stats = (
-                        self.mask_head.p2_boundary_refiner.boundary_loss(
-                            raw_logits=raw_coarse_logits,
-                            delta_logits=coarse_outputs["delta_logits"],
-                            raw_boundary_band=coarse_outputs["raw_boundary_band"],
-                            search_support=coarse_outputs["search_support"],
-                            target_mask=coarse_targets,
-                        )
-                    )
-                    mask_results["_p2br_local_sum"] = local_sum
-                    mask_results["_p2br_valid_count"] = local_count
-                    for probe_key in (
-                        "_r1_corrective_term_for_probe",
-                        "_r1_keep_term_for_probe",
-                    ):
-                        if probe_key in boundary_stats:
-                            mask_results[f"_p2br{probe_key}"] = boundary_stats.pop(
-                                probe_key
-                            )
-                    with torch.no_grad():
-                        _, refined_stats = self.mask_head.coarse_mask_loss_module(
-                            refined_coarse_logits.detach(), coarse_targets
-                        )
-                    self._last_coarse_stats.update({
-                        "refined_dice_score": 1.0 - refined_stats["dice"],
-                        "refined_iou": refined_stats["iou"],
-                        "refined_boundary_tp": refined_stats["boundary_tp"],
-                        "refined_boundary_fp": refined_stats["boundary_fp"],
-                        "refined_boundary_fn": refined_stats["boundary_fn"],
-                        "boundary_loss_local_sum": local_sum.detach(),
-                        **{k: v.detach() for k, v in boundary_stats.items()},
-                    })
-
-            # R3 has one standalone, positive-RoI canvas objective.  The
-            # legacy ShapePrior auxiliary loss remains intact for point mining.
-            canvas_logits = coarse_outputs.get("canvas_logits")
-            if canvas_logits is not None:
-                canvas_targets = self.mask_head.get_coarse_targets(
-                    sampling_results, batch_gt_instances,
-                    mask_size=canvas_logits.shape[-2:],
-                    prompt_pos_priors=prompt_pos_priors,
-                )
-                target = canvas_targets[:, None].to(dtype=canvas_logits.dtype)
-                logits, target_float = canvas_logits.float(), target.float()
-                bce = F.binary_cross_entropy_with_logits(logits, target_float)
-                probability = torch.sigmoid(logits)
-                intersection = (probability * target_float).flatten(1).sum(1)
-                denominator = probability.flatten(1).sum(1) + target_float.flatten(1).sum(1)
-                dice = 1.0 - ((2.0 * intersection + 1e-6) / (denominator + 1e-6)).mean()
-                renderer_loss = self.mask_head.canvas_renderer_loss_weight * (bce + dice)
-                mask_results["loss_canvas_renderer"] = {
-                    "loss_canvas_renderer": renderer_loss,
-                    "r3_canvas_bce": bce.detach(),
-                    "r3_canvas_dice": dice.detach(),
-                }
-                if not hasattr(self, "_last_coarse_stats") or self._last_coarse_stats is None:
-                    self._last_coarse_stats = {}
-                self._last_coarse_stats.update({
-                    "r3_canvas_bce": bce.detach(),
-                    "r3_canvas_dice_loss": dice.detach(),
-                    "r3_canvas_soft_iou": (
-                        intersection / (
-                            probability.flatten(1).sum(1)
-                            + target_float.flatten(1).sum(1) - intersection
-                        ).clamp_min(1e-6)
-                    ).mean().detach(),
-                })
-
-        # uav_aux_losses stays a slot of the 6-value mask-head contract but is
-        # always empty since the UAV branch was removed.
-
+        self._apply_tail_loss(
+            mask_results, mask_loss_and_target,
+            sampling_results, batch_gt_instances, prompt_pos_priors,
+        )
+        self._apply_coarse_loss(
+            mask_results,
+            sampling_results, batch_gt_instances, prompt_pos_priors,
+        )
         return mask_results
+
+    def _empty_rank_losses(self, x: Tuple[Tensor]) -> dict:
+        """Loss bookkeeping for a rank with no positive proposals.
+
+        Do not leak diagnostics from the previous batch, and match the UDPR
+        DDP collectives taken on non-empty ranks — without them a sparse rank
+        deadlocks its peers while they normalize the margin point loss.
+        """
+        zero = x[0].new_zeros(())
+        self._last_coarse_stats = {
+            "dice": zero,
+            "iou": zero,
+            "boundary_tp": zero,
+            "boundary_fp": zero,
+            "boundary_fn": zero,
+        }
+        self._last_prompt_box_stats = {
+            "BOX/num_rois": zero,
+            "BOX/fallback_count": zero,
+            "BOX/refined_proposal_iou_sum": zero,
+            "BOX/refined_valid_count": zero,
+        }
+        self._last_box_jitter_stats = {
+            "JITTER/num_rois": zero,
+            "JITTER/num_jittered": zero,
+            "JITTER/mean_iou": zero,
+            "JITTER/fallback_count": zero,
+            "JITTER/area_ratio_sum": zero,
+            "JITTER/area_ratio_count": zero,
+        }
+        losses = dict(loss_mask=0 * x[0].sum())
+        if getattr(self.mask_head, "decoder_tail_enabled", False):
+            tail_loss, tail_stats = self.mask_head.decoder_tail_refiner.empty_point_loss(zero)
+            losses["loss_decoder_tail"] = tail_loss
+            losses.update(tail_stats)
+            self.mask_head._last_uav_debug_stats = dict(tail_stats)
+        return dict(loss_mask=losses)
+
+    def _apply_tail_loss(
+        self,
+        mask_results: dict,
+        mask_loss_and_target: dict,
+        sampling_results: List[SamplingResult],
+        batch_gt_instances: InstanceList,
+        prompt_pos_priors: List[Tensor],
+    ) -> None:
+        tail_outputs = mask_results.get("tail_outputs")
+        if tail_outputs is None:
+            return
+        if self.mask_head.final_mask_coordinate_mode == "full_image":
+            tail_targets = mask_loss_and_target["mask_targets"]
+        else:
+            # roi_local keeps the historical final-mask targets; the tail's
+            # selected-point indices live on the decoder's native ROI grid, so
+            # its point loss needs per-RoI GT crops at that native resolution.
+            tail_targets = self.mask_head.get_coarse_targets(
+                sampling_results,
+                batch_gt_instances,
+                mask_size=tail_outputs["base_logits_detached"].shape[-2:],
+                prompt_pos_priors=prompt_pos_priors,
+            )
+        tail_loss, tail_stats = self.mask_head.decoder_tail_refiner.point_loss(
+            tail_outputs, tail_targets
+        )
+        mask_results["loss_mask"]["loss_decoder_tail"] = tail_loss
+        mask_results["loss_mask"].update(tail_stats)
+        # Append target-aware tail telemetry after the standard target is
+        # available; the forward snapshot is logged later in this iteration.
+        current_debug = getattr(self.mask_head, "_last_uav_debug_stats", {}) or {}
+        current_debug.update({
+            key: value.detach() if torch.is_tensor(value) else value
+            for key, value in tail_stats.items()
+        })
+        self.mask_head._last_uav_debug_stats = current_debug
+
+    def _apply_coarse_loss(
+        self,
+        mask_results: dict,
+        sampling_results: List[SamplingResult],
+        batch_gt_instances: InstanceList,
+        prompt_pos_priors: List[Tensor],
+    ) -> None:
+        """ROI-local coarse-mask supervision (the coarse head's only teacher).
+
+        GT crops are resized with nearest-neighbour to the coarse resolution,
+        using the same prompt priors the mask branch saw.
+        """
+        coarse_outputs = mask_results.get("coarse_outputs")
+        if coarse_outputs is None:
+            return
+        sp_weight = getattr(self.mask_head, "shape_prior_loss_weight", 0.0)
+        if not (sp_weight > 0 and hasattr(self.mask_head, "coarse_mask_loss")):
+            return
+        coarse_loss, coarse_stats = self.mask_head.coarse_mask_loss(
+            coarse_outputs["raw_logits"], sampling_results, batch_gt_instances,
+            prompt_pos_priors=prompt_pos_priors,
+        )
+        mask_results["loss_shape_prior"] = {"loss_shape_prior": coarse_loss}
+        if not hasattr(self, "_last_coarse_stats") or self._last_coarse_stats is None:
+            self._last_coarse_stats = {}
+        raw_stats = {key: value.detach() for key, value in coarse_stats.items()}
+        self._last_coarse_stats.update(raw_stats)
+        self._last_coarse_stats.update({
+            "raw_dice_score": 1.0 - raw_stats["dice"],
+            "raw_iou": raw_stats["iou"],
+            "raw_boundary_tp": raw_stats["boundary_tp"],
+            "raw_boundary_fp": raw_stats["boundary_fp"],
+            "raw_boundary_fn": raw_stats["boundary_fn"],
+        })
 
     def loss(
         self,
@@ -548,16 +412,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         assert len(rpn_results_list) == len(batch_data_samples)
         outputs = unpack_gt_instances(batch_data_samples)
         batch_gt_instances, batch_gt_instances_ignore, _ = outputs
-
-        if hasattr(self, "extra_pe"):
-            bs, _, h, w = x[0].shape
-            mask_pe = torch.zeros((bs, h, w), device=x[0].device, dtype=torch.bool)
-            img_feats_pe = self.extra_pe(mask_pe)
-            outputs = []
-            for i in range(len(x)):
-                output = x[i] + F.interpolate(img_feats_pe, size=x[i].shape[-2:], mode="bilinear", align_corners=False)
-                outputs.append(output)
-            x = tuple(outputs)
+        x = self._inject_extra_pe(x)
 
         num_imgs = len(batch_data_samples)
         sampling_results = []
@@ -594,37 +449,14 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
             losses.update(mask_results["loss_mask"])
             if "loss_shape_prior" in mask_results:
                 losses.update(mask_results["loss_shape_prior"])
-            if "loss_dense_capacity" in mask_results:
-                losses.update(mask_results["loss_dense_capacity"])
-            if "loss_canvas_renderer" in mask_results:
-                losses.update(mask_results["loss_canvas_renderer"])
-            for loss_name in (
-                "loss_mask_quality",
-            ):
-                if loss_name in mask_results:
-                    losses.update(mask_results[loss_name])
             for loss_name, loss_value in mask_results.items():
+                # The full_image roi-balanced final-mask loss reports its
+                # components as loss_roi_* dicts.
                 if (
                     loss_name.startswith("loss_roi_")
                     and isinstance(loss_value, dict)
                 ):
                     losses.update(loss_value)
-            refiner = getattr(self.mask_head, "p2_boundary_refiner", None)
-            if refiner is not None:
-                zero = x[0].sum() * 0.0
-                losses["_p2br_local_sum"] = mask_results.get(
-                    "_p2br_local_sum", zero
-                )
-                losses["_p2br_valid_count"] = mask_results.get(
-                    "_p2br_valid_count", zero.detach()
-                )
-                for probe_key in (
-                    "_r1_corrective_term_for_probe",
-                    "_r1_keep_term_for_probe",
-                ):
-                    value = mask_results.get(f"_p2br{probe_key}")
-                    if value is not None:
-                        losses[f"_p2br{probe_key}"] = value
         return losses
 
     def predict_mask(
@@ -640,14 +472,13 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         bboxes = [res.bboxes for res in results_list]
         mask_rois = bbox2roi(bboxes)
         if mask_rois.shape[0] == 0:
-            results_list = empty_instances(
+            return empty_instances(
                 batch_img_metas,
                 mask_rois.device,
                 task_type="mask",
                 instance_results=results_list,
                 mask_thr_binary=self.test_cfg.mask_thr_binary,
             )
-            return results_list
 
         # Dense images can keep ~100 ROIs after NMS; feeding them through the
         # frozen SAM2 decoder at once spikes activation memory (high-res
@@ -656,7 +487,6 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         chunk_size = int(getattr(self, "mask_roi_chunk_size", 32) or 0)
         if chunk_size > 0 and mask_rois.shape[0] > chunk_size:
             mask_preds_parts = []
-            quality_parts = []
             for start in range(0, mask_rois.shape[0], chunk_size):
                 chunk_results = self._mask_forward(
                     x,
@@ -666,9 +496,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                     high_res_features=high_res_features,
                 )
                 mask_preds_parts.append(chunk_results["mask_preds"])
-                quality_parts.append(chunk_results["quality_predictions"])
             mask_preds = torch.cat(mask_preds_parts, dim=0)
-            quality_preds = torch.cat(quality_parts, dim=0)
         else:
             mask_results = self._mask_forward(
                 x,
@@ -678,31 +506,16 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
                 high_res_features=high_res_features,
             )
             mask_preds = mask_results["mask_preds"]
-            quality_preds = mask_results["quality_predictions"]
         num_mask_rois_per_img = [len(res) for res in results_list]
         mask_preds = mask_preds.split(num_mask_rois_per_img, 0)
-        quality_preds = quality_preds.split(num_mask_rois_per_img, 0)
 
-        results_list = self.mask_head.predict_by_feat(
+        return self.mask_head.predict_by_feat(
             mask_preds=mask_preds,
             results_list=results_list,
             batch_img_metas=batch_img_metas,
             rcnn_test_cfg=self.test_cfg,
             rescale=rescale,
         )
-        if getattr(self.mask_head, "quality_head_enabled", False):
-            alpha = self.mask_head.quality_head_score_alpha
-            for result, quality in zip(results_list, quality_preds):
-                quality = quality[:, 0].float()
-                if self.mask_head.quality_head_type == "ap_ordinal":
-                    quality_levels = torch.sigmoid(quality)
-                    result.mask_quality_levels = quality_levels
-                    quality = quality_levels.mean(dim=-1)
-                else:
-                    quality = quality.clamp(0.0, 1.0)
-                result.mask_quality = quality
-                result.mask_scores = result.scores * quality.pow(alpha)
-        return results_list
 
     def predict(
         self,
@@ -715,16 +528,7 @@ class RSPrompterAnchorRoIPromptHead(StandardRoIHead):
         high_res_features=None,
     ) -> InstanceList:
         batch_img_metas = [data_samples.metainfo for data_samples in batch_data_samples]
-
-        if hasattr(self, "extra_pe"):
-            bs, _, h, w = x[0].shape
-            mask_pe = torch.zeros((bs, h, w), device=x[0].device, dtype=torch.bool)
-            img_feats_pe = self.extra_pe(mask_pe)
-            outputs = []
-            for i in range(len(x)):
-                output = x[i] + F.interpolate(img_feats_pe, size=x[i].shape[-2:], mode="bilinear", align_corners=False)
-                outputs.append(output)
-            x = tuple(outputs)
+        x = self._inject_extra_pe(x)
 
         bbox_rescale = rescale if not self.with_mask else False
         results_list = self.predict_bbox(

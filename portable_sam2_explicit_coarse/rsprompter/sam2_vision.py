@@ -20,33 +20,6 @@ from mmdet.registry import MODELS
 from .ckpt_utils import load_module_state_dict_strict
 
 
-
-class _DiscardedIoUPredictionHead(nn.Module):
-    """Keep SAM2's decoder contract without computing an unused IoU MLP."""
-
-    def __init__(self, num_outputs: int):
-        super().__init__()
-        self.num_outputs = int(num_outputs)
-
-    def forward(self, x: Tensor) -> Tensor:
-        return x.new_zeros((x.shape[0], self.num_outputs))
-
-
-class _UnusedPromptEmbedding(nn.Module):
-    """Parameter-free device anchor for PromptEncoder's unused point labels."""
-
-    def __init__(self):
-        super().__init__()
-        self.register_buffer("_device_anchor", torch.empty(0), persistent=False)
-
-    @property
-    def weight(self) -> Tensor:
-        return self._device_anchor
-
-    def forward(self, _: Tensor) -> Tensor:
-        raise RuntimeError("Pruned point-label embedding cannot encode point prompts")
-
-
 SAM2_AVAILABLE = False
 PositionEmbeddingSine = None  # safe default; set when sam2 package imports
 SAM2_REPO = os.environ.get("SAM2_REPO")

@@ -53,10 +53,20 @@ class ShapePointMiner(nn.Module):
         super().__init__()
         if int(max_positive_points) != 2 or int(max_negative_points) != 2:
             raise ValueError("Canonical ShapePointMiner requires max 2P2N")
+        if not adaptive_validity:
+            raise ValueError(
+                "adaptive_validity=False was a fixed-contrast ablation arm and "
+                "is not supported; adaptive slot validity is canonical"
+            )
+        if float(point_jitter_prob) > 0.0:
+            raise ValueError(
+                "point jitter was a removed ablation switch and cannot be "
+                "enabled; positives are mined, never perturbed"
+            )
         self.foreground_thr = float(foreground_thr)
         self.max_distance_steps = max_distance_steps
         self.min_box_size = float(min_box_size)
-        self.adaptive_validity = bool(adaptive_validity)
+        self.adaptive_validity = True
         self.positive_conf_thr = float(positive_conf_thr)
         self.empty_positive_conf_thr = float(empty_positive_conf_thr)
         self.negative_conf_thr = float(negative_conf_thr)
@@ -65,52 +75,16 @@ class ShapePointMiner(nn.Module):
         self.min_negative_distance_ratio = float(min_negative_distance_ratio)
         self.outer_ring_radius = max(1, int(outer_ring_radius))
         self.safe_background_radius_ratio = float(safe_background_radius_ratio)
-        self.point_jitter_prob = float(point_jitter_prob)
+        self.point_jitter_prob = 0.0
         self.point_jitter_radius = max(1, int(point_jitter_radius))
-        self.point_warmup_cfg = dict(point_warmup_cfg or {})
-        self.point_warmup_cfg.setdefault("enabled", True)
-        self.point_warmup_cfg.setdefault("no_point_epochs", 5)
-        self.point_warmup_cfg.setdefault("one_pair_epochs", 5)
-        _expected_full_start = (
-            int(self.point_warmup_cfg["no_point_epochs"])
-            + int(self.point_warmup_cfg["one_pair_epochs"])
-            + 1
-        )
-        self.point_warmup_cfg.setdefault(
-            "full_2p2n_start_epoch", _expected_full_start
-        )
-        if int(self.point_warmup_cfg["no_point_epochs"]) < 0:
-            raise ValueError("no_point_epochs must be non-negative")
-        if int(self.point_warmup_cfg["one_pair_epochs"]) < 0:
-            raise ValueError("one_pair_epochs must be non-negative")
-        if int(self.point_warmup_cfg["full_2p2n_start_epoch"]) != _expected_full_start:
-            raise ValueError(
-                "full_2p2n_start_epoch must equal "
-                "no_point_epochs + one_pair_epochs + 1; got "
-                f"{self.point_warmup_cfg['full_2p2n_start_epoch']} vs "
-                f"{_expected_full_start}"
-            )
-        # Default to the full stage for standalone unit/inference calls.  The
-        # trainer explicitly sets a 1-based epoch before every training epoch.
-        self.current_epoch = int(
-            self.point_warmup_cfg.get("full_2p2n_start_epoch", 11)
-        )
+        # Point-warmup staging was removed (both entries run the full 2P2N
+        # from epoch 1); the epoch is still recorded for log continuity.
+        self.current_epoch = 1
         self._last_local_yx: Optional[Tensor] = None
         self._last_labels: Optional[Tensor] = None
 
     def set_current_epoch(self, epoch_number: int) -> None:
         self.current_epoch = max(1, int(epoch_number))
-
-    def _warmup_stage(self) -> int:
-        if not bool(self.point_warmup_cfg.get("enabled", True)):
-            return 2
-        no_point_end = int(self.point_warmup_cfg.get("no_point_epochs", 5))
-        full_start = int(self.point_warmup_cfg.get("full_2p2n_start_epoch", 11))
-        if self.current_epoch <= no_point_end:
-            return 0
-        if self.current_epoch < full_start:
-            return 1
-        return 2
 
     @staticmethod
     def erode(binary_mask: Tensor) -> Tensor:
@@ -376,62 +350,6 @@ class ShapePointMiner(nn.Module):
             )
             n2_valid = n2_valid | use_n2_fallback
 
-            if not self.adaptive_validity:
-                # Fixed-validity control: always provide two positive and two
-                # negative extrema. Confidence/topology thresholds still define
-                # the adaptive route above, but must not silently affect this
-                # ablation. Distance masks keep the second point separated.
-                full_canvas = torch.ones_like(foreground, dtype=torch.bool)
-                if h * w < 4:
-                    raise ValueError(
-                        "fixed-validity 2P2N requires at least four coarse-mask pixels"
-                    )
-                p1_yx, _ = self._pick_platform_center(full_canvas, prob)
-                fixed_far_from_p1 = self._distance_mask(
-                    p1_yx, h, w, min_pos_dist, prob.dtype
-                ).unsqueeze(1)
-                p2_yx, p2_valid = self._pick_platform_center(
-                    fixed_far_from_p1, prob
-                )
-                positive_exclusion = self._distance_mask(
-                    p1_yx, h, w, max(1.0, min_neg_dist), prob.dtype
-                ).unsqueeze(1)
-                positive_exclusion = positive_exclusion & self._distance_mask(
-                    p2_yx, h, w, max(1.0, min_neg_dist), prob.dtype
-                ).unsqueeze(1)
-                n1_yx, n1_valid = self._pick_platform_center(
-                    full_canvas & positive_exclusion, 1.0 - prob
-                )
-                fixed_far_from_n1 = self._distance_mask(
-                    n1_yx, h, w, min_neg_dist, prob.dtype
-                ).unsqueeze(1)
-                fixed_far_from_p1 = self._distance_mask(
-                    p1_yx, h, w, min_neg_dist, prob.dtype
-                ).unsqueeze(1)
-                fixed_far_from_p2 = self._distance_mask(
-                    p2_yx, h, w, min_neg_dist, prob.dtype
-                ).unsqueeze(1)
-                n2_candidates = (
-                    full_canvas
-                    & fixed_far_from_n1
-                    & fixed_far_from_p1
-                    & fixed_far_from_p2
-                )
-                n2_yx, n2_valid = self._pick_platform_center(
-                    n2_candidates, 1.0 - prob
-                )
-
-                if not bool((p2_valid & n1_valid & n2_valid).all()):
-                    raise RuntimeError(
-                        "fixed-validity 2P2N could not find four mutually "
-                        "separated points; reduce the configured distance ratios"
-                    )
-
-                p1_valid = torch.ones(n, device=device, dtype=torch.bool)
-                p2_valid = torch.ones(n, device=device, dtype=torch.bool)
-                n1_valid = torch.ones(n, device=device, dtype=torch.bool)
-                n2_valid = torch.ones(n, device=device, dtype=torch.bool)
-
             local_yx = torch.stack([p1_yx, p2_yx, n1_yx, n2_yx], dim=1)
             labels = torch.stack(
                 [
@@ -458,45 +376,6 @@ class ShapePointMiner(nn.Module):
                 ],
                 dim=1,
             )
-
-            stage = self._warmup_stage()
-            if stage == 0:
-                labels.fill_(-1)
-            elif stage == 1:
-                labels[:, 1] = -1
-                labels[:, 3] = -1
-
-            # Training-only positive-point jitter (plan D: prompt-consumption
-            # robustification). Perturb P1/P2 by up to point_jitter_radius
-            # canvas cells: positive candidates are gated by
-            # min_inside_distance_ratio (>= ~3 cells inside the object at the
-            # 64x64 canvas), so a 1-cell offset cannot cross the boundary.
-            # Negatives are never jittered: N1 lives on a 1-cell outer ring
-            # and any offset would flip its foreground/background semantics.
-            pjitter_count = 0
-            if (
-                self.training
-                and stage == 2
-                and self.point_jitter_prob > 0.0
-            ):
-                radius = int(self.point_jitter_radius)
-                local_yx = local_yx.clone()
-                for slot in (0, 1):
-                    sel = (
-                        torch.rand(n, device=device) < self.point_jitter_prob
-                    ) & (labels[:, slot] >= 0)
-                    if bool(sel.any()):
-                        off = torch.randint(
-                            -radius, radius + 1, (int(sel.sum()), 2),
-                            device=device,
-                        )
-                        local_yx[sel, slot, 0] = (
-                            local_yx[sel, slot, 0] + off[:, 0]
-                        ).clamp(0, h - 1)
-                        local_yx[sel, slot, 1] = (
-                            local_yx[sel, slot, 1] + off[:, 1]
-                        ).clamp(0, w - 1)
-                        pjitter_count += int(sel.sum())
 
         boxes_f = boxes.detach().to(mask_logits.dtype)
         x1, y1, x2, y2 = boxes_f.unbind(dim=1)
@@ -584,8 +463,9 @@ class ShapePointMiner(nn.Module):
                 ).detach(),
                 "point_overlap_count": overlap_count.detach(),
                 "all_invalid_count": (labels < 0).all(dim=1).sum().detach(),
-                "warmup_stage": mask_logits.new_tensor(float(stage)),
-                "pjitter_count": mask_logits.new_tensor(float(pjitter_count)),
+                # Historical keys; warmup/jitter are gone, emit their constants.
+                "warmup_stage": mask_logits.new_tensor(2.0),
+                "pjitter_count": mask_logits.new_tensor(0.0),
             }
         return coords, labels, stats
 

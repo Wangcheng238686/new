@@ -1,108 +1,78 @@
 #!/usr/bin/env bash
-# WHU-1024 full-data run: the NWPU-paper a3sgm decoder-tail (coupled margin
-# tail + decoupled aux clip) mounted on the OLD fast150 supervision base
-# (roi_local + standard final-mask loss, PE frozen, dense detached) -- i.e.
-# P2BRR's slot in the fast150 recipe is taken by the margin tail, everything
-# else stays fast150.  Purpose: test whether the paper's tail module can
-# reproduce the fast150 trajectory/effect when the supervision foundation is
-# the one that works on WHU.
+# PromptMiner-SAM2 (a3sgm) — WHU-1024 全量训练瘦入口。
 #
-# WHU-specific anchor: log(0.4/0.6)=-0.4055 -- this repo's WHU
-# test_cfg deploys mask_thr_binary=0.4 (same as NWPU; the runtime anchor
-# belongs to its 0.4 threshold); the roi_local predict path now cross-checks
-# this at first inference.
-#
-# Model contract: r1_c4_rd_..._emb64_udprk64 family (points_box_dense @
-# stride16 pafpn, dense detached, P2BRR off, tail margin K64).  The tail's
-# point loss consumes per-RoI GT crops on the decoder's native grid while the
-# main final-mask loss keeps the historical 28x28 roi_local targets.
-#
-# Launch form mirrors the proven WHU fp32 form: 2 GPUs x bs1 x accum4 =
-# effective 8, 368 optimizer steps/epoch, AMP off (this host's fp16 is slow
-# and diverged on the A3 form), EMA tracking-only, val every epoch (fast150's
-# cadence, for trajectory comparability).
+# 模型形态全部在静态配置 configs/a3sgm_whu1024.py（与论文 WHU 检查点
+# best_model_epoch118 的训练期架构契约指纹逐字节一致）。本脚本只负责
+# 机器环境、fast150 数据/调度策略与发射形态（fp32、有效 batch 8、150ep）。
 set -Eeuo pipefail
 
-# --- identity / architecture ---
-export ABLATION_ID="r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64_udprk64"
-export RUN_TAG="${RUN_TAG:-whu1024_a3sgm_roilocal_full_fast}"
-export NECK_TYPE="pafpn"
-export PROMPT_ROUTE="coarse"
-export EXPLICIT_PROMPT_MODE="points_box_dense"
-export SAM_IMAGE_EMBED_STRIDE="16"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MAINLINE="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+source "${MAINLINE}/scripts/load_environment.sh"
 
+export RUN_TAG="${RUN_TAG:-whu1024_a3sgm_roilocal_full_fast}"
+
+# --- fast150 数据/调度策略（与历史 run 完全一致）---
+export MAX_EPOCHS=150
+export VAL_EVERY_N_EPOCHS=1
+export WARMUP_ITERS=100
+export CUDNN_BENCHMARK=1
+export EARLY_STOPPING_PATIENCE=20
+export EARLY_STOPPING_START_EPOCH=90
+export EARLY_STOPPING_MIN_DELTA=5e-4
+export EARLY_STOPPING_SMOOTH_WINDOW=5
+export SAVE_BBOX_BEST_METRIC=bbox/mAP
+export SAVE_COMPOSITE_BEST=1
+export SAVE_COMPOSITE_WEIGHTS="0.5*bbox/mAP+0.5*segm/mAP"
+export SAVE_LAST_MODEL=1
+export SHAPE_PRIOR_LOSS_WEIGHT=0.10
+# A 系增强五元组（hflip+vflip+多尺度 896-1152）
+export TRAIN_FLIP_PROB=0.5
+export TRAIN_VFLIP_PROB=0.5
+export TRAIN_MULTI_SCALE_RESIZE_PROB=0.5
+export TRAIN_MULTI_SCALE_MODE=value
+export TRAIN_MULTI_SCALE_IMG_SCALE=896:896,960:960,1024:1024,1088:1088,1152:1152
+
+RESUME_ARGS=()
 if [ -n "${RESUME_OWN:-}" ]; then
-  export RESUME_FROM="${RESUME_OWN}"
+  RESUME_ARGS=(--resume-from "${RESUME_OWN}")
 fi
 
-# --- fast150 supervision base (P2BRR slot emptied) ---
-export P2_BOUNDARY_REFINER_ENABLED="0"
-export SHAPE_DENSE_TRANSFORM="raw_logits"
-export SHAPE_DENSE_DETACH="1"
-export FINAL_MASK_COORDINATE_MODE="roi_local"
-# FINAL_MASK_LOSS_MODE stays default "standard" (fast150 semantics).
-export PROMPT_ENCODER_TRAIN_MASK_DOWNSCALING="0"
-export PROMPT_ENCODER_LR_MULT="0.0"
-# SHAPE_DENSE_ALPHA_INIT stays default 0.25 (fast150).
+CKPT_DIR="${PORTABLE_SAM2_CHECKPOINT_ROOT}/ablations/${RUN_TAG}_tr1.0_va1.0"
 
-# --- a3sgm decoder tail (margin, coupled) ---
-export DECODER_TAIL_REFINER_ENABLED="1"
-export DECODER_TAIL_NUM_POINTS="64"
-export DECODER_TAIL_HIDDEN_DIM="128"
-export DECODER_TAIL_POINT_LOSS_WEIGHT="1.0"
-export DECODER_TAIL_DELTA_LOGIT_MAX="2.0"
-export DECODER_TAIL_MODE="residual_v1_margin"
-export DECODER_TAIL_CROSSING_MARGIN="0.10"
-export DECODER_TAIL_BOUNDARY_LOGIT="-0.4054651081081644"
-export DECOUPLED_AUX_GRAD_CLIP="1"
-
-# --- inert-module locks ---
-export ROI_SAM_ENABLED="0"
-export POINT_WARMUP_ENABLED="0"
-export CANVAS_RENDERER_ENABLED="0"
-export DENSE_CAPACITY_HEAD_ENABLED="0"
-export SHAPE_PRIOR_LOSS_WEIGHT="0.10"
-
-# --- launch form: fp32, effective batch 8, 368 steps/epoch ---
-export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-1,2}"
-export NPROC_PER_NODE="${NPROC_PER_NODE:-2}"
-export BATCH_SIZE="${BATCH_SIZE:-1}"
-export GRAD_ACCUM_STEPS="${GRAD_ACCUM_STEPS:-4}"
-export AMP="${AMP:-0}"
-export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
-export CUDNN_BENCHMARK="${CUDNN_BENCHMARK:-1}"
-
-# --- schedule / data (fast150 parity) ---
-export MAX_EPOCHS="${MAX_EPOCHS:-150}"
-export TRAIN_SUBSET_RATIO="${TRAIN_SUBSET_RATIO:-1.0}"
-export VAL_SUBSET_RATIO="${VAL_SUBSET_RATIO:-1.0}"
-export SUBSET_SEED="${SUBSET_SEED:-44}"
-export LEARNING_RATE="${LEARNING_RATE:-5e-4}"
-export WEIGHT_DECAY="${WEIGHT_DECAY:-0.05}"
-export WARMUP_ITERS="${WARMUP_ITERS:-100}"
-
-# --- validation every epoch (fast150 cadence) + multi-alias selection ---
-export VAL_EVERY_N_EPOCHS="${VAL_EVERY_N_EPOCHS:-1}"
-export VAL_BATCH_SIZE="${VAL_BATCH_SIZE:-4}"
-export EARLY_STOPPING_PATIENCE="${EARLY_STOPPING_PATIENCE:-20}"
-export EARLY_STOPPING_START_EPOCH="${EARLY_STOPPING_START_EPOCH:-90}"
-export EARLY_STOPPING_MIN_DELTA="${EARLY_STOPPING_MIN_DELTA:-5e-4}"
-export EARLY_STOPPING_SMOOTH_WINDOW="${EARLY_STOPPING_SMOOTH_WINDOW:-5}"
-export SAVE_BBOX_BEST_METRIC="${SAVE_BBOX_BEST_METRIC-bbox/mAP}"
-export SAVE_COMPOSITE_BEST="${SAVE_COMPOSITE_BEST:-1}"
-export SAVE_COMPOSITE_WEIGHTS="${SAVE_COMPOSITE_WEIGHTS:-0.5*bbox/mAP+0.5*segm/mAP}"
-export SAVE_LAST_MODEL="${SAVE_LAST_MODEL:-1}"
-export TEST_MAX_PER_IMG="${TEST_MAX_PER_IMG:-100}"
-
-# --- EMA tracking-only ---
-export EMA_ENABLED="${EMA_ENABLED:-1}"
-export EMA_EVAL="${EMA_EVAL:-0}"
-export EMA_SAVE_BEST="${EMA_SAVE_BEST:-0}"
-
-# --- fast150 augmentation ---
-export TRAIN_VFLIP_PROB="${TRAIN_VFLIP_PROB:-0.5}"
-export TRAIN_MULTI_SCALE_RESIZE_PROB="${TRAIN_MULTI_SCALE_RESIZE_PROB:-0.5}"
-export TRAIN_MULTI_SCALE_MODE="${TRAIN_MULTI_SCALE_MODE:-value}"
-export TRAIN_MULTI_SCALE_IMG_SCALE="${TRAIN_MULTI_SCALE_IMG_SCALE:-896:896,960:960,1024:1024,1088:1088,1152:1152}"
-
-exec bash "$(dirname "$0")/../_run_ablation.sh" "$@"
+cd "${MAINLINE}"
+exec "${PYTHON}" -m torch.distributed.run \
+  --nproc_per_node="${NPROC_PER_NODE}" \
+  --master_port="${MASTER_PORT:-32633}" \
+  train/train_rsprompter_fusion.py \
+  --config configs/a3sgm_whu1024.py \
+  --data-root "${WHU1024_DATA_ROOT}" \
+  --use-whu-coco \
+  --image-size 1024 1024 \
+  --batch-size "${BATCH_SIZE}" \
+  --grad-accum-steps "${GRAD_ACCUM_STEPS}" \
+  --epochs "${MAX_EPOCHS}" \
+  --lr 5e-4 \
+  --checkpoint-dir "${CKPT_DIR}" \
+  --train-subset-ratio 1.0 --val-subset-ratio 1.0 \
+  --val-batch-size 4 \
+  --seed 44 \
+  --amp "${AMP}" \
+  --ema-enabled 1 --ema-decay 0.999 --ema-eval 0 --ema-save-best 0 \
+  --ema-update-every 1 --ema-eval-start-epoch 5 \
+  --val-every-n-epochs "${VAL_EVERY_N_EPOCHS}" \
+  --compute-val-loss 0 \
+  --early-stopping-patience "${EARLY_STOPPING_PATIENCE}" \
+  --early-stopping-start-epoch "${EARLY_STOPPING_START_EPOCH}" \
+  --early-stopping-min-delta "${EARLY_STOPPING_MIN_DELTA}" \
+  --early-stopping-smooth-window "${EARLY_STOPPING_SMOOTH_WINDOW}" \
+  --sat-backbone-lr-mult 1.0 --sat-other-lr-mult 1.0 \
+  --mask-decoder-lr-mult 1.0 --no-mask-lr-mult 1.0 \
+  --shape-prior-lr-mult 1.0 \
+  --prompt-encoder-lr-mult 0.0 \
+  --warmup-iters "${WARMUP_ITERS}" \
+  --weight-decay 0.05 \
+  --det-loss-stage1-end 5 --det-loss-stage2-end 10 \
+  --det-loss-weight-stage1 1.0 --det-loss-weight-stage2 1.0 --det-loss-weight-stage3 1.0 \
+  --prompt-debug-stats 1 --prompt-debug-stats-interval 50 \
+  "${RESUME_ARGS[@]}"

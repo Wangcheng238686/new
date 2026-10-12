@@ -8,6 +8,7 @@ import copy
 import json
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Tuple
@@ -80,34 +81,6 @@ def parse_args() -> argparse.Namespace:
         "--allow-nonstrict",
         action="store_true",
         help="Allow missing/unexpected model keys. Strict loading is the default.",
-    )
-    parser.add_argument(
-        "--disable-p2",
-        action="store_true",
-        help=(
-            "Ablate P2BoundaryRefiner at inference by zeroing beta (delta==0, "
-            "refined coarse logits identical to raw)."
-        ),
-    )
-    parser.add_argument(
-        "--p2-beta",
-        type=float,
-        default=None,
-        help=(
-            "Override P2BoundaryRefiner beta at inference (e.g. 1.0 amplifies "
-            "the residual 5x vs the trained 0.2; negative flips its sign). "
-            "Takes precedence over --disable-p2."
-        ),
-    )
-    parser.add_argument(
-        "--disable-decoder-tail",
-        action="store_true",
-        help=(
-            "Ablate the UDPR decoder tail at inference by zeroing "
-            "delta_logit_max (delta==0, refined final logits identical to "
-            "the unrefined decoder output). Paired on/off evaluation on the "
-            "same checkpoint measures the tail's net eval-time value."
-        ),
     )
     parser.add_argument(
         "--max-per-img",
@@ -308,6 +281,28 @@ def _targeted_sam2_checkpoint_override(
         decoder_cfg["checkpoint_path"] = checkpoint_path
 
 
+_TAIL_ID_SUFFIX = re.compile(r"^_udprk\d+$")
+
+
+def _is_legacy_pre_tail_id(saved_id: Any, resolved: Mapping[str, Any]) -> bool:
+    """True when the only architecture-ID difference is the decoder-tail suffix.
+
+    Commit eef70ca (2026-09-18) started appending ``_udprk{K}`` to tail-enabled
+    RD/G base IDs so tail models stop sharing an ID with tail-less ones.
+    Checkpoints trained before it (e.g. NWPU a3sgm, saved 2026-09-17) carry the
+    bare base ID. Only this exact naming gap is tolerated here; content equality
+    is still enforced by the fingerprint comparison at the call site, so the
+    rule can never mask a real config drift.
+    """
+    resolved_id = resolved.get("architecture_id")
+    if not isinstance(saved_id, str) or not isinstance(resolved_id, str):
+        return False
+    return bool(
+        resolved_id.startswith(saved_id)
+        and _TAIL_ID_SUFFIX.match(resolved_id[len(saved_id) :])
+    )
+
+
 def _resolve_model_config(
     args: argparse.Namespace,
     snapshot: Mapping[str, Any],
@@ -335,17 +330,6 @@ def _resolve_model_config(
         model_config = cfg.model.to_dict()
         source = str(config_path)
 
-    roi_head = model_config.get("roi_head", {})
-    mask_head = roi_head.get("mask_head", {}) if isinstance(roi_head, Mapping) else {}
-    if isinstance(mask_head, MutableMapping) and "densebr_cfg" in mask_head:
-        legacy_densebr = mask_head.pop("densebr_cfg") or {}
-        if bool(legacy_densebr.get("enabled", False)):
-            raise RuntimeError(
-                "Legacy checkpoint enabled DenseBR and cannot be migrated to "
-                "P2BoundaryRefiner. Use the historical code revision explicitly."
-            )
-        mask_head.setdefault("p2_boundary_refiner_cfg", {"enabled": False})
-
     saved_contract = snapshot.get("architecture_contract", {})
     if saved_contract:
         from mmengine.config import Config
@@ -361,6 +345,19 @@ def _resolve_model_config(
                 saved.get("architecture_id") == resolved.get("architecture_id")
                 and saved.get("model_fingerprint") == resolved.get("model_fingerprint")
             ):
+                return config
+            # Naming-only compat for pre-eef70ca checkpoints: identical
+            # fingerprint plus the ID gap being exactly the tail suffix.
+            if (
+                saved.get("model_fingerprint") == resolved.get("model_fingerprint")
+                and _is_legacy_pre_tail_id(saved.get("architecture_id"), resolved)
+            ):
+                logger.warning(
+                    "Checkpoint predates the decoder-tail ID suffix: saved=%s "
+                    "accepted as %s (fingerprints identical)",
+                    saved.get("architecture_id"),
+                    resolved.get("architecture_id"),
+                )
                 return config
             # Compat: checkpoints saved before PROMPT_ENCODER_TRAIN_
             # MASK_DOWNSCALING was plumbed into the main config carry no
@@ -777,11 +774,6 @@ def main() -> None:
     )
     checkpoint_path = Path(args.checkpoint).expanduser().resolve()
     checkpoint = _load_checkpoint(checkpoint_path)
-    if any(".densebr." in str(name) for name in checkpoint["model"]):
-        raise RuntimeError(
-            "Checkpoint contains enabled legacy DenseBR parameters; this architecture "
-            "is intentionally unsupported by the v2 inference path."
-        )
     snapshot = _snapshot(checkpoint)
     report = _checkpoint_report(checkpoint_path, checkpoint, snapshot)
     print(json.dumps(report, ensure_ascii=False, indent=2, default=_json_default))
@@ -841,32 +833,6 @@ def main() -> None:
             )
         else:
             logger.warning("--nms-thr given but rcnn test_cfg has no nms.iou_threshold")
-    if args.disable_p2 or args.p2_beta is not None:
-        refiner = getattr(mask_head, "p2_boundary_refiner", None)
-        if refiner is None:
-            logger.warning(
-                "--disable-p2/--p2-beta given but this checkpoint has no P2BoundaryRefiner"
-            )
-        else:
-            target_beta = 0.0 if args.p2_beta is None else float(args.p2_beta)
-            logger.info(
-                "P2BoundaryRefiner beta overridden at inference: %.4f -> %.4f",
-                float(refiner.beta),
-                target_beta,
-            )
-            refiner.beta = target_beta
-    if args.disable_decoder_tail:
-        tail = getattr(mask_head, "decoder_tail_refiner", None)
-        if tail is None:
-            logger.warning(
-                "--disable-decoder-tail given but this checkpoint has no decoder tail"
-            )
-        else:
-            logger.info(
-                "decoder tail delta_logit_max overridden at inference: %.4f -> 0.0",
-                float(tail.delta_logit_max),
-            )
-            tail.delta_logit_max = 0.0
     logger.info(
         "Model rebuilt from %s; weights=%s strict=%s device=%s",
         config_source,
@@ -1022,9 +988,6 @@ def main() -> None:
         "sam2_repo": str(sam2_repo),
         "weights": args.weights,
         "strict": not args.allow_nonstrict,
-        "disable_p2": bool(args.disable_p2),
-        "disable_decoder_tail": bool(args.disable_decoder_tail),
-        "p2_beta_override": args.p2_beta,
         "load_report": load_report,
         "dataset": contract,
         "device": str(device),

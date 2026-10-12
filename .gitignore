@@ -25,3 +25,8 @@ portable_sam2_explicit_coarse/configs/environment.local.sh
 *.log
 portable_sam2_explicit_coarse/logs/**/*.png
 portable_sam2_explicit_coarse/refactor_golden/
+
+# Session tooling (zcode plans/MCP bridge) stays local, never tracked.
+/.zcode/
+/tools/zcode-mcp-bridge.mjs
+/.zcodeignore

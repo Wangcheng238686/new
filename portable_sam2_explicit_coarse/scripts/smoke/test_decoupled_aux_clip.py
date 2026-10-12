@@ -25,13 +25,11 @@ class _Head(nn.Module):
 
 
 class _MaskHead(nn.Module):
-    def __init__(self, tail=True, densecap=False):
+    def __init__(self, tail=True):
         super().__init__()
         self.trunk = nn.Linear(4, 4)
         if tail:
             self.decoder_tail_refiner = _Head()
-        if densecap:
-            self.dense_capacity_head = _Head()
 
 
 class _Model(nn.Module):
@@ -51,16 +49,15 @@ class _DDPShim(nn.Module):
 def main() -> None:
     torch.manual_seed(0)
 
-    # Both aux heads present (and a DDP wrapper): base must exclude both,
-    # each aux group must be exactly that module's params, coverage exact.
-    model = _DDPShim(_Model(tail=True, densecap=True))
+    # Tail behind a DDP wrapper: base excludes the aux module, the aux group
+    # is exactly that module's params, and the partition covers every param.
+    model = _DDPShim(_Model(tail=True))
     base, groups = _partition_aux_clip_params(model)
     named = dict(model.module.named_parameters())
     tail_params = {id(p) for n, p in named.items() if n.startswith("roi_head.mask_head.decoder_tail_refiner.")}
-    cap_params = {id(p) for n, p in named.items() if n.startswith("roi_head.mask_head.dense_capacity_head.")}
-    assert len(groups) == 2, groups
-    assert {id(p) for g in groups for p in g} == tail_params | cap_params
-    assert not (tail_params | cap_params) & {id(p) for p in base}
+    assert len(groups) == 1, groups
+    assert {id(p) for g in groups for p in g} == tail_params
+    assert not tail_params & {id(p) for p in base}
     all_ids = [id(p) for p in base] + [id(p) for g in groups for p in g]
     assert len(all_ids) == len(set(all_ids)) == len(named), "partition must cover every param exactly once"
 
