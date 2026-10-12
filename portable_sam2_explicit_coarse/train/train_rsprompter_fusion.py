@@ -187,6 +187,66 @@ def _extract_instances_numpy(
     return out
 
 
+
+def _build_gt_data_samples(
+    imgs: torch.Tensor,
+    img_metas: List[dict],
+    gt_bboxes: List[torch.Tensor],
+    gt_labels: List[torch.Tensor],
+    gt_masks,
+    device: torch.device,
+) -> List[DetDataSample]:
+    """Wrap a dataset batch's GT into DetDataSamples on ``device``.
+
+    Shared by the training and validation loops (previously two
+    semantically-identical inline blocks).  Padding labels are dropped;
+    empty images get empty GT.
+    """
+    data_samples: List[DetDataSample] = []
+    for i in range(len(imgs)):
+        ds = DetDataSample()
+        ds.set_metainfo(img_metas[i])
+        gt_instances = InstanceData()
+        num_inst = len(gt_labels[i])
+        if num_inst > 0:
+            valid_mask = gt_labels[i] >= 0
+            num_valid = int(valid_mask.sum().item())
+            if num_valid > 0:
+                valid_indices = (
+                    valid_mask.nonzero().squeeze(-1)[:num_valid].cpu()
+                )
+                gt_instances.bboxes = gt_bboxes[i][valid_indices]
+                gt_instances.labels = gt_labels[i][valid_indices]
+                masks = gt_masks[i][valid_indices.cpu().numpy()]
+                gt_instances.masks = BitmapMasks(
+                    masks, *img_metas[i]["img_shape"]
+                )
+            else:
+                gt_instances.bboxes = torch.zeros(
+                    (0, 4), dtype=torch.float32, device=device
+                )
+                gt_instances.labels = torch.zeros(
+                    (0,), dtype=torch.int64, device=device
+                )
+                gt_instances.masks = BitmapMasks(
+                    np.zeros((0, *img_metas[i]["img_shape"]), dtype=np.uint8),
+                    *img_metas[i]["img_shape"],
+                )
+        else:
+            gt_instances.bboxes = torch.zeros(
+                (0, 4), dtype=torch.float32, device=device
+            )
+            gt_instances.labels = torch.zeros(
+                (0,), dtype=torch.int64, device=device
+            )
+            gt_instances.masks = BitmapMasks(
+                np.zeros((0, *img_metas[i]["img_shape"]), dtype=np.uint8),
+                *img_metas[i]["img_shape"],
+            )
+        ds.gt_instances = gt_instances
+        data_samples.append(ds.to(device))
+    return data_samples
+
 def _summarize_mask_density(all_dt: List[dict]) -> Tuple[float, float]:
     """Return average binary mask fill ratio and masks per validation image."""
     weighted_fill = 0.0
@@ -1870,50 +1930,9 @@ def main():
             gt_labels = [l.to(device) for l in batch["gt_labels"]]
             gt_masks = batch["gt_masks"]
 
-            # Prepare data_samples and move to device
-            data_samples: List[DetDataSample] = []
-            for i in range(len(imgs)):
-                ds = DetDataSample()
-                ds.set_metainfo(img_metas[i])
-                gt_instances = InstanceData()
-                num_inst = len(gt_labels[i])
-                if num_inst > 0:
-                    valid_mask = gt_labels[i] >= 0
-                    num_valid = int(valid_mask.sum().item())
-                    if num_valid > 0:
-                        valid_indices = (
-                            valid_mask.nonzero().squeeze(-1)[:num_valid].cpu()
-                        )
-                        gt_instances.bboxes = gt_bboxes[i][valid_indices]
-                        gt_instances.labels = gt_labels[i][valid_indices]
-                        masks = gt_masks[i][valid_indices.cpu().numpy()]
-                        gt_instances.masks = BitmapMasks(
-                            masks, *img_metas[i]["img_shape"]
-                        )
-                    else:
-                        gt_instances.bboxes = torch.zeros(
-                            (0, 4), dtype=torch.float32, device=device
-                        )
-                        gt_instances.labels = torch.zeros(
-                            (0,), dtype=torch.int64, device=device
-                        )
-                        gt_instances.masks = BitmapMasks(
-                            np.zeros((0, *img_metas[i]["img_shape"]), dtype=np.uint8),
-                            *img_metas[i]["img_shape"],
-                        )
-                else:
-                    gt_instances.bboxes = torch.zeros(
-                        (0, 4), dtype=torch.float32, device=device
-                    )
-                    gt_instances.labels = torch.zeros(
-                        (0,), dtype=torch.int64, device=device
-                    )
-                    gt_instances.masks = BitmapMasks(
-                        np.zeros((0, *img_metas[i]["img_shape"]), dtype=np.uint8),
-                        *img_metas[i]["img_shape"],
-                    )
-                ds.gt_instances = gt_instances
-                data_samples.append(ds.to(device))
+            data_samples = _build_gt_data_samples(
+                imgs, img_metas, gt_bboxes, gt_labels, gt_masks, device
+            )
 
             # Match the historical WHU1024 baseline: empty-GT training batches
             # still enter the detector loss. A rank-local early continue here
@@ -2201,54 +2220,9 @@ def main():
                     gt_labels = [l.to(device) for l in batch["gt_labels"]]
                     gt_masks = batch["gt_masks"]
 
-                    # Prepare data_samples and move to device
-                    data_samples = []
-                    for i in range(len(imgs)):
-                        ds = DetDataSample()
-                        ds.set_metainfo(img_metas[i])
-                        gt_instances = InstanceData()
-                        num_inst = len(gt_labels[i])
-                        if num_inst > 0:
-                            valid_mask = gt_labels[i] >= 0
-                            num_valid = int(valid_mask.sum().item())
-                            if num_valid > 0:
-                                valid_indices = (
-                                    valid_mask.nonzero().squeeze(-1)[:num_valid].cpu()
-                                )
-                                gt_instances.bboxes = gt_bboxes[i][valid_indices]
-                                gt_instances.labels = gt_labels[i][valid_indices]
-                                masks = gt_masks[i][valid_indices.cpu().numpy()]
-                                gt_instances.masks = BitmapMasks(
-                                    masks, *img_metas[i]["img_shape"]
-                                )
-                            else:
-                                gt_instances.bboxes = torch.zeros(
-                                    (0, 4), dtype=torch.float32, device=device
-                                )
-                                gt_instances.labels = torch.zeros(
-                                    (0,), dtype=torch.int64, device=device
-                                )
-                                gt_instances.masks = BitmapMasks(
-                                    np.zeros(
-                                        (0, *img_metas[i]["img_shape"]), dtype=np.uint8
-                                    ),
-                                    *img_metas[i]["img_shape"],
-                                )
-                        else:
-                            gt_instances.bboxes = torch.zeros(
-                                (0, 4), dtype=torch.float32, device=device
-                            )
-                            gt_instances.labels = torch.zeros(
-                                (0,), dtype=torch.int64, device=device
-                            )
-                            gt_instances.masks = BitmapMasks(
-                                np.zeros(
-                                    (0, *img_metas[i]["img_shape"]), dtype=np.uint8
-                                ),
-                                *img_metas[i]["img_shape"],
-                            )
-                        ds.gt_instances = gt_instances
-                        data_samples.append(ds.to(device))
+                    data_samples = _build_gt_data_samples(
+                        imgs, img_metas, gt_bboxes, gt_labels, gt_masks, device
+                    )
 
                     # Optional validation loss is a second model forward. Public
                     # ablation runners disable it for fast point screening; all
