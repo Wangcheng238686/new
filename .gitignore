@@ -8,7 +8,7 @@
 .vscode/
 .idea/
 
-# LaTeX build artifacts (the main.tex paper draft is not tracked).
+# LaTeX build artifacts (the .tex/.pdf drafts stay tracked; only build junk is ignored).
 /main.aux
 /main.fdb_latexmk
 /main.fls
@@ -16,6 +16,18 @@
 /main.out
 /main.pdf
 /main.synctex.gz
+/main2.aux
+/main2.fdb_latexmk
+/main2.fls
+/main2.log
+/main2.synctex.gz
+/main5.aux
+/main5.fdb_latexmk
+/main5.fls
+/main5.log
+
+# understand-anything tool state (regenerable)
+**/.ua/
 
 portable_sam2_explicit_coarse/configs/environment.local.sh
 
