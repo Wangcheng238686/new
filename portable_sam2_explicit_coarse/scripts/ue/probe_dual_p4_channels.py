@@ -217,30 +217,32 @@ def run_harvest(a, out, h):
 
 
 def load_train(cache: Path):
+    """Per-target stacks: boundary/error/iou rows must never be interleaved."""
     files = sorted((cache / 'train').glob('*.npz'))
-    ids, yb_full, lens = [], [], {t: [] for t in list(TARGETS) + ['iou']}
-    frag = {k: [] for k in ('sat', 'bevc', 'bevs')}
+    ids, yb_full = [], []
+    lens = {t: [] for t in list(TARGETS) + ['iou']}
+    frag = {t: {k: [] for k in ('sat', 'bevc', 'bevs')} for t in list(TARGETS) + ['iou']}
     ydata = {t: [] for t in list(TARGETS) + ['iou']}
     for f in files:
         z = np.load(f)
         ids.append(str(z['scene_id']))
         for t in TARGETS:
-            frag['sat'].append(z[f'sat_{t}'])
-            frag['bevc'].append(z[f'bevc_{t}'])
-            frag['bevs'].append(z[f'bevs_{t}'])
+            for k in ('sat', 'bevc', 'bevs'):
+                frag[t][k].append(z[f'{k}_{t}'])
             y = z[f'y_{t}']
             ydata[t].append(y)
             lens[t].append(len(y))
         for k, name in (('sat', 'iou_sat'), ('bevc', 'iou_bevc'), ('bevs', 'iou_bevs')):
-            frag[k].append(z[name])
+            frag['iou'][k].append(z[name])
         q = z['y_iou']
         ydata['iou'].append(q)
         lens['iou'].append(len(q))
         yb_full.append(float(z['yb'].mean()))
         z.close()
-    out = {'ids': ids, 'pi_yb': yb_full, 'lens': lens,
-           'x': {k: np.concatenate(v) for k, v in frag.items()},
-           'y': {t: np.concatenate(ydata[t]) for t in ydata}}
+    out = {'ids': ids, 'pi_yb': yb_full, 'lens': lens}
+    for t in list(TARGETS) + ['iou']:
+        out[t] = {'x': {k: np.concatenate(v) for k, v in frag[t].items()},
+                  'y': np.concatenate(ydata[t])}
     return out
 
 
@@ -279,11 +281,11 @@ def run_readout(a, out):
         cls = t != 'iou'
         fit_rows = rows_for(fit_idx, tr['lens'][t])
         sel_rows = rows_for(sel_idx, tr['lens'][t])
-        y_full = tr['y'][t]
+        y_full = tr[t]['y']
         sel_losses = {}
         mlp_models = {}
         for arm in ARMS:
-            xa = concat_arm(tr['x'], arm)
+            xa = concat_arm(tr[t]['x'], arm)
             sc = StandardScaler().fit(xa[fit_rows])
             xf = sc.transform(xa[fit_rows]).astype(np.float32)
             xs_ = sc.transform(xa[sel_rows]).astype(np.float32)
@@ -302,7 +304,7 @@ def run_readout(a, out):
                          for hi in range(len(HIDDENS)) for wi in range(len(WDS))))
         lin, lin_losses = {}, {}
         for arm in ARMS:
-            xa = concat_arm(tr['x'], arm)
+            xa = concat_arm(tr[t]['x'], arm)
             sc = StandardScaler().fit(xa[fit_rows])
             xf = sc.transform(xa[fit_rows])
             xs_ = sc.transform(xa[sel_rows])
@@ -335,10 +337,10 @@ def run_readout(a, out):
     for reader in ('mlp', 'lin'):
         m, sc = models['boundary', 'correct', reader]
         sel_rows = rows_for(sel_idx, tr['lens']['boundary'])
-        xa = concat_arm(tr['x'], 'correct')
+        xa = concat_arm(tr['boundary']['x'], 'correct')
         xs_ = sc.transform(xa[sel_rows]).astype(np.float32)
         pl = predict(m, xs_) if reader == 'mlp' else m.predict_proba(xs_)[:, 1]
-        y = tr['y']['boundary'][sel_rows]
+        y = tr['boundary']['y'][sel_rows]
         pi = float(np.mean([tr['pi_yb'][i] for i in sel_idx]))
         best_t, best_f = None, -1.0
         for t_ in THRS:
