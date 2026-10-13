@@ -12,11 +12,12 @@ ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT))
 from data.ue_raw_pair_dataset import UERawPairDataset
 from inference.infer_from_checkpoint import _load_checkpoint,_load_model_state,_register_and_build,_resolve_model_config,_resolve_sam2_repo,_select_state_dict,_snapshot
 from rsprompter.surfacebev import rasterize_surfacebev
-from probe_surfacebev_p1_h0 import EXPECTED_B0_PATH,EXPECTED_B0_SHA256,EXPECTED_RUN_TAG,cameras,make_uav_encoder,uav_descriptors,sha_file,model_input,digest_predictions
-SEED=20261012;ARMS=('SAT','correct','sham90');CS=(.01,.1,1.,10.);THRS=np.arange(.1,1,.1);VERSION='P1-V2-recoverable-r1'
-H0=Path('/data1/wangcheng/checkpoint/surfbev_b0/probes/SURFBEV-P1-V2-H0-full-20261012/summary.json')
+from probe_surfacebev_p1_h0 import cameras,make_uav_encoder,uav_descriptors,sha_file,model_input,digest_predictions
+from ue.features import build_baseline, observe_satellite, implementation_fingerprints
+from ue.contract import verify_identity, guard_cache
+SEED=20261012;ARMS=('SAT','correct','sham90');CS=(.01,.1,1.,10.);THRS=np.arange(.1,1,.1);VERSION='UE-WHU-P1-v1'
 def args():
- p=argparse.ArgumentParser();p.add_argument('--output-dir',type=Path,required=True);p.add_argument('--phase',choices=('harvest','evaluate'),required=True);p.add_argument('--device',default='cuda:0');p.add_argument('--checkpoint',type=Path,default=EXPECTED_B0_PATH);p.add_argument('--root',type=Path,default=ROOT/'data/ue_raw_hero_uav_pairset_20261011');p.add_argument('--sam2-ckpt',default='/data1/wangcheng/pretrained/sam2_hiera_base_plus.pt');p.add_argument('--max-train',type=int,default=0);p.add_argument('--max-val',type=int,default=0);p.add_argument('--allow-test',action='store_true');return p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--output-dir',type=Path,required=True);p.add_argument('--phase',choices=('harvest','evaluate'),required=True);p.add_argument('--device',default='cuda:0');p.add_argument('--checkpoint',type=Path,required=True);p.add_argument('--baseline-contract',type=Path,required=True);p.add_argument('--h0',type=Path,required=True);p.add_argument('--experiment-id',required=True);p.add_argument('--root',type=Path,default=ROOT/'data/ue_raw_hero_uav_pairset_20261011');p.add_argument('--sam2-ckpt',default=os.environ.get('SAM2_CKPT'));p.add_argument('--max-train',type=int,default=0);p.add_argument('--max-val',type=int,default=0);p.add_argument('--allow-test',action='store_true');return p.parse_args()
 def boundary(m):m=m.astype(np.uint8);return cv2.dilate(m,np.ones((5,5),np.uint8))-cv2.erode(m,np.ones((5,5),np.uint8))>0
 def p3mask(m):return F.max_pool2d(torch.from_numpy(m.astype(np.float32))[None,None],8,8)[0,0].numpy().astype(np.uint8).reshape(-1)
 def f1(p,y):t=((p>0)&(y>0)).sum();return float(2*t/max(2*t+(p>0).sum()+(y>0).sum()-2*t,1))
@@ -28,36 +29,38 @@ def atomic_npz(p,**d):
  with open(q,'wb') as f:np.savez_compressed(f,**d)
  os.replace(q,p)
 def preflight(a):
- if not H0.is_file():raise RuntimeError('H0 PASS artifact missing')
- h=json.loads(H0.read_text())
- if h.get('verdict')!='H0_PASS':raise RuntimeError('H0 not passed')
+ if not a.h0.is_file():raise RuntimeError('H0 artifact missing')
+ h=json.loads(a.h0.read_text())
+ checkpoint=torch.load(a.checkpoint,map_location='cpu',weights_only=False)
+ identity=verify_identity(a.checkpoint,checkpoint,a.baseline_contract)
+ if h.get('baseline_identity')!=identity:raise RuntimeError('H0 baseline identity mismatch')
+ if h.get('implementation_fingerprints')!=implementation_fingerprints():raise RuntimeError('H0 implementation fingerprint mismatch')
+ smoke=a.phase=='harvest' and bool(a.max_train or a.max_val)
+ if h.get('verdict')!='H0_PASS' and not (smoke and h.get('verdict')=='SMOKE_ONLY'):raise RuntimeError('H0 not passed')
+ if identity['validation_only'] and (not smoke or a.allow_test):raise RuntimeError('temporary baseline is smoke only')
  mark=torch.arange(128*128).reshape(128,128);pack=mark[None,:,:,None].repeat(12,1,1,10).permute(1,2,0,3).reshape(-1,120)
- if not torch.equal(pack[:,0],mark.reshape(-1)) or not torch.equal(pack[:,110],mark.reshape(-1)):raise RuntimeError('P3/SurfaceBEV row-major packing failed')
- if a.checkpoint.resolve()!=EXPECTED_B0_PATH or sha_file(a.checkpoint)!=EXPECTED_B0_SHA256:raise RuntimeError('wrong B0 last')
+ if not torch.equal(pack[:,0],mark.reshape(-1)) or not torch.equal(pack[:,110],mark.reshape(-1)):raise RuntimeError('P3/SurfaceBEV packing failed')
  return h
-def implementation_fingerprints():
- files=(Path(__file__).resolve(),ROOT/'rsprompter/surfacebev.py',ROOT/'data/ue_raw_pair_dataset.py',ROOT/'scripts/ue/probe_surfacebev_p1_h0.py',ROOT/'inference/infer_from_checkpoint.py')
- return {str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
-def make_contract(a,h):return {'version':VERSION,'seed':SEED,'checkpoint_sha256':EXPECTED_B0_SHA256,'h0_sha256':hashlib.sha256(H0.read_bytes()).hexdigest(),'split':'surfbev_b0_split_v2.json','height_edges_cm':h['height_edges_cm'],'arms':list(ARMS),'dim':64,'per_class_cap':256,'implementation_fingerprints':implementation_fingerprints()}
+def make_contract(a,h):
+ return {'version':VERSION,'seed':SEED,'baseline_identity':h['baseline_identity'],
+         'h0_sha256':sha_file(a.h0),'split':'surfbev_b0_split_v2.json',
+         'height_edges_cm':h['height_edges_cm'],'arms':list(ARMS),'dim':64,
+         'per_class_cap':256,'experiment_id':a.experiment_id,
+         'max_train':a.max_train,'max_val':a.max_val,
+         'implementation_fingerprints':implementation_fingerprints()}
 def cache_contract(cache,a,h):
- p=cache/'contract.json';w=make_contract(a,h)
- if not p.exists():atomic_json(p,w);return
- g=json.loads(p.read_text())
- if g!=w:raise RuntimeError('cache contract mismatch')
+ guard_cache(cache/'contract.json',make_contract(a,h))
 @torch.inference_mode()
 def pred_p3(model,item,dev):
- a=model_input(model,item,dev);o=model.predict(a['inputs'],a['data_samples'],rescale=False);digest=digest_predictions(o)
- b=model_input(model,item,dev);p3=model.extract_feat(b['inputs'],b['data_samples'])[0][1][0].float()
- c=model_input(model,item,dev);z=model.predict(c['inputs'],c['data_samples'],rescale=False)
- if digest!=digest_predictions(z) or p3.shape!=(512,128,128):raise RuntimeError('B0 passive parity/P3 contract')
- x=getattr(o[0].pred_instances,'masks');x=x.to_ndarray() if hasattr(x,'to_ndarray') else (x.masks if hasattr(x,'masks') else x)
+ features,outputs,digest=observe_satellite(model,item,dev)
+ p3=features.pyramids[1][0].float()
+ x=getattr(outputs[0].pred_instances,'masks')
+ x=x.to_ndarray() if hasattr(x,'to_ndarray') else (x.masks if hasattr(x,'masks') else x)
  return p3.detach().cpu().numpy(),(x.detach().cpu().numpy() if isinstance(x,torch.Tensor) else np.asarray(x)).astype(bool),digest
 def build(a,dev):
- ck=_load_checkpoint(a.checkpoint);snap=_snapshot(ck);ta=snap['training_args']
- if ck['epoch']!=99 or ta.get('run_tag')!=EXPECTED_RUN_TAG or ta.get('seed')!=44:raise RuntimeError('B0 lineage')
- la=argparse.Namespace(config=None,sam2_ckpt=a.sam2_ckpt,sam2_repo=None);_resolve_sam2_repo(la,snap);cfg,_=_resolve_model_config(la,snap);m=_register_and_build(cfg).to(dev).eval();r=_load_model_state(m,_select_state_dict(ck,'model'),False)
- if r['missing_keys'] or r['unexpected_keys']:raise RuntimeError('strict B0 load')
- return m,make_uav_encoder(la,dev)
+ model,_,_,_=build_baseline(a.checkpoint,a.baseline_contract,a.sam2_ckpt,dev,
+                           allow_validation=a.phase=='harvest' and bool(a.max_train or a.max_val))
+ return model,make_uav_encoder(a,dev)
 def projections(dev):
  r=np.random.default_rng(SEED);return {'sat':r.normal(size=(512,64)).astype('float32')/8,'desc':torch.tensor(r.normal(size=(256,4)).astype('float32')/16,device=dev),'comb':r.normal(size=(184,64)).astype('float32')/np.sqrt(184)}
 def feature(p3,surf,arm,p):
@@ -158,8 +161,10 @@ def run_eval(a,out,h):
  rows=evaluate(tf,m,t);met={a:{q:np.array([x[a][q] for x in rows]) for q in ('f1','auc','rho')} for a in ARMS};ds={}
  for q in ('f1','auc','rho'):
   for b in ('SAT','sham90'):ds['correct_minus_'+b+'_'+q]=boot(met['correct'][q]-met[b][q])
- passed=all(v['ci95'][0]>0 for v in ds.values());summary={'status':'complete','decision':'P1_PASS' if passed else 'P1_FAIL','selected':sel,'n':{'train':694,'val':100,'test':151},'arms':{a:{q:float(met[a][q].mean()) for q in met[a]} for a in ARMS},'bootstrap':ds,'invariants':{'test_opened_once':True,'parity_and_surface_contract':True,'same_raw_input':True,'train_val_test_processed':[694,100,151],'cache_contract':json.loads((cache/'contract.json').read_text())}}
+ passed=all(v['ci95'][0]>0 for v in ds.values());summary={'experiment_id':a.experiment_id,'baseline_identity':h['baseline_identity'],'status':'complete','decision':'P1_PASS' if passed else 'P1_FAIL','selected':sel,'n':{'train':694,'val':100,'test':151},'arms':{a:{q:float(met[a][q].mean()) for q in met[a]} for a in ARMS},'bootstrap':ds,'invariants':{'test_opened_once':True,'parity_and_surface_contract':True,'same_raw_input':True,'train_val_test_processed':[694,100,151],'cache_contract':json.loads((cache/'contract.json').read_text())}}
  atomic_json(out/'summary.json',summary);(out/'per_scene.jsonl').write_text(''.join(json.dumps(x)+'\n' for x in rows));print(json.dumps(summary,indent=2))
 def main():
- a=args();out=a.output_dir.resolve();out.mkdir(parents=True,exist_ok=True);h=preflight(a);run_harvest(a,out,h) if a.phase=='harvest' else run_eval(a,out,h)
+ a=args();h=preflight(a);out=a.output_dir.resolve();out.mkdir(parents=True,exist_ok=True);
+ if any(out.iterdir()) and not (out/'cache/contract.json').is_file():raise RuntimeError('output directory contains historical/unidentified artifacts')
+ run_harvest(a,out,h) if a.phase=='harvest' else run_eval(a,out,h)
 if __name__=='__main__':main()

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SURFBEV-P1-V2-H0: frozen SurfaceBEV harvesting and parity gate.
+"""UE-WHU-H0: frozen SurfaceBEV harvesting on the migrated WHU baseline.
 
 This deliberately has no labels and refuses the test split.  It is the
 pre-readout wiring gate defined in docs/SURFBEV-P1-V2-H0_preregistration.md.
@@ -32,24 +32,24 @@ from inference.infer_from_checkpoint import (
 )
 from rsprompter.surfacebev import devicez_to_camera_z, rasterize_surfacebev
 
-EXPECTED_B0_PATH = Path("/data1/wangcheng/checkpoint/surfbev_b0/surfacebev_b0_v2_raw1024_noaug_ddp4_s44_EXP-0006/last_model_epoch100.pth")
-EXPECTED_B0_SHA256 = "fc3ead0e9490ffd9249cdbc4ce2ee9556bed5252efc3e475dfcc0f2aace65145"
-EXPECTED_RUN_TAG = "surfacebev_b0_v2_raw1024_noaug_ddp4_s44_EXP-0006"
+from ue.features import build_baseline, observe_satellite, implementation_fingerprints
+from ue.features import model_input, digest_predictions
 
 
 def arguments():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--checkpoint", required=True)
+    p.add_argument("--baseline-contract", type=Path, required=True)
     p.add_argument("--data-root", default=str(ROOT / "data/ue_raw_hero_uav_pairset_20261011"))
     p.add_argument("--split-manifest", default="surfbev_b0_split_v2.json")
     p.add_argument("--output-dir", required=True)
     p.add_argument("--device", default="cuda:0")
-    p.add_argument("--sam2-ckpt", default=os.environ["SAM2_CKPT"])
+    p.add_argument("--sam2-ckpt", default=os.environ.get("SAM2_CKPT"))
     p.add_argument("--train-scenes", type=int, default=0, help="0 means all 694; smaller is smoke only.")
     p.add_argument("--val-scenes", type=int, default=0, help="0 means all 100; smaller is smoke only.")
     p.add_argument("--height-samples-per-view", type=int, default=0,
                    help="0 means every descriptor centre; nonzero is smoke only.")
-    p.add_argument("--experiment-id", default="SURFBEV-P1-V2-H0-20261012")
+    p.add_argument("--experiment-id", default="UE-WHU-H0")
     return p.parse_args()
 
 
@@ -65,48 +65,18 @@ def sha_file(path):
     return h.hexdigest()
 
 
-def digest_predictions(outputs):
-    instance = outputs[0].pred_instances
-    result = {}
-    for key in ("bboxes", "scores", "labels", "masks"):
-        value = getattr(instance, key)
-        if hasattr(value, "to_ndarray"):
-            value = value.to_ndarray()
-        elif hasattr(value, "masks"):
-            value = value.masks
-        if isinstance(value, torch.Tensor):
-            value = value.detach().cpu().numpy()
-        result[key] = hashlib.sha256(np.ascontiguousarray(value).tobytes()).hexdigest()
-    return result
 
 
-def model_input(model, item, device):
-    sample = DetDataSample(); sample.set_metainfo(dict(item["img_metas"]))
-    return model.data_preprocessor({"inputs": [item["img"].to(device)],
-                                    "data_samples": [sample.to(device)]}, training=False)
 
 
-@torch.inference_mode()
 def passive_p3_and_parity(model, item, device):
-    before = model_input(model, item, device)
-    pred_before = model.predict(before["inputs"], before["data_samples"], rescale=False)
-    digest_before = digest_predictions(pred_before)
-    feature_data = model_input(model, item, device)
-    pyramids, _, _, _ = model.extract_feat(feature_data["inputs"], feature_data["data_samples"])
-    p3 = pyramids[1][0].float()
-    after = model_input(model, item, device)
-    pred_after = model.predict(after["inputs"], after["data_samples"], rescale=False)
-    digest_after = digest_predictions(pred_after)
-    if digest_before != digest_after:
-        raise RuntimeError("passive P3 harvesting changed B0 predictions")
-    if p3.shape[-2:] != (128, 128) or not torch.isfinite(p3).all():
-        raise RuntimeError(f"unexpected/nonfinite B0 P3: {tuple(p3.shape)}")
-    return p3, digest_before
+    features, _, digest = observe_satellite(model, item, device)
+    return features.pyramids[1][0].float(), digest
 
 
 def make_uav_encoder(args, device):
-    cfg = Config.fromfile(str(ROOT / "configs/ue_dual_stream_p2p3_sparse.py"))
-    backbone = copy.deepcopy(cfg.model.drone_backbone)
+    cfg = Config.fromfile(str(ROOT / "configs/ue_uav_encoder.py"))
+    backbone = copy.deepcopy(cfg.uav_encoder)
     backbone["checkpoint_path"] = args.sam2_ckpt
     backbone["init_cfg"]["checkpoint"] = args.sam2_ckpt
     encoder = MODELS.build(ConfigDict(backbone)).to(device).eval()
@@ -178,31 +148,19 @@ def main():
     if device.type != "cuda" or not torch.cuda.is_available():
         raise RuntimeError("H0 needs a CUDA device")
     checkpoint_path = Path(args.checkpoint).resolve()
-    if checkpoint_path != EXPECTED_B0_PATH or checkpoint_path.name != "last_model_epoch100.pth":
-        raise RuntimeError("H0 is locked to the registered EXP-0006 epoch-100 last checkpoint")
-    checkpoint_sha256 = sha_file(checkpoint_path)
-    if checkpoint_sha256 != EXPECTED_B0_SHA256:
-        raise RuntimeError("registered EXP-0006 last checkpoint SHA256 mismatch")
-    checkpoint = _load_checkpoint(checkpoint_path); snapshot = _snapshot(checkpoint)
-    training_args = snapshot.get("training_args", {})
-    if (checkpoint.get("epoch") != 99 or training_args.get("run_tag") != EXPECTED_RUN_TAG or
-            training_args.get("seed") != 44 or training_args.get("epochs") != 100):
-        raise RuntimeError("checkpoint metadata is not EXP-0006 seed-44 epoch-100 last")
-    if snapshot.get("training_args", {}).get("raw_split_manifest") != "surfbev_b0_split_v2.json":
-        raise RuntimeError("checkpoint is not a v2 B0 checkpoint")
-    loader_args = SimpleNamespace(config=None, sam2_ckpt=args.sam2_ckpt, sam2_repo=None)
-    _resolve_sam2_repo(loader_args, snapshot)
-    cfg, cfg_source = _resolve_model_config(loader_args, snapshot)
-    detector = _register_and_build(cfg).to(device).eval()
-    report = _load_model_state(detector, _select_state_dict(checkpoint, "model"), False)
-    if report["missing_keys"] or report["unexpected_keys"]:
-        raise RuntimeError(f"strict B0 checkpoint loading failed: {report}")
+    smoke_requested = bool(args.train_scenes or args.val_scenes or args.height_samples_per_view)
+    detector, checkpoint, identity, cfg_source = build_baseline(
+        checkpoint_path, args.baseline_contract, args.sam2_ckpt, device,
+        allow_validation=smoke_requested)
+    checkpoint_sha256 = identity["checkpoint_sha256"]
     uav_encoder = make_uav_encoder(args, device)
     train = UERawPairDataset(root, "train", load_uav=True, split_manifest=args.split_manifest, load_targets=False)
     val = UERawPairDataset(root, "val", load_uav=True, split_manifest=args.split_manifest, load_targets=False)
     ntrain = len(train) if args.train_scenes == 0 else min(args.train_scenes, len(train))
     nval = len(val) if args.val_scenes == 0 else min(args.val_scenes, len(val))
     smoke = ntrain != len(train) or nval != len(val) or bool(args.height_samples_per_view)
+    if identity["validation_only"] and not smoke:
+        raise RuntimeError("temporary baseline is only allowed in smoke harvesting")
     # Obtain the actual frozen UAV descriptor resolution once, then determine
     # height bounds exclusively from train data before reading validation.
     train_first = train[0]
@@ -252,7 +210,7 @@ def main():
                          correct_nonmissing_bins=int((correct[:, -2] == 0).sum().cpu()),
                          sham_nonmissing_bins=int((sham[:, -2] == 0).sum().cpu())))
         if (i + 1) % 10 == 0: print(f"harvest {i+1}/{nval}", flush=True)
-    summary = dict(experiment_id=args.experiment_id, arm="P1-V2-H0", status="smoke" if smoke else "formal_harvest",
+    summary = dict(experiment_id=args.experiment_id, arm="UE-WHU-H0", baseline_identity=identity, implementation_fingerprints=implementation_fingerprints(), status="smoke" if smoke else "formal_harvest",
                    checkpoint=str(checkpoint_path), checkpoint_sha256=checkpoint_sha256, checkpoint_epoch_0based=checkpoint.get("epoch"),
                    checkpoint_epoch_1based=int(checkpoint.get("epoch", -1)) + 1, config_source=cfg_source,
                    data=dict(pair_manifest_sha256=PAIR_SHA256, split_sha256=SPLIT_SHA256["surfbev_b0_split_v2.json"],
