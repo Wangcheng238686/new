@@ -20,10 +20,12 @@ GRID = re.compile(r"_gx_(-?\d+)_gy_(-?\d+)_")
 
 class UERawPairDataset(Dataset):
     """Strict visible-roof instances resized for the satellite model."""
-    def __init__(self, root, split, load_uav=False, split_manifest=None, image_size=(1024, 1024)):
+    def __init__(self, root, split, load_uav=False, split_manifest=None, image_size=(1024, 1024),
+                 load_targets=True):
         self.root = Path(root)
         self.split = str(split)
         self.load_uav = bool(load_uav)
+        self.load_targets = bool(load_targets)
         self.image_size = tuple(image_size)
         if self.image_size != (1024, 1024):
             raise ValueError("SURFBEV-B0 requires the registered 1024x1024 satellite input")
@@ -103,19 +105,20 @@ class UERawPairDataset(Dataset):
         image = cv2.imread(str(sat / "satellite_rgb.0000.png"), cv2.IMREAD_COLOR)
         if image is None or image.shape[:2] != (512, 512):
             raise RuntimeError(f"invalid satellite RGB for {rec['scene_dir']}")
-        ids = self._ids(sat / "satellite_instance_id_clean.png")
-        if ids.shape != (512, 512):
-            raise RuntimeError(f"invalid strict ID shape for {rec['scene_dir']}")
         image = cv2.resize(image, self.image_size, interpolation=cv2.INTER_LINEAR)
-        ids = cv2.resize(ids, self.image_size, interpolation=cv2.INTER_NEAREST)
-        masks, boxes = self._instances(ids)
         item = dict(img=torch.from_numpy(image).permute(2, 0, 1).float(),
                     img_metas=dict(img_shape=(1024, 1024), ori_shape=(512, 512), pad_shape=(1024, 1024),
                                    batch_input_shape=(1024, 1024), scale_factor=(2., 2.),
                                    filename=str(sat / "satellite_rgb.0000.png"), scene_id=rec["scene_dir"],
-                                   gx=rec["gx"], gy=rec["gy"]),
-                    gt_bboxes=torch.tensor(boxes, dtype=torch.float32).reshape(-1, 4),
-                    gt_labels=torch.zeros(len(boxes), dtype=torch.long), gt_masks=masks)
+                                   gx=rec["gx"], gy=rec["gy"]))
+        if self.load_targets:
+            ids = self._ids(sat / "satellite_instance_id_clean.png")
+            if ids.shape != (512, 512):
+                raise RuntimeError(f"invalid strict ID shape for {rec['scene_dir']}")
+            ids = cv2.resize(ids, self.image_size, interpolation=cv2.INTER_NEAREST)
+            masks, boxes = self._instances(ids)
+            item.update(gt_bboxes=torch.tensor(boxes, dtype=torch.float32).reshape(-1, 4),
+                        gt_labels=torch.zeros(len(boxes), dtype=torch.long), gt_masks=masks)
         if not self.load_uav:
             return item
         # This branch is intentionally unreachable during B0.  P1 may opt in.

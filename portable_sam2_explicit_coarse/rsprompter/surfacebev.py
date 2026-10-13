@@ -42,17 +42,58 @@ def rasterize_surfacebev(descriptors, devicez_rgb, uav_k, uav_c2w, sat_k, sat_w2
     keep_mask = valid.reshape(-1); zmin = torch.full((oh*ow,), float("inf"), device=dev)
     zmin.scatter_reduce_(0, flat[keep_mask], zsat[keep_mask], reduce="amin", include_self=True)
     keep = keep_mask & (zsat <= zmin[flat] + 1e-3)
-    feat = descriptors.permute(0,2,3,1).reshape(-1,channels)[keep]; wp = world.reshape(-1,3)[keep]; cell = flat[keep]
+    all_world = world.reshape(-1, 3)
+    all_bins = (torch.bucketize(all_world[:, 2].contiguous(), height_edges.to(dev)) - 1).clamp(0, len(height_edges)-2)
+    # This residual must be measured before the z-buffer winner filter.  If it
+    # were measured only on retained points it would be identically zero and
+    # could not reveal occluded/behind-surface contributors.
+    all_key = all_bins[keep_mask] * oh * ow + flat[keep_mask]
+    all_z_residual = (zsat[keep_mask] - zmin[flat[keep_mask]]).clamp_min(0.0)
+    feat = descriptors.permute(0,2,3,1).reshape(-1,channels)[keep]; wp = all_world[keep]; cell = flat[keep]
+    # Retain the contributor view identity before aggregation: point density is
+    # not a substitute for the requested number of independent UAV views.
+    view_id = torch.arange(vws, device=dev)[:, None].expand(vws, fh * fw).reshape(-1)[keep]
     bins = (torch.bucketize(wp[:,2], height_edges.to(dev)) - 1).clamp(0, len(height_edges)-2)
-    out = torch.zeros((len(height_edges)-1, channels+5, oh*ow), device=dev); count = torch.zeros((len(height_edges)-1, oh*ow), device=dev)
+    # Layout is deliberately explicit: frozen descriptor, world-Z mean/std,
+    # independent-view count, satellite z-buffer residual, missing flag, and
+    # shared satellite-visible-surface flag.  No task label/prediction enters.
+    out = torch.zeros((len(height_edges)-1, channels+6, oh*ow), device=dev)
+    count = torch.zeros((len(height_edges)-1, oh*ow), device=dev)
     nbins = len(height_edges) - 1
     key = bins*oh*ow + cell
     sums = torch.zeros((nbins * oh * ow, channels+2), device=dev)
     sums.index_add_(0, key, torch.cat((feat, wp[:,2:3], wp[:,2:3]**2), 1))
     count.flatten().index_add_(0, key, torch.ones_like(key, dtype=torch.float))
     den = count.clamp_min(1).reshape(-1); packed = sums / den[:,None]
-    out[:, :channels+2] = packed.reshape(len(height_edges)-1, oh*ow, channels+2).permute(0,2,1)
-    out[:, channels+2] = count.reshape(len(height_edges)-1, oh*ow)
-    out[:, channels+3] = (count > 0).reshape(len(height_edges)-1, oh*ow)
-    out[:, channels+4] = torch.isfinite(zmin).reshape(oh,ow).flatten()[None]
-    return out.reshape(len(height_edges)-1, channels+5, oh, ow), {"input_points": int(vws*fh*fw), "zbuffer_points": int(keep.sum()), "covered_cells": int((count.sum(0)>0).sum())}
+    packed = packed.reshape(nbins, oh * ow, channels + 2).permute(0, 2, 1)
+    out[:, :channels] = packed[:, :channels]
+    out[:, channels] = packed[:, channels]  # world-Z mean
+    second = packed[:, channels + 1]
+    out[:, channels + 1] = (second - out[:, channels].square()).clamp_min(0).sqrt()
+    residual_sum = torch.zeros(nbins * oh * ow, device=dev)
+    residual_count = torch.zeros(nbins * oh * ow, device=dev)
+    residual_sum.index_add_(0, all_key, all_z_residual)
+    residual_count.index_add_(0, all_key, torch.ones_like(all_z_residual))
+    out[:, channels + 3] = (residual_sum / residual_count.clamp_min(1)).reshape(nbins, oh * ow)
+    # Unique (view, bin, cell), rather than the number of sampled feature pixels.
+    view_key = view_id * (nbins * oh * ow) + key
+    unique_view_key = torch.unique(view_key)
+    view_bin_cell = unique_view_key % (nbins * oh * ow)
+    view_count = torch.zeros(nbins * oh * ow, device=dev)
+    view_count.index_add_(0, view_bin_cell, torch.ones_like(view_bin_cell, dtype=torch.float))
+    out[:, channels + 2] = view_count.reshape(nbins, oh * ow)
+    out[:, channels + 4] = (count == 0).reshape(nbins, oh * ow).to(out.dtype)
+    out[:, channels + 5] = torch.isfinite(zmin).reshape(oh, ow).flatten()[None]
+    valid_view_counts = view_count[view_count > 0]
+    def quantiles(values):
+        if not values.numel():
+            return {"p0": float("nan"), "p50": float("nan"), "p90": float("nan"), "p100": float("nan")}
+        q = torch.quantile(values.float(), torch.tensor([0., .5, .9, 1.], device=dev))
+        return {name: float(value) for name, value in zip(("p0", "p50", "p90", "p100"), q.cpu())}
+    return out.reshape(nbins, channels+6, oh, ow), {
+        "input_points": int(vws*fh*fw), "in_fov_points": int(keep_mask.sum()),
+        "zbuffer_points": int(keep.sum()), "covered_cells": int((count.sum(0)>0).sum()),
+        "zbuffer_residual_mean": float(all_z_residual.mean()) if all_z_residual.numel() else float("nan"),
+        "zbuffer_residual_cm_in_fov_quantiles": quantiles(all_z_residual),
+        "view_count_per_nonmissing_bin_quantiles": quantiles(valid_view_counts),
+    }

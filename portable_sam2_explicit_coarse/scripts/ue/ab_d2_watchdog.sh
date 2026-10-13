@@ -6,7 +6,7 @@ ROOT=/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explic
 PY=/data2/wangcheng/envs/cvt2/bin/python
 LOGD=$ROOT/work_dirs/ue
 OUTD=/data1/wangcheng/checkpoint/worktrees_dual-stream-dev_probe
-THRESH_KB=22500000
+THRESH_MIB=20000  # nounits returns MiB
 
 wait_gpu() {
   while true; do
@@ -14,7 +14,7 @@ wait_gpu() {
       used=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits -i $i)
       total=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits -i $i)
       free=$((total - used))
-      if [ "$free" -ge "$THRESH_KB" ]; then echo $i; return 0; fi
+      if [ "$free" -ge "$THRESH_MIB" ]; then echo $i; return 0; fi
     done
     sleep 300
   done

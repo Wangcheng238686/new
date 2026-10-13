@@ -366,7 +366,8 @@ def main():
             ev.evaluate(); ev.accumulate()
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf): ev.summarize()
-            metrics.update(AP=float(ev.stats[0]), AP50=float(ev.stats[1]), AP75=float(ev.stats[2]))
+            metrics.update(AP=float(ev.stats[0]), AP50=float(ev.stats[1]), AP75=float(ev.stats[2]),
+                           AP_s=float(ev.stats[3]), AP_m=float(ev.stats[4]), AP_l=float(ev.stats[5]))
         model.train()
         return metrics, bf1s
 
@@ -417,6 +418,9 @@ def main():
         history.append(ev)
         json.dump(history, (out / "history.json").open("w"), indent=1)
         (out / f"per_scene_bf1_epoch{epoch}.json").write_text(json.dumps(bf1s))
+        torch.save(dict(model=model.state_dict(), epoch=epoch,
+                        metrics={k: v for k, v in ev.items() if k != "per_scene_bf1"}),
+                   out / "last.pth")
         print(f"epoch {epoch}: BF1={ev['boundary_f1']:.4f} AP={ev['AP']:.4f} "
               f"AP75={ev['AP75']:.4f} skipped={skipped} ({ev['train_seconds']}s)", flush=True)
 
