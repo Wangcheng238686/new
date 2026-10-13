@@ -16,7 +16,7 @@ import torch.distributed as dist
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from rsprompter.decoder_tail_refiner import DecoderTailPointRefiner
+from rsprompter.decoder.decoder_tail_refiner import DecoderTailPointRefiner
 
 # Fields produced on BOTH branches (key-set contract).  Only the DDP-global
 # normalised fields are expected to be EQUAL across ranks; the rest are

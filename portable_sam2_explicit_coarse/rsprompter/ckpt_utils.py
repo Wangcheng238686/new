@@ -107,7 +107,7 @@ def load_module_state_dict_strict(
 def is_main_process() -> bool:
     """判断是否主进程（避免多卡重复打印）。
 
-    优先用 mmengine.dist.is_main_process（与 models_sam2.py 一致），
+    优先用 mmengine.dist.is_main_process（与 backbone/sam2_vision.py 一致），
     不可用时 fallback 到读 RANK/LOCAL_RANK env。
     """
     try:

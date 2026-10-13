@@ -90,8 +90,8 @@ def main():
     model.to(device).eval()
 
     # --- 捕获 coarse 输出 + 挖掘点 ---
-    import rsprompter.sam2_mask_head as smh
-    from rsprompter.shape_point_miner import ShapePointMiner
+    import rsprompter.cspm.mask_head as smh
+    from rsprompter.cspm.shape_point_miner import ShapePointMiner
     orig_p2 = smh.RSPrompterAnchorMaskHeadSAM2._forward_coarse
     orig_mine = ShapePointMiner.forward
     captures = []

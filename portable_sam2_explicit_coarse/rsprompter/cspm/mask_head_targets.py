@@ -1,4 +1,4 @@
-"""GT targets and coarse/final-mask losses of the SAM2 mask head, as a plain mixin (split from models_sam2; no super(), no attributes)."""
+"""GT targets and coarse/final-mask losses of the SAM2 mask head, as a plain mixin ( no super(), no attributes)."""
 
 """
 SAM2 Adapter for Portable SAM Fusion - Simplified Version

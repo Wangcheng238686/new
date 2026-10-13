@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 os.environ.setdefault("RSPROMPTER_LIGHT_IMPORT", "1")
 
-from rsprompter.dense_prompt_utils import (  # noqa: E402
+from rsprompter.cspm.dense_prompt_utils import (  # noqa: E402
     paste_roi_to_full_canvas,
     replace_invalid_dense_with_base,
     transform_coarse_prompt,

@@ -1,4 +1,4 @@
-"""SAM2 checkpoint loaders, positional embedding and LoRA vision encoder (split from models_sam2)."""
+"""SAM2 checkpoint loaders, positional embedding and LoRA vision encoder."""
 
 """
 SAM2 Adapter for Portable SAM Fusion - Simplified Version
@@ -17,7 +17,7 @@ from torch import Tensor
 
 from mmdet.registry import MODELS
 
-from .ckpt_utils import load_module_state_dict_strict
+from ..ckpt_utils import load_module_state_dict_strict
 
 
 SAM2_AVAILABLE = False
