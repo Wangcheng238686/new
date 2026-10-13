@@ -14,6 +14,9 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--config", type=str, required=True)
     parser.add_argument("--data-root", type=str, required=True)
+    parser.add_argument("--raw-split-manifest", default="surfbev_b0_split_v2.json")
+    parser.add_argument("--run-tag", default="")
+    parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--epochs", type=int, default=80)
     parser.add_argument("--lr", type=float, default=5e-4)
@@ -36,7 +39,7 @@ def _parse_args() -> argparse.Namespace:
 
     parser.add_argument(
         "--dataset",
-        choices=("whu", "vhr10"),
+        choices=("whu", "vhr10", "ue_raw_surface"),
         default="whu",
         help="Dataset protocol: WHU-1024 (1 class) or NWPU VHR-10 (10 classes).",
     )

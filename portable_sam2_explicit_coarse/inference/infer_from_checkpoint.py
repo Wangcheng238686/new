@@ -17,6 +17,7 @@ import torch
 MAINLINE_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = MAINLINE_ROOT.parent
 sys.path.insert(0, str(MAINLINE_ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 logger = logging.getLogger("checkpoint_inference")
 

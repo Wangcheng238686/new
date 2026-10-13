@@ -176,6 +176,13 @@ def main():
             resolved_architecture["model_fingerprint"],
         )
 
+    if args.dataset == "ue_raw_surface":
+        from ue.contract import assert_whu_model, raw_data_contract
+        assert_whu_model(cfg.model.to_dict())
+        raw_data_contract(args.data_root, args.raw_split_manifest)
+    # Keep the pre-registry config for UE snapshots; MMEngine can consume keys.
+    import copy
+    ue_model_config = copy.deepcopy(cfg.model.to_dict()) if args.dataset == "ue_raw_surface" else None
     model = MODELS.build(cfg.model)
     model.to(device)
 
@@ -252,6 +259,9 @@ def main():
             f"TRAIN_MULTI_SCALE_MODE must be value or range, got {train_ms_mode}"
         )
 
+    if args.dataset == "ue_raw_surface":
+        train_flip_prob = train_vflip_prob = train_ms_resize_prob = 0.0
+
     train_loader, val_loader, train_dataset = (
         create_train_loader(
             data_root=args.data_root,
@@ -281,7 +291,9 @@ def main():
             rank=rank,
             world_size=int(dist_info.get("world_size", 1)),
             val_batch_size=args.val_batch_size,
-            dataset_format=("vhr10_coco" if (args.dataset == "vhr10") else "whu_coco"),
+            dataset_format=("ue_raw_surface" if args.dataset == "ue_raw_surface" else "vhr10_coco" if args.dataset == "vhr10" else "whu_coco"),
+            raw_split_manifest=args.raw_split_manifest,
+            num_workers=args.num_workers,
             vhr10_train_ann_file=os.environ.get(
                 "VHR10_TRAIN_ANN_FILE", "coco_split/instances_train.json"
             ),
@@ -438,6 +450,12 @@ def main():
         train_subset_ratio, val_subset_ratio, warmup_iters,
         optimizer_steps_per_epoch, total_optimizer_steps,
     )
+    if args.dataset == "ue_raw_surface":
+        from ue.contract import baseline_metadata, raw_data_contract
+        config_snapshot["model_config"] = ue_model_config
+        config_snapshot["ue_baseline"] = baseline_metadata(ue_model_config)
+        config_snapshot["data_config"] = raw_data_contract(args.data_root, args.raw_split_manifest)
+
     start_epoch = 0
     best_val_loss = float("inf")
     best_train_loss = float("inf")
@@ -466,6 +484,8 @@ def main():
     if args.resume_from and args.init_from:
         raise ValueError("--resume-from and --init-from are mutually exclusive")
 
+    if args.init_from and args.dataset == "ue_raw_surface":
+        raise ValueError("UE baseline starts from SAM2; task-weight initialization needs a separate protocol")
     if args.init_from:
         exclude_prefixes = tuple(
             prefix.strip()
@@ -499,6 +519,13 @@ def main():
                     init_stats["migration_pairs"],
                 )
     if args.resume_from:
+        if args.dataset == "ue_raw_surface":
+            from ue.contract import validate_snapshot
+            saved = torch.load(args.resume_from, map_location="cpu", weights_only=False)
+            validate_snapshot(saved.get("config_snapshot", {}))
+            if saved["config_snapshot"]["ue_baseline"].get("validation_only"):
+                raise RuntimeError("validation-only checkpoint cannot resume a formal baseline")
+            del saved
         ckpt = _load_checkpoint(
             Path(args.resume_from),
             model,

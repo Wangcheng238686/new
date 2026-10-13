@@ -27,6 +27,17 @@ def _resolve_dataset_contract(
     data_config = snapshot.get("data_config", {})
     if not isinstance(data_config, Mapping):
         data_config = {}
+    if data_config.get("dataset_format") == "ue_raw_surface":
+        from ue.contract import validate_snapshot, raw_data_contract
+        validate_snapshot(snapshot)
+        if args.split not in {"validation", "test"}:
+            raise ValueError("raw UE inference requires validation or test split")
+        resolved = raw_data_contract(args.data_root or data_config["data_root"], data_config["split_manifest"])
+        if args.image_size and list(args.image_size) != [1024, 1024]:
+            raise ValueError("raw UE inference requires 1024 inputs")
+        resolved.update(split="val" if args.split == "validation" else "test",
+                        batch_size=args.batch_size or snapshot.get("training_args", {}).get("val_batch_size", 1))
+        return resolved
     training_args = snapshot.get("training_args", {})
     if not isinstance(training_args, Mapping):
         training_args = {}
@@ -83,6 +94,13 @@ def _build_loader(contract: Mapping[str, Any], num_workers: int) -> DataLoader:
     from data.loader import rtmdet_collate_fn
     from data.whu_instance_dataset import WHUCocoInstanceDataset
 
+    if contract.get("dataset_format") == "ue_raw_surface":
+        from data.ue_raw_pair_dataset import UERawPairDataset
+        dataset = UERawPairDataset(contract["data_root"], contract["split"],
+                                  split_manifest=contract["split_manifest"])
+        return DataLoader(dataset, batch_size=int(contract["batch_size"]), shuffle=False,
+                          num_workers=int(num_workers), collate_fn=rtmdet_collate_fn,
+                          pin_memory=torch.cuda.is_available(), persistent_workers=int(num_workers) > 0)
     single_class = bool(contract["single_class"])
     # Multi-class runs train with canonical ids 1..N -> labels 0..N-1; the
     # loader must apply the same mapping so GT labels match the head.

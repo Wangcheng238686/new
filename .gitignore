@@ -18,3 +18,9 @@
 /main.synctex.gz
 
 portable_sam2_explicit_coarse/configs/environment.local.sh
+
+# Machine-local raw pairset and migration verification artifacts
+portable_sam2_explicit_coarse/data/ue_raw_hero_uav_pairset_20261011/scenes
+portable_sam2_explicit_coarse/data/ue_raw_hero_uav_pairset_20261011/accepted_pairs.jsonl
+portable_sam2_explicit_coarse/data/ue_raw_hero_uav_pairset_20261011/DATASET_CONTRACT.json
+.migration-validation/

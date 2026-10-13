@@ -110,6 +110,7 @@ class UERawPairDataset(Dataset):
                     img_metas=dict(img_shape=(1024, 1024), ori_shape=(512, 512), pad_shape=(1024, 1024),
                                    batch_input_shape=(1024, 1024), scale_factor=(2., 2.),
                                    filename=str(sat / "satellite_rgb.0000.png"), scene_id=rec["scene_dir"],
+                                   image_id=int(hashlib.sha256(rec["scene_dir"].encode()).hexdigest()[:12], 16),
                                    gx=rec["gx"], gy=rec["gy"]))
         if self.load_targets:
             ids = self._ids(sat / "satellite_instance_id_clean.png")

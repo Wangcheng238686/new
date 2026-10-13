@@ -135,7 +135,15 @@ def create_train_loader(
     vhr10_val_img_subdir: str = "positive image set",
     train_subset_ratio: float = 1.0,
     val_subset_ratio: float = 1.0,
+    raw_split_manifest: str = "surfbev_b0_split_v2.json",
 ):
+    if dataset_format == "ue_raw_surface":
+        if any((flip_prob, vflip_prob, gaussian_noise_prob, random_erasing_prob, multi_scale_resize_prob)):
+            raise ValueError("raw UE baseline forbids all augmentation")
+        from .ue_raw_loader import create_raw_loaders
+        return create_raw_loaders(data_root, batch_size, val_batch_size, image_size,
+                                  raw_split_manifest, train_subset_ratio, val_subset_ratio,
+                                  seed, num_workers, distributed, rank, world_size)
     generator = torch.Generator()
     generator.manual_seed(int(seed))
     if dataset_format not in ("whu_coco", "vhr10_coco"):
