@@ -57,8 +57,10 @@ def validate_snapshot(snapshot):
     expected = architecture_contract(whu_model_config())
     if (meta.get("baseline_id") != BASELINE_ID or meta.get("source_commit") != SOURCE_COMMIT
             or meta.get("architecture_contract") != expected
-            or snapshot.get("architecture_contract") != expected):
+            or snapshot.get("architecture_contract") != expected
+            or type(meta.get("validation_only")) is not bool):
         raise RuntimeError("checkpoint does not identify the sealed UE WHU baseline")
+    assert_whu_model(snapshot.get("model_config", {}))
     data = snapshot.get("data_config", {})
     from data.ue_raw_pair_dataset import PAIR_SHA256, SPLIT_SHA256
     if (data.get("dataset_format") != "ue_raw_surface"
@@ -75,6 +77,7 @@ def checkpoint_identity(path, checkpoint):
     meta = validate_snapshot(snapshot)
     return {"schema": "ue-baseline-identity-v1", **meta,
             "checkpoint_sha256": file_sha256(str(path)),
+            "sam2_checkpoint_sha256": snapshot.get("runtime_config", {}).get("sam2_checkpoint_sha256"),
             "data_contract": {key: snapshot["data_config"][key] for key in (
                 "pair_manifest_sha256", "split_manifest_sha256", "augmentation_contract")}}
 

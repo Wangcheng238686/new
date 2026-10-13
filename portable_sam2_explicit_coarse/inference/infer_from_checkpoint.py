@@ -169,8 +169,22 @@ def main() -> None:
     if args.inspect_only:
         return
 
+    ue_baseline = snapshot.get("data_config", {}).get("dataset_format") == "ue_raw_surface"
+    if ue_baseline:
+        from ue.contract import validate_snapshot
+        meta = validate_snapshot(snapshot)
+        if args.allow_nonstrict:
+            raise ValueError("UE baseline inference forbids non-strict loading")
+        if meta["validation_only"] and args.split == "test":
+            raise ValueError("validation-only UE baseline cannot access test images")
+
     sam2_repo = _resolve_sam2_repo(args, snapshot)
     model_config, config_source = _resolve_model_config(args, snapshot)
+    if ue_baseline:
+        from ue.contract import file_sha256
+        recorded_sha = snapshot.get("runtime_config", {}).get("sam2_checkpoint_sha256")
+        if file_sha256(model_config["backbone"]["checkpoint_path"]) != recorded_sha:
+            raise ValueError("UE inference SAM2 identity differs from checkpoint lineage")
     device = _resolve_device(args.device)
     model = _register_and_build(model_config)
     mask_head = model.roi_head.mask_head

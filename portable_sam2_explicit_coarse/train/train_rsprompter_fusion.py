@@ -453,7 +453,9 @@ def main():
     if args.dataset == "ue_raw_surface":
         from ue.contract import baseline_metadata, raw_data_contract
         config_snapshot["model_config"] = ue_model_config
-        config_snapshot["ue_baseline"] = baseline_metadata(ue_model_config)
+        config_snapshot["ue_baseline"] = baseline_metadata(
+            ue_model_config, validation_only=bool(args.max_train_batches or args.max_val_batches
+                                                 or train_subset_ratio < 1 or val_subset_ratio < 1))
         config_snapshot["data_config"] = raw_data_contract(args.data_root, args.raw_split_manifest)
 
     start_epoch = 0

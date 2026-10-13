@@ -1,0 +1,43 @@
+{
+  "architecture_contract": {
+    "schema_version": 3,
+    "architecture_id": "r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64_udprk64",
+    "model_fingerprint": "5d5f78ec947fba1c5a92fb28a8486c9b8d7050c66c0034abf8425d1034bce17b"
+  },
+  "strict_load": {
+    "missing_keys": [],
+    "unexpected_keys": []
+  },
+  "old_architecture_contract": {
+    "schema_version": 2,
+    "architecture_id": "c5v2_pafpn_coarse_p2_boundary_refiner_emb64",
+    "model_fingerprint": "36549a00a8282b2b9903d8c07c7cc9ce6f6e8fba3e93d58212de1999b1aa3dab"
+  },
+  "missing_keys": [
+    "roi_head.mask_head.decoder_tail_refiner.mlp.0.bias",
+    "roi_head.mask_head.decoder_tail_refiner.mlp.0.weight",
+    "roi_head.mask_head.decoder_tail_refiner.mlp.1.bias",
+    "roi_head.mask_head.decoder_tail_refiner.mlp.1.weight",
+    "roi_head.mask_head.decoder_tail_refiner.mlp.3.bias",
+    "roi_head.mask_head.decoder_tail_refiner.mlp.3.weight"
+  ],
+  "unexpected_keys": [
+    "roi_head.mask_head.p2_boundary_refiner.fusion.0.bias",
+    "roi_head.mask_head.p2_boundary_refiner.fusion.0.weight",
+    "roi_head.mask_head.p2_boundary_refiner.fusion.1.bias",
+    "roi_head.mask_head.p2_boundary_refiner.fusion.1.weight",
+    "roi_head.mask_head.p2_boundary_refiner.fusion.3.bias",
+    "roi_head.mask_head.p2_boundary_refiner.fusion.3.weight",
+    "roi_head.mask_head.p2_boundary_refiner.fusion.4.bias",
+    "roi_head.mask_head.p2_boundary_refiner.fusion.4.weight",
+    "roi_head.mask_head.p2_boundary_refiner.p2_projection.0.bias",
+    "roi_head.mask_head.p2_boundary_refiner.p2_projection.0.weight",
+    "roi_head.mask_head.p2_boundary_refiner.p2_projection.1.bias",
+    "roi_head.mask_head.p2_boundary_refiner.p2_projection.1.weight",
+    "roi_head.mask_head.p2_boundary_refiner.residual_head.bias",
+    "roi_head.mask_head.p2_boundary_refiner.residual_head.weight"
+  ],
+  "shape_mismatch": [],
+  "old_strict_load": "REJECTED",
+  "reason": "Error(s) in loading state_dict for RSPrompterAnchor:\n\tMissing key(s) in state_dict: \"roi_head.mask_head.decoder_tail_refiner.mlp.0.weight\", \"roi_head.mask_head.decoder_tail_refiner.mlp.0.bias\", \"roi_head.mask_head.decoder_tail_refiner.mlp.1.weight\", \"roi_head.mask_head.decoder_tail_refiner.mlp.1.bias\", \"roi_head.mask_head.decoder_tail_refiner.mlp.3.weight\", \"roi_head.mask_head.decoder_tail_refiner.mlp.3.bias\". \n\tUnexpected key(s) in state_dict: \"roi_head.mask_head.p2_boundary_refiner.p2_projection.0.weight\", \"roi_head.mask_head.p2_boundary_refiner.p2_projection.0.bias\", \"roi_head.mask_head.p2_boundary_refiner.p2_projection.1.weight\", \"roi_head.mask_head.p2_boundary_refiner.p2_projection.1.bias\", \"roi_head.mask_head.p2_boundary_refiner.fusion.0.weight\", \"roi_head.mask_head.p2_boundary_refiner.fusion.0.bias\", \"roi_head.mask_head.p2_boundary_refiner.fusion.1.weight\", \"roi_head.mask_head.p2_boundary_refiner.fusion.1.bias\", \"roi_head.mask_head.p2_boundary_refiner.fusion.3.weight\", \"roi_head.mask_head.p2_boundary_refiner.fusion.3.bias\", \"roi_head.mask_head.p2_boundary_refiner.fusion.4.weight\", \"roi_head.mask_head.p2_boundary_refiner.fusion.4.bias\", \"roi_head.mask_head.p2_boundary_refiner.residual_head.weight\", \"roi_head.mask_head.p2_boundary_refiner.residual_head.bias\". "
+}

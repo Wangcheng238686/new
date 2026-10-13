@@ -105,7 +105,9 @@ def run_harvest(a,out,h):
    pack_scene(f,s,i,it,p3,pred,sc,ss,p)
    with open(tele,'a') as q:q.write(json.dumps({'split':s,'scene_id':it['img_metas']['scene_id'],'prediction_hash':ph,'descriptor_shape':list(desc.shape),'input_equal':True,'correct':ct,'sham90':st})+'\n')
    print(s,i+1,'/',n,flush=True)
- if a.max_train or a.max_val:raise RuntimeError('smoke stops before evaluation')
+ if a.max_train or a.max_val:
+  atomic_json(out/'smoke_summary.json',{'status':'SMOKE_ONLY','baseline_identity':h['baseline_identity'],'train_used':min(a.max_train,len(ds['train'])),'val_used':min(a.max_val,len(ds['val'])),'test_read':False,'evaluation_run':False})
+  return
  atomic_json(cache/'train_val_complete.json',{'train':len(ds['train']),'val':len(ds['val'])})
 def trainxy(cache,target,arm):
  xs=[];ys=[]
@@ -164,7 +166,9 @@ def run_eval(a,out,h):
  passed=all(v['ci95'][0]>0 for v in ds.values());summary={'experiment_id':a.experiment_id,'baseline_identity':h['baseline_identity'],'status':'complete','decision':'P1_PASS' if passed else 'P1_FAIL','selected':sel,'n':{'train':694,'val':100,'test':151},'arms':{a:{q:float(met[a][q].mean()) for q in met[a]} for a in ARMS},'bootstrap':ds,'invariants':{'test_opened_once':True,'parity_and_surface_contract':True,'same_raw_input':True,'train_val_test_processed':[694,100,151],'cache_contract':json.loads((cache/'contract.json').read_text())}}
  atomic_json(out/'summary.json',summary);(out/'per_scene.jsonl').write_text(''.join(json.dumps(x)+'\n' for x in rows));print(json.dumps(summary,indent=2))
 def main():
- a=args();h=preflight(a);out=a.output_dir.resolve();out.mkdir(parents=True,exist_ok=True);
+ a=args();
+ if a.max_train<0 or a.max_val<0 or (bool(a.max_train)!=bool(a.max_val)):raise ValueError('smoke requires positive limits for both train and val')
+ h=preflight(a);out=a.output_dir.resolve();out.mkdir(parents=True,exist_ok=True);
  if any(out.iterdir()) and not (out/'cache/contract.json').is_file():raise RuntimeError('output directory contains historical/unidentified artifacts')
  run_harvest(a,out,h) if a.phase=='harvest' else run_eval(a,out,h)
 if __name__=='__main__':main()

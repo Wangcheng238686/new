@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """UE-WHU-H0: frozen SurfaceBEV harvesting on the migrated WHU baseline.
 
-This deliberately has no labels and refuses the test split.  It is the
-pre-readout wiring gate defined in docs/SURFBEV-P1-V2-H0_preregistration.md.
+This deliberately has no labels and refuses the test split. It reuses the
+archived H0 algorithm with a new, explicit baseline identity. Small runs are
+wiring checks only; a formal experiment needs its own registration.
 """
 from __future__ import annotations
 
@@ -15,7 +16,6 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
-os.environ.setdefault("SAM2_CKPT", "/data1/wangcheng/pretrained/sam2_hiera_base_plus.pt")
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
@@ -75,6 +75,9 @@ def passive_p3_and_parity(model, item, device):
 
 
 def make_uav_encoder(args, device):
+    if not args.sam2_ckpt:
+        raise ValueError("set SAM2_CKPT or pass --sam2-ckpt")
+    os.environ["SAM2_CKPT"] = str(args.sam2_ckpt)
     cfg = Config.fromfile(str(ROOT / "configs/ue_uav_encoder.py"))
     backbone = copy.deepcopy(cfg.uav_encoder)
     backbone["checkpoint_path"] = args.sam2_ckpt

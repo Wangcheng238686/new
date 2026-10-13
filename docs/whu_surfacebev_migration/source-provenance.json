@@ -1,0 +1,30 @@
+{
+  "source_commit": "95026ae677dd0a8d77a3ee4c5fb68abeb4ea01c1",
+  "checked_files": [
+    "portable_sam2_explicit_coarse/rsprompter/__init__.py",
+    "portable_sam2_explicit_coarse/rsprompter/architecture_contract.py",
+    "portable_sam2_explicit_coarse/rsprompter/backbone/__init__.py",
+    "portable_sam2_explicit_coarse/rsprompter/backbone/sam2_vision.py",
+    "portable_sam2_explicit_coarse/rsprompter/ckpt_utils.py",
+    "portable_sam2_explicit_coarse/rsprompter/cspm/__init__.py",
+    "portable_sam2_explicit_coarse/rsprompter/cspm/coarse_mask_loss.py",
+    "portable_sam2_explicit_coarse/rsprompter/cspm/dense_prompt_utils.py",
+    "portable_sam2_explicit_coarse/rsprompter/cspm/mask_head.py",
+    "portable_sam2_explicit_coarse/rsprompter/cspm/mask_head_helpers.py",
+    "portable_sam2_explicit_coarse/rsprompter/cspm/mask_head_init.py",
+    "portable_sam2_explicit_coarse/rsprompter/cspm/mask_head_targets.py",
+    "portable_sam2_explicit_coarse/rsprompter/cspm/shape_point_miner.py",
+    "portable_sam2_explicit_coarse/rsprompter/cspm/shape_prior_injector.py",
+    "portable_sam2_explicit_coarse/rsprompter/decoder/__init__.py",
+    "portable_sam2_explicit_coarse/rsprompter/decoder/decoder_tail_refiner.py",
+    "portable_sam2_explicit_coarse/rsprompter/decoder/sam2_decoder.py",
+    "portable_sam2_explicit_coarse/rsprompter/detection/__init__.py",
+    "portable_sam2_explicit_coarse/rsprompter/detection/anchor_detector.py",
+    "portable_sam2_explicit_coarse/rsprompter/detection/anchor_roi_head.py",
+    "portable_sam2_explicit_coarse/rsprompter/detection/sam2_neck.py",
+    "portable_sam2_explicit_coarse/inference/model_rebuild.py",
+    "portable_sam2_explicit_coarse/configs/a3sgm_whu1024.py",
+    "portable_sam2_explicit_coarse/configs/a3sgm_vhr10.py"
+  ],
+  "mismatches": []
+}

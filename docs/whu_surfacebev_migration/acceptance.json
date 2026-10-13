@@ -1,0 +1,131 @@
+{
+  "status": "PASS_WITH_DOCUMENTED_LIMITS",
+  "source_commit": "95026ae677dd0a8d77a3ee4c5fb68abeb4ea01c1",
+  "baseline_id": "ue-whu-a3sgm-v1",
+  "architecture_contract": {
+    "schema_version": 3,
+    "architecture_id": "r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64_udprk64",
+    "model_fingerprint": "5d5f78ec947fba1c5a92fb28a8486c9b8d7050c66c0034abf8425d1034bce17b"
+  },
+  "environment": {
+    "python": "/data2/wangcheng/envs/cvt2/bin/python",
+    "python_version": "3.9",
+    "torch": "2.8.0+cu128",
+    "mmcv": "2.1.0",
+    "mmdet": "3.3.0",
+    "mmengine": "0.10.7"
+  },
+  "numerical_gate": {
+    "preprocessed_inputs": true,
+    "features": true,
+    "predictions": true,
+    "losses": true,
+    "total_loss": true,
+    "save_reload": true
+  },
+  "total_loss": 4.773105144500732,
+  "gradient_gate": {
+    "finite_and_expected_groups": "PASS",
+    "source_tensor_count": 334,
+    "candidate_tensor_count": 334,
+    "bitwise_equal": false,
+    "same_source_repeat_changed_tensors": 223,
+    "note": "GPU backward is not bitwise repeatable even within the unchanged source; gradient numerical equivalence is not certified."
+  },
+  "old_b0": {
+    "strict_load": "REJECTED",
+    "old_architecture_contract": {
+      "schema_version": 2,
+      "architecture_id": "c5v2_pafpn_coarse_p2_boundary_refiner_emb64",
+      "model_fingerprint": "36549a00a8282b2b9903d8c07c7cc9ce6f6e8fba3e93d58212de1999b1aa3dab"
+    },
+    "missing_count": 6,
+    "unexpected_count": 14,
+    "shape_mismatch_count": 0,
+    "decision": "archive original lineage; independently train a new B0 later"
+  },
+  "trainer_gate": {
+    "train_batches": 1,
+    "val_batches": 1,
+    "optimizer_step": "PASS",
+    "checkpoint_strict_reload": "PASS",
+    "validation_inference": "PASS",
+    "validation_only": true
+  },
+  "surfacebev_gate": {
+    "h0": "SMOKE_ONLY",
+    "p1": "SMOKE_ONLY",
+    "train_scenes": 1,
+    "val_scenes": 1,
+    "p3_shape": [
+      512,
+      128,
+      128
+    ],
+    "passive_prediction_parity": true,
+    "correct_sham_input_invariants": true,
+    "test_read": false,
+    "formal_evaluation_run": false
+  },
+  "adversarial_tests": {
+    "unit_cases": 9,
+    "status": "PASS",
+    "temporary_formal_rejection": {
+      "rejected": true,
+      "output_created": false,
+      "test_read": false,
+      "reason": "temporary baseline is smoke only",
+      "negative_control": "H0 PASS flag deliberately forged to exercise independent temporary-baseline rejection"
+    },
+    "public_inference_rejections": [
+      {
+        "flags": [
+          "--allow-nonstrict"
+        ],
+        "rejected": true,
+        "reason": "forbids non-strict loading"
+      },
+      {
+        "flags": [
+          "--split",
+          "test"
+        ],
+        "rejected": true,
+        "reason": "cannot access test images"
+      }
+    ]
+  },
+  "original_preservation": {
+    "untracked_checked": 15955,
+    "changed": [],
+    "status_unchanged": true,
+    "tracked_diff_unchanged": true
+  },
+  "limits": [
+    "Temporary task weights; no new B0 performance or scientific conclusion.",
+    "The seven original paper checkpoint gates were not run; those weights were not located in the inspected checkpoint roots.",
+    "No DDP launch/resume validation or full training in this migration.",
+    "No bitwise-gradient equivalence claim."
+  ],
+  "local_raw_evidence": "/home/wangcheng/project/new/.worktrees/whu-surfacebev-migration/.migration-validation",
+  "recovery_snapshot": "/home/wangcheng/.codex/backups/whu-surfacebev-20261013",
+  "evidence_sha256": {
+    "source-result.json": "318259092dd6d1baba69a12791b463e928d000940a1a9d0018103c92ad4e056e",
+    "candidate-result.json": "aabdc366c8c750bfce7d07e5c96ba121c30be681265ae28fa11094fe957af77a",
+    "source-repeat.json": "20f4a93989bb75bb444553324a85331ac08448a646b26643eac7480f93ae6434",
+    "old-b0-audit.json": "dc426541b277302c7d51c31183910948ea603f2de054438c14433217d3f4903c",
+    "h0-final/summary.json": "324eb00e8fb487fcdd99fc6c44071aa83c31af0b8ddf49e58e22e0e22ad8576d",
+    "p1-final/smoke_summary.json": "a73e4ddd6ac6ab231dd2b294b3ef8baf7fd60b0911001ff170599c48faa096e7",
+    "trainer-reload.log": "736d92539e8d2bf76d3610aca72ca865eb1956ec283f6ca9fdd69393593eb600",
+    "ue-inference.log": "b684918706642e83e2a19195a3964ba2da376073ac416b9809e1c0da7c047106",
+    "trainer-reload-final.log": "267fa5e0be7d1f7535fad6e20ded0424d78a269004ce44225001160b71e950e9",
+    "ue-inference-final.log": "50c56e19c6add1d34e342402a0b5578088bbf904f0131fd32a9a45d65a28ace2",
+    "inference-rejections.json": "e5065d5f43758ac1fe808e1e395777feb2b5ef90006b188ec77ee760dfcaf79c",
+    "contracts-final.log": "c642759343965b2860dba2365250d789b44803df58fcfe1624a35aea654079b2"
+  },
+  "snapshot_sha256": {
+    "tracked.patch": "3578e3f61c91f2428343c9312ecfcd19acf033565286f20cb1a0e3ea81a190ca",
+    "untracked.tar": "c28068555cd6abc94f20c7059f0d1c16d6a553f1f73243fb80b12c9d773aff74",
+    "manifest.json": "a55c8706f7f98fd08c95848c451b2de787f140269be6c1b68276e84e27469b48"
+  }
+}

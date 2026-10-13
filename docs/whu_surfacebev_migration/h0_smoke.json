@@ -1,0 +1,99 @@
+{
+  "experiment_id": "MIGRATION-SMOKE-H0",
+  "arm": "UE-WHU-H0",
+  "baseline_identity": {
+    "schema": "ue-baseline-identity-v1",
+    "baseline_id": "ue-whu-a3sgm-v1",
+    "source_commit": "95026ae677dd0a8d77a3ee4c5fb68abeb4ea01c1",
+    "architecture_contract": {
+      "schema_version": 3,
+      "architecture_id": "r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64_udprk64",
+      "model_fingerprint": "5d5f78ec947fba1c5a92fb28a8486c9b8d7050c66c0034abf8425d1034bce17b"
+    },
+    "validation_only": true,
+    "checkpoint_sha256": "e3fb2d1e059b737fabad798fae49967eb1af13c98bc482583235196f63525a8a",
+    "sam2_checkpoint_sha256": "d0bb7f236400a49669ffdd1be617959a8b1d1065081789d7bbff88eded3a8071",
+    "data_contract": {
+      "pair_manifest_sha256": "f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a",
+      "split_manifest_sha256": "17f49430b15037c8da25c63a1bf7fe4d510cf5ff153263d2feba62c4393441d5",
+      "augmentation_contract": "none"
+    }
+  },
+  "implementation_fingerprints": {
+    "configs/ue_uav_encoder.py": "003c62b03cc98b576dce9adcb248e0bd4278179cb8b4e4f4874cb14c8cb7c7bf",
+    "data/ue_raw_pair_dataset.py": "e0a7a7f90250ec8c5b075d3b92ea5e690b9b854bd27833b8845d8c059b599105",
+    "inference/model_rebuild.py": "f48e20dd5945c6c99a2cd403719734efde3ab5ce977dd6e958c3fef42797b38b",
+    "rsprompter/__init__.py": "25f4b2db586e9fceadf06fb488aecd5873fd606c7fe7787edbe94231c5e3f09b",
+    "rsprompter/architecture_contract.py": "613c34b15fff978773922195ed3694fc3e34967ca02be3af35acd681935bcccb",
+    "rsprompter/backbone/__init__.py": "7df4e02bd042082f98efe77960b053304ed6bbcb4009debe4e94d2df05a5c71b",
+    "rsprompter/backbone/sam2_vision.py": "91ba0e7d64dac3e0a31f81b1166352cb99fdce853bf602973a8095da717491c8",
+    "rsprompter/ckpt_utils.py": "26f16e1b758d42e576979f881c699019113d06859472b6d3396422ca57803988",
+    "rsprompter/cspm/__init__.py": "2225d09079b3dc900a5555b0ff973ac125c4cb9734cbec7a48702fa9369eb47f",
+    "rsprompter/cspm/coarse_mask_loss.py": "afe0760efafcbb4952d92224de62b39be11c6c2ace40cf0c83645f59e665d638",
+    "rsprompter/cspm/dense_prompt_utils.py": "880fe371e1adbebaa0247a3125720c71eff997e24f1a2992308021c158329ed7",
+    "rsprompter/cspm/mask_head.py": "293155539e212f1ea5caca7aecbea3ec41f8b339d664610671f4a445c6c9e78d",
+    "rsprompter/cspm/mask_head_helpers.py": "cbd1ab4df2864731b18b1cfedd1c0ee0755d692f2c25a4ae8849a5a2b3d09e07",
+    "rsprompter/cspm/mask_head_init.py": "0f81e2108b095a45047c0ea64717f2f8f779cde03bbf69e2fbe52fbf566707b7",
+    "rsprompter/cspm/mask_head_targets.py": "b62344d7810265e8d66e14e193fa584b7e1405c9671442d69fb3d621041fa0fe",
+    "rsprompter/cspm/shape_point_miner.py": "76c0eb1429128e8755c2a4c7a0253b7469f7e4bc2dbe413d3ca6b292c6be82fe",
+    "rsprompter/cspm/shape_prior_injector.py": "57baddc74805251c2045de4c6087eaad34c277e53e098a43459804eb7cdb35e5",
+    "rsprompter/decoder/__init__.py": "3a9895d889f6c00788a3b1a9688eed67ba58005d286a94ae0abf1df27ba6d1a6",
+    "rsprompter/decoder/decoder_tail_refiner.py": "f4ef09a932a9fd3911446269debbba5926f3ca29a63d963b7a0fc9217680d1da",
+    "rsprompter/decoder/sam2_decoder.py": "15f21f335e80b155159e370e9d00264757318ade0929e15b9368bb8e16359fb5",
+    "rsprompter/detection/__init__.py": "16c599e294e71ce04cc6dc994b5bf57d268ed815194d22afc24e55ecf1b06efc",
+    "rsprompter/detection/anchor_detector.py": "a797045645517367f47b0a56b392021fa6d882696fff046aa6c3ed3dce1225e4",
+    "rsprompter/detection/anchor_roi_head.py": "6b258b33b697f75e62fad0e7c71b0c920b713a9f0d3e71e72a550f891f2ec15a",
+    "rsprompter/detection/sam2_neck.py": "ffb3ed6c69b21a55a8079a86f7ebef4677f3b446169ff3e2228e37b8cf0369c7",
+    "rsprompter/surfacebev.py": "df6f5b6cf43c9e28e56014343946125521ac3c8302a3fea08935c285ea9c20c9",
+    "scripts/ue/probe_surfacebev_p1.py": "6d1c6435df7bca64d5d548da84ae5a603e4a279744cf118e21feb3b5c088f5e3",
+    "scripts/ue/probe_surfacebev_p1_h0.py": "e8aa26f557009c6d1ba1d96401d2e635ceeb36f4cc06b358412c81bbf034f91c",
+    "ue/__init__.py": "b82c61065a3fae449c1a84fc897de1c300f2fa0d85163af6689b393295a43087",
+    "ue/contract.py": "541f9c9e5dbabdb319d5e31c18f63c7d0a0107511a9190d3370162663f5ee7a7",
+    "ue/features.py": "8625820fa67d1e3c56b71177a7ab8aad1c8a28a237415d7d423b993954151190"
+  },
+  "status": "smoke",
+  "checkpoint": "/home/wangcheng/project/new/.worktrees/whu-surfacebev-migration/.migration-validation/temporary.pth",
+  "checkpoint_sha256": "e3fb2d1e059b737fabad798fae49967eb1af13c98bc482583235196f63525a8a",
+  "checkpoint_epoch_0based": -1,
+  "checkpoint_epoch_1based": 0,
+  "config_source": "checkpoint.config_snapshot.model_config",
+  "data": {
+    "pair_manifest_sha256": "f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a",
+    "split_sha256": "17f49430b15037c8da25c63a1bf7fe4d510cf5ff153263d2feba62c4393441d5",
+    "train_total": 694,
+    "val_total": 100,
+    "train_used": 1,
+    "val_used": 1,
+    "test_read": false
+  },
+  "height_edges_cm": [
+    90.54736328125,
+    1194.0238037109375,
+    2297.500244140625,
+    3400.9765625,
+    4504.453125,
+    5607.9296875,
+    6711.4052734375,
+    7814.88134765625,
+    8918.357421875,
+    10021.833984375,
+    11125.310546875,
+    12228.787109375,
+    13332.263671875
+  ],
+  "height_quantile_source": "train_only_0.5_99.5",
+  "invariant": {
+    "passive_prediction_hash_before_after": true,
+    "strict_checkpoint_load": true,
+    "label_free_reader": true,
+    "checkpoint_identity_locked": true,
+    "raw_descriptor_equal_by_construction": true,
+    "p3_hw": [
+      128,
+      128
+    ],
+    "surface_height_bins": 12
+  },
+  "verdict": "SMOKE_ONLY",
+  "decision_rule": "H0_PASS requires all 694 train height scenes and all 100 val harvest scenes; smoke is not a gate decision."
+}

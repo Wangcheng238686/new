@@ -6,7 +6,7 @@ import hashlib
 import numpy as np
 import torch
 
-from .contract import ROOT, assert_whu_model, verify_identity
+from .contract import ROOT, assert_whu_model, verify_identity, file_sha256
 
 
 @dataclass
@@ -72,6 +72,8 @@ def build_baseline(checkpoint_path, manifest, sam2_ckpt, device, allow_validatio
     )
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     identity = verify_identity(checkpoint_path, checkpoint, manifest)
+    if not sam2_ckpt or file_sha256(str(sam2_ckpt)) != identity["sam2_checkpoint_sha256"]:
+        raise RuntimeError("SAM2 checkpoint differs from the recorded UE baseline")
     if identity["validation_only"] and not allow_validation:
         raise RuntimeError("validation-only baseline cannot produce formal probe results")
     snapshot = _snapshot(checkpoint)
