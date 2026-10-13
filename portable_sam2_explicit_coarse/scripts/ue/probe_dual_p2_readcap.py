@@ -371,18 +371,25 @@ def main():
     sat_mlp_f1 = float(met['mlp']['SAT']['f1'].mean())
     sat_lin_f1 = float(met['lin']['SAT']['f1'].mean())
     degraded = sat_mlp_f1 < sat_lin_f1 - 0.005
+    passed_gates = [g for g, ok in gate.items() if ok]
     if degraded:
         decision = 'READCAP_DEGRADED'
     elif f1_pass and auc_pass and rho_pass:
         decision = 'P2_PASS'
-    elif f1_pass:
-        decision = 'P2_PARTIAL_BOUNDARY'
-    elif rho_pass:
-        decision = 'P2_PARTIAL_QUALITY'
-    else:
+    elif not (f1_pass or auc_pass or rho_pass):
         decision = 'P2_NULL'
+    else:
+        pairs = [n for n, ok in (('f1', f1_pass), ('auc', auc_pass), ('rho', rho_pass)) if ok]
+        decision = 'P2_PARTIAL(' + ','.join(pairs) + ')'
+    if decision == 'P2_PARTIAL(f1)':
+        decision_alias = 'P2_PARTIAL_BOUNDARY'
+    elif decision == 'P2_PARTIAL(rho)':
+        decision_alias = 'P2_PARTIAL_QUALITY'
+    else:
+        decision_alias = None
     summary = {
         'experiment': 'DUAL-P2-READCAP-20261014', 'status': 'complete', 'decision': decision,
+        'decision_alias': decision_alias, 'passed_gates': passed_gates,
         'cache_contract_sha256': CONTRACT_SHA,
         'n': {'fit': n_fit, 'select': len(sel_idx), 'val': len(rows), 'test_read': 0},
         'thresholds': thresholds,
