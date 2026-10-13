@@ -112,7 +112,7 @@ def predict(model, x, chunk=65536):
     return np.concatenate(ps)
 
 
-def load_train(cache: Path, telemetry):
+def load_train(cache: Path):
     """Return per-target/arm stacked train arrays plus per-scene row lengths."""
     files = sorted((cache / 'train').glob('*.npz'))
     data = {t: {a: [] for a in ARMS} for t in TARGETS}
@@ -151,11 +151,14 @@ def rows_for(scene_idx, lens):
     return np.concatenate([np.arange(off[i], off[i + 1]) for i in scene_idx])
 
 
-def scene_split(ids, n_train):
-    """Fixed permutation over train scene order -> fit/select index sets."""
-    r = np.random.default_rng(SEED)
-    perm = r.permutation(n_train)
-    return perm[:N_FIT], perm[N_FIT:]
+def scene_split_check(ids, fit_idx, sel_idx, val_ids):
+    fit_set = set(map(ids.__getitem__, fit_idx))
+    sel_set = set(map(ids.__getitem__, sel_idx))
+    val_set = set(val_ids)
+    if fit_set & sel_set or fit_set & val_set or sel_set & val_set:
+        raise RuntimeError('split scene_id intersection non-empty')
+    if len(fit_set) != len(fit_idx) or len(sel_set) != len(sel_idx):
+        raise RuntimeError('duplicate scene_id inside a split')
 
 
 def pool_feats(x, pred_masks):
@@ -179,6 +182,8 @@ def main():
     if smoke and not (a.smoke_train and a.smoke_val):
         raise SystemExit('smoke requires both limits')
     out = a.output_dir.resolve()
+    if out == a.cache.resolve():
+        raise RuntimeError('output directory must differ from the read-only cache')
     out.mkdir(parents=True, exist_ok=True)
     if any(out.iterdir()) and not smoke:
         raise RuntimeError('output directory not empty')
@@ -198,18 +203,22 @@ def main():
     log(f'cache verified contract_sha={CONTRACT_SHA[:16]} counts={counts} smoke={smoke}')
 
     t0 = time.time()
-    tr = load_train(a.cache, None)
+    tr = load_train(a.cache)
     n_train = len(tr['ids'])
     n_fit = a.smoke_train - max(1, a.smoke_train // 10) if smoke else N_FIT
+    vfiles = sorted((a.cache / 'val').glob('*.npz'))
+    val_ids = []
+    for f in vfiles:
+        z = np.load(f)
+        val_ids.append(str(z['scene_id']))
+        z.close()
     r = np.random.default_rng(SEED)
     perm = r.permutation(n_train)
     fit_idx, sel_idx = perm[:n_fit], perm[n_fit:]
     ids = tr['ids']
-    overlap = set(map(ids.__getitem__, fit_idx)) & set(map(ids.__getitem__, sel_idx))
-    if overlap:
-        raise RuntimeError(f'scene overlap {overlap}')
+    scene_split_check(ids, fit_idx, sel_idx, val_ids)
     json.dump({'seed': SEED, 'n_train': n_train, 'fit': [ids[i] for i in fit_idx],
-               'select': [ids[i] for i in sel_idx]},
+               'select': [ids[i] for i in sel_idx], 'val': val_ids},
               open(out / 'split.json', 'w'), indent=1)
 
     telemetry = []
@@ -268,8 +277,10 @@ def main():
         selection['targets'][t] = {
             'mlp_hidden': list(HIDDENS[hi]), 'mlp_wd': WDS[wi],
             'mlp_select_loss_by_arm': {ar: sel_losses[f'{t}/{ar}/mlp/h{hi}/wd{wi}'] for ar in ARMS},
+            'mlp_select_loss_full_grid': {k: v for k, v in sel_losses.items() if k.startswith(f'{t}/')},
             'lin_C': best_lin,
             'lin_select_loss_by_arm': {ar: lin_losses[f'{t}/{ar}/lin/C{best_lin}'] for ar in ARMS},
+            'lin_select_loss_full_grid': {k: v for k, v in lin_losses.items() if k.startswith(f'{t}/')},
         }
         for a in ARMS:
             models[t, a, 'mlp'] = mlp_models[a, hi, wi]
@@ -305,7 +316,6 @@ def main():
             f.write(json.dumps(row) + '\n')
 
     # ---- one-shot val evaluation ----
-    vfiles = sorted((a.cache / 'val').glob('*.npz'))
     if smoke:
         vfiles = vfiles[:a.smoke_val]
     rows = []
@@ -322,10 +332,13 @@ def main():
                 xe = se.transform(x).astype(np.float32)
                 pb = predict(mb, xb) if reader == 'mlp' else mb.predict_proba(xb)[:, 1]
                 pe = predict(me, xe) if reader == 'mlp' else me.predict_proba(xe)[:, 1]
-                pooled = pool_feats(x, z['pred'])
+                pooled = pool_feats(x, z['pred']) if len(z['pred']) else np.zeros((0, x.shape[1]), np.float32)
                 mi, si = models['iou', arm, reader]
-                xi = si.transform(pooled).astype(np.float32)
-                pi_ = predict(mi, xi) if reader == 'mlp' else mi.predict(xi)
+                if len(pooled):
+                    xi = si.transform(pooled).astype(np.float32)
+                    pi_ = predict(mi, xi) if reader == 'mlp' else mi.predict(xi)
+                else:
+                    pi_ = np.zeros(0)
                 row[f'{reader}_{arm}'] = {
                     'f1': f1(pb >= t_, z['yb']),
                     'auc': float(roc_auc_score(z['ye'], pe)) if len(np.unique(z['ye'])) == 2 else 0.5,
