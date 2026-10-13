@@ -6,7 +6,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from rsprompter.decoder_tail_refiner import DecoderTailPointRefiner
+from rsprompter.decoder.decoder_tail_refiner import DecoderTailPointRefiner
 
 
 def main() -> None:

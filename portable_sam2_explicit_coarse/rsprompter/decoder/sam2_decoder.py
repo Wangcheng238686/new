@@ -1,4 +1,4 @@
-"""SAM2 mask-decoder wrapper (split from models_sam2)."""
+"""SAM2 mask-decoder wrapper."""
 
 """
 SAM2 Adapter for Portable SAM Fusion - Simplified Version
@@ -16,8 +16,8 @@ from mmengine.model import BaseModule
 from torch import Tensor
 
 
-from .ckpt_utils import load_module_state_dict_strict
-from .sam2_vision import SAM2_REPO, MaskDecoder, _load_sam2_checkpoint
+from ..ckpt_utils import load_module_state_dict_strict
+from ..backbone.sam2_vision import SAM2_REPO, MaskDecoder, _load_sam2_checkpoint
 
 
 
