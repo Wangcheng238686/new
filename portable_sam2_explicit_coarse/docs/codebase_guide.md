@@ -1,8 +1,8 @@
 # PromptMiner-SAM2 (a3sgm) 代码库导读
 
-> 清理终态（cleanup/a3sgm-only，2026-10-07）。本文件是当前代码的唯一权威地图；
+> 结构重组终态（cleanup3/package-structure，2026-10-13）。本文件是当前代码的唯一权威地图；
 > `docs/a3sgm_architecture_guide.md` 的 `文件:行号` 引用对应清理前提交 add7482，
-> 机制描述仍然有效，行号请以本文件为准。每轮清理的变更清单见 `docs/cleanup_rounds.md`。
+> 机制描述仍然有效，行号请以本文件为准。每轮变更清单见 `docs/cleanup_rounds.md`。
 
 ## 1. 项目架构说明
 
@@ -16,50 +16,79 @@
 部署阈值锚定损失）。两个正式入口：WHU-1024 全量 fast150（roi_local 监督、PE 冻结）与
 NWPU VHR-10 matrix300（full_image + roi_balanced_dice、PE 下采样栈 0.1×LR 可训练）。
 
-### 文件职责与依赖（portable_sam2_explicit_coarse）
+### rsprompter 包：按域分子包（2026-10-13 重组）
 
-| 文件 | 职责 | 依赖 |
+`MODELS.build` 按 `type` 字符串注册，包内文件布局不影响指纹与 ckpt；根 `__init__.py`
+是唯一注册门面（`RSPROMPTER_LIGHT_IMPORT=1` 可跳过重链导入，供张量级单测用）。
+
+| 模块 | 职责 | 依赖 |
 |---|---|---|
-| `rsprompter/anchor_detector.py` | 顶层检测器：特征抽取/损失/预测入口、stride16 选择 | sam2_vision, sam2_neck |
-| `rsprompter/anchor_roi_head.py` | RoI head：采样、bbox 损失(fp32 可选)、mask 前向、三大损失接线（最终 mask/尾 margin/coarse 辅助）、空秩 DDP 补偿、分块推理 | sam2_mask_head |
-| `rsprompter/sam2_mask_head.py` | 因果链核心：__init__ 契约、Step4-10 前向（coarse→dense canvas→挖点→PE→dense embedding→decoder→尾）、双坐标 predict | injector, miner, tail, helpers, targets, sam2_decoder |
-| `rsprompter/sam2_mask_head_helpers.py` | mixin：dense canvas 变换粘贴、PE 输入选择、无效点置零、gate 有效值、框内 support、GT 点位遥测 | dense_prompt_utils |
-| `rsprompter/sam2_mask_head_targets.py` | mixin：最终 mask 目标（fi/roi_local 双契约）、roi_balanced_dice、coarse 目标、loss_and_target | — |
-| `rsprompter/shape_prior_injector.py` | SmallMaskDecoder（coarse 头，roi_only） | — |
-| `rsprompter/shape_point_miner.py` | 2P2N 挖掘（无参数纯函数式，平台中心选取+三级 fallback） | — |
-| `rsprompter/dense_prompt_utils.py` | raw_logits 变换、框内粘贴、无效恢复基底 | — |
-| `rsprompter/decoder_tail_refiner.py` | UDPR margin 尾（耦合容器：梯度回传主干） | — |
-| `rsprompter/sam2_decoder.py` | SAM2 MaskDecoder 严格加载包装 + upscaled hook | vendored sam2 |
-| `rsprompter/sam2_vision.py` | LoRA 编码器加载/冻结、no_mask_embed 加载、PE 权重加载 | ckpt_utils |
-| `rsprompter/sam2_neck.py` | RSSAM2PAFPN（stride 4/8/16/32/64，五层 512ch） | — |
+| `rsprompter/__init__.py` | 注册门面：re-export 全部 registry 类与加载器符号（原 models/models_sam2/shape_prior 三门面并入） | 各子包 |
 | `rsprompter/architecture_contract.py` | **冻结区**：架构 ID 与 cfg.model sha256 指纹 | — |
-| `rsprompter/coarse_mask_loss.py` | coarse BCE+Dice（epoch 权重调度、boundary 指标遥测） | — |
-| `rsprompter/ckpt_utils.py` / facades×3 | 严格加载工具；`models*.py`/`shape_prior.py` 为注册 facade | — |
-| `train/train_rsprompter_fusion.py` | DDP 训练器：参数组/EMA/断点/四别名选模/早停/解耦裁剪/遥测聚合 | rsprompter, data, utils |
-| `inference/infer_from_checkpoint.py` | 自描述 ckpt 重建+推理+评测（契约校验、compat 变体、旧 ID 规则） | rsprompter, data, utils |
-| `data/` | WHU COCO 实例数据集 + 训练/验证 loader（含 VHR10 格式） | — |
-| `utils/coco_eval_utils.py` | COCO GT/DT 构建与评测唯一实现 | — |
-| `configs/a3sgm_{whu1024,vhr10}.py` | 静态模型配置（指纹=论文 ckpt 训练期契约） | — |
-| `configs/ablations/vhr10_*.py` | 论文消融 P/B/P+B/P+B+M 的 delta 配置 | `_base_` 上述两文件 |
-| `configs/environment*.sh` | 机器路径（python/SAM2/数据/ckpt 根） | — |
-| `scripts/ablations/*.sh` | 两入口瘦启动器（env 只剩数据/调度策略） | configs |
-| `scripts/infer_{whu,nwpu}_checkpoint.sh` | 推理入口包装 | inference/ |
-| `scripts/smoke/check_a3sgm_*.py` | 等价性回归门（加载+前向哈希，金样在同目录 json） | — |
-| `tools/` | bootstrap 配对统计、Boundary-AP、原尺度评测、可视化 | — |
+| `rsprompter/ckpt_utils.py` | 严格加载工具（跨子包共用） | — |
+| `detection/anchor_detector.py` | 顶层检测器：特征抽取/损失/预测入口、stride16 选择 | backbone、neck（经 registry 组装） |
+| `detection/anchor_roi_head.py` | RoI head：采样、bbox 损失(fp32 可选)、mask 前向、三大损失接线、空秩 DDP 补偿、分块推理 | cspm.mask_head（经 registry 组装） |
+| `detection/sam2_neck.py` | RSSAM2PAFPN（stride 4/8/16/32/64，五层 512ch） | — |
+| `backbone/sam2_vision.py` | LoRA 编码器加载/冻结、no_mask_embed 加载、PE 权重加载、SAM2 严格加载器 | ckpt_utils |
+| `cspm/mask_head.py` | 因果链核心：Step4-11 前向（coarse→dense canvas→挖点→PE→dense embedding→decoder→尾）、双坐标 predict | injector, miner, tail, decoder, helpers, targets |
+| `cspm/mask_head_init.py` | `_MaskHeadInitMixin`：墓碑拒载 + 7 个 `_init_*` 构造契约（方法体自 mask_head 逐字搬移） | 同 mask_head |
+| `cspm/mask_head_helpers.py` | mixin：dense canvas 变换粘贴、PE 输入选择、无效点置零、gate 有效值、框内 support、GT 点位遥测 | dense_prompt_utils |
+| `cspm/mask_head_targets.py` | mixin：最终 mask 目标（fi/roi_local 双契约）、roi_balanced_dice、coarse 目标、loss_and_target | — |
+| `cspm/shape_prior_injector.py` | SmallMaskDecoder（coarse 头，roi_only） | — |
+| `cspm/shape_point_miner.py` | 2P2N 挖掘（无参数纯函数式，平台中心选取+三级 fallback） | — |
+| `cspm/dense_prompt_utils.py` | raw_logits 变换、框内粘贴、无效恢复基底 | — |
+| `cspm/coarse_mask_loss.py` | coarse BCE+Dice（epoch 权重调度、boundary 指标遥测） | — |
+| `decoder/sam2_decoder.py` | SAM2 MaskDecoder 严格加载包装 + upscaled hook | vendored sam2, backbone |
+| `decoder/decoder_tail_refiner.py` | UDPR margin 尾（耦合容器：梯度回传主干） | — |
+
+### train/ 与 inference/：入口名不变，内部按主题分模块
+
+两处均以脚本直跑（`python train/train_rsprompter_fusion.py` / `python inference/infer_from_checkpoint.py`），
+子模块平级导入（sys.path[0] = 脚本目录），torchrun 与 smoke 门同样成立。
+
+| 模块 | 职责 |
+|---|---|
+| `train/train_rsprompter_fusion.py` | 入口：setup + main 编排（642 行；DDP 顺序骨架：epoch 头、EMA 恢复、停训广播） |
+| `train/cli_args.py` | `_env_flag` + `_parse_args`（argparse 全树+校验） |
+| `train/config_snapshot.py` | git 状态捕获 + `_build_config_snapshot`（自描述快照组装） |
+| `train/optimizer.py` | 参数组/LR 倍率 + 解耦辅助裁剪分区（含 2026-09-14 审计注释） |
+| `train/ema.py` | ExponentialMovingAverage（tracking-only） |
+| `train/checkpointing.py` | verified-best 保存 / resume / init-from 加载 / epoch 戳 |
+| `train/telemetry.py` | 指标读取（best 选择）、前向遥测、dense 残差监视、DDP 参数同步审计 |
+| `train/distributed.py` | DDP init（控制面超时）/停训广播/rank 工具/DDP 解包 |
+| `train/gt_samples.py` | 训练/验证共用 GT 构建 + 验证 loader 分片 |
+| `train/loops.py` | `train_one_epoch` / `validate_one_epoch` / `_finalize_epoch`（函数体自 main 逐字搬移；跨 epoch 状态显式穿线） |
+| `inference/infer_from_checkpoint.py` | 入口：parse_args + main 编排（419 行） |
+| `inference/model_rebuild.py` | 快照解析 + **契约 compat 冻结区** + 注册构建 + 严格加载（搬移后函数文本逐字节不变） |
+| `inference/eval_records.py` | 数据集契约 / loader / 样本构建 / RLE 记录 / checkpoint 报告 |
+
+### 其余目录
+
+| 文件 | 职责 |
+|---|---|
+| `data/` | WHU COCO 实例数据集 + 训练/验证 loader（含 VHR10 格式） |
+| `utils/coco_eval_utils.py` | COCO GT/DT 构建与评测唯一实现 |
+| `configs/a3sgm_{whu1024,vhr10}.py` | 静态模型配置（指纹=论文 ckpt 训练期契约） |
+| `configs/ablations/vhr10_*.py` | 论文消融 P/B/P+B/P+B+M 的 delta 配置（`_base_` 加减键） |
+| `configs/environment*.sh` | 机器路径（python/SAM2/数据/ckpt 根） |
+| `scripts/ablations/*.sh` | 两入口瘦启动器（ABLATION_CONFIG 可指 delta） |
+| `scripts/infer_{whu,nwpu}_checkpoint.sh` | 推理入口包装 |
+| `scripts/smoke/check_a3sgm_*.py` | 等价性回归门（加载+前向哈希+DDP+resume，金样 json 同目录） |
+| `tools/` | bootstrap 配对统计、Boundary-AP、原尺度评测、可视化 |
 
 ## 2. 代码阅读路线（建议顺序）
 
 1. `docs/a3sgm_architecture_guide.md` §0-§1（一页定位 + 架构图）——机制全景。
 2. `configs/a3sgm_vhr10.py` —— 模型长什么样（静态 dict，键名即模块语义）。
-3. `rsprompter/anchor_detector.py`（222 行）—— 数据怎么流进两阶段。
-4. `rsprompter/anchor_roi_head.py` —— 训练/推理在 RoI 层怎么组织（三大损失在哪接线）。
-5. `rsprompter/sam2_mask_head.py` —— **核心**：先读类 docstring 的 Step4-11 流程图，
+3. `rsprompter/detection/anchor_detector.py`（214 行）—— 数据怎么流进两阶段。
+4. `rsprompter/detection/anchor_roi_head.py` —— 训练/推理在 RoI 层怎么组织（三大损失在哪接线）。
+5. `rsprompter/cspm/mask_head.py`（728 行）—— **核心**：先读类 docstring 的 Step4-11 流程图，
    再按 `_forward_coarse → _forward_prompt_encode → _forward_dense_embeddings → forward →
-   _predict_by_feat_single` 顺序读。
-6. `rsprompter/shape_point_miner.py` 附录级细节（`docs/a3sgm_architecture_guide.md` 附录 A 有逐槽讲解）。
-7. `rsprompter/decoder_tail_refiner.py`（228 行）—— margin 语义与 DDP 归一。
-8. `train/train_rsprompter_fusion.py` 的 `main()` —— 训练循环/选模/断点。
-9. `inference/infer_from_checkpoint.py` 的 `_resolve_model_config` —— ckpt 自描述重建与契约校验。
+   _predict_by_feat_single` 顺序读；构造期契约在 `mask_head_init.py`。
+6. `rsprompter/cspm/shape_point_miner.py` 附录级细节（架构指南附录 A 有逐槽讲解）。
+7. `rsprompter/decoder/decoder_tail_refiner.py`（228 行）—— margin 语义与 DDP 归一。
+8. `train/train_rsprompter_fusion.py` 的 `main()` → `train/loops.py` —— 训练循环/选模/断点。
+9. `inference/model_rebuild.py` 的 `_resolve_model_config` —— ckpt 自描述重建与契约校验。
 
 ## 3. 关键接口清单（入参/返回/副作用）
 
@@ -70,8 +99,11 @@ NWPU VHR-10 matrix300（full_image + roi_balanced_dice、PE 下采样栈 0.1×LR
 | `DecoderTailPointRefiner.point_loss(tail_outputs, targets)` | → `(loss, TAIL/* 遥测 dict)`；DDP 全局正负点归一 | 两次 all_reduce（空秩经 `empty_point_loss` 镜像） |
 | `ShapePointMiner.forward(coarse_logits[N,1,64,64], boxes[N,4], image_size)` | → `(coords[N,4,2], labels[N,4]∈{1,0,-1}, SP/* 统计)`；全程 no_grad | 写 `_last_local_yx/_labels`（GT 遥测用） |
 | `_MaskHeadTargetsMixin.loss_and_target(mask_preds, sampling_results, batch_gt_instances, rcnn_train_cfg, final_mask_pos_priors)` | → `{loss_mask, mask_targets, debug_stats}`；fi/roi_local 双路径 | 无 |
-| `RSPrompterAnchorRoIPromptHead.mask_loss(...)` | → mask_results dict（含三大损失） | 写 `_last_coarse_stats` 等遥测 |
+| `RSPrompterAnchorRoIPromptHead.mask_loss(...)` | → `(losses, telemetry)`（损失通道纯损失；`DET/*` 精度键走遥测） | 写 `_last_coarse_stats` 等遥测 |
 | `architecture_contract(model_config_dict)` | → `{schema_version, architecture_id, model_fingerprint}` | 纯函数，**冻结** |
+| `train/loops.py train_one_epoch(...)` | args/model/loaders/优化器组 + 穿线计数器 → `(avg_loss, lr_groups, ema_update_steps, nonfinite_batches, ddp_sync_audited)` | 训练一个 epoch（含批内 collective） |
+| `train/loops.py validate_one_epoch(...)` | loader/分片参数/GT 缓存 → `(val_loss, val_metrics, ema_applied, cached_gt_records)` | 验证（rank0-only 或分片 gather） |
+| `train/loops.py _finalize_epoch(...)` | epoch 结果 + best-*/早停状态 + 存档上下文 → 更新后的跨 epoch 状态 + `stop_training` | rank0 写四别名 ckpt |
 | `infer_from_checkpoint.py --checkpoint … --build-only` | 重建模型+strict load，打印契约 | 进程内设置 SAM2_REPO/CKPT env |
 | 训练器 `--config configs/a3sgm_*.py` | DDP 训练，产出四别名 ckpt（best/bbox/composite/last + EMA state） | checkpoint 含 config_snapshot（自描述） |
 
@@ -79,15 +111,17 @@ NWPU VHR-10 matrix300（full_image + roi_balanced_dice、PE 下采样栈 0.1×LR
 
 1. **行为即契约**：任何影响 cfg.model 的改动都会改变架构指纹并拒载旧 ckpt——改模型形态前先跑
    `scripts/smoke/check_a3sgm_checkpoint_load.py` 与 `check_a3sgm_forward_equivalence.py`。
-2. `rsprompter/architecture_contract.py` 与 `inference/infer_from_checkpoint.py` 的契约比对区
+2. `rsprompter/architecture_contract.py` 与 `inference/model_rebuild.py` 的契约比对区
    （含两个 compat 变体与 `_is_legacy_pre_tail_id`）为冻结区，只加注释不改逻辑。
 3. 死臂参数模式：`__init__` 参数保留（ckpt 嵌入 config 会传键），启用即 `raise ValueError`
    并写明属于哪个已删臂——禁止静默吞掉。
 4. 遥测前缀约定：`SP/*`（点挖掘）`COARSE/*`（粗头）`GATE/*`（dense 门控）`DENSE/*`（dense 通道）
-   `TAIL/*`（尾）`BOX/*`/`JITTER/*`（提示框总线）；计数键由 roi_head 的 `_ratio` 派生命比率；
-   遥测只写日志不参与 loss。
+   `TAIL/*`（尾）`BOX/*`/`JITTER/*`（提示框总线）`DET/*`（检测精度键）；计数键由 roi_head 的
+   `_ratio` 派生命比率；遥测只写日志不参与 loss。
 5. 注释只写"为什么"（如 margin 必须锚定部署阈值 logit、空秩双 collective 防死锁、
    `**kwargs` 吞旧 ckpt 键的原因）；不复述代码在做什么。
 6. 禁第三方新依赖、禁一行式压缩、单一职责、guard clause 提前返回、变量就近定义。
 7. 配置改动走 `configs/ablations/` 的 `_base_` delta（加减键），不复活 env 开关。
 8. GPU 上的数值等价验证必须先做同代码双跑标定噪声带（scatter 原子操作使 bit 级复现不可达）。
+9. 结构搬移纪律（2026-10 新增）：函数体逐字搬移 + AST 等价对账；跨模块常量跟随唯一消费者；
+   smoke 门用的 `/tmp` delta 配置内嵌 worktree 绝对路径，换 worktree 必须重生成。

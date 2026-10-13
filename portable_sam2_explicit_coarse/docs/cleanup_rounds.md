@@ -205,3 +205,63 @@ RCNN_SAMPLER_NUM=32、seed 44）。**过程发现并修复一处真回归**：R3
 （实证 bs=1 跑 NWPU 指标偏 2.2e-04），对账必须复刻金样 batch 尺寸；这是既有行为
 （批内 padding/NMS 组合差异），非重构引入。WHU 600 图版本因主机被外部任务压至
 39GiB 可用内存而 OOM（mask 累积需 ~48GiB），改用 400 图前缀（27% 测试集）。
+
+---
+
+# 第三轮结构重组（cleanup3/package-structure，2026-10-13）
+
+判据：与二轮同线——数学逐位不变 / 7 权重可加载 / loss 数值不变 / 契约 compat 区
+逐字节不动；允许变化：文件布局、导入路径、模块内部组织。目的：可读性
+（消除上千行单文件、rsprompter 包按域分层），内部维护导向，导入路径不承诺稳定。
+
+## 变更清单（worktree cleanup3，四步各自独立 commit 后 squash）
+
+1. **rsprompter 按域分子包**：detection/（detector+roi_head+neck）、backbone/
+   （sam2_vision）、cspm/（mask_head 双文件+helpers+targets+injector+miner+
+   dense_utils+coarse_loss）、decoder/（sam2_decoder+tail）；architecture_contract
+   与 ckpt_utils 原位不动；models/models_sam2/shape_prior 三门面并入根 __init__。
+   消费者导入同步（smoke×4、图件脚本 dump_coarse_teaser）；删除死入口
+   smoke_test_components.sh（指向上轮已删的 tools/smoke_test_components.py）。
+2. **mask_head 拆两半**：构造契约（`_reject_removed_arms`+7 个 `_init_*`）→
+   `cspm/mask_head_init.py`（`_MaskHeadInitMixin`，366 行）；前向机制留
+   `cspm/mask_head.py`（728 行）。方法体逐字搬移。
+3. **infer 拆三分**：`model_rebuild.py`（334 行，冻结区整体搬入，23 个函数与
+   HEAD 字节级对账一致）＋`eval_records.py`（271 行）＋入口（419 行）。
+   平级导入兼容脚本直跑与 smoke 门的平级 import 两种调用。
+4. **trainer 拆包 + main 抽函数**：8 个主题模块（cli_args/telemetry/
+   checkpointing/gt_samples/config_snapshot/distributed/optimizer/ema）+
+   `loops.py`（train_one_epoch/validate_one_epoch/_finalize_epoch，函数体自
+   main 逐字搬移、整体 dedent 一层、AST 等价对账三段 MATCH）；main 保留 DDP
+   顺序骨架（epoch 头、EMA 恢复、停训广播——R6 警示区不外移）。入口
+   2847→642 行。跨 epoch 状态显式经参数/返回值穿线；utils.coco_eval_utils
+   改函数内惰性导入（运行时序不变）。
+
+## 门禁过程中抓获的真实缺陷（本轮教训）
+
+- DDP 门抓获 `_DENSE_RESIDUAL_MONITOR_KEYS`/`_PROMPT_TELEMETRY_PREFIXES` 常量
+  漏桥接（模块级 import 只搬函数不搬常量的通病；单进程 import 冒烟测不出）。
+- DDP 门抓获 `epoch_number` 参数漏传（main 循环头定义、被搬移的 epoch 汇总
+  日志引用）。
+- 门用 `/tmp` delta 配置内嵌 worktree 绝对路径：换 worktree 必须重写
+  `_base_`（上轮 new-radical 遗物指向已删目录，首次 DDP 门假失败）。
+- `_AUX_CLIP_MODULE_PREFIXES` 的解释注释块初始被误划入 distributed.py
+  （按行号机械切割的归属错误），字节对账时发现并归位 optimizer.py。
+
+## 终局等价证据（2026-10-13）
+
+| 门 | 结果 |
+|---|---|
+| 加载门（7 权重，走新 model_rebuild 完整重建路径） | 7/7 PASS |
+| 前向等价门（CPU sha256 金样） | nwpu/whu/whu_ema 三案例 PASS |
+| DDP launch 门（2 rank × 3 步） | PASS |
+| resume 门（存→续） | PASS |
+| 50 步噪声带（**5v5 交替设计**，sampler32/2%子集/AMP/seed44） | 27 指标 Mann-Whitney U 全落 [6,21]（零假设期望 12.5），**无一分离**；恒等键（boundary_logit/changed_fraction）10 跑逐位一致 |
+| NWPU val · bestC e270 · 130 图 bs2 | 772 条预测**逐位一致**，24 项指标 max\|Δ\|=0.00e+00，GT/DT bootstrap 记录全同 |
+| WHU test · raw e118 · 前 300 图 bs4 | **12,114 条预测逐位一致**（RAM 被外部任务压至 31GiB，400 图需 ~32GiB+评测开销，按共租纪律降为 300 图前缀，13.5% 测试集） |
+| WHU test · EMA e118 · 前 300 图 bs4 | **12,202 条逐位一致** |
+
+噪声带判读教训：前 4 跑（bb,nn 顺序）曾呈现"基线对紧贴、组间位移 20×带宽"的
+假分离；扩至 10 跑并严格交替（b,n,b,n）后，同码极差（如 loss_mask base 组内
+0.0082）与异码位移（+0.0046）同量级、分布重叠，U 检验无一指标显著——初读的
+"系统分离"是紧贴对+重尾离群（n4/b5）联合造成的带宽低估。结论：无可归因于
+代码的训练路径数值差异。
