@@ -15,3 +15,6 @@ Only mainline source/protocol changes are adopted; experiment data/output files
 remain external and their inventory is in the recovery manifest. Historical
 protocols retain their original experimental identity. Old P2/P3 and A1 routes
 are archived; new end-to-end fusion and full training are outside this change.
+
+Full source snapshot including dirty source/protocols: `codex/archive-dual-stream-snapshot-20261013` (`7659eb7`).
+Domain model packages are transplanted byte-for-byte; legacy registered models are removed.

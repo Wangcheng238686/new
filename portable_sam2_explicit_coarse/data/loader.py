@@ -6,15 +6,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
-from .satellite_dataset import SatelliteInstanceDataset
 from .whu_instance_dataset import WHUCocoInstanceDataset
-from .satellite_drone_dataset import (
-    SatelliteDroneDataset,
-    rtmdet_drone_collate_fn,
-    build_scene_id_mapping,
-)
-from .ue_dual_stream_dataset import UEDualStreamDataset, ue_dual_collate
-from .ue_raw_pair_dataset import UERawPairDataset
 
 
 logger = logging.getLogger(__name__)
@@ -123,20 +115,13 @@ def create_train_loader(
     multi_scale_resize_prob: float = 0.0,
     multi_scale_mode: str = "range",
     multi_scale_img_scale=None,
-    use_drone: bool = False,
-    drone_data_root: str = "",
-    num_views: int = 15,
-    drone_image_size: Tuple[int, int] = (512, 512),
     distributed: bool = False,
     rank: int = 0,
     world_size: int = 1,
-    val_ratio: float = 0.0,
     val_batch_size: Optional[int] = None,
     num_workers: int = 4,
-    normalize_drone: bool = True,
-    random_sample: bool = True,
     seed: int = 42,
-    dataset_format: str = "labelme",
+    dataset_format: str = "whu_coco",
     whu_train_ann_file: str = "annotations/train.json",
     whu_val_ann_file: str = "annotations/val.json",
     whu_train_img_subdir: str = "train/image",
@@ -144,225 +129,99 @@ def create_train_loader(
     whu_single_class: bool = True,
     whu_enable_category_mapping: bool = False,
     whu_category_mapping: Optional[dict] = None,
-    isaid_train_ann_file: str = "isaid_patches_800/train/instances_isaid_train.json",
-    isaid_val_ann_file: str = "isaid_patches_800/val/instances_isaid_val.json",
-    isaid_train_img_subdir: str = "isaid_patches_800/train/images",
-    isaid_val_img_subdir: str = "isaid_patches_800/val/images",
+    vhr10_train_ann_file: str = "coco_split/instances_train.json",
+    vhr10_val_ann_file: str = "coco_split/instances_val.json",
+    vhr10_train_img_subdir: str = "positive image set",
+    vhr10_val_img_subdir: str = "positive image set",
     train_subset_ratio: float = 1.0,
     val_subset_ratio: float = 1.0,
-    raw_split_manifest: str = "surfbev_b0_split_v2.json",
 ):
     generator = torch.Generator()
     generator.manual_seed(int(seed))
-    if dataset_format == "ue_raw_surface":
-        if use_drone:
-            raise ValueError("B0 raw SurfaceBEV loader must not load UAV payloads")
-        if any(float(p) != 0.0 for p in
-               (flip_prob, vflip_prob, gaussian_noise_prob, random_erasing_prob)):
-            raise ValueError("raw SurfaceBEV augmentation contract is none")
-        train_dataset = UERawPairDataset(data_root, "train", load_uav=False,
-                                         split_manifest=raw_split_manifest, image_size=image_size)
-        val_dataset = UERawPairDataset(data_root, "val", load_uav=False,
-                                       split_manifest=raw_split_manifest, image_size=image_size)
-        collate_fn = rtmdet_collate_fn
-        val_loader = DataLoader(val_dataset, batch_size=val_batch_size or batch_size,
-                                shuffle=False, num_workers=num_workers, collate_fn=collate_fn,
-                                pin_memory=True, drop_last=False,
-                                persistent_workers=num_workers > 0,
-                                worker_init_fn=_seed_worker, generator=generator)
-        logger.info("UE raw SurfaceBEV B0 split: train=%d val=%d", len(train_dataset), len(val_dataset))
-    elif dataset_format == "ue_dual":
-        # UE has its own official train/val/test directories and calibrated five
-        # UAV views; never apply random geometry augmentation to this path.
-        train_dataset = UEDualStreamDataset(
-            data_root, "train", image_size=image_size,
-            train_subset=train_subset_ratio, seed=seed, load_uav=use_drone,
+    if dataset_format not in ("whu_coco", "vhr10_coco"):
+        raise ValueError(
+            f"Unsupported dataset_format {dataset_format!r}; "
+            "expected 'whu_coco' or 'vhr10_coco'"
         )
-        val_dataset = UEDualStreamDataset(data_root, "val", image_size=image_size,
-                                          load_uav=use_drone)
-        collate_fn = ue_dual_collate
-        val_loader = DataLoader(val_dataset, batch_size=val_batch_size or batch_size,
-                                shuffle=False, num_workers=num_workers, collate_fn=collate_fn,
-                                pin_memory=True, drop_last=False,
-                                persistent_workers=num_workers > 0,
-                                worker_init_fn=_seed_worker, generator=generator)
-        logger.info("UE dual split: train=%d val=%d (train_subset=%.6f)",
-                    len(train_dataset), len(val_dataset), train_subset_ratio)
-    elif use_drone:
-        scene_id_to_index = build_scene_id_mapping(data_root, drone_data_root)
-        logger.info("Built scene ID mapping: %d scenes", len(scene_id_to_index))
-        
-        train_dataset = SatelliteDroneDataset(
-            satellite_data_root=data_root,
-            drone_data_root=drone_data_root,
-            scene_ids=None,
-            image_size=image_size,
-            drone_image_size=drone_image_size,
-            num_sample_images=num_views,
-            random_sample=random_sample,
-            normalize_drone=normalize_drone,
-            val_ratio=val_ratio,
-            is_val=False,
-            flip_prob=flip_prob,
-            scene_id_to_index=scene_id_to_index,
-            gaussian_noise_prob=gaussian_noise_prob,
-            gaussian_noise_std=gaussian_noise_std,
-            random_erasing_prob=random_erasing_prob,
-            random_erasing_scale=random_erasing_scale,
-            random_erasing_ratio=random_erasing_ratio,
-            seed=seed,
-        )
-        collate_fn = rtmdet_drone_collate_fn
-        if val_ratio > 0:
-            val_dataset = SatelliteDroneDataset(
-                satellite_data_root=data_root,
-                drone_data_root=drone_data_root,
-                scene_ids=None,
-                image_size=image_size,
-                drone_image_size=drone_image_size,
-                num_sample_images=num_views,
-                random_sample=False,
-                normalize_drone=normalize_drone,
-                val_ratio=val_ratio,
-                is_val=True,
-                scene_id_to_index=scene_id_to_index,
-            )
-            val_loader = DataLoader(
-                val_dataset,
-                batch_size=val_batch_size if val_batch_size else batch_size,
-                shuffle=False,
-                num_workers=num_workers,
-                collate_fn=collate_fn,
-                pin_memory=True,
-                worker_init_fn=_seed_worker,
-                generator=generator,
-            )
-        else:
-            val_loader = None
-    elif dataset_format in ("whu_coco", "isaid_coco"):
-        if dataset_format == "isaid_coco":
-            # iSAID 15-class: map official category ids 1..15 -> train labels 0..14.
-            coco_single_class = False
-            coco_enable_mapping = True
-            coco_category_mapping = {i: i - 1 for i in range(1, 16)}
-            coco_train_ann = isaid_train_ann_file
-            coco_val_ann = isaid_val_ann_file
-            coco_train_img = isaid_train_img_subdir
-            coco_val_img = isaid_val_img_subdir
-        else:
-            coco_single_class = whu_single_class
-            coco_enable_mapping = whu_enable_category_mapping
-            coco_category_mapping = whu_category_mapping
-            coco_train_ann = whu_train_ann_file
-            coco_val_ann = whu_val_ann_file
-            coco_train_img = whu_train_img_subdir
-            coco_val_img = whu_val_img_subdir
-        train_dataset = WHUCocoInstanceDataset(
+    if dataset_format == "vhr10_coco":
+        # NWPU VHR-10 10-class (instance-mask COCO conversion of the
+        # Precise Mask R-CNN IGARSS'19 release): ids 1..10 -> labels 0..9.
+        coco_single_class = False
+        coco_enable_mapping = True
+        coco_category_mapping = {i: i - 1 for i in range(1, 11)}
+        coco_train_ann = vhr10_train_ann_file
+        coco_val_ann = vhr10_val_ann_file
+        coco_train_img = vhr10_train_img_subdir
+        coco_val_img = vhr10_val_img_subdir
+    else:
+        coco_single_class = whu_single_class
+        coco_enable_mapping = whu_enable_category_mapping
+        coco_category_mapping = whu_category_mapping
+        coco_train_ann = whu_train_ann_file
+        coco_val_ann = whu_val_ann_file
+        coco_train_img = whu_train_img_subdir
+        coco_val_img = whu_val_img_subdir
+    train_dataset = WHUCocoInstanceDataset(
+        data_root=data_root,
+        ann_file=coco_train_ann,
+        image_subdir=coco_train_img,
+        image_size=image_size,
+        single_class=coco_single_class,
+        enable_category_mapping=coco_enable_mapping,
+        category_mapping=coco_category_mapping,
+        flip_prob=flip_prob,
+        vflip_prob=vflip_prob,
+        gaussian_noise_prob=gaussian_noise_prob,
+        gaussian_noise_std=gaussian_noise_std,
+        random_erasing_prob=random_erasing_prob,
+        random_erasing_scale=random_erasing_scale,
+        random_erasing_ratio=random_erasing_ratio,
+        multi_scale_resize_prob=multi_scale_resize_prob,
+        multi_scale_mode=multi_scale_mode,
+        multi_scale_img_scale=multi_scale_img_scale,
+    )
+    train_dataset = _subset_whu_dataset(
+        train_dataset,
+        ratio=train_subset_ratio,
+        seed=int(seed),
+        split="train",
+    )
+    collate_fn = rtmdet_collate_fn
+
+    val_loader = None
+    if coco_val_ann:
+        val_dataset = WHUCocoInstanceDataset(
             data_root=data_root,
-            ann_file=coco_train_ann,
-            image_subdir=coco_train_img,
+            ann_file=coco_val_ann,
+            image_subdir=coco_val_img,
             image_size=image_size,
             single_class=coco_single_class,
             enable_category_mapping=coco_enable_mapping,
             category_mapping=coco_category_mapping,
-            flip_prob=flip_prob,
-            vflip_prob=vflip_prob,
-            gaussian_noise_prob=gaussian_noise_prob,
-            gaussian_noise_std=gaussian_noise_std,
-            random_erasing_prob=random_erasing_prob,
-            random_erasing_scale=random_erasing_scale,
-            random_erasing_ratio=random_erasing_ratio,
-            multi_scale_resize_prob=multi_scale_resize_prob,
-            multi_scale_mode=multi_scale_mode,
-            multi_scale_img_scale=multi_scale_img_scale,
+            flip_prob=0.0,
+            vflip_prob=0.0,
+            gaussian_noise_prob=0.0,
+            random_erasing_prob=0.0,
         )
-        train_dataset = _subset_whu_dataset(
-            train_dataset,
-            ratio=train_subset_ratio,
-            seed=int(seed),
-            split="train",
+        val_dataset = _subset_whu_dataset(
+            val_dataset,
+            ratio=val_subset_ratio,
+            seed=int(seed) + 10000,
+            split="val",
         )
-        collate_fn = rtmdet_collate_fn
-
-        val_loader = None
-        if coco_val_ann:
-            val_dataset = WHUCocoInstanceDataset(
-                data_root=data_root,
-                ann_file=coco_val_ann,
-                image_subdir=coco_val_img,
-                image_size=image_size,
-                single_class=coco_single_class,
-                enable_category_mapping=coco_enable_mapping,
-                category_mapping=coco_category_mapping,
-                flip_prob=0.0,
-                vflip_prob=0.0,
-                gaussian_noise_prob=0.0,
-                random_erasing_prob=0.0,
-            )
-            val_dataset = _subset_whu_dataset(
-                val_dataset,
-                ratio=val_subset_ratio,
-                seed=int(seed) + 10000,
-                split="val",
-            )
-            val_loader = DataLoader(
-                val_dataset,
-                batch_size=val_batch_size or batch_size,
-                shuffle=False,
-                num_workers=num_workers,
-                collate_fn=collate_fn,
-                pin_memory=True,
-                drop_last=False,
-                persistent_workers=num_workers > 0,
-                worker_init_fn=_seed_worker,
-                generator=generator,
-            )
-            logger.info("创建 WHU 验证集加载器: %d 样本", len(val_dataset))
-    else:
-        train_dataset = SatelliteInstanceDataset(
-            satellite_data_root=data_root,
-            scene_ids=None,
-            image_size=image_size,
-            val_ratio=val_ratio,
-            is_val=False,
-            flip_prob=flip_prob,
-            vflip_prob=vflip_prob,
-            gaussian_noise_prob=gaussian_noise_prob,
-            gaussian_noise_std=gaussian_noise_std,
-            random_erasing_prob=random_erasing_prob,
-            random_erasing_scale=random_erasing_scale,
-            random_erasing_ratio=random_erasing_ratio,
-            seed=seed,
+        val_loader = DataLoader(
+            val_dataset,
+            batch_size=val_batch_size or batch_size,
+            shuffle=False,
+            num_workers=num_workers,
+            collate_fn=collate_fn,
+            pin_memory=True,
+            drop_last=False,
+            persistent_workers=num_workers > 0,
+            worker_init_fn=_seed_worker,
+            generator=generator,
         )
-        collate_fn = rtmdet_collate_fn
-
-        val_loader = None
-        if val_ratio > 0:
-            val_dataset = SatelliteInstanceDataset(
-                satellite_data_root=data_root,
-                scene_ids=None,
-                image_size=image_size,
-                val_ratio=val_ratio,
-                is_val=True,
-                flip_prob=0.0,
-                vflip_prob=0.0,
-                gaussian_noise_prob=0.0,
-                random_erasing_prob=0.0,
-                seed=seed,
-            )
-            val_loader = DataLoader(
-                val_dataset,
-                batch_size=val_batch_size or batch_size,
-                shuffle=False,
-                num_workers=num_workers,
-                collate_fn=collate_fn,
-                pin_memory=True,
-                drop_last=False,
-                persistent_workers=num_workers > 0,
-                worker_init_fn=_seed_worker,
-                generator=generator,
-            )
-            logger.info("创建验证集加载器: %d 样本", len(val_dataset))
+        logger.info("创建 WHU 验证集加载器: %d 样本", len(val_dataset))
 
     sampler = None
     shuffle = True
@@ -402,9 +261,8 @@ def create_test_loader(
     batch_size: int = 1,
     num_workers: int = 4,
     seed: int = 42,
-    raw_split_manifest: str = "surfbev_b0_split_v2.json",
 ):
-    """Build a held-out test loader for standalone test-set evaluation.
+    """Build a WHU-COCO test loader for standalone test-set evaluation.
 
     Mirrors the validation loader built by ``create_train_loader`` (whu_coco
     branch) but points at the held-out test split: no augmentation, no subset
@@ -414,11 +272,7 @@ def create_test_loader(
     generator = torch.Generator()
     generator.manual_seed(int(seed))
 
-    if ann_file == "__ue_raw_surface_test__":
-        test_dataset = UERawPairDataset(data_root, "test", load_uav=False,
-                                        split_manifest=raw_split_manifest, image_size=image_size)
-    else:
-        test_dataset = WHUCocoInstanceDataset(
+    test_dataset = WHUCocoInstanceDataset(
         data_root=data_root,
         ann_file=ann_file,
         image_subdir=image_subdir,
@@ -430,7 +284,7 @@ def create_test_loader(
         vflip_prob=0.0,
         gaussian_noise_prob=0.0,
         random_erasing_prob=0.0,
-        )
+    )
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
