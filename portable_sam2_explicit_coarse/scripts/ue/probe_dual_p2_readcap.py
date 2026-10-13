@@ -232,18 +232,18 @@ def main():
         # ---- MLP grid ----
         sel_losses = {}
         mlp_models = {}
-        for a in ARMS:
-            sc = StandardScaler().fit(tr[t]['x'][a][fit_rows])
-            xf = sc.transform(tr[t]['x'][a][fit_rows]).astype(np.float32)
-            xs_ = sc.transform(tr[t]['x'][a][sel_rows]).astype(np.float32)
+        for arm in ARMS:
+            sc = StandardScaler().fit(tr[t]['x'][arm][fit_rows])
+            xf = sc.transform(tr[t]['x'][arm][fit_rows]).astype(np.float32)
+            xs_ = sc.transform(tr[t]['x'][arm][sel_rows]).astype(np.float32)
             yf, ys_ = y_full[fit_rows], y_full[sel_rows]
             for hi, hidden in enumerate(HIDDENS):
                 for wi, wd in enumerate(WDS):
-                    tag = f'{t}/{a}/mlp/h{hi}/wd{wi}'
+                    tag = f'{t}/{arm}/mlp/h{hi}/wd{wi}'
                     m, sl, ep = fit_mlp(xf, yf, xs_, ys_,
                                         hidden, wd, SEED + hi * 10 + wi, cls, telemetry, tag)
                     sel_losses[tag] = sl
-                    mlp_models[a, hi, wi] = (m, sc)
+                    mlp_models[arm, hi, wi] = (m, sc)
         # common config across arms by mean(SAT, correct) select loss
         def pair_score(hi, wi):
             return (sel_losses[f'{t}/SAT/mlp/h{hi}/wd{wi}'] + sel_losses[f'{t}/correct/mlp/h{hi}/wd{wi}']) / 2
@@ -252,13 +252,13 @@ def main():
         # ---- linear parity anchor ----
         lin = {}
         lin_losses = {}
-        for a in ARMS:
-            sc = StandardScaler().fit(tr[t]['x'][a][fit_rows])
-            xf = sc.transform(tr[t]['x'][a][fit_rows])
-            xs_ = sc.transform(tr[t]['x'][a][sel_rows])
+        for arm in ARMS:
+            sc = StandardScaler().fit(tr[t]['x'][arm][fit_rows])
+            xf = sc.transform(tr[t]['x'][arm][fit_rows])
+            xs_ = sc.transform(tr[t]['x'][arm][sel_rows])
             yf, ys_ = y_full[fit_rows], y_full[sel_rows]
             for C in CS:
-                tag = f'{t}/{a}/lin/C{C}'
+                tag = f'{t}/{arm}/lin/C{C}'
                 if cls:
                     m = LogisticRegression(C=C, class_weight='balanced', max_iter=2000,
                                            random_state=SEED).fit(xf, yf)
@@ -269,7 +269,7 @@ def main():
                     p = m.predict(xs_)
                     sl = float(np.mean((p - ys_) ** 2))
                 lin_losses[tag] = sl
-                lin[a, C] = (m, sc)
+                lin[arm, C] = (m, sc)
 
         def pair_lin(C):
             return (lin_losses[f'{t}/SAT/lin/C{C}'] + lin_losses[f'{t}/correct/lin/C{C}']) / 2
@@ -282,9 +282,9 @@ def main():
             'lin_select_loss_by_arm': {ar: lin_losses[f'{t}/{ar}/lin/C{best_lin}'] for ar in ARMS},
             'lin_select_loss_full_grid': {k: v for k, v in lin_losses.items() if k.startswith(f'{t}/')},
         }
-        for a in ARMS:
-            models[t, a, 'mlp'] = mlp_models[a, hi, wi]
-            models[t, a, 'lin'] = lin[a, best_lin]
+        for arm in ARMS:
+            models[t, arm, 'mlp'] = mlp_models[arm, hi, wi]
+            models[t, arm, 'lin'] = lin[arm, best_lin]
         log(f'target {t}: mlp hidden={HIDDENS[hi]} wd={WDS[wi]} lin_C={best_lin} ({time.time()-t0:.0f}s)')
 
     # ---- boundary threshold (prevalence-corrected F1 on select, correct arm) ----
