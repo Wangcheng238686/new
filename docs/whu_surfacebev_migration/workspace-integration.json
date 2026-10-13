@@ -1,0 +1,66 @@
+{
+  "workspace": "/home/wangcheng/project/new/.worktrees/dual-stream-dev",
+  "branch": "codex/dual-stream-dev",
+  "pre_head": "27b42d1265bda7615b8f055aac5546525b63f6b9",
+  "integrated_head": "9466d7b6d56e7400f2c8db625d21c6e8eceb2aa2",
+  "method": "fast-forward; old source overlay preserved separately; no old overlay reapplied",
+  "recovery_snapshot": "/home/wangcheng/.codex/backups/whu-surfacebev-20261013",
+  "integration_backup": "/home/wangcheng/.codex/backups/whu-surfacebev-integration-20261013",
+  "external_files_and_links_checked": 15864,
+  "external_files_and_links_changed": [],
+  "runtime_matches_migration": true,
+  "sealed_files_byte_identical": 24,
+  "raw_pair_checks": {
+    "train": {
+      "scenes": 694,
+      "satellite_shape": [
+        3,
+        1024,
+        1024
+      ],
+      "keys": [
+        "devicez_rgb",
+        "drone_images",
+        "gt_bboxes",
+        "gt_labels",
+        "gt_masks",
+        "img",
+        "img_metas",
+        "satellite_camera",
+        "uav_cameras"
+      ]
+    },
+    "val": {
+      "scenes": 100,
+      "satellite_shape": [
+        3,
+        1024,
+        1024
+      ],
+      "keys": [
+        "devicez_rgb",
+        "drone_images",
+        "gt_bboxes",
+        "gt_labels",
+        "gt_masks",
+        "img",
+        "img_metas",
+        "satellite_camera",
+        "uav_cameras"
+      ]
+    }
+  },
+  "contract_tests_passed": 9,
+  "test_images_opened": false,
+  "training_run": false,
+  "checkpoint_strict_rebuild": {
+    "status": "PASS",
+    "device": "cpu",
+    "validation_only": true,
+    "checkpoint": "/home/wangcheng/project/new/.worktrees/whu-surfacebev-migration/.migration-validation/trainer/last_model_epoch1.pth",
+    "entrypoint": "portable_sam2_explicit_coarse/inference/infer_from_checkpoint.py --build-only",
+    "sam2_package": "/home/wangcheng/project/new/.worktrees/dual-stream-dev/sam2/sam2/__init__.py"
+  },
+  "reader_warning": "Existing UAV depth reader creates a tensor from a non-writable NumPy view; validation only read this tensor. No runtime code was changed during integration.",
+  "acceptance_limits": "Original migration acceptance limits remain unchanged; no new B0 performance claim."
+}

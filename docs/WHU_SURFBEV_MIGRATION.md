@@ -5,11 +5,27 @@ Original committed baseline: `27b42d1`.
 Archive branch: `codex/archive-dual-stream-pre-whu-20261013`.
 Migration branch: `codex/whu-surfacebev-migration`.
 
+The migration was subsequently fast-forwarded into `codex/dual-stream-dev` at
+`/home/wangcheng/project/new/.worktrees/dual-stream-dev`. This is the workspace
+for subsequent dual-stream development. Integration brought in `9466d7b`; the
+satellite model still has no new fusion implementation. The migration worktree
+is retained for its original acceptance logs and temporary fixtures.
+
+Integration checks are recorded in
+`docs/whu_surfacebev_migration/workspace-integration.json`. The additional
+backup at `/home/wangcheng/.codex/backups/whu-surfacebev-integration-20261013`
+contains the pre-integration patch/status and the 91 old untracked source and
+protocol files moved aside before the fast-forward. Adopted source/protocols
+are already in the migration commits; replaying that old overlay would undo
+the migration. Local datasets and historical outputs stayed in place and are
+excluded from new Git additions; previously tracked records remain tracked.
+
 Recovery snapshot: `/home/wangcheng/.codex/backups/whu-surfacebev-20261013`.
 It contains a binary HEAD diff, full untracked-file archive (symlinks preserved),
 status and content-hash inventory. Restore into a fresh worktree at the original
 HEAD using `git apply tracked.patch`, then extract `untracked.tar` there.
-The original worktree, datasets and experiment outputs are not migration targets.
+The original worktree was left unchanged during isolated migration acceptance;
+the later integration updates its code while preserving datasets and outputs.
 
 Only mainline source/protocol changes are adopted; experiment data/output files
 remain external and their inventory is in the recovery manifest. Historical
@@ -60,7 +76,7 @@ The default Python is not the validated environment. No packages were changed in
 this existing environment. Machine-local dataset contents and validation weights
 are intentionally excluded from Git.
 
-From this migration worktree:
+From the repository root of the current development worktree:
 
 ```bash
 export PYTHON=/data2/wangcheng/envs/cvt2/bin/python
@@ -70,8 +86,9 @@ export PYTHONPATH="$PWD/portable_sam2_explicit_coarse:$SAM2_REPO"
 export UE_DATA_ROOT="$PWD/portable_sam2_explicit_coarse/data/ue_raw_hero_uav_pairset_20261011"
 ```
 
-The local raw-pair directory contains manifests and a scenes symlink
-to the original worktree, used only for reads. On another checkout, provide the existing registered
+The development worktree retains its original raw-pair directory and scene links.
+The isolated migration worktree's scenes symlink points to this directory and
+remains valid. On another checkout, provide the existing registered
 pairset via `UE_DATA_ROOT`; no dataset rematerialization is needed. SAM2 identity
 is recorded in checkpoints and must match the probe's runtime checkpoint.
 
@@ -183,6 +200,8 @@ at `27b42d1`, apply the snapshot's `tracked.patch` with `git apply`, then extrac
 dereferencing external datasets. Do not restore over an occupied worktree.
 For the source/protocol checkpoint alone, use
 `codex/archive-dual-stream-snapshot-20261013` (`7659eb7`).
-The original worktree was never switched or merged; migration review happens on
-`codex/whu-surfacebev-migration`. Each implementation stage can be reverted in
-reverse order without changing the original workspace or experiment artifacts.
+The isolated migration was reviewed on `codex/whu-surfacebev-migration` before
+integration into `codex/dual-stream-dev`. Each implementation stage remains a
+separate commit. For rollback inspection, create a fresh worktree from an archive
+branch; for the exact pre-migration dirty state use the snapshot recipe above.
+Keep the migration worktree while its ignored acceptance logs are needed.

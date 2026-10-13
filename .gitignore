@@ -24,3 +24,6 @@ portable_sam2_explicit_coarse/data/ue_raw_hero_uav_pairset_20261011/scenes
 portable_sam2_explicit_coarse/data/ue_raw_hero_uav_pairset_20261011/accepted_pairs.jsonl
 portable_sam2_explicit_coarse/data/ue_raw_hero_uav_pairset_20261011/DATASET_CONTRACT.json
 .migration-validation/
+
+# Local experiment artifacts; previously committed records remain tracked.
+portable_sam2_explicit_coarse/outputs/
