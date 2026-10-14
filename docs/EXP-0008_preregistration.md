@@ -79,3 +79,8 @@ wrapper `scripts/ue/run_exp0008_ddp4.sh`（同 EXP-0007 守卫族 + 双流指纹
 3. **遥测口径标注**：gate 遥测为 rank0-only 训练步聚合（非跨 rank）；
    梯度范数、五视角分布、有效秩、逐场 val 落盘、一致性抽检为 run 后
    离线工具（从两臂 last checkpoint 重推）。
+
+## 事故追加（2026-10-14）
+
+启动被 wrapper 数据复验拦截（完整性事故），本 run 未启动；由 EXP-0010
+（冻结快照、协议与实现完全继承）替代，A/B 对照为 EXP-0009。

@@ -50,3 +50,8 @@ UAV 不可见；用户决议建立**原生 512 锚点**重开空间（卫星原�
 
 checkpoint/日志：`/data1/wangcheng/checkpoint/surfbev_b0/surfacebev_v2_512_sealed_ddp4_s44_EXP-0007/`
 （目录名启动时定稿登记）；结论 MD 于训练完成 + test 开封后另立。
+
+## 事故追加（2026-10-14）
+
+训练窗口内生产数据集被 componentclean_v2 修复管线实时改写（49 train/15 val
+GT），本 run 作废为污染记录，由 EXP-0009（冻结快照、协议逐项一致）替代。
