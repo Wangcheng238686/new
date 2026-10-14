@@ -1,4 +1,6 @@
 """Deterministic satellite-only raw-pair loaders, no augmentation."""
+import os
+
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -18,7 +20,7 @@ def create_raw_loaders(root, batch_size, val_batch_size, image_size, split_manif
     for split, ratio in (("train", train_ratio), ("val", val_ratio)):
         if not 0 < ratio <= 1:
             raise ValueError("subset ratios must be in (0,1]")
-        ds = UERawPairDataset(root, split, load_uav=False,
+        ds = UERawPairDataset(root, split, load_uav=os.environ.get("UE_LOAD_UAV") == "1",
                               split_manifest=split_manifest, image_size=image_size)
         ds.full_size = len(ds)
         indices = sorted(np.random.RandomState(seed).permutation(len(ds))[:max(1, int(len(ds)*ratio))].tolist())

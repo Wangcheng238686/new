@@ -95,9 +95,10 @@ def train_one_epoch(
         # their DistributedSampler shards contain different empty images.
 
         # Synchronize data preprocessing for both images and ground truth
-        processed = data_preprocessor(
-            {"inputs": imgs, "data_samples": data_samples}, training=True
-        )
+        _pre_payload = {"inputs": imgs, "data_samples": data_samples}
+        if "uav_batch" in batch:
+            _pre_payload["uav_batch"] = batch["uav_batch"]
+        processed = data_preprocessor(_pre_payload, training=True)
         imgs = processed["inputs"]
         data_samples = processed["data_samples"]
 
@@ -427,9 +428,10 @@ def validate_one_epoch(
                         skipped_no_gt_val_loss_batches += 1
 
                 # Synchronize data preprocessing for both images and ground truth
-                processed = data_preprocessor(
-                    {"inputs": imgs, "data_samples": data_samples}, training=False
-                )
+                _pre_payload = {"inputs": imgs, "data_samples": data_samples}
+                if "uav_batch" in batch:
+                    _pre_payload["uav_batch"] = batch["uav_batch"]
+                processed = data_preprocessor(_pre_payload, training=False)
                 imgs_processed = processed["inputs"]
                 data_samples = processed["data_samples"]
 

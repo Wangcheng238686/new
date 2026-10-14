@@ -52,7 +52,7 @@ def _seed_worker(worker_id: int):
     np.random.seed(worker_seed)
 
 
-def rtmdet_collate_fn(batch):
+def rtmdet_collate_fn(batch_items):
     import numpy as np
     import torch
     import torch.nn.functional as F
@@ -63,9 +63,9 @@ def rtmdet_collate_fn(batch):
     gt_labels = []
     gt_masks = []
 
-    max_instances = max(len(item["gt_labels"]) for item in batch)
+    max_instances = max(len(item["gt_labels"]) for item in batch_items)
 
-    for item in batch:
+    for item in batch_items:
         imgs.append(item["img"])
         img_metas.append(item["img_metas"])
 
@@ -92,13 +92,22 @@ def rtmdet_collate_fn(batch):
         gt_labels.append(labels)
         gt_masks.append(masks)
 
-    return {
+    batch = {
         "imgs": torch.stack(imgs),
         "img_metas": img_metas,
         "gt_bboxes": gt_bboxes,
         "gt_labels": gt_labels,
         "gt_masks": gt_masks,
     }
+    if any("drone_images" in item for item in batch_items):
+        # dual arm: fixed-size UAV tensors stack; camera dicts stay a per-sample list
+        batch["uav_batch"] = {
+            "drone_images": torch.stack([item["drone_images"] for item in batch_items]),
+            "devicez_rgb": torch.stack([item["devicez_rgb"] for item in batch_items]),
+            "uav_cameras": [item["uav_cameras"] for item in batch_items],
+            "satellite_camera": [item["satellite_camera"] for item in batch_items],
+        }
+    return batch
 
 
 def create_train_loader(

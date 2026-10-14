@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
+
 import torch.distributed as dist
 import torch.optim as optim
 from torch import Tensor
@@ -87,6 +88,7 @@ def main():
     args = _parse_args()
     project_root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(project_root))
+    import ue.dual  # registers the dual-arm model/preprocessor types
 
     # Canonical multi-class category tables live in utils.coco_eval_utils so
     # the trainer and checkpoint inference share one definition.
@@ -611,6 +613,14 @@ def main():
                 ddp_sync_audited,
             )
         )
+
+        if is_main:
+            _model_raw = model.module if hasattr(model, "module") else model
+            if hasattr(_model_raw, "drain_telemetry"):
+                _tel = _model_raw.drain_telemetry()
+                if _tel.get("gate_steps"):
+                    logger.info("Epoch %d DUAL telemetry: %s", epoch_number,
+                                " ".join(f"{k}={v:.6g}" for k, v in _tel.items()))
 
         val_loss, val_metrics, ema_applied_for_eval, cached_val_gt_records = (
             validate_one_epoch(
