@@ -81,7 +81,7 @@ def main():
     spec = importlib.util.spec_from_file_location('splitbuilder', a.builder)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
-    payload = m.build(dst)
+    payload = m.build(dst, verify_paths=False)
     fingerprint = payload['source_payload_fingerprint_sha256']
     manifest = {
         'schema': 'ue-raw-pairset-frozen-snapshot-v1',

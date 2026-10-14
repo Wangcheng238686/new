@@ -38,7 +38,7 @@ root = Path(sys.argv[1])
 manifest = json.loads((root.parent / (root.name + '_manifest.json')).read_text())
 spec = importlib.util.spec_from_file_location('b', 'scripts/ue/build_surfacebev_b0_split_v2.py')
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-got = m.build(root)['source_payload_fingerprint_sha256']
+got = m.build(root, verify_paths=False)['source_payload_fingerprint_sha256']
 if got != manifest['source_payload_fingerprint_sha256']:
     raise SystemExit('snapshot fingerprint drift: %s' % got)
 PYV

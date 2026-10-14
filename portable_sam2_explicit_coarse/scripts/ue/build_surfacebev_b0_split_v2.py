@@ -47,7 +47,7 @@ def conflicts(left, right, buffer_cm):
             abs(left["y"] - right["y"]) < buffer_cm)
 
 
-def build(root):
+def build(root, verify_paths=True):
     accepted = root / "accepted_pairs.jsonl"
     old = root / "surfbev_b0_split.json"
     if sha256(accepted) != PAIR_SHA or sha256(old) != V1_SHA:
@@ -64,7 +64,9 @@ def build(root):
         if scene not in old_by_scene:
             raise ValueError(f"scene absent from v1: {scene}")
         sat = root / "scenes" / scene / "satellite"
-        if sat.resolve() != Path(row["sat_dir"]).resolve():
+        if verify_paths and sat.resolve() != Path(row["sat_dir"]).resolve():
+            # relocated snapshots (frozen copies) keep per-file identity in the
+            # content digest; the absolute-path equality only holds live-side
             raise ValueError(f"satellite path differs from accepted manifest: {scene}")
         file_hashes = {name: sha256(sat / name) for name in SOURCE_FILES}
         input_digest.update((scene + json.dumps(file_hashes, sort_keys=True)).encode())
