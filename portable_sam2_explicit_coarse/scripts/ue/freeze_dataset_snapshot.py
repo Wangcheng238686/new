@@ -59,6 +59,9 @@ def main():
         raise SystemExit(f'unstable source file after {attempts} attempts: {rel}')
 
     print(f'copying {src} -> {dst} (per-file consistent, dereferenced)', flush=True)
+    for name in ('accepted_pairs.jsonl', 'DATASET_CONTRACT.json',
+                 'surfbev_b0_split.json', 'surfbev_b0_split_v2.json'):
+        consistent_copy(name)
     n = 0
     for scene_dir in sorted((src / 'scenes').iterdir()):
         for payload in ('satellite', 'uav'):
