@@ -7,7 +7,8 @@
 | EXP-0003 | SURFBEV-B0-raw1024-DDP2 | 44 | 曾拟双卡 0,1；每卡 batch 1、累积 4 | 用户改为单 seed 四卡，启动前取消；编号不复用 |
 | EXP-0004 | SURFBEV-B0-raw1024-DDP2 | 45 | 曾拟双卡 2,3；每卡 batch 1、累积 4 | 用户改为单 seed 四卡，启动前取消；编号不复用 |
 | EXP-0005 | SURFBEV-B0-raw1024-DDP4-v1 | 44 | GPU0–3；每卡 batch 1、累积 2、global batch 8；原拟 100 epoch，last | 2026-10-11 用户要求切换无泄露 v2，epoch 58 后定向终止；v1 存在跨集建筑/视野重叠，不作为独立泛化证据 |
-| EXP-0006 | SURFBEV-B0-raw1024-DDP4-v2-noaug | 44 | v2 split SHA `17f49430b15037c8da25c63a1bf7fe4d510cf5ff153263d2feba62c4393441d5`；694/100/151；GPU0–3；无随机增强；100 epoch、last；从预训练 SAM2 全新开始 | 2026-10-11 23:22 启动，四卡与其他任务共租；训练中，test 未开封 |
+| EXP-0006 | SURFBEV-B0-raw1024-DDP4-v2-noaug | 44 | v2 split SHA `17f49430b15037c8da25c63a1bf7fe4d510cf5ff153263d2feba62c4393441d5`；694/100/151；GPU0–3；无随机增强；100 epoch、last；从预训练 SAM2 全新开始 | 2026-10-12 09:13 完整完成 100 epoch；best segm/mAP 0.7977、last epoch val segm/mAP 0.7952 / bbox 0.7782；test 未开封；现为 DUAL 探针谱系锚点 |
+| EXP-0007 | SURFBEV-B0-512native-sealed-DDP4-v2-noaug | 44 | 同 v2 split 与 pair manifest；**原生 512 输入协议**（无上采样、GT 原生 512）；架构=封存 a3sgm 新身份 `ue-whu-a3sgm-512-v1`；GPU0–3；每卡 batch 1、累积 2、global 8；无随机增强；100 epoch、last；从预训练 SAM2 全新开始 | 预注册 `docs/EXP-0007_preregistration.md`（原生 GSD claim 协议，EXP-0006 为算力对照）；2026-10-14 启动 |
 
 EXP-0001 至 EXP-0005 的 pair manifest SHA256：`f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a`；v1 split SHA256：`894df4561b166d37d06d033a6fc326223062384b402f730591b4c76d41f926d5`。EXP-0006 使用同一 pair manifest、v2 split。测试集只在协议冻结与 last checkpoint 产生后运行标准推理。
 

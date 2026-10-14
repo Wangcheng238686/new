@@ -27,8 +27,8 @@ class UERawPairDataset(Dataset):
         self.load_uav = bool(load_uav)
         self.load_targets = bool(load_targets)
         self.image_size = tuple(image_size)
-        if self.image_size != (1024, 1024):
-            raise ValueError("SURFBEV-B0 requires the registered 1024x1024 satellite input")
+        if self.image_size not in {(1024, 1024), (512, 512)}:
+            raise ValueError("satellite input must be the registered 1024 upsample or the native 512 raster")
         if self.split not in {"train", "val", "test"}:
             raise ValueError(f"invalid split {split!r}")
         accepted = self.root / "accepted_pairs.jsonl"
@@ -105,10 +105,13 @@ class UERawPairDataset(Dataset):
         image = cv2.imread(str(sat / "satellite_rgb.0000.png"), cv2.IMREAD_COLOR)
         if image is None or image.shape[:2] != (512, 512):
             raise RuntimeError(f"invalid satellite RGB for {rec['scene_dir']}")
-        image = cv2.resize(image, self.image_size, interpolation=cv2.INTER_LINEAR)
+        native = self.image_size == (512, 512)
+        if not native:
+            image = cv2.resize(image, self.image_size, interpolation=cv2.INTER_LINEAR)
+        scale = self.image_size[0] / 512.
         item = dict(img=torch.from_numpy(image).permute(2, 0, 1).float(),
-                    img_metas=dict(img_shape=(1024, 1024), ori_shape=(512, 512), pad_shape=(1024, 1024),
-                                   batch_input_shape=(1024, 1024), scale_factor=(2., 2.),
+                    img_metas=dict(img_shape=self.image_size, ori_shape=(512, 512), pad_shape=self.image_size,
+                                   batch_input_shape=self.image_size, scale_factor=(scale, scale),
                                    filename=str(sat / "satellite_rgb.0000.png"), scene_id=rec["scene_dir"],
                                    image_id=int(hashlib.sha256(rec["scene_dir"].encode()).hexdigest()[:12], 16),
                                    gx=rec["gx"], gy=rec["gy"]))
@@ -116,7 +119,8 @@ class UERawPairDataset(Dataset):
             ids = self._ids(sat / "satellite_instance_id_clean.png")
             if ids.shape != (512, 512):
                 raise RuntimeError(f"invalid strict ID shape for {rec['scene_dir']}")
-            ids = cv2.resize(ids, self.image_size, interpolation=cv2.INTER_NEAREST)
+            if not native:
+                ids = cv2.resize(ids, self.image_size, interpolation=cv2.INTER_NEAREST)
             masks, boxes = self._instances(ids)
             item.update(gt_bboxes=torch.tensor(boxes, dtype=torch.float32).reshape(-1, 4),
                         gt_labels=torch.zeros(len(boxes), dtype=torch.long), gt_masks=masks)

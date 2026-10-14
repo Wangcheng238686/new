@@ -7,11 +7,18 @@ from rsprompter.architecture_contract import architecture_contract, file_sha256
 
 SOURCE_COMMIT = "95026ae677dd0a8d77a3ee4c5fb68abeb4ea01c1"
 BASELINE_ID = "ue-whu-a3sgm-v1"
+# The 1024 seal stays canonical; the 512 entry is a declared input-protocol
+# variant (EXP-0007, native-GSD UE) with its own architecture fingerprint
+# because the fingerprint hashes every model-config key including sizes.
+BASELINE_CONFIGS = {
+    "ue-whu-a3sgm-v1": "configs/a3sgm_whu1024.py",
+    "ue-whu-a3sgm-512-v1": "configs/ue_whu_a3sgm_512.py",
+}
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def whu_model_config():
-    tree = ast.parse((ROOT / "configs/a3sgm_whu1024.py").read_text())
+def whu_model_config(baseline_id=BASELINE_ID):
+    tree = ast.parse((ROOT / BASELINE_CONFIGS[baseline_id]).read_text())
     for node in tree.body:
         if isinstance(node, ast.Assign) and any(
             isinstance(target, ast.Name) and target.id == "model" for target in node.targets
@@ -20,15 +27,22 @@ def whu_model_config():
     raise RuntimeError("sealed WHU model config missing")
 
 
+def baseline_id_for(config):
+    contract = architecture_contract(config)
+    for baseline_id in BASELINE_CONFIGS:
+        if contract == architecture_contract(whu_model_config(baseline_id)):
+            return baseline_id
+    return None
+
+
 def assert_whu_model(config):
-    expected = architecture_contract(whu_model_config())
-    actual = architecture_contract(config)
-    if actual != expected:
-        raise RuntimeError("UE baseline must use the exact sealed WHU model contract")
-    return actual
+    matched = baseline_id_for(config)
+    if matched is None:
+        raise RuntimeError("model does not match any registered sealed WHU baseline contract")
+    return architecture_contract(config), matched
 
 
-def raw_data_contract(root, split_manifest="surfbev_b0_split_v2.json"):
+def raw_data_contract(root, split_manifest="surfbev_b0_split_v2.json", image_size=(1024, 1024)):
     from data.ue_raw_pair_dataset import UERawPairDataset, PAIR_SHA256, SPLIT_SHA256
 
     if split_manifest != "surfbev_b0_split_v2.json":
@@ -38,7 +52,7 @@ def raw_data_contract(root, split_manifest="surfbev_b0_split_v2.json"):
     UERawPairDataset(root, "val", split_manifest=split_manifest)
     return {
         "dataset_format": "ue_raw_surface", "data_root": str(Path(root).resolve()),
-        "image_size": [1024, 1024], "single_class": True, "num_classes": 1,
+        "image_size": [int(image_size[0]), int(image_size[1])], "single_class": True, "num_classes": 1,
         "augmentation_contract": "none", "split_manifest": split_manifest,
         "pair_manifest_sha256": PAIR_SHA256,
         "split_manifest_sha256": SPLIT_SHA256[split_manifest],
@@ -47,15 +61,19 @@ def raw_data_contract(root, split_manifest="surfbev_b0_split_v2.json"):
 
 
 def baseline_metadata(model_config, validation_only=False):
-    return {"baseline_id": BASELINE_ID, "source_commit": SOURCE_COMMIT,
-            "architecture_contract": assert_whu_model(model_config),
+    contract, matched = assert_whu_model(model_config)
+    return {"baseline_id": matched, "source_commit": SOURCE_COMMIT,
+            "architecture_contract": contract,
             "validation_only": bool(validation_only)}
 
 
 def validate_snapshot(snapshot):
     meta = snapshot.get("ue_baseline", {})
-    expected = architecture_contract(whu_model_config())
-    if (meta.get("baseline_id") != BASELINE_ID or meta.get("source_commit") != SOURCE_COMMIT
+    baseline_id = meta.get("baseline_id")
+    if baseline_id not in BASELINE_CONFIGS:
+        raise RuntimeError("checkpoint does not identify a registered sealed UE WHU baseline")
+    expected = architecture_contract(whu_model_config(baseline_id))
+    if (meta.get("source_commit") != SOURCE_COMMIT
             or meta.get("architecture_contract") != expected
             or snapshot.get("architecture_contract") != expected
             or type(meta.get("validation_only")) is not bool):
