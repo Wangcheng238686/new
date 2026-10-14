@@ -62,3 +62,18 @@ A 路线冻结诊断探针，不训练任何模型、不读 test。承接 DUAL-P
 `/data1/wangcheng/checkpoint/surfbev_b0/probes/DUAL-R0-DECOMP-20261014/`
 （inference 缓存 + summary.json + per_scene.jsonl + run.log + COCOeval 输出原文）；
 结论 MD 与首次定版实现审计落 docs/、docs/reviews/。
+
+## v2 勘误（2026-10-14，正式 analyze 前；首次定版审计 BLOCKED 项修复）
+
+审计发现两处阻断级实现缺陷，修复并经 smoke 与审计员独立复算一致后升 v2：
+
+1. miss 集合语义曾反转（注入/统计了已匹配 GT）；v2 冻结定义：**miss 集 =
+   segm 模态 IoU≥0.5 贪心匹配下未匹配的 GT**，同时驱动 bbox 与 segm 两个
+   模态的预言机 A 与 miss 统计（跨模态耦合定义在此明文冻结）。
+2. 预测 bbox 曾以 mmdet xyxy 原样喂给 COCO/box-IoU；v2 在 analyze 入口统一
+   转 xywh。
+随 v2 一并落实的建议项：预言机 B 按模态各用各的匹配集；三分位分层 AP 以
+COCOeval areaRng 自定义区间实现（r1=下三分位，替代 v1 误用的 COCO 原生
+32²/96² 阈）；面积加权可查询率；per_scene.jsonl；渲染深度远界防御；contract
+补 h0/运行时指纹。v1 smoke 工件标记 VOID 封存。审计全文
+docs/reviews/DUAL-R0-DECOMP_implementation_review.md。

@@ -22,7 +22,7 @@ from probe_surfacebev_p1_h0 import cameras, sha_file, model_input, digest_predic
 from probe_dual_p4_harvest_anchor import build, H0, EXPECTED_B0_PATH, EXPECTED_B0_SHA256
 
 SEED = 20261014
-VERSION = 'DUAL-R0-DECOMP-v1'
+VERSION = 'DUAL-R0-DECOMP-v2'
 S_HEADLINE = 0.7
 S_SENS = (0.9, 0.5)
 Z_PLANES = (0.0, 2200.0)  # cm; 0 headline, 22m sensitivity
@@ -139,7 +139,7 @@ def queryability(item, gt_masks, dev):
                 if not bool(inb.any()):
                     continue
                 rend = depth[view][iy[inb], ix[inb]]
-                vis = rend >= zpos[inb] * (1 - DEPTH_SLACK)
+                vis = (rend >= zpos[inb] * (1 - DEPTH_SLACK)) & (rend < 1e8)
                 out[i, view, zi] = float(vis.float().mean())
     return out, rt_err
 
@@ -163,7 +163,13 @@ def run_infer(a, out):
         'version': VERSION, 'seed': SEED, 'checkpoint_sha256': EXPECTED_B0_SHA256,
         'split': 'surfbev_b0_split_v2.json', 'split_part': 'val', 'n': n,
         'z_planes_cm': list(Z_PLANES), 'view_pix_frac': VIEW_PIX_FRAC,
-        'depth_slack': DEPTH_SLACK, 'iou_match': IOU_MATCH}, indent=2))
+        'depth_slack': DEPTH_SLACK, 'iou_match': IOU_MATCH,
+        'h0_sha256': sha_file(H0), 'r1a_worktree_commit': '27b42d1',
+        'v2_fixes': ['miss set = GT unmatched by SEGm matching at IoU>=.5, drives both modalities (frozen)',
+                     'pred bbox xyxy->xywh converted at analyze entry (v1 fed xyxy to COCO/box-IoU)',
+                     'oracle B per-modality matched sets', 'tercile AP via COCOeval areaRng',
+                     'area-weighted queryability', 'per_scene.jsonl', 'far-cap on rendered depth']},
+        indent=2))
     for i in range(n):
         f = scenes / f'{i:04d}.json'
         if f.exists():
@@ -204,116 +210,135 @@ def load_scenes(out):
     return recs
 
 
+def coco_eval_area(gt_dict, pred_list, iou_type, area_rng):
+    """COCOeval with custom area ranges; returns AP per range (rng[0]=all)."""
+    coco = COCO()
+    coco.dataset = gt_dict
+    coco.createIndex()
+    coco_dt = coco.loadRes([dict(p) for p in pred_list])
+    e = COCOeval(coco, coco_dt, iou_type)
+    e.params.areaRng = area_rng
+    e.evaluate(); e.accumulate(); e.summarize()
+    return {'AP': float(e.stats[0]), 'AP50': float(e.stats[1]), 'AP75': float(e.stats[2]),
+            'AP_by_range': {f'r{k}': float(e.stats[0 + 3 * (k + 1)]) for k in range(len(area_rng) - 1)}}
+
+
 def run_analyze(out):
     recs = load_scenes(out)
+    full = len(recs) == 100
     images = [{'id': i, 'height': 1024, 'width': 1024} for i in range(len(recs))]
-    ann_id = 0
-    gt_anns, pred_all, gt_meta = [], [], []
+    gt_anns, pred_all = [], []
     for i, r in enumerate(recs):
         for g in r['gt_rle']:
-            ann_id += 1
-            a_ = float(maskUtils.area(g))
             x, y, w_, h_ = maskUtils.toBbox(g)
-            gt_anns.append({'id': ann_id, 'image_id': i, 'category_id': 1,
+            gt_anns.append({'id': len(gt_anns) + 1, 'image_id': i, 'category_id': 1,
                             'segmentation': g, 'bbox': [float(x), float(y), float(w_), float(h_)],
-                            'area': a_, 'iscrowd': 0})
+                            'area': float(maskUtils.area(g)), 'iscrowd': 0})
         for p in r['pred']:
-            pred_all.append({'image_id': i, 'category_id': 1, 'bbox': p['bbox'],
-                             'score': p['score'], 'segmentation': p['rle']})
-    # rebuild gt_meta straightforwardly (gt_vis index per scene)
-    gt_meta = []
-    for r in recs:
-        v = np.asarray(r['gt_vis'])
-        for j in range(len(r['gt_rle'])):
-            gt_meta.append({'scene': r['scene_id'], 'vis': v[j]})
-    gt_dict = {'images': images, 'annotations': gt_anns, 'categories': [{'id': 1, 'name': 'building'}]}
+            # stored pred bbox is mmdet xyxy; COCO and box IoU here use xywh
+            x1, y1, x2, y2 = p['bbox']
+            pred_all.append({'image_id': i, 'category_id': 1,
+                             'bbox': [float(x1), float(y1), float(x2 - x1), float(y2 - y1)],
+                             'score': p['score'], 'segmentation': p['rle'],
+                             '_scene': i, '_local': r['pred'].index(p)})
     areas = np.array([a_['area'] for a_ in gt_anns])
-    t1, t2 = np.quantile(areas, [1 / 3, 2 / 3])
+    if len(areas):
+        t1, t2 = [float(q) for q in np.quantile(areas, [1 / 3, 2 / 3])]
+    else:
+        t1, t2 = 0.0, 0.0
+    area_rng = [[0 ** 2, 1e9 ** 2], [0, t1], [t1, t2], [t2, 1e9 ** 2]]
+    gt_dict = {'images': images, 'annotations': gt_anns, 'categories': [{'id': 1, 'name': 'building'}]}
 
-    results = {}
-    base_b, _ = coco_eval(gt_dict, pred_all, 'bbox')
-    base_s, _ = coco_eval(gt_dict, pred_all, 'segm')
-    results['baseline'] = {'bbox': base_b, 'segm': base_s, 'area_terciles': [float(t1), float(t2)]}
+    results = {'baseline': {'bbox': coco_eval_area(gt_dict, pred_all, 'bbox', area_rng),
+                            'segm': coco_eval_area(gt_dict, pred_all, 'segm', area_rng)},
+               'area_terciles': [t1, t2]}
 
-    # per-modality matching at IoU .5
-    def matched_pred_idx(iou, scores):
-        m = greedy_match(iou.copy(), scores)
-        return set(m.keys()), set(m.values())
-
-    by_img_b = {}; by_img_s = {}
+    # per-modality matching at IoU .5 (miss set for BOTH modalities is frozen to
+    # the segm-unmatched definition; per-modality sets used for oracle B)
+    m_b, m_s, miss_idx = {}, {}, []
     for i, r in enumerate(recs):
-        pb = np.array([p['bbox'] for p in r['pred']], np.float64).reshape(-1, 4)
-        ps = np.array([p['score'] for p in r['pred']], np.float64)
+        loc = {id(p): k for k, p in enumerate(r['pred'])}
+        pb = np.array([[q['bbox'][0], q['bbox'][1], q['bbox'][0] + q['bbox'][2], q['bbox'][1] + q['bbox'][3]]
+                       for q in pred_all if q['_scene'] == i], np.float64).reshape(-1, 4)
+        ps = np.array([q['score'] for q in pred_all if q['_scene'] == i], np.float64)
+        pkeys = [loc[id(p)] for p in r['pred']]
         gb = np.array([a_['bbox'] for a_ in gt_anns if a_['image_id'] == i], np.float64).reshape(-1, 4)
-        prl = [p['rle'] for p in r['pred']]
-        grl = [g for g in r['gt_rle']]
-        mb, ub = matched_pred_idx(box_iou_matrix(pb, gb), ps)
-        ms, us = matched_pred_idx(mask_iou_matrix(prl, grl), ps)
-        by_img_b[i] = (mb, ub)
-        by_img_s[i] = (ms, us)
+        mb = greedy_match(box_iou_matrix(pb, gb), ps)
+        ms = greedy_match(mask_iou_matrix([p['rle'] for p in r['pred']], r['gt_rle']),
+                          np.array([p['score'] for p in r['pred']])) if r['pred'] else {}
+        m_b[i] = {pkeys[k] for k in mb}
+        m_s[i] = set(ms.keys())
+        for j in range(len(r['gt_rle'])):
+            if j not in set(ms.values()):
+                miss_idx.append((i, j))
 
-    # oracle A: inject perfect predictions for unmatched GT
-    def oracle_miss(s):
-        preds = [dict(p) for p in pred_all]
+    def preds_with(fn):
+        out_ = []
         for i, r in enumerate(recs):
-            _, ub = by_img_b[i]
-            _, us = by_img_s[i]
-            for j, g in enumerate(r['gt_rle']):
-                x, y, w_, h_ = maskUtils.toBbox(g)
-                if j in us:
-                    preds.append({'image_id': i, 'category_id': 1, 'score': s,
-                                  'segmentation': g, 'bbox': [float(x), float(y), float(w_), float(h_)]})
-        b, _ = coco_eval(gt_dict, preds, 'bbox')
-        s_, _ = coco_eval(gt_dict, preds, 'segm')
-        return {'bbox': b, 'segm': s_}
+            for k, p in enumerate(r['pred']):
+                q = fn(i, k, p)
+                if q is not None:
+                    out_.append(q)
+        return out_
+
+    def base_pred(i, k, p, **over):
+        x1, y1, x2, y2 = p['bbox']
+        return {'image_id': i, 'category_id': 1, 'score': p['score'],
+                'bbox': [float(x1), float(y1), float(x2 - x1), float(y2 - y1)],
+                'segmentation': p['rle'], **over}
+
+    # oracle A: inject perfect predictions for MISSED GT (segm-miss set)
+    def oracle_miss(s):
+        preds = preds_with(lambda i, k, p: base_pred(i, k, p))
+        for i, j in miss_idx:
+            g = recs[i]['gt_rle'][j]
+            x, y, w_, h_ = maskUtils.toBbox(g)
+            preds.append({'image_id': i, 'category_id': 1, 'score': s,
+                          'bbox': [float(x), float(y), float(w_), float(h_)], 'segmentation': g})
+        return {'bbox': coco_eval_area(gt_dict, preds, 'bbox', area_rng),
+                'segm': coco_eval_area(gt_dict, preds, 'segm', area_rng)}
 
     results['oracle_miss'] = {str(s): oracle_miss(s) for s in (S_HEADLINE, *S_SENS)}
-    # oracle B: rescore matched to 1.0
-    preds = []
+    # oracle B: per-modality matched sets rescored to 1.0
+    results['oracle_rescore'] = {
+        'bbox': coco_eval_area(gt_dict, preds_with(lambda i, k, p: base_pred(i, k, p, score=1.0 if k in m_b[i] else p['score'])), 'bbox', area_rng),
+        'segm': coco_eval_area(gt_dict, preds_with(lambda i, k, p: base_pred(i, k, p, score=1.0 if k in m_s[i] else p['score'])), 'segm', area_rng)}
+    # oracle C: matched masks -> GT masks (segm modality, segm-matched set)
+    gt_by_img = {i: r['gt_rle'] for i, r in enumerate(recs)}
+    ms_map_all = {i: ms for i, ms in enumerate(m_s)}
+    # rebuild full match maps for oracle C (pred-local k -> gt j)
+    c_map = {}
     for i, r in enumerate(recs):
-        mb, _ = by_img_b[i]; ms, _ = by_img_s[i]
-        for k, p in enumerate(r['pred']):
-            q = {'image_id': i, 'category_id': 1, 'bbox': p['bbox'],
-                 'score': 1.0 if k in mb else p['score'], 'segmentation': p['rle']}
-            preds.append(q)
-    rb, _ = coco_eval(gt_dict, preds, 'bbox')
-    rs, _ = coco_eval(gt_dict, preds, 'segm')
-    results['oracle_rescore'] = {'bbox': rb, 'segm': rs}
-    # oracle C: matched masks -> GT masks (segm only)
-    preds = []
-    for i, r in enumerate(recs):
-        _, us = by_img_s[i]
-        ms_map = greedy_match(mask_iou_matrix([p['rle'] for p in r['pred']], r['gt_rle']),
-                              np.array([p['score'] for p in r['pred']])) if r['pred'] else {}
-        for k, p in enumerate(r['pred']):
-            q = {'image_id': i, 'category_id': 1, 'bbox': p['bbox'],
-                 'score': p['score'],
-                 'segmentation': r['gt_rle'][ms_map[k]] if k in ms_map else p['rle']}
-            preds.append(q)
-    rc, _ = coco_eval(gt_dict, preds, 'segm')
-    results['oracle_mask'] = {'segm': rc}
+        if r['pred']:
+            c_map[i] = greedy_match(mask_iou_matrix([p['rle'] for p in r['pred']], r['gt_rle']),
+                                    np.array([p['score'] for p in r['pred']]))
+        else:
+            c_map[i] = {}
+    results['oracle_mask'] = {
+        'segm': coco_eval_area(gt_dict, preds_with(lambda i, k, p: base_pred(i, k, p, segmentation=gt_by_img[i][c_map[i][k]] if k in c_map[i] else p['rle'])), 'segm', area_rng)}
 
-    # unmatched GT stats + queryability (segm modality)
-    unmatched = []
-    for i, r in enumerate(recs):
-        _, us = by_img_s[i]
-        for j in range(len(r['gt_rle'])):
-            if j in us:
-                unmatched.append((i, j))
-    areas_un = np.array([float(maskUtils.area(recs[i]['gt_rle'][j])) for i, j in unmatched]) if unmatched else np.zeros(0)
-    qflag = []
-    for i, j in unmatched:
-        v = np.asarray(recs[i]['gt_vis'])[j]  # (views, planes)
-        q0 = int((v[:, 0] >= VIEW_PIX_FRAC).sum())
-        q22 = int((v[:, 1] >= VIEW_PIX_FRAC).sum())
-        qflag.append((q0 >= 2, q22 >= 2))
-    n_un = len(unmatched)
+    # miss mass + queryability (area-weighted too)
+    n_un = len(miss_idx)
+    areas_un = np.array([float(maskUtils.area(recs[i]['gt_rle'][j])) for i, j in miss_idx]) if n_un else np.zeros(0)
+    q_cnt, q_area, per_scene_rows = 0, 0.0, []
+    q22_cnt, q22_area = 0, 0.0
+    for i, j in miss_idx:
+        v = np.asarray(recs[i]['gt_vis'])[j]
+        a_ = float(maskUtils.area(recs[i]['gt_rle'][j]))
+        q0 = int((v[:, 0] >= VIEW_PIX_FRAC).sum()) >= 2
+        q22 = int((v[:, 1] >= VIEW_PIX_FRAC).sum()) >= 2
+        q_cnt += q0; q_area += a_ * q0
+        q22_cnt += q22; q22_area += a_ * q22
+        per_scene_rows.append({'scene_id': recs[i]['scene_id'], 'gt_index': j, 'area': a_,
+                               'queryable_z0': bool(q0), 'queryable_z22': bool(q22),
+                               'vis_z0': v[:, 0].tolist(), 'vis_z22': v[:, 1].tolist()})
     d_miss = results['oracle_miss'][str(S_HEADLINE)]
-    d_bbox = d_miss['bbox']['AP'] - base_b['AP']
-    d_segm = d_miss['segm']['AP'] - base_s['AP']
-    d_resc = results['oracle_rescore']['bbox']['AP'] - base_b['AP']
-    d_mask = results['oracle_mask']['segm']['AP'] - base_s['AP']
-    qrate = float(np.mean([q[0] for q in qflag])) if n_un else 0.0
+    d_bbox = d_miss['bbox']['AP'] - results['baseline']['bbox']['AP']
+    d_segm = d_miss['segm']['AP'] - results['baseline']['segm']['AP']
+    d_resc = results['oracle_rescore']['bbox']['AP'] - results['baseline']['bbox']['AP']
+    d_mask = results['oracle_mask']['segm']['AP'] - results['baseline']['segm']['AP']
+    qrate = (q_cnt / n_un) if n_un else 0.0
+    qrate_area = (q_area / areas_un.sum()) if n_un and areas_un.sum() else 0.0
     if d_bbox >= 2.0 and qrate >= 0.5:
         decision = 'R0_ROUTE2'
     elif d_bbox < 1.0 and d_mask >= 2.0:
@@ -322,22 +347,32 @@ def run_analyze(out):
         decision = 'R0_RETHINK'
     else:
         decision = 'R0_MIXED'
-    summary = {'experiment': 'DUAL-R0-DECOMP-20261014', 'status': 'complete', 'decision': decision,
+    summary = {'experiment': 'DUAL-R0-DECOMP-20261014', 'version': VERSION,
+               'status': 'complete' if full else 'SMOKE_ONLY',
+               'decision': decision if full else None,
                'n_val': len(recs), 'n_gt': len(gt_anns), 'n_pred': len(pred_all),
                'n_unmatched_gt': n_un,
                'unmatched_area_tercile_frac': [float((areas_un <= t1).mean()) if n_un else 0.0,
                                                float(((areas_un > t1) & (areas_un <= t2)).mean()) if n_un else 0.0,
                                                float((areas_un > t2).mean()) if n_un else 0.0],
                'queryable_rate_2view_z0': qrate,
-               'queryable_rate_2view_z22': float(np.mean([q[1] for q in qflag])) if n_un else 0.0,
+               'queryable_rate_2view_z0_area_weighted': qrate_area,
+               'queryable_rate_2view_z22': (q22_cnt / n_un) if n_un else 0.0,
+               'queryable_rate_2view_z22_area_weighted': (q22_area / areas_un.sum()) if n_un and areas_un.sum() else 0.0,
                'deltas': {'miss_bbox_AP': d_bbox, 'miss_segm_AP': d_segm,
-                          'rescore_bbox_AP': d_resc, 'mask_segm_AP': d_mask},
+                          'rescore_bbox_AP': d_resc, 'mask_segm_AP': d_mask,
+                          'miss_bbox_AP_small_tercile': d_miss['bbox']['AP_by_range']['r1'] - results['baseline']['bbox']['AP_by_range']['r1'],
+                          'miss_segm_AP_small_tercile': d_miss['segm']['AP_by_range']['r1'] - results['baseline']['segm']['AP_by_range']['r1']},
                'results': results,
                'gates': {'miss_bbox_ge_2': d_bbox >= 2.0, 'qrate_ge_05': qrate >= 0.5,
                          'mask_ge_2': d_mask >= 2.0, 'rescore_lt_1': d_resc < 1.0}}
-    (out / 'summary.json').write_text(json.dumps(summary, indent=1))
-    print(json.dumps({'decision': decision, 'deltas': summary['deltas'],
-                      'qrate': qrate, 'n_unmatched': n_un}, indent=1))
+    name = 'summary.json' if full else 'smoke_summary.json'
+    tmp = out / (name + '.tmp'); tmp.write_text(json.dumps(summary, indent=1)); os.replace(tmp, out / name)
+    with open(out / ('per_scene.jsonl' if full else 'smoke_per_scene.jsonl'), 'w') as f:
+        for row in per_scene_rows:
+            f.write(json.dumps(row) + '\n')
+    print(json.dumps({'decision': decision if full else 'SMOKE_ONLY',
+                      'deltas': summary['deltas'], 'qrate': qrate, 'n_unmatched': n_un}, indent=1))
 
 
 def main():
