@@ -44,12 +44,31 @@ def main():
         got = sha256(src / name)
         if got != want:
             raise SystemExit(f'{name} sha drift: {got}')
-    # dereferenced copy of everything (scenes via symlink farm become real files)
-    print(f'copying {src} -> {dst} (dereference)', flush=True)
-    r = subprocess.run(['cp', '-a', '-L', str(src) + '/', str(dst)], cwd='/tmp')
-    if r.returncode != 0:
-        shutil.rmtree(dst, ignore_errors=True)
-        raise SystemExit('copy failed; destination removed')
+    # The producer tree may still be under active writes (PI decision: freeze
+    # the current state instead of waiting). Per-file consistency: hash source,
+    # copy, hash copy, hash source again; retry files whose source changed
+    # mid-copy so no torn payload enters the snapshot.
+    def consistent_copy(rel, attempts=4):
+        sp, dp = src / rel, dst / rel
+        dp.parent.mkdir(parents=True, exist_ok=True)
+        for _ in range(attempts):
+            h0 = sha256(sp)
+            shutil.copyfile(sp, dp)
+            if sha256(dp) == h0 and sha256(sp) == h0:
+                return
+        raise SystemExit(f'unstable source file after {attempts} attempts: {rel}')
+
+    print(f'copying {src} -> {dst} (per-file consistent, dereferenced)', flush=True)
+    n = 0
+    for scene_dir in sorted((src / 'scenes').iterdir()):
+        sd = dst / 'scenes' / scene_dir.name
+        for payload in ('satellite', 'uav'):
+            for f in sorted((scene_dir / payload).iterdir()):
+                consistent_copy(f.relative_to(src))
+                n += 1
+        if n % 2000 == 0:
+            print(f'  {n} files copied...', flush=True)
+    print(f'  total {n} payload files copied', flush=True)
     for name, want in expected.items():
         got = sha256(dst / name)
         if got != want:
