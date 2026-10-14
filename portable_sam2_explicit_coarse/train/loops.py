@@ -63,6 +63,10 @@ def train_one_epoch(
     loss_meter = {}
     dense_monitor_sums = {key: 0.0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
     dense_monitor_counts = {key: 0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
+    ue_monitor = None
+    if args.dataset == "ue":
+        from ue_telemetry import UEEpochTelemetry
+        ue_monitor = UEEpochTelemetry(device)
     num_batches = 0
     grad_accum = args.grad_accum_steps
     train_batches_limit = len(train_loader)
@@ -184,6 +188,8 @@ def train_one_epoch(
                 )
             continue
 
+        if ue_monitor is not None:
+            ue_monitor.accumulate(model)
         global_step = epoch * max(1, train_batches_limit) + batch_idx + 1
         prompt_stats_due = (
             args.prompt_debug_stats
@@ -220,7 +226,7 @@ def train_one_epoch(
             scaler.unscale_(optimizer)
             if args.dataset == 'ue' and is_main and prompt_stats_due:
                 from ue_telemetry import log_ue_gradients
-                log_ue_gradients(optimizer, logger)
+                log_ue_gradients(model, optimizer, logger)
             if decoupled_clip_partition is not None:
                 base_clip_params, aux_clip_groups = decoupled_clip_partition
                 torch.nn.utils.clip_grad_norm_(base_clip_params, 0.5)
@@ -228,8 +234,11 @@ def train_one_epoch(
                     torch.nn.utils.clip_grad_norm_(aux_clip_group, 0.5)
             else:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
+            scale_before = scaler.get_scale() if ue_monitor is not None else None
             scaler.step(optimizer)
             scaler.update()
+            if ue_monitor is not None:
+                ue_monitor.record_step(scale_before, scaler.get_scale())
             ema_update_steps += 1
             if (
                 not ddp_sync_audited
@@ -262,6 +271,8 @@ def train_one_epoch(
 
         total_loss += float(loss.detach().item())
         num_batches += 1
+    if ue_monitor is not None:
+        ue_monitor.finish(logger, epoch_number, distributed, is_main, scaler)
     avg_loss = total_loss / max(1, num_batches)
     # Collect LRs for all groups
     lr_groups = {}

@@ -63,3 +63,80 @@ dense 通路验收（D1 判读）：`applied_delta_ratio>0`，且 Point+Box+Mask
 2026-09 起合并为单轨：训练侧强版（自定义 maxDets 主 AP 重算 + rles 快速通路）收至
 `portable_sam2_explicit_coarse/utils/coco_eval_utils.py`，trainer、checkpoint 推理与
 评测脚本共用。checkpoint 推理只走默认 maxDets 路径，行为与其历史输出一致。
+
+
+## 4. UE UAV 双流遥测（2026-10-14）
+
+生产者为 `rsprompter/detection/dual_detector.py`、`uav/fusion.py`、`uav/diagnostics.py`；
+训练汇总与梯度由 `train/ue_telemetry.py` 提供。字段只用于日志，不加入 loss、门控决策或选模。
+
+### 输出、分母和聚合
+
+- `[DEBUG-UAV]`：默认每50个 **mini-batch** 的 rank0 latest-forward；不是跨卡均值。
+- `UAV/grad/<module>`：同一间隔且恰逢 optimizer update 时打印；rank0、累积梯度经过 AMP unscale 后、裁剪前。禁用 prompt-debug 时不打印。
+- `[UE-EPOCH]`：每个 UE train epoch 输出一个 JSON，所有 rank 在 epoch 尾共同参与。
+  每个 UAV 字段独立记录 `mean` 和 `finite_forwards`，即跨卡有限值之和 / 有限 forward 数。
+  只计入全局 loss 有限的训练 forward，不含 validation。字段 NaN/Inf 排除并减少自身分母；
+  不把缺失字段补成有效的零。统计是 **forward 等权均值**，不是像素、建筑或 cell 加权均值。
+  正式 batch1 时每 forward 对应一张图；DistributedSampler 补齐的重复样本也会计入。
+- 单流没有 `UAV/*`，epoch JSON 只记录 runtime。所有 runtime 的显存值都是当前训练进程的
+  PyTorch allocator 读数，不包括 UE 渲染进程；显存峰值在 train epoch 开始重置，结束读取，
+  不包含本轮后续 validation。
+
+### 支持、几何和注意力
+
+| 字段（均带 `UAV/`） | 公式 / 单位 / 分母 | 判读边界 |
+|---|---|---|
+| `candidate_available` | 每图 `(candidate_index>=0).any` 的 BEV 全格比例，再作 batch 均值 | 仅表示8m邻域可读 token；不是本格真实覆盖。 |
+| `observation_support` | 每图真实深度观测支持的全格比例，batch均值 | 不表示卫星可见性。 |
+| `height_valid` | 每图满足代表高度规则的全格比例，batch均值 | 有高度不等于高度真值正确。 |
+| `geometry/upper_fraction` | 所选上表面高度桶观测 / 本格观测；batch中所有有效高度格等权均值 | 不表示建筑前景占比。没有有效高度格时字段缺席。 |
+| `geometry/selected_bucket_sigma_m` | 所选高度桶内高度标准差，恢复为米；同上分母 | 不是整格所有高度的离散度。 |
+| `geometry/nearest_xy_m` | 最近候选 XY 距离，恢复为米；同上分母 | 小距离不证明跨视角语义对齐。 |
+| `attention/sampled_queries` | 最后 CVT 层最多16×16规则采样，排除无候选 query；batch均值 | 支持诊断样本量，空支持为0。不是全网 query 数。 |
+| `attention/local_mass` | 每采样query：head均值attention在 `abs(deltaXY)<=cell/2` 的权重和，再均值 | 本格上下文占比；立面可作为合法语义上下文。 |
+| `attention/height_compatible_mass` | 每采样query：`abs(deltaZ)<=height_bin_m`（首版2m）的attention权重和，再均值 | 软相容程度，不作为硬过滤。 |
+| `attention/xy_bias_m` | `norm(sum(attention * deltaXY))` 的采样query均值，米 | 有正负抵消；不是 `sum(attention*norm(deltaXY))`，更不是对应真值误差。 |
+| `attention/height_bias_m` | `abs(sum(attention * deltaZ))` 的采样query均值，米 | 同上抵消边界；参考是观测 Zrep。 |
+
+attention 遥测关闭 autocast/cache，用 FP32 近似重算 logits；只看最后层，排除无候选行。
+空样本时 mass/bias=0，必须结合 `sampled_queries` 读，不能把0解释成完美对齐。
+AMP+checkpoint 校验启停诊断的输出及梯度相同，避免共享权重缓存影响正式训练。
+
+### 融合入口
+
+`<route>` 为 `fpn_s8`、`fpn_s16`、`sam`。每个入口有 `UAV/<route>/<field>`：
+
+| 字段 | 公式 / 分母 | 判读边界 |
+|---|---|---|
+| `alpha` | 可训练标量原值，初始0.05，允许负值 | 符号/幅度表明残差缩放，非收益。 |
+| `gate` | 全batch全网格 sigmoid gate 均值 | 未覆盖格也计入，不能与覆盖区均值混读。 |
+| `confidence` | 全网格几何质量均值，无覆盖格为0 | 覆盖少会拉低该值。 |
+| `coverage` | 每网格细像素投影 mass / 网格像素数，截断到[0,1]，再全网格均值 | mass近似不是精确可见像素占比。 |
+| `supported_fraction` | `(coverage>0)` 的全batch全网格比例 | 有投影证据的网格比例，不是 coverage 的同义字段。 |
+| `gate_supported` | `sum(gate * valid) / count(valid)` | 覆盖区域的 gate；不把低覆盖误当门控关闭。 |
+| `confidence_supported` | `sum(confidence * valid) / count(valid)` | 覆盖区域的几何质量。 |
+| `effective_gain_supported` | `sum(alpha * confidence * gate * valid) / count(valid)` | 实际标量缩放强度，可为负；不是特征增益或 AP 增益。 |
+| `residual_ratio` | `norm(applied.float()) / max(norm(satellite.float()),1e-6)`，全batch全通道网格L2 | 真正注入相对强度；不证明有效贡献。 |
+
+`valid=coverage>0`；无支持时三个 supported 均值以分母max(count,1)输出0，必须同
+`supported_fraction` 一起读。零支持forward的这些0仍计入epoch的finite_forwards；epoch均值不是只对非空forward的条件均值。新增统计都 detach，不改变融合输出、梯度或模型指纹。
+
+### 梯度与运行状态
+
+| 字段 | 口径 / 校验 |
+|---|---|
+| `UAV/grad/{uav_backbone,uav_bev,fpn_fusion,sam_fusion}` | 对应**实际独立clip分区**（整个FPN ModuleList同一组，SAM另组）；不把 optimizer 的合并fusion组误当一组裁剪。 |
+| `used` / `nonzero` | grad非None张量数 / 至少有一个非零元素的张量数；不是元素比例。LoRA初始化部分张量零梯度合法。 |
+| `finite` / `norm` | 全组grad均有限 / unscale后全组L2范数；Inf/NaN表示数值异常。 |
+| `clip_scale` | `min(1,0.5/(norm+1e-6))`，与本项目max_norm0.5、L2裁剪公式标定 | 对有限梯度预测裁剪缩放，不是优化器最终参数更新比例。 |
+| `lr` | 当前 optimizer 对应组学习率；UAV/CVT单独组，FPN/SAM共享fusion LR | 用来区别无梯度和零LR，不能以梯度非零证明参数更新。 |
+| `runtime/rank_step_attempts` | 所有rank本epoch scaler.step 调用次数之和 | 不是全局更新数，4卡时每轮通常除4；末组可能只有1个mini-batch。 |
+| `runtime/rank_amp_skips` / `amp_skip_fraction` | 每rank `scale_after < scale_before` 的step次数之和 / rank_step_attempts | 标准GradScaler overflow降scale对应跳步；禁用AMP为0。现有scheduler/EMA计数仍按尝试推进，不能把尝试计数称为成功更新。 |
+| `runtime/amp_scale_rank0` | epoch结束rank0 GradScaler scale | 非跨卡均值；周期增长正常，持续下降提示数值风险。 |
+| `runtime/max_rank_{allocated,reserved}_mib` | 各rank训练epoch峰值的最大值，MiB | reserved是缓存；不包括其它进程，也不表示全机可用显存。 |
+
+机制曲线用于排查支持、注入与优化。最终增益依赖独立训练的A/D完整卫星segm AP100，
+伴随bbox AP100/AP75与AP300另报；zero/shift干预仅用于依赖诊断。
+
+本轮628训练样本、4rank各157个mini-batch、累积2：每epoch79次更新尝试，末次全局batch4（常规8）。覆盖区新增均值使用FP32归约，避免AMP半精度求和误差。

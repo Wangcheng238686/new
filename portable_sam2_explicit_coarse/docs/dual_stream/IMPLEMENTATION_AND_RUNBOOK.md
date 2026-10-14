@@ -112,3 +112,8 @@ CUDA_VISIBLE_DEVICES=0 /data/wangcheng/envs/cvt2/bin/python \
 工程检查不证明 AP 收益。单层代表高度、4m 整格足迹与缺少卫星真实遮挡观测是已接受近似；正式性能结论需空间独立 test、A/D 同预算对照及不确定性检查。
 
 开发证据临时目录：`/tmp/uav_dual_dev_preflight`；检查点与预测：`/tmp/uav_dual_dev_data`。原始日志/权重不入 git。独立审核的发现、修复与最终结论应在同目录设计记录中保留，验收结束后汇总可版本化的小型报告。
+
+
+### 启动前遥测补齐（2026-10-14）
+
+每50 mini-batch的rank0快照之外，新增每epoch `[UE-EPOCH]` JSON：UAV各字段的跨卡有限forward均值与分母、AMP跳步率、最大rank训练峰值显存。三个入口新增覆盖区域内gate/confidence/effective_gain，梯度按真实UAV/CVT/FPN/SAM独立clip分区打印。定义与不能证明的内容见 [字段字典](../DEBUG_FIELDS.md#4-ue-uav-双流遥测2026-10-14)。首轮注册与日志/检查点路径见 [首轮训练协议](UE_AD_TRAINING_20261014.md)。

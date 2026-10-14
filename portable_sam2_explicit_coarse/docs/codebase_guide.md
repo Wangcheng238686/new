@@ -127,3 +127,10 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 8. GPU 上的数值等价验证必须先做同代码双跑标定噪声带（scatter 原子操作使 bit 级复现不可达）。
 9. 结构搬移纪律（2026-10 新增）：函数体逐字搬移 + AST 等价对账；跨模块常量跟随唯一消费者；
    smoke 门用的 `/tmp` delta 配置内嵌 worktree 绝对路径，换 worktree 必须重生成。
+
+
+## 5. 文档同步记录
+
+- 2026-10-14：UE新增覆盖区门控/置信/有效缩放、按真实裁剪分区的梯度与LR、跨rank有限forward均值/分母、AMP跳步和训练峰值显存。生产者仍在 `uav/fusion.py`，训练汇总仍在 `train/ue_telemetry.py`；完整范围、公式与判读边界同步至 [DEBUG_FIELDS](DEBUG_FIELDS.md)。没有新增模型配置键或改变融合计算。
+
+`scripts/smoke/check_ue_telemetry.py`：两rank缺失/非有限字段分母与AMP+零支持融合输出/梯度不变性检查。

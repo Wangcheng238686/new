@@ -31,9 +31,19 @@ class ConfidenceFusion(nn.Module):
         ).sigmoid()
         valid = coverage > 0
         applied = self.alpha * valid * confidence * gate * residual
+        supported = valid.detach()
+        supported_count = supported.sum().clamp_min(1)
         stats = dict(
             alpha=self.alpha.detach(),
             gate=gate.detach().mean(),
+            supported_fraction=supported.float().mean(),
+            gate_supported=(gate.detach().float() * supported).sum() / supported_count,
+            confidence_supported=(confidence.detach().float() * supported).sum()
+            / supported_count,
+            effective_gain_supported=(
+                self.alpha.detach() * confidence.detach() * gate.detach() * supported
+            ).sum()
+            / supported_count,
             coverage=coverage.detach().mean(),
             confidence=confidence.detach().mean(),
             residual_ratio=applied.detach().float().norm()
