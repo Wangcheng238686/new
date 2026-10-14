@@ -13,7 +13,7 @@ if [[ "${B0_EXP_ID:-}" != "EXP-0010" ]]; then
 fi
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 RUN_TAG="surfacebev_v2_512dual_sealed_ddp4_s44_EXP-0010"
-WORK_DIR="/data1/wangcheng/checkpoint/surfbev_b0/${RUN_TAG}"
+WORK_DIR="/data2/wangcheng/checkpoint/surfbev_b0/${RUN_TAG}"
 export RUN_TAG WORK_DIR
 export SAVE_LAST_MODEL=1
 export UE_LOAD_UAV=1
