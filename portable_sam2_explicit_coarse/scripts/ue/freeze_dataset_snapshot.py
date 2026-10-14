@@ -61,9 +61,10 @@ def main():
     print(f'copying {src} -> {dst} (per-file consistent, dereferenced)', flush=True)
     n = 0
     for scene_dir in sorted((src / 'scenes').iterdir()):
-        sd = dst / 'scenes' / scene_dir.name
         for payload in ('satellite', 'uav'):
-            for f in sorted((scene_dir / payload).iterdir()):
+            for f in sorted((scene_dir / payload).rglob('*')):
+                if f.is_dir():
+                    continue
                 consistent_copy(f.relative_to(src))
                 n += 1
         if n % 2000 == 0:
