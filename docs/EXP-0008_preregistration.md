@@ -65,3 +65,17 @@ v2 split（SHA `17f49430…`）694/100/151、无随机增强、seed 44、GPU0–
 wrapper `scripts/ue/run_exp0008_ddp4.sh`（同 EXP-0007 守卫族 + 双流指纹）；
 启动前独立审计（节点 1）；首次定版遥测审计（节点 2）；结论前结果审计
 （节点 3）。test 开封为独立事件（两臂同批开封）。
+
+## 勘误（2026-10-14，启动前；拉起前审计 BLOCKED 项修复）
+
+1. **初始化方案修正**：原"gate=0 且 proj 零初始化"构成不可逃逸驻点
+   （两因子乘积梯度恒零，审计员数值复现）。修正为 **gate=0 + proj 默认
+   初始化**：第 0 步与单流等价性不变（0×有限=0），∂L/∂gate 非零
+   （独立验证 absmax≈1.46），proj 在门离开 0 后开始学习。
+2. **amp 数值路径修正**：UE 世界坐标（±1.3e5 cm）超 fp16 上限，--amp 1
+   下 rasterize 的 matmul 会静默产生 inf/nan 使 BEV 坍缩。融合支路
+   （encoder+投影+proj+门控）全程 autocast-disabled 以 fp32 执行；amp=1
+   smoke 复验 bev_coverage=0.9457 与 fp32 一致。
+3. **遥测口径标注**：gate 遥测为 rank0-only 训练步聚合（非跨 rank）；
+   梯度范数、五视角分布、有效秩、逐场 val 落盘、一致性抽检为 run 后
+   离线工具（从两臂 last checkpoint 重推）。

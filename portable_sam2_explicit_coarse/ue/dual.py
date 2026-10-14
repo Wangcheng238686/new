@@ -87,9 +87,10 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         self.uav_encoder = MODELS.build(ConfigDict({'type': self.uav_encoder_name, **enc}))
         self.uav_encoder.eval()
         self.uav_encoder.requires_grad_(False)
+        # gate=0 with DEFAULT proj init: step 0 equals the single-stream
+        # forward (0 x finite = 0) while dL/dgate = upstream . proj(bev) != 0
+        # (a doubly-zero init is an unescapable saddle - launch-review finding).
         self.proj = nn.Conv2d(bev_channels, sat_channels, 1)
-        nn.init.zeros_(self.proj.weight)
-        nn.init.zeros_(self.proj.bias)
         self.gate = nn.Parameter(torch.zeros(sat_channels))
         self.target_level = int(target_level)
         self.uav_eval_off = bool(uav_eval_off) or os.environ.get('UE_UAV_EVAL_OFF') == '1'
@@ -136,18 +137,20 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         uav = self._uav_pending
         self._uav_pending = None
         if uav is not None and not (not self.training and self.uav_eval_off):
-            bev, coverage = self._uav_bev(uav, tuple(x[self.target_level].shape[-2:]))
-            delta = self.proj(bev.unsqueeze(0))
             base = x[self.target_level]
-            x[self.target_level] = base + self.gate.view(1, -1, 1, 1) * delta
+            with torch.autocast('cuda', enabled=False):
+                bev, coverage = self._uav_bev(uav, tuple(base.shape[-2:]))
+                delta = self.proj(bev.unsqueeze(0).float())
+                delta = (self.gate.view(1, -1, 1, 1) * delta).to(base.dtype)
+            x[self.target_level] = base + delta
             if self.training:
                 g = self.gate.detach()
                 self.telemetry['gate_mean'].append(float(g.mean()))
                 self.telemetry['gate_std'].append(float(g.std()))
                 self.telemetry['gate_absmax'].append(float(g.abs().max()))
                 self.telemetry['delta_p3_ratio'].append(
-                    float((self.gate.view(1, -1, 1, 1) * delta).detach().norm()
-                          / base.detach().norm().clamp_min(1e-6)))
+                    float(delta.detach().float().norm()
+                          / base.detach().float().norm().clamp_min(1e-6)))
                 self.telemetry['bev_coverage'].append(coverage)
         return tuple(x), *out[1:]
 
