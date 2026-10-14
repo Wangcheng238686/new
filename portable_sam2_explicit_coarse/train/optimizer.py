@@ -26,6 +26,9 @@ def _build_optimizer(
     shape_prior_lr_mult: float = 1.0,
     decoder_tail_lr_mult: float = 1.0,
     weight_decay: float = 0.05,
+    uav_lr_mult: float = 0.1,
+    cvt_lr_mult: float = 1.0,
+    fusion_lr_mult: float = 1.0,
 ) -> optim.Optimizer:
     params_backbone = []
     names_backbone = []
@@ -45,11 +48,23 @@ def _build_optimizer(
     names_bbox_head = []
     params_other = []
     names_other = []
+    additions = {"uav": ([],[],uav_lr_mult), "cvt": ([],[],cvt_lr_mult), "fusion": ([],[],fusion_lr_mult)}
 
     for name, param in model.named_parameters():
         if not param.requires_grad:
             continue
         match_name = name.replace("_fsdp_wrapped_module.", "").replace("module.", "")
+        extra = None
+        if match_name.startswith("uav_backbone."):
+            extra = "uav"
+        elif match_name.startswith("uav_bev."):
+            extra = "cvt"
+        elif match_name.startswith(("fpn_fusion.","sam_fusion.")):
+            extra = "fusion"
+        if extra is not None:
+            additions[extra][0].append(param)
+            additions[extra][1].append(name)
+            continue
         if "roi_head.mask_head.decoder_tail_refiner" in match_name:
             params_decoder_tail.append(param)
             names_decoder_tail.append(name)
@@ -164,6 +179,10 @@ def _build_optimizer(
             }
         )
         audit_groups.append(("other", params_other, names_other, lr * other_lr_mult, weight_decay))
+    for name,(params,names,multiplier) in additions.items():
+        if params:
+            param_groups.append(dict(params=params,lr=lr*multiplier,name=name,weight_decay=weight_decay))
+            audit_groups.append((name,params,names,lr*multiplier,weight_decay))
     if not param_groups:
         raise RuntimeError(
             "No trainable parameters found. Check freezing / requires_grad."
@@ -189,7 +208,10 @@ def _build_optimizer(
 
 
 def _set_norm_eval(model: torch.nn.Module):
-    for m in model.modules():
+    for name,m in model.named_modules():
+        name = name.removeprefix("module.")
+        if name.startswith(("uav_backbone.","uav_bev.","fpn_fusion.","sam_fusion.")):
+            continue
         if isinstance(
             m, (torch.nn.BatchNorm2d, torch.nn.SyncBatchNorm, torch.nn.GroupNorm)
         ):
@@ -208,6 +230,10 @@ def _set_norm_eval(model: torch.nn.Module):
 # heat-start passes both gates.  P2/renderer lineages keep the legacy clip.
 _AUX_CLIP_MODULE_PREFIXES = (
     "roi_head.mask_head.decoder_tail_refiner.",
+    "uav_backbone.",
+    "uav_bev.",
+    "fpn_fusion.",
+    "sam_fusion.",
 )
 
 

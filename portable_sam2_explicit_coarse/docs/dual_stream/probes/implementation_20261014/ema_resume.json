@@ -1,0 +1,8 @@
+{
+  "resumed_optimizer_steps": [
+    2.0
+  ],
+  "optimizer_updates": 2,
+  "ema_update_relation": true,
+  "evaluation_weights": "ema"
+}

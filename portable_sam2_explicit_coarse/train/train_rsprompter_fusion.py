@@ -6,6 +6,8 @@ import math
 import time
 import os
 import sys
+import copy
+import functools
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -155,10 +157,15 @@ def main():
             )
 
     cfg = Config.fromfile(args.config)
-    from rsprompter.architecture_contract import architecture_contract
+    from rsprompter.uav.contract import model_contract as architecture_contract
 
-    resolved_architecture = architecture_contract(cfg.model.to_dict())
     sam2_checkpoint_path = os.environ.get("SAM2_CKPT", "")
+    if args.dataset == "ue":
+        from inference.ue_rebuild import override_pretrained_paths
+        sam2_checkpoint_path = sam2_checkpoint_path or cfg.model.backbone.checkpoint_path
+        os.environ["SAM2_CKPT"] = sam2_checkpoint_path
+        override_pretrained_paths(cfg.model, sam2_checkpoint_path)
+    resolved_architecture = architecture_contract(cfg.model.to_dict())
     sam2_identity = [sam2_checkpoint_path, ""]
     if is_main and sam2_checkpoint_path:
         from rsprompter.architecture_contract import file_sha256
@@ -176,7 +183,7 @@ def main():
             resolved_architecture["model_fingerprint"],
         )
 
-    model = MODELS.build(cfg.model)
+    model = MODELS.build(copy.deepcopy(cfg.model))
     model.to(device)
 
     model_for_preproc = model.module if hasattr(model, "module") else model
@@ -212,6 +219,18 @@ def main():
         )
 
     from data import create_train_loader
+    if args.dataset == "ue":
+        from ue_support import create_ue_train_loader
+        if not args.decoupled_aux_clip:
+            raise ValueError('UE requires --decoupled-aux-clip to preserve separate branch budgets')
+        create_train_loader = functools.partial(
+            create_ue_train_loader, manifest=args.ue_manifest or str(Path(args.data_root)/"manifest.json"),
+            geometry=dict(cfg.ue_geometry), load_uav=cfg.model.type == "RSPrompterUAVDual",
+            cache_root=args.ue_geometry_cache, satellite_root=args.ue_satellite_root,
+            uav_root=args.ue_uav_root,
+        )
+        if args.init_from:
+            raise ValueError("UE controls and dual models start from generic SAM2, not INIT_FROM")
 
     train_subset_ratio = float(args.train_subset_ratio)
     val_subset_ratio = float(args.val_subset_ratio)
@@ -252,6 +271,8 @@ def main():
             f"TRAIN_MULTI_SCALE_MODE must be value or range, got {train_ms_mode}"
         )
 
+    if args.dataset == "ue":
+        train_flip_prob = train_vflip_prob = train_ms_resize_prob = 0.0
     train_loader, val_loader, train_dataset = (
         create_train_loader(
             data_root=args.data_root,
@@ -388,6 +409,9 @@ def main():
         shape_prior_lr_mult=args.shape_prior_lr_mult,
         decoder_tail_lr_mult=args.decoder_tail_lr_mult,
         weight_decay=args.weight_decay,
+        uav_lr_mult=args.uav_lr_mult,
+        cvt_lr_mult=args.cvt_lr_mult,
+        fusion_lr_mult=args.fusion_lr_mult,
     )
     if is_main:
         _log_trainable_state(model)
@@ -426,7 +450,7 @@ def main():
 
     # AMP scaler (--amp 0 关闭混合精度，用 fp32 训练)
     amp_enabled = bool(args.amp) and torch.cuda.is_available()
-    scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)
+    scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled,init_scale=args.amp_init_scale)
 
     config_snapshot, (
         eval_bbox, save_bbox_best_metric, save_composite_best,
@@ -438,6 +462,9 @@ def main():
         train_subset_ratio, val_subset_ratio, warmup_iters,
         optimizer_steps_per_epoch, total_optimizer_steps,
     )
+    if args.dataset == "ue":
+        config_snapshot["data_config"] = train_dataset.data_config
+        config_snapshot["evaluation_contract"] = dict(primary_max_dets=[1,10,100], diagnostic_max_dets=[1,10,300])
     start_epoch = 0
     best_val_loss = float("inf")
     best_train_loss = float("inf")
@@ -458,7 +485,7 @@ def main():
         ema = ExponentialMovingAverage(model, decay=float(args.ema_decay))
         if is_main:
             logger.info(
-                "EMA enabled: decay=%.4f update_every=%d eval=%d save_best=%d eval_start_epoch=%d",
+                "EMA enabled: decay=%.4f update_every=%d eval=%d eval_start_epoch=%d",
                 float(args.ema_decay), int(args.ema_update_every),
                 int(args.ema_eval), int(args.ema_eval_start_epoch),
             )
@@ -499,6 +526,10 @@ def main():
                     init_stats["migration_pairs"],
                 )
     if args.resume_from:
+        snapshot_validator = None
+        if args.dataset == "ue":
+            from ue_support import validate_resume_snapshot
+            snapshot_validator = functools.partial(validate_resume_snapshot, current=config_snapshot)
         ckpt = _load_checkpoint(
             Path(args.resume_from),
             model,
@@ -506,6 +537,7 @@ def main():
             scheduler,
             scaler,
             expected_architecture=resolved_architecture,
+            snapshot_validator=snapshot_validator,
         )
         start_epoch = int(ckpt.get("epoch", 0)) + 1
         best = ckpt.get("best_metrics", {}) or {}
@@ -529,17 +561,31 @@ def main():
             ema.load_state_dict(ckpt["ema_state"])
             if is_main:
                 logger.info("Restored EMA shadow weights from checkpoint")
+        if args.dataset == 'ue':
+            ema_update_steps = int(ckpt.get('config_snapshot', {}).get('ue_optimizer_updates', 0))
         # 恢复 config 快照 (从 checkpoint 加载, 保证续训一致)
         if "config_snapshot" in ckpt:
             saved_snapshot = ckpt["config_snapshot"]
             if isinstance(saved_snapshot, dict):
                 # Preserve the resumed run's recorded values while retaining
                 # new schema fields for checkpoints produced by newer code.
-                config_snapshot = {**config_snapshot, **saved_snapshot}
+                if args.dataset == 'ue':
+                    # Validated semantics continue, while current paths,
+                    # code identity and an extended epoch target stay factual.
+                    config_snapshot = {**saved_snapshot, **config_snapshot}
+                    config_snapshot['resume_scheduler_policy'] = 'preserve_checkpoint_state'
+                    config_snapshot['resume_parent'] = str(args.resume_from)
+                else:
+                    config_snapshot = {**config_snapshot, **saved_snapshot}
                 config_snapshot["checkpoint_schema_version"] = 2
                 config_snapshot["architecture_contract"] = dict(
                     resolved_architecture
                 )
+                if args.dataset == "ue":
+                    # Identity was checked above; preserve explicitly relocated
+                    # paths so the next checkpoint describes its actual loader.
+                    config_snapshot["data_config"] = train_dataset.data_config
+                    config_snapshot["runtime_config"]["sam2_checkpoint"] = sam2_identity[0]
         if is_main:
             logger.info(
                 "Resumed from %s (start_epoch=%d, best_segm_map=%.4f, best_bbox_score=%.4f, best_composite_score=%.4f)",
@@ -597,6 +643,15 @@ def main():
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         gc.collect()
+
+        if args.dataset == 'ue':
+            config_snapshot['evaluation_weights'] = 'ema' if ema_applied_for_eval else 'model'
+            config_snapshot['ue_optimizer_updates'] = ema_update_steps
+            # Pair raw training weights with their optimizer; keep EMA as
+            # a separately selectable evaluation/export state.
+            if ema_applied_for_eval:
+                ema.restore(model)
+                ema_applied_for_eval = False
 
         (
             stop_training, best_val_loss, best_train_loss, best_segm_map,

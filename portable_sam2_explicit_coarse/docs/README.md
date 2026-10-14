@@ -32,3 +32,7 @@
 
 `archive/`（p2 早期设计）、`reviews/`（EXP 审计）为历史归档，原样保留。
 历史臂的完整文档与代码见清理前提交 add7482。
+
+## UAV 双流开发
+
+[dual_stream/README.md](dual_stream/README.md) 收录本工作树的设计决策、工程核定、参数和测量快照。

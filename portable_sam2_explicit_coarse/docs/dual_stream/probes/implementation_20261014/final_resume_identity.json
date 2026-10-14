@@ -1,0 +1,8 @@
+{
+  "epochs": 2,
+  "ue_optimizer_updates": 2,
+  "resume_scheduler_policy": "preserve_checkpoint_state",
+  "resume_parent": "/tmp/uav_dual_dev_data/ema_resume_smoke/last_model_epoch1.pth",
+  "actual_checkpoint_dir": "/tmp/uav_dual_dev_data/final_resume_smoke",
+  "optimizer_step": 2
+}

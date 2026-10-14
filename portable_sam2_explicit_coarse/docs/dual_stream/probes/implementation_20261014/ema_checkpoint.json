@@ -1,0 +1,10 @@
+{
+  "raw_ema_separate": true,
+  "lora_key": "uav_backbone.encoder.base_model.model.trunk.patch_embed.proj.lora_B.default.weight",
+  "ema_norm_ratio": 0.10000000149011612,
+  "optimizer_steps": [
+    1.0
+  ],
+  "evaluation_weights": "ema",
+  "optimizer_updates": 1
+}

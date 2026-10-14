@@ -29,3 +29,4 @@ if os.environ.get("RSPROMPTER_LIGHT_IMPORT", "0") != "1":
     from .cspm.mask_head_targets import _MaskHeadTargetsMixin
     from .cspm.shape_prior_injector import ShapePriorInjector, SmallMaskDecoder
     from .cspm.shape_point_miner import ShapePointMiner
+    from .detection.dual_detector import RSPrompterUAVDual

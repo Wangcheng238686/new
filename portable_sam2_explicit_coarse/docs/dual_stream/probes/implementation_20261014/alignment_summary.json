@@ -1,0 +1,12 @@
+{
+  "point_index": 11,
+  "cells": 16384,
+  "observed_fraction": 0.77777099609375,
+  "height_valid_fraction": 0.4775390625,
+  "candidate_fraction": 0.86590576171875,
+  "projected_fine_pixel_fraction": 0.8340110778808594,
+  "profile_cells": 6792,
+  "projection_correction_p95_px": 4.18872367546004,
+  "ground_reference": "local origin Z, not true ground truth",
+  "labels_used": false
+}

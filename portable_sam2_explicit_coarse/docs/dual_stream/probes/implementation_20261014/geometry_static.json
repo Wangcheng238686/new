@@ -1,0 +1,35 @@
+{
+  "contracts": {
+    "single": {
+      "schema_version": 3,
+      "architecture_id": "r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64_udprk64",
+      "model_fingerprint": "cbf16c5db6140d3118349250e7a6b15221534888ccca2963fe065128378a4d7d"
+    },
+    "dual": {
+      "schema_version": 4,
+      "architecture_id": "uav_cvt_128_fpn_sam_roi_local",
+      "model_fingerprint": "fcbb8af545a25d5998469cb6a0fe6ed14fdde81ddb7ed9c2fc2b5064de362fb4"
+    },
+    "fpn": {
+      "schema_version": 4,
+      "architecture_id": "uav_cvt_128_fpn_roi_local",
+      "model_fingerprint": "f0a4d0328a0f51e6666c4073d7ef7ecb368083b933c28fdfce19c7c3ce8675a1"
+    },
+    "sam": {
+      "schema_version": 4,
+      "architecture_id": "uav_cvt_128_sam_roi_local",
+      "model_fingerprint": "3f4636de775f5066391edf42684c43ec372bba9ae9052a7884c56bf38380c88c"
+    }
+  },
+  "geometry": {
+    "plane_coverage": 1.0,
+    "candidate_unique": true,
+    "empty_safe": true,
+    "coarse_non_occlusion": true,
+    "fine_near_surface": true,
+    "feature_gradient": true,
+    "roof_priority": true,
+    "frustum_apex_bound": true,
+    "split_floor_checked": true
+  }
+}

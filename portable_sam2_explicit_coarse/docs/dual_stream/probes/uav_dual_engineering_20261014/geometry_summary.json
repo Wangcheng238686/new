@@ -1,0 +1,353 @@
+{
+  "sample_count": 32,
+  "errors": [],
+  "n_instances": {
+    "min": 13.0,
+    "median": 61.5,
+    "p95": 180.25,
+    "max": 242.0
+  },
+  "samples_above100_instances": 9,
+  "ground_shift_per_sample_p95_px": {
+    "min": 2.916898356143607,
+    "median": 7.745496963593217,
+    "p95": 27.74461142284357,
+    "max": 33.69195873925768
+  },
+  "ground_shift_per_sample_p99_px": {
+    "min": 4.479389875740127,
+    "median": 10.71607104020589,
+    "p95": 34.50170017595733,
+    "max": 42.22701516787568
+  },
+  "occupied_4m_cell_height_spread_per_sample_p95_m": {
+    "min": 17.733984052363272,
+    "median": 42.53642051852473,
+    "p95": 153.47231334889,
+    "max": 166.44277857249062
+  },
+  "world_height_varied_8px_blocks_fraction": {
+    "min": 0.24072265625,
+    "median": 0.5343017578125,
+    "p95": 0.69830322265625,
+    "max": 0.81396484375
+  },
+  "foreground_projected_support": {
+    "min": 0.36780655113818783,
+    "median": 0.8830056159221794,
+    "p95": 0.9203706675591858,
+    "max": 0.9363811457664571
+  },
+  "extent": {
+    "384": {
+      "all_observed_points_retained": {
+        "min": 0.58848876953125,
+        "median": 0.908978271484375,
+        "p95": 0.9368634033203125,
+        "max": 0.9402099609375
+      },
+      "satellite_projecting_points_retained": {
+        "min": 1.0,
+        "median": 1.0,
+        "p95": 1.0,
+        "max": 1.0
+      }
+    },
+    "512": {
+      "all_observed_points_retained": {
+        "min": 0.97420654296875,
+        "median": 0.9879394531250001,
+        "p95": 0.9986791992187499,
+        "max": 0.9998291015625
+      },
+      "satellite_projecting_points_retained": {
+        "min": 1.0,
+        "median": 1.0,
+        "p95": 1.0,
+        "max": 1.0
+      }
+    },
+    "640": {
+      "all_observed_points_retained": {
+        "min": 0.998779296875,
+        "median": 0.9998291015625,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "satellite_projecting_points_retained": {
+        "min": 1.0,
+        "median": 1.0,
+        "p95": 1.0,
+        "max": 1.0
+      }
+    }
+  },
+  "attention": {
+    "side384_radius4": {
+      "supported_queries_fraction": {
+        "min": 0.437255859375,
+        "median": 0.905670166015625,
+        "p95": 0.9512237548828125,
+        "max": 0.95916748046875
+      },
+      "supported_satellite_reference_queries_fraction": {
+        "min": 0.4617361111111111,
+        "median": 0.9376736111111111,
+        "p95": 0.9721979166666667,
+        "max": 0.9801388888888889
+      },
+      "per_sample_median_candidate_count": {
+        "min": 0.0,
+        "median": 5.0,
+        "p95": 6.0,
+        "max": 6.0
+      },
+      "per_sample_p95_candidate_count": {
+        "min": 12.0,
+        "median": 17.0,
+        "p95": 26.45,
+        "max": 30.0
+      }
+    },
+    "side384_radius8": {
+      "supported_queries_fraction": {
+        "min": 0.55902099609375,
+        "median": 0.969390869140625,
+        "p95": 0.9905792236328125,
+        "max": 0.997314453125
+      },
+      "supported_satellite_reference_queries_fraction": {
+        "min": 0.5832638888888889,
+        "median": 0.9835763888888889,
+        "p95": 0.9978784722222223,
+        "max": 0.9980555555555556
+      },
+      "per_sample_median_candidate_count": {
+        "min": 3.0,
+        "median": 24.0,
+        "p95": 27.45,
+        "max": 28.0
+      },
+      "per_sample_p95_candidate_count": {
+        "min": 42.0,
+        "median": 56.0,
+        "p95": 98.8174999999992,
+        "max": 105.0
+      }
+    },
+    "side384_radius12": {
+      "supported_queries_fraction": {
+        "min": 0.65093994140625,
+        "median": 0.984405517578125,
+        "p95": 0.9978668212890625,
+        "max": 0.999755859375
+      },
+      "supported_satellite_reference_queries_fraction": {
+        "min": 0.6763194444444445,
+        "median": 0.9940625000000001,
+        "p95": 0.9998541666666666,
+        "max": 0.9999305555555555
+      },
+      "per_sample_median_candidate_count": {
+        "min": 14.0,
+        "median": 58.0,
+        "p95": 63.45,
+        "max": 64.0
+      },
+      "per_sample_p95_candidate_count": {
+        "min": 88.0,
+        "median": 113.0,
+        "p95": 195.25,
+        "max": 207.0
+      }
+    },
+    "side512_radius4": {
+      "supported_queries_fraction": {
+        "min": 0.28802490234375,
+        "median": 0.64453125,
+        "p95": 0.7622802734375,
+        "max": 0.7698974609375
+      },
+      "supported_satellite_reference_queries_fraction": {
+        "min": 0.4654320987654321,
+        "median": 0.9368518518518518,
+        "p95": 0.9723333333333333,
+        "max": 0.9807407407407407
+      },
+      "per_sample_median_candidate_count": {
+        "min": 0.0,
+        "median": 2.0,
+        "p95": 2.0,
+        "max": 2.0
+      },
+      "per_sample_p95_candidate_count": {
+        "min": 10.0,
+        "median": 13.0,
+        "p95": 17.45,
+        "max": 19.0
+      }
+    },
+    "side512_radius8": {
+      "supported_queries_fraction": {
+        "min": 0.3848876953125,
+        "median": 0.758514404296875,
+        "p95": 0.8654571533203125,
+        "max": 0.87420654296875
+      },
+      "supported_satellite_reference_queries_fraction": {
+        "min": 0.584320987654321,
+        "median": 0.9846913580246913,
+        "p95": 0.9975493827160494,
+        "max": 0.9982716049382716
+      },
+      "per_sample_median_candidate_count": {
+        "min": 0.0,
+        "median": 8.0,
+        "p95": 9.0,
+        "max": 9.0
+      },
+      "per_sample_p95_candidate_count": {
+        "min": 38.0,
+        "median": 48.0,
+        "p95": 74.0,
+        "max": 77.0
+      }
+    },
+    "side512_radius12": {
+      "supported_queries_fraction": {
+        "min": 0.462646484375,
+        "median": 0.80462646484375,
+        "p95": 0.8924560546875,
+        "max": 0.8975830078125
+      },
+      "supported_satellite_reference_queries_fraction": {
+        "min": 0.6762962962962963,
+        "median": 0.994320987654321,
+        "p95": 0.9997407407407407,
+        "max": 1.0
+      },
+      "per_sample_median_candidate_count": {
+        "min": 0.0,
+        "median": 18.0,
+        "p95": 21.0,
+        "max": 21.0
+      },
+      "per_sample_p95_candidate_count": {
+        "min": 84.0,
+        "median": 101.0,
+        "p95": 158.35,
+        "max": 163.84999999999854
+      }
+    },
+    "side640_radius4": {
+      "supported_queries_fraction": {
+        "min": 0.184326171875,
+        "median": 0.430999755859375,
+        "p95": 0.5267578125,
+        "max": 0.53375244140625
+      },
+      "supported_satellite_reference_queries_fraction": {
+        "min": 0.4643132716049383,
+        "median": 0.9374035493827161,
+        "p95": 0.9720100308641976,
+        "max": 0.9828317901234568
+      },
+      "per_sample_median_candidate_count": {
+        "min": 0.0,
+        "median": 0.0,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "per_sample_p95_candidate_count": {
+        "min": 8.0,
+        "median": 11.0,
+        "p95": 12.0,
+        "max": 12.0
+      }
+    },
+    "side640_radius8": {
+      "supported_queries_fraction": {
+        "min": 0.24786376953125,
+        "median": 0.519134521484375,
+        "p95": 0.6211761474609375,
+        "max": 0.62786865234375
+      },
+      "supported_satellite_reference_queries_fraction": {
+        "min": 0.5864197530864198,
+        "median": 0.9840856481481481,
+        "p95": 0.9978587962962964,
+        "max": 0.9982638888888888
+      },
+      "per_sample_median_candidate_count": {
+        "min": 0.0,
+        "median": 1.0,
+        "p95": 3.0,
+        "max": 4.0
+      },
+      "per_sample_p95_candidate_count": {
+        "min": 36.0,
+        "median": 42.0,
+        "p95": 52.45,
+        "max": 57.0
+      }
+    },
+    "side640_radius12": {
+      "supported_queries_fraction": {
+        "min": 0.29876708984375,
+        "median": 0.559417724609375,
+        "p95": 0.6518829345703125,
+        "max": 0.66033935546875
+      },
+      "supported_satellite_reference_queries_fraction": {
+        "min": 0.675733024691358,
+        "median": 0.9940200617283951,
+        "p95": 0.9997878086419754,
+        "max": 1.0
+      },
+      "per_sample_median_candidate_count": {
+        "min": 0.0,
+        "median": 3.5,
+        "p95": 7.449999999999999,
+        "max": 8.0
+      },
+      "per_sample_p95_candidate_count": {
+        "min": 80.0,
+        "median": 92.5,
+        "p95": 119.71749999999919,
+        "max": 128.0
+      }
+    }
+  },
+  "height_alignment": {
+    "ground_error_px_p05_p50_p95_p99": {
+      "min": 3.9416361150961294,
+      "median": 6.874180839624911,
+      "p95": 18.97355788606371,
+      "max": 25.94647347994481
+    },
+    "height_only_error_px_p05_p50_p95_p99": {
+      "min": 1.4353480448556495,
+      "median": 2.1338044425327283,
+      "p95": 10.72092552700537,
+      "max": 16.532007179843244
+    },
+    "height_and_cell_center_error_px_p05_p50_p95_p99": {
+      "min": 3.6520222577254517,
+      "median": 3.8055482876533393,
+      "p95": 11.140345265437753,
+      "max": 16.767292097233543
+    },
+    "height_only_high_concentration_error_px_p05_p50_p95_p99": {
+      "min": 0.15083426626430135,
+      "median": 0.207361579578932,
+      "p95": 0.3667956599915222,
+      "max": 0.37330285562361953
+    },
+    "high_concentration_reference_fraction": {
+      "min": 0.28328549348642085,
+      "median": 0.556121567613364,
+      "p95": 0.6360355245742303,
+      "max": 0.6484538700869896
+    }
+  }
+}

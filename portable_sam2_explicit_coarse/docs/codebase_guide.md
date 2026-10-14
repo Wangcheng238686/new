@@ -18,6 +18,8 @@ NWPU VHR-10 matrix300（full_image + roi_balanced_dice、PE 下采样栈 0.1×LR
 
 ### rsprompter 包：按域分子包（2026-10-13 重组）
 
+UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `uav/` 子包；UE 数据、训练与推理适配分别位于 `data/ue_*`、`train/ue_*`、`inference/ue_rebuild.py`。统一入口为 `scripts/ue_rgbd.sh`。完整模块地图、数据合同、实验命令和验收边界见 [双流实现与入口](dual_stream/IMPLEMENTATION_AND_RUNBOOK.md)。旧架构合同与旧推理重建模块继续作为冻结区。
+
 `MODELS.build` 按 `type` 字符串注册，包内文件布局不影响指纹与 ckpt；根 `__init__.py`
 是唯一注册门面（`RSPROMPTER_LIGHT_IMPORT=1` 可跳过重链导入，供张量级单测用）。
 

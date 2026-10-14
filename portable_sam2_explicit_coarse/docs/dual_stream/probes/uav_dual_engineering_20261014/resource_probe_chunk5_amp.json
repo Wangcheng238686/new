@@ -1,0 +1,31 @@
+{
+  "gpu": "NVIDIA GeForce RTX 3090",
+  "torch_version": "2.8.0+cu128",
+  "input_size": 512,
+  "batch_images": 1,
+  "uav_views": 5,
+  "uav_chunk": 5,
+  "bev_shape": [
+    1,
+    256,
+    128,
+    128
+  ],
+  "attention_layers": 2,
+  "attention_candidates": 40,
+  "query_chunk": 1024,
+  "gt_instances": 133,
+  "trainable_parameters": 50906009,
+  "peak_allocated_mib": 5110.56787109375,
+  "peak_reserved_mib": 5534.0,
+  "elapsed_seconds": 10.664858696021838,
+  "loss_finite": true,
+  "loss_value": 2.9941368103027344,
+  "amp_grad_scale": 512,
+  "uav_grad_nonzero_tensors": 14,
+  "uav_lora_nonzero_grad_tensors": 12,
+  "nonfinite_grad_tensors": 0,
+  "attention_grad_nonzero_tensors": 29,
+  "adamw_state_estimate_mib": 388.3820266723633,
+  "limitation": "Random candidate indices/features; no geometry or gate implementation, no optimizer step, no AP evidence. One backward pass, not steady-state timing."
+}

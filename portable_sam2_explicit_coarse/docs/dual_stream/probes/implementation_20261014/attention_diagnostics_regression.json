@@ -1,0 +1,7 @@
+{
+  "outputs_identical": true,
+  "gradient_keys_identical": true,
+  "max_gradient_abs_difference": 0.0,
+  "relative_mlp_gradients_nonzero": true,
+  "amp_checkpoint": true
+}

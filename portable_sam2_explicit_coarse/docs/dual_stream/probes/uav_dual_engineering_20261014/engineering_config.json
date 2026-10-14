@@ -1,0 +1,135 @@
+{
+  "status": "engineering_defaults_not_implemented_model",
+  "satellite_input_hw": [
+    512,
+    512
+  ],
+  "uav_input_hw": [
+    512,
+    512
+  ],
+  "uav_views": 5,
+  "satellite_embedding_stride": 16,
+  "prompt_encoder_embed_hw": [
+    32,
+    32
+  ],
+  "coarse_mask_hw": [
+    64,
+    64
+  ],
+  "backbone": {
+    "family": "sam2_hiera_base_plus",
+    "initialization": "generic_sam2_pretrained_only",
+    "satellite_uav_lora_shared": false,
+    "uav_view_encoder_shared": true,
+    "lora_rank": 16,
+    "lora_alpha": 32,
+    "lora_targets": [
+      "qkv",
+      "proj"
+    ],
+    "lora_dropout": 0.05,
+    "hiera_original_weights_frozen": true,
+    "encoder_neck_trainable": true
+  },
+  "bev": {
+    "side_m": 512,
+    "grid_hw": [
+      128,
+      128
+    ],
+    "cell_m": 4,
+    "channels": 256,
+    "origin": "uav_common_target_else_camera_xy_centroid",
+    "column_axis": "local_world_X",
+    "row_axis": "local_world_Y",
+    "physical_coordinates_trainable": false,
+    "satellite_conditioned_queries": false,
+    "source_features": "stride8_plus_resized_stride16",
+    "attention_layers": 2,
+    "attention_heads": 8,
+    "ffn_dim": 512,
+    "world_xy_radius_m": 8,
+    "max_candidates_per_view": 8,
+    "query_chunk": 1024,
+    "attention_checkpointing": true,
+    "empty_neighborhood": "masked_zero_uav_residual",
+    "query_reference": "local_XY_and_observed_surface_Z",
+    "candidate_identity": "view_id_token_id_unique",
+    "candidate_ranking": "cell_upper_surface_first_then_distance_height_soft_compatibility"
+  },
+  "geometry": {
+    "source_depth": "camera_Z_cm",
+    "working_world_units": "m",
+    "local_coordinates": true,
+    "depth_interpolation_across_surfaces": false,
+    "height_bin_m": 2,
+    "height_cluster_min_points": 3,
+    "height_aggregation": "highest_supported_bin_mean",
+    "confidence_inputs": [
+      "view_count",
+      "nearest_xy_distance",
+      "upper_height_cluster_fraction",
+      "height_spread"
+    ],
+    "bev_to_satellite": "rasterize_valid_cell_footprint_geometry_at_satellite_pixels_then_scatter_to_feature_grids",
+    "collision_policy": "nearest_observed_camera_Z_band_per_satellite_pixel_not_feature_cell",
+    "collision_band_m_initial": 2,
+    "satellite_visibility_verified": false,
+    "cell_observation_support": "raw_valid_depth_points_in_actual_cell_not_neighbor_halo",
+    "height_valid": "representative_height_from_unique_pixels",
+    "no_height_policy": "zero_projection_mass",
+    "view_support": "views_in_selected_height_cluster",
+    "full_resolution_dense_feature_canvas": false,
+    "pooling_contract": "feature_mass_coverage_confidence_normalized_separately"
+  },
+  "fusion": {
+    "fpn_strides": [
+      8,
+      16
+    ],
+    "sam_embedding_stride": 16,
+    "sam_high_resolution_injection": false,
+    "type": "confidence_gated_feature_residual",
+    "residual_scale_initial": 0.05,
+    "projection_zero_init": false,
+    "missing_or_outside_support_residual": 0,
+    "mask_coordinate_contract": {
+      "image_embedding_input": "full_satellite_grid",
+      "final_target_and_paste": "roi_local",
+      "spatial_loss_mapping": "SAM_attention_not_pixelwise_world_identity"
+    }
+  },
+  "training": {
+    "images_per_gpu_initial": 1,
+    "uav_encoder_chunk": 5,
+    "encoder_checkpointing": true,
+    "precision": "fp16_amp_with_grad_scaler",
+    "geometry_precision": "float32_after_float64_localization",
+    "requires_ue_single_stream_checkpoint": false,
+    "supervision": "satellite_instances_only",
+    "spatial_augmentation_initial": false,
+    "parameter_group_contract": "explicit_uav_adapter_cvt_fusion_groups",
+    "clip_contract": "preserve_satellite_udpr_budget_separate_new_branch",
+    "new_groupnorm_affine_frozen": false,
+    "ddp_find_unused_parameters": true
+  },
+  "evaluation": {
+    "post_nms_max_per_img": 300,
+    "primary_max_dets": [
+      1,
+      10,
+      100
+    ],
+    "dense_scene_diagnostic_max_dets": [
+      1,
+      10,
+      300
+    ],
+    "primary_metric": "standard_mask_AP100",
+    "output_cap_and_metric_cap_decoupled": true,
+    "default_checkpoint_selection_metric": "mask_AP100",
+    "split_contract": "frozen_physical_coverage_and_repeated_building_leakage_audit"
+  }
+}

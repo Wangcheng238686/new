@@ -1,0 +1,10 @@
+{
+  "accepted": 1057,
+  "splits": {
+    "train": 628,
+    "validation": 153
+  },
+  "inventory_excluded": 204,
+  "boundary_or_shared_excluded": 276,
+  "cross_split_building_overlap": 0
+}

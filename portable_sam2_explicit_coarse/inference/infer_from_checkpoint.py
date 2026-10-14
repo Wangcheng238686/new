@@ -40,6 +40,11 @@ def parse_args() -> argparse.Namespace:
         default="validation",
     )
     parser.add_argument("--data-root", default=None)
+    parser.add_argument("--ue-manifest", default=None)
+    parser.add_argument("--ue-satellite-root", default=None)
+    parser.add_argument("--ue-uav-root", default=None)
+    parser.add_argument("--ue-geometry-cache", default="/tmp/uav_dual_geometry")
+    parser.add_argument("--uav-mode", choices=("correct","zero","shift"), default="correct")
     parser.add_argument("--ann-file", default=None)
     parser.add_argument("--image-subdir", default=None)
     parser.add_argument("--image-size", type=int, nargs=2, default=None)
@@ -53,9 +58,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--weights",
-        choices=("model", "ema"),
-        default="model",
-        help="Load checkpoint['model'] or checkpoint['ema_state']['ema_state'].",
+        choices=("auto", "model", "ema"),
+        default="auto",
+        help="Auto uses the recorded UE evaluation state; legacy checkpoints use model.",
     )
     parser.add_argument("--sam2-repo", default=None)
     parser.add_argument("--sam2-ckpt", default=None)
@@ -138,7 +143,7 @@ def _load_checkpoint(path: Path) -> Dict[str, Any]:
 from model_rebuild import (  # noqa: E402
     _load_model_state,
     _register_and_build,
-    _resolve_model_config,
+    _resolve_model_config as _resolve_legacy_model_config,
     _resolve_sam2_repo,
     _select_state_dict,
     _snapshot,
@@ -154,6 +159,13 @@ from eval_records import (  # noqa: E402
 )
 
 
+def _resolve_model_config(args, snapshot):
+    if snapshot.get("data_config", {}).get("dataset_format") == "ue_rgbd":
+        from ue_rebuild import resolve_ue_model
+        return resolve_ue_model(args, snapshot)
+    return _resolve_legacy_model_config(args, snapshot)
+
+
 def main() -> None:
     args = parse_args()
     logging.basicConfig(
@@ -163,6 +175,11 @@ def main() -> None:
     checkpoint_path = Path(args.checkpoint).expanduser().resolve()
     checkpoint = _load_checkpoint(checkpoint_path)
     snapshot = _snapshot(checkpoint)
+    is_ue = snapshot.get('data_config', {}).get('dataset_format') == 'ue_rgbd'
+    if is_ue and args.allow_nonstrict:
+        raise ValueError('UE checkpoints require strict inference loading')
+    if args.weights == 'auto':
+        args.weights = snapshot.get('evaluation_weights', 'model') if is_ue else 'model'
     report = _checkpoint_report(checkpoint_path, checkpoint, snapshot)
     print(json.dumps(report, ensure_ascii=False, indent=2, default=_json_default))
     if args.inspect_only:
@@ -204,6 +221,8 @@ def main() -> None:
         no_mask_validator(f"checkpoint inference ({args.weights})")
     model.to(device)
     model.eval()
+    if hasattr(model,"uav_intervention"):
+        model.uav_intervention = args.uav_mode
     if args.max_per_img:
         for cfg_holder in (getattr(model.roi_head, "test_cfg", None),):
             if cfg_holder is not None and "max_per_img" in cfg_holder:
@@ -366,6 +385,10 @@ def main() -> None:
             categories=_eval_categories,
         )
         metrics.update(run_coco_eval(coco_gt, coco_bbox_dt, iou_type="bbox"))
+        if contract.get("dataset_format") == "ue_rgbd":
+            from utils.ue_evaluation import dense_diagnostics
+            for kind,records in (("bbox",coco_bbox_dt),("segm",coco_segm_dt)):
+                metrics.update(dense_diagnostics(coco_gt,records,kind))
     elif not args.no_eval:
         logger.warning("The selected split has no valid GT; metrics were skipped")
     _write_json(output_dir / "metrics.json", metrics)
@@ -389,6 +412,7 @@ def main() -> None:
             else "full_image_resize"
         ),
         "processed_images": len(all_metas),
+        "uav_intervention": args.uav_mode,
         # Identity evidence for downstream paired comparisons (bootstrap):
         # the exact image ids this run executed, including zero-detection
         # images, so coverage can be verified as sets rather than counts.

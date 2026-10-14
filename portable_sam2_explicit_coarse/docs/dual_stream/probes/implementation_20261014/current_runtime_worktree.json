@@ -1,0 +1,32 @@
+{
+  "nwpu": [
+    {
+      "file": "/data/wangcheng/dataset/NWPU VHR-10 dataset/positive image set/030.jpg",
+      "sha256": "021331257ba0332a86ba0c9cec3af75ec957f34ab25072919c8b44500a2152eb"
+    },
+    {
+      "file": "/data/wangcheng/dataset/NWPU VHR-10 dataset/positive image set/377.jpg",
+      "sha256": "1a20ea24e373545368740d075317c96bc23e9ad303f54380b85eae8a11101d4b"
+    }
+  ],
+  "whu": [
+    {
+      "file": "/data/wangcheng/dataset/WHU/2.3 valid/validation/20000.TIF",
+      "sha256": "676bb32d0835ea3e0ced564e278288cc4e69c99781516d735782a75b516c945c"
+    },
+    {
+      "file": "/data/wangcheng/dataset/WHU/2.3 valid/validation/20001.TIF",
+      "sha256": "0ba3ba74421ab5eccb0d32df32865ecdceee342603a5cd31d701114ed60eac1c"
+    }
+  ],
+  "whu_ema": [
+    {
+      "file": "/data/wangcheng/dataset/WHU/2.3 valid/validation/20000.TIF",
+      "sha256": "ca40c97a3b3ed02ee41e1fbc37d43dc9c3cb8f83c5161e19a4697c4cd44b1228"
+    },
+    {
+      "file": "/data/wangcheng/dataset/WHU/2.3 valid/validation/20001.TIF",
+      "sha256": "54a14707a5a92297e1e1a5e2a3db258218ca5ffca95a83867b1b510dadc99e12"
+    }
+  ]
+}

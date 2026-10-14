@@ -25,6 +25,9 @@ def _resolve_dataset_contract(
     snapshot: Mapping[str, Any],
 ) -> Dict[str, Any]:
     data_config = snapshot.get("data_config", {})
+    if isinstance(data_config, Mapping) and data_config.get("dataset_format") == "ue_rgbd":
+        from ue_rebuild import resolve_ue_data
+        return resolve_ue_data(args, snapshot)
     if not isinstance(data_config, Mapping):
         data_config = {}
     training_args = snapshot.get("training_args", {})
@@ -80,6 +83,9 @@ def _resolve_dataset_contract(
 
 
 def _build_loader(contract: Mapping[str, Any], num_workers: int) -> DataLoader:
+    if contract.get("dataset_format") == "ue_rgbd":
+        from ue_rebuild import build_ue_loader
+        return build_ue_loader(contract, num_workers)
     from data.loader import rtmdet_collate_fn
     from data.whu_instance_dataset import WHUCocoInstanceDataset
 
@@ -156,6 +162,9 @@ def _build_data_samples(
             )
         sample.gt_instances = instances
         data_samples.append(sample.to(device))
+    if "uav_payloads" in batch:
+        from data.ue_payload import attach_uav_payload
+        attach_uav_payload(data_samples, batch)
     return imgs, data_samples
 
 

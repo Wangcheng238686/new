@@ -1,0 +1,12 @@
+{
+  "correct": {
+    "sha256": "b9714a3aa9dc36c24994923fc935a8cab371da7465952d2e8c7b92c4a17ec1a4",
+    "weights": "ema",
+    "strict": true
+  },
+  "repeat": {
+    "sha256": "b9714a3aa9dc36c24994923fc935a8cab371da7465952d2e8c7b92c4a17ec1a4",
+    "weights": "ema",
+    "strict": true
+  }
+}

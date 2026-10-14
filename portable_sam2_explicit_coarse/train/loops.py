@@ -88,6 +88,9 @@ def train_one_epoch(
         data_samples = _build_gt_data_samples(
             imgs, img_metas, gt_bboxes, gt_labels, gt_masks, device
         )
+        if "uav_payloads" in batch:
+            from data.ue_payload import attach_uav_payload
+            attach_uav_payload(data_samples, batch)
 
         # Match the historical WHU1024 baseline: empty-GT training batches
         # still enter the detector loss. A rank-local early continue here
@@ -215,6 +218,9 @@ def train_one_epoch(
         # Step optimizer every grad_accum batches or at the last batch
         if (batch_idx + 1) % grad_accum == 0 or (batch_idx + 1) == train_batches_limit:
             scaler.unscale_(optimizer)
+            if args.dataset == 'ue' and is_main and prompt_stats_due:
+                from ue_telemetry import log_ue_gradients
+                log_ue_gradients(optimizer, logger)
             if decoupled_clip_partition is not None:
                 base_clip_params, aux_clip_groups = decoupled_clip_partition
                 torch.nn.utils.clip_grad_norm_(base_clip_params, 0.5)
@@ -364,6 +370,9 @@ def validate_one_epoch(
         # after inference, so it only took effect from the second val.
         _val_max_dets = None
         _val_md_env = int(os.environ.get("TEST_MAX_PER_IMG", "0") or 0)
+        if args.dataset == "ue":
+            _val_max_dets = [1,10,100]
+            _val_md_env = 0
         if _val_md_env > 0:
             _val_max_dets = [1, 10, _val_md_env]
             _val_model_for_eval = (
@@ -410,6 +419,9 @@ def validate_one_epoch(
                 data_samples = _build_gt_data_samples(
                     imgs, img_metas, gt_bboxes, gt_labels, gt_masks, device
                 )
+                if "uav_payloads" in batch:
+                    from data.ue_payload import attach_uav_payload
+                    attach_uav_payload(data_samples, batch)
 
                 # Optional validation loss is a second model forward. Public
                 # ablation runners disable it for fast point screening; all
@@ -636,6 +648,10 @@ def validate_one_epoch(
                 max_dets=_val_max_dets,
             )
             val_metrics.update(segm_metrics)
+            if args.dataset == "ue":
+                from utils.ue_evaluation import dense_diagnostics
+                for kind,records in (("bbox",coco_bbox_dt),("segm",coco_segm_dt)):
+                    val_metrics.update(dense_diagnostics(coco_gt,records,kind))
             logger.info(
                 "Validation segm/mAP: %.4f",
                 segm_metrics.get("segm/mAP", 0.0),
@@ -892,6 +908,7 @@ def _finalize_epoch(
                 history,
                 config_snapshot,
                 scaler,
+                ema_state=ema_state_to_save if args.dataset == 'ue' else None,
             )
             logger.info("Saved final checkpoint: %s", last_path)
 

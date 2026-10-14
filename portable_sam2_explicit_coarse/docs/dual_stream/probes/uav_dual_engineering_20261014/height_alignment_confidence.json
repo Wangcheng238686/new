@@ -1,0 +1,320 @@
+{
+  "count": 10,
+  "grid_side_m": 512,
+  "cell_m": 4,
+  "height_bin_m": 2,
+  "min_points_per_height_bin": 3,
+  "warning": "Reference projections come from sampled UAV depth, not satellite depth. No proof of true satellite visibility. Same-XY height error and cell-center quantization are reported separately.",
+  "rows": [
+    {
+      "index": 22,
+      "foreground_reference_points": 18376,
+      "height_supported_points_fraction": 0.8252373813093453,
+      "ground_error_px_p05_p50_p95_p99": [
+        0.5711080583792969,
+        1.991415221616524,
+        3.9416361150961294,
+        6.015902966599172
+      ],
+      "height_only_error_px_p05_p50_p95_p99": [
+        0.0010109231668596922,
+        0.029420494997632038,
+        1.4353480448556495,
+        2.6715627703382703
+      ],
+      "upper_cluster_half_mass_reference_fraction": 0.5027753591641271,
+      "height_only_high_concentration_error_px_p05_p50_p95_p99": [
+        0.0006866946869893869,
+        0.0107622678137433,
+        0.3588424208856255,
+        1.0421982356104778
+      ],
+      "height_and_cell_center_error_px_p05_p50_p95_p99": [
+        0.7541606455241124,
+        2.345440682052767,
+        3.662083931289275,
+        4.678538672900919
+      ],
+      "upper_height_multiview_fraction": 0.9890724269377382
+    },
+    {
+      "index": 116,
+      "foreground_reference_points": 34886,
+      "height_supported_points_fraction": 0.8314450752410938,
+      "ground_error_px_p05_p50_p95_p99": [
+        0.5574592907188699,
+        2.1597668040317406,
+        5.2942003177498815,
+        8.076433068033435
+      ],
+      "height_only_error_px_p05_p50_p95_p99": [
+        0.0009346572317169009,
+        0.02767102670213091,
+        1.5840981219735941,
+        3.199931409127075
+      ],
+      "upper_cluster_half_mass_reference_fraction": 0.509115404460242,
+      "height_only_high_concentration_error_px_p05_p50_p95_p99": [
+        0.0005701653159608397,
+        0.009445769256675075,
+        0.30441869303506935,
+        1.0511239091452134
+      ],
+      "height_and_cell_center_error_px_p05_p50_p95_p99": [
+        0.7318206201959472,
+        2.3255344822078268,
+        3.6520222577254517,
+        4.696358857651134
+      ],
+      "upper_height_multiview_fraction": 0.968370516803163
+    },
+    {
+      "index": 252,
+      "foreground_reference_points": 31835,
+      "height_supported_points_fraction": 0.8400049633949621,
+      "ground_error_px_p05_p50_p95_p99": [
+        0.8053557867280114,
+        3.40869344234874,
+        6.718812607200609,
+        7.871667571612356
+      ],
+      "height_only_error_px_p05_p50_p95_p99": [
+        0.0005885622711956708,
+        0.01659227992784097,
+        2.218990510912348,
+        4.95776226369921
+      ],
+      "upper_cluster_half_mass_reference_fraction": 0.6208575467253024,
+      "height_only_high_concentration_error_px_p05_p50_p95_p99": [
+        0.00038418597443842356,
+        0.006133774796858661,
+        0.19506303789371288,
+        0.8986411344074262
+      ],
+      "height_and_cell_center_error_px_p05_p50_p95_p99": [
+        0.7250855393499458,
+        2.3541302423470687,
+        3.7879696794657454,
+        5.752174987583106
+      ],
+      "upper_height_multiview_fraction": 0.9755254822919666
+    },
+    {
+      "index": 407,
+      "foreground_reference_points": 31498,
+      "height_supported_points_fraction": 0.8460054892070321,
+      "ground_error_px_p05_p50_p95_p99": [
+        0.7039453455943696,
+        2.6370033125296617,
+        5.6457155559505505,
+        7.24343722822147
+      ],
+      "height_only_error_px_p05_p50_p95_p99": [
+        0.0006001713878939184,
+        0.013457318627508586,
+        2.0486183741531083,
+        4.486867914054393
+      ],
+      "upper_cluster_half_mass_reference_fraction": 0.6484538700869896,
+      "height_only_high_concentration_error_px_p05_p50_p95_p99": [
+        0.00041186515296535786,
+        0.00615698606012979,
+        0.15083426626430135,
+        1.342834191952316
+      ],
+      "height_and_cell_center_error_px_p05_p50_p95_p99": [
+        0.7453889273020364,
+        2.35591827545322,
+        3.7765628470591652,
+        5.589779289121886
+      ],
+      "upper_height_multiview_fraction": 0.9811774128954746
+    },
+    {
+      "index": 539,
+      "foreground_reference_points": 40312,
+      "height_supported_points_fraction": 0.826861220314753,
+      "ground_error_px_p05_p50_p95_p99": [
+        0.6780529297690496,
+        2.3615544513175797,
+        8.425311305211894,
+        10.650591714977022
+      ],
+      "height_only_error_px_p05_p50_p95_p99": [
+        0.000651260594657478,
+        0.025578462373068857,
+        1.7469083022577159,
+        4.379629951203653
+      ],
+      "upper_cluster_half_mass_reference_fraction": 0.5397896408017464,
+      "height_only_high_concentration_error_px_p05_p50_p95_p99": [
+        0.00040406850281566383,
+        0.00792923642396801,
+        0.37330285562361953,
+        1.511259495023714
+      ],
+      "height_and_cell_center_error_px_p05_p50_p95_p99": [
+        0.7509095421993303,
+        2.3475774281191777,
+        3.78220819407243,
+        5.60575138161737
+      ],
+      "upper_height_multiview_fraction": 0.9469642080857846
+    },
+    {
+      "index": 690,
+      "foreground_reference_points": 18116,
+      "height_supported_points_fraction": 0.48918241301290283,
+      "ground_error_px_p05_p50_p95_p99": [
+        2.0130271740948897,
+        13.166922744202356,
+        25.94647347994481,
+        28.78516082536934
+      ],
+      "height_only_error_px_p05_p50_p95_p99": [
+        0.0007215341398858771,
+        0.9659277683358849,
+        16.532007179843244,
+        23.782578822942327
+      ],
+      "upper_cluster_half_mass_reference_fraction": 0.28328549348642085,
+      "height_only_high_concentration_error_px_p05_p50_p95_p99": [
+        0.0003190559163707459,
+        0.004417401533732266,
+        0.19755327605299147,
+        4.5088058022608895
+      ],
+      "height_and_cell_center_error_px_p05_p50_p95_p99": [
+        0.9871641022858402,
+        3.174854449926084,
+        16.767292097233543,
+        24.31383422144674
+      ],
+      "upper_height_multiview_fraction": 0.36363636363636365
+    },
+    {
+      "index": 809,
+      "foreground_reference_points": 33408,
+      "height_supported_points_fraction": 0.8367676817531218,
+      "ground_error_px_p05_p50_p95_p99": [
+        1.0670054705559031,
+        3.5600112283167933,
+        6.213935063566513,
+        9.04567472460683
+      ],
+      "height_only_error_px_p05_p50_p95_p99": [
+        0.0005425438695686555,
+        0.017203173367001525,
+        2.7706750682286483,
+        5.4393584881168895
+      ],
+      "upper_cluster_half_mass_reference_fraction": 0.5675586685823755,
+      "height_only_high_concentration_error_px_p05_p50_p95_p99": [
+        0.0003412571226386616,
+        0.005379352174009474,
+        0.15278562922430017,
+        0.8805516541454769
+      ],
+      "height_and_cell_center_error_px_p05_p50_p95_p99": [
+        0.7487670005893637,
+        2.378896740499932,
+        3.908472342604541,
+        6.37479303082705
+      ],
+      "upper_height_multiview_fraction": 0.9508553203827196
+    },
+    {
+      "index": 970,
+      "foreground_reference_points": 37207,
+      "height_supported_points_fraction": 0.8301488833746898,
+      "ground_error_px_p05_p50_p95_p99": [
+        0.734697603406003,
+        2.6723390179601774,
+        7.029549072049213,
+        10.45508436200833
+      ],
+      "height_only_error_px_p05_p50_p95_p99": [
+        0.0007620677864424609,
+        0.02210653131449473,
+        2.0095934989287754,
+        5.552255928037885
+      ],
+      "upper_cluster_half_mass_reference_fraction": 0.5779020076867256,
+      "height_only_high_concentration_error_px_p05_p50_p95_p99": [
+        0.0004888734940476936,
+        0.007996891112734973,
+        0.2953942234231333,
+        1.2881152151866888
+      ],
+      "height_and_cell_center_error_px_p05_p50_p95_p99": [
+        0.7462812359936186,
+        2.366217039123864,
+        3.8231268958409332,
+        6.686669320393881
+      ],
+      "upper_height_multiview_fraction": 0.9489411082100377
+    },
+    {
+      "index": 1112,
+      "foreground_reference_points": 30260,
+      "height_supported_points_fraction": 0.8294446432317051,
+      "ground_error_px_p05_p50_p95_p99": [
+        1.1249042820938766,
+        3.263599991560444,
+        8.363622362117432,
+        11.492001178218413
+      ],
+      "height_only_error_px_p05_p50_p95_p99": [
+        0.0006945037537058232,
+        0.019943459139259226,
+        2.275900896884304,
+        4.979386230503136
+      ],
+      "upper_cluster_half_mass_reference_fraction": 0.6060475875743556,
+      "height_only_high_concentration_error_px_p05_p50_p95_p99": [
+        0.0004932709293364555,
+        0.007564794737614366,
+        0.20148428811681326,
+        0.9727694733197398
+      ],
+      "height_and_cell_center_error_px_p05_p50_p95_p99": [
+        0.7360522196388856,
+        2.3790917540727734,
+        3.8483946490748315,
+        6.309182704481708
+      ],
+      "upper_height_multiview_fraction": 0.9428247947919615
+    },
+    {
+      "index": 1256,
+      "foreground_reference_points": 38839,
+      "height_supported_points_fraction": 0.8359513710791083,
+      "ground_error_px_p05_p50_p95_p99": [
+        0.7428916290857526,
+        3.4819870492536773,
+        10.451105493542396,
+        11.891312541025291
+      ],
+      "height_only_error_px_p05_p50_p95_p99": [
+        0.0006654355144180136,
+        0.025000789657652307,
+        3.6184923957591124,
+        7.332779018017618
+      ],
+      "upper_cluster_half_mass_reference_fraction": 0.5446844666443523,
+      "height_only_high_concentration_error_px_p05_p50_p95_p99": [
+        0.00039295794056449606,
+        0.007079676575335472,
+        0.21323887104105074,
+        0.8863242603351297
+      ],
+      "height_and_cell_center_error_px_p05_p50_p95_p99": [
+        0.7541600404111654,
+        2.396152810176071,
+        4.262965804354041,
+        7.236623459354831
+      ],
+      "upper_height_multiview_fraction": 0.9207738369415016
+    }
+  ]
+}

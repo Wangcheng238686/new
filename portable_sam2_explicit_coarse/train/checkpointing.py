@@ -114,8 +114,11 @@ def _load_checkpoint(
     scheduler: Optional[optim.lr_scheduler._LRScheduler] = None,
     scaler: Optional[Any] = None,
     expected_architecture: Optional[Dict] = None,
+    snapshot_validator=None,
 ) -> Dict:
     ckpt = torch.load(str(path), map_location="cpu", weights_only=False)
+    if snapshot_validator is not None:
+        snapshot_validator(ckpt)
     if expected_architecture is not None:
         from rsprompter.architecture_contract import assert_checkpoint_architecture
 

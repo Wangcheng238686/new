@@ -36,9 +36,9 @@ def _parse_args() -> argparse.Namespace:
 
     parser.add_argument(
         "--dataset",
-        choices=("whu", "vhr10"),
+        choices=("whu", "vhr10", "ue"),
         default="whu",
-        help="Dataset protocol: WHU-1024 (1 class) or NWPU VHR-10 (10 classes).",
+        help="Dataset protocol: WHU-1024, NWPU VHR-10, or paired UE satellite/UAV RGB-D.",
     )
     parser.add_argument(
         "--train-subset-ratio",
@@ -55,6 +55,13 @@ def _parse_args() -> argparse.Namespace:
 
 
     parser.add_argument("--freeze-bn", action="store_true")
+    parser.add_argument("--ue-manifest", default=None)
+    parser.add_argument("--ue-satellite-root", default=None)
+    parser.add_argument("--ue-uav-root", default=None)
+    parser.add_argument("--ue-geometry-cache", default="/tmp/uav_dual_geometry")
+    parser.add_argument("--uav-lr-mult", type=float, default=0.1)
+    parser.add_argument("--cvt-lr-mult", type=float, default=1.0)
+    parser.add_argument("--fusion-lr-mult", type=float, default=1.0)
 
     parser.add_argument("--image-size", type=int, nargs=2, default=[512, 512])
     parser.add_argument(
@@ -117,6 +124,7 @@ def _parse_args() -> argparse.Namespace:
 
     # --- AMP / EMA (训练基础设施) ---
     parser.add_argument("--amp", type=int, default=0, help="Enable AMP mixed precision when set to 1")
+    parser.add_argument("--amp-init-scale",type=float,default=65536.)
     parser.add_argument("--ema-enabled", type=int, default=1, help="Enable EMA shadow weights")
     parser.add_argument("--ema-decay", type=float, default=0.999, help="EMA decay in (0,1)")
     parser.add_argument("--ema-update-every", type=int, default=1, help="Update EMA every N optimizer steps")

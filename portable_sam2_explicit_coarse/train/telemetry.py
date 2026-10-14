@@ -104,7 +104,7 @@ def _log_trainable_state(model: torch.nn.Module):
 # aux loss, GATE/DENSE dense channel, TAIL margin tail, BOX/JITTER prompt
 # box bus, CONTEXT coarse head).
 _PROMPT_TELEMETRY_PREFIXES = {"SP", "COARSE", "JITTER", "GATE", "DENSE",
-                              "TAIL", "CONTEXT", "BOX"}
+                              "TAIL", "CONTEXT", "BOX", "UAV"}
 
 
 def _log_forward_telemetry(

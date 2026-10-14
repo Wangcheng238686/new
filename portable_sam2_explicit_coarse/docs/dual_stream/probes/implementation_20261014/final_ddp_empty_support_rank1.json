@@ -1,0 +1,19 @@
+{
+  "loss": 3.99576473236084,
+  "rank": 1,
+  "coarse_roi_level_counts": {
+    "0": 63,
+    "1": 1,
+    "2": 0,
+    "3": 0
+  },
+  "changed_parameter_tensors": {
+    "uav_backbone.": 110,
+    "uav_bev.": 59,
+    "fpn_fusion.": 16,
+    "sam_fusion.": 8
+  },
+  "training_peak_allocated_mib": 5512.9765625,
+  "training_peak_reserved_mib": 6142.0,
+  "ddp_parameters_identical": true
+}
