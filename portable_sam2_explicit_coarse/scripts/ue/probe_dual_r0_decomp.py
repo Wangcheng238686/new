@@ -22,7 +22,7 @@ from probe_surfacebev_p1_h0 import cameras, sha_file, model_input, digest_predic
 from probe_dual_p4_harvest_anchor import build, H0, EXPECTED_B0_PATH, EXPECTED_B0_SHA256
 
 SEED = 20261014
-VERSION = 'DUAL-R0-DECOMP-v2'
+VERSION = 'DUAL-R0-DECOMP-v3'
 S_HEADLINE = 0.7
 S_SENS = (0.9, 0.5)
 Z_PLANES = (0.0, 2200.0)  # cm; 0 headline, 22m sensitivity
@@ -220,7 +220,7 @@ def coco_eval_area(gt_dict, pred_list, iou_type, area_rng):
     e.params.areaRng = area_rng
     e.evaluate(); e.accumulate(); e.summarize()
     return {'AP': float(e.stats[0]), 'AP50': float(e.stats[1]), 'AP75': float(e.stats[2]),
-            'AP_by_range': {f'r{k}': float(e.stats[0 + 3 * (k + 1)]) for k in range(len(area_rng) - 1)}}
+            'AP_by_range': {f'r{k}': float(e.stats[3 + k]) for k in range(len(area_rng) - 1)}}
 
 
 def run_analyze(out):
@@ -339,11 +339,12 @@ def run_analyze(out):
     d_mask = results['oracle_mask']['segm']['AP'] - results['baseline']['segm']['AP']
     qrate = (q_cnt / n_un) if n_un else 0.0
     qrate_area = (q_area / areas_un.sum()) if n_un and areas_un.sum() else 0.0
-    if d_bbox >= 2.0 and qrate >= 0.5:
+    pt = 0.01  # gates are preregistered in AP percentage points
+    if d_bbox >= 2.0 * pt and qrate >= 0.5:
         decision = 'R0_ROUTE2'
-    elif d_bbox < 1.0 and d_mask >= 2.0:
+    elif d_bbox < 1.0 * pt and d_mask >= 2.0 * pt:
         decision = 'R0_ROUTE1'
-    elif d_bbox < 1.0 and d_resc < 1.0 and d_mask < 1.0:
+    elif d_bbox < 1.0 * pt and d_resc < 1.0 * pt and d_mask < 1.0 * pt:
         decision = 'R0_RETHINK'
     else:
         decision = 'R0_MIXED'
@@ -364,8 +365,8 @@ def run_analyze(out):
                           'miss_bbox_AP_small_tercile': d_miss['bbox']['AP_by_range']['r1'] - results['baseline']['bbox']['AP_by_range']['r1'],
                           'miss_segm_AP_small_tercile': d_miss['segm']['AP_by_range']['r1'] - results['baseline']['segm']['AP_by_range']['r1']},
                'results': results,
-               'gates': {'miss_bbox_ge_2': d_bbox >= 2.0, 'qrate_ge_05': qrate >= 0.5,
-                         'mask_ge_2': d_mask >= 2.0, 'rescore_lt_1': d_resc < 1.0}}
+               'gates': {'miss_bbox_ge_2pt': d_bbox >= 2.0 * pt, 'qrate_ge_05': qrate >= 0.5,
+                         'mask_ge_2pt': d_mask >= 2.0 * pt, 'rescore_lt_1pt': d_resc < 1.0 * pt}}
     name = 'summary.json' if full else 'smoke_summary.json'
     tmp = out / (name + '.tmp'); tmp.write_text(json.dumps(summary, indent=1)); os.replace(tmp, out / name)
     with open(out / ('per_scene.jsonl' if full else 'smoke_per_scene.jsonl'), 'w') as f:
