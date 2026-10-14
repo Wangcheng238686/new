@@ -12,19 +12,7 @@ STABLE_MIN=20
 
 log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
 
-log "chain started; waiting for repair pipeline completion + ${STABLE_MIN}min write silence"
-
-while true; do
-  if pgrep -f 'repair_and_audit_sate' > /dev/null 2>&1; then
-    sleep 120; continue
-  fi
-  RECENT=$(find "$PROD" -type f -newermt "-${STABLE_MIN} minutes" 2>/dev/null | head -1)
-  if [[ -n "$RECENT" ]]; then
-    sleep 120; continue
-  fi
-  break
-done
-log "production set quiet (no repair process, no writes in ${STABLE_MIN}min)"
+log "chain started; PI decision: freeze CURRENT state immediately (producer still writing; per-file consistent copy)"
 
 mkdir -p "$SNAP_ROOT"
 if [[ ! -f "${SNAP}_manifest.json" ]]; then
