@@ -45,7 +45,7 @@ echo "EXP7_CONTRACT baseline_id=$BASELINE_ID model_fingerprint=$ARCH_FINGERPRINT
 if [[ "${B0_PREFLIGHT_ONLY:-0}" == "1" ]]; then
   exit 0
 fi
-exec /data2/wangcheng/envs/cvt2/bin/torchrun --standalone --nnodes=1 --nproc_per_node=4 train/train_rsprompter_fusion.py \
+exec /data2/wangcheng/envs/cvt2/bin/python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=4 train/train_rsprompter_fusion.py \
   --config configs/ue_whu_a3sgm_512.py --run-tag "$RUN_TAG" --data-root "$UE_DATA_ROOT" \
   --dataset ue_raw_surface --raw-split-manifest surfbev_b0_split_v2.json --image-size 512 512 \
   --batch-size 1 --grad-accum-steps 2 --epochs 100 --early-stopping-patience 0 \
