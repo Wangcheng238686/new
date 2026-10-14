@@ -43,6 +43,7 @@ class UEEpochTelemetry:
     """Per-key finite-forward means; no per-forward host transfer or collectives."""
 
     def __init__(self, device):
+        device = torch.device(device)
         self.device = device
         self.totals = {}
         self.attempts = 0

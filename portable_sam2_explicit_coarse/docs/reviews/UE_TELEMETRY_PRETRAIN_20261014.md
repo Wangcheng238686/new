@@ -29,3 +29,15 @@
 ## 判读限制
 
 零支持样本的supported均值0仍进入epoch均值；AMP尝试计数不同于成功Adam更新数；训练allocator峰值不同于全机显存。机制遥测不能替代A/D AP100和伴随bbox指标。
+
+## 启动接入修正
+
+首次四卡正式入口在第一批前报错：trainer device为字符串，epoch遥测读取device.type失败。未有参数更新；队列停止，single未启动。修正UEEpochTelemetry入口用torch.device统一输入类型，smoke改用字符串复验；保留失败日志 `/tmp/ue_uav_experiments/20261014_ad_seed42/failed_dual_pid737627/train_EXP-0004_pid737627.log`。原提交/tag不改写，重启提交以追加retry1 tag记录。
+
+### 修正后独立复核全文
+
+**VERDICT：PASS。** 构造器先执行`torch.device(device)`，再访问`.type`及显存API，修复了trainer传入字符串导致的启动错误，也继续支持已有`torch.device`输入。CPU smoke改为字符串，覆盖此次触发条件。
+
+修正未改变forward、梯度、DDP集合通信或统计分母。保留失败日志并使用新commit与retry tag重启，符合实验追踪要求。本次仅完成只读复核，未重新执行测试。
+
+主代理实际两rank字符串device复验PASS，跨rank有限值/缺失字段分母与AMP尝试计数通过。

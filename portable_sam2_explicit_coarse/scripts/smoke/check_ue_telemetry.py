@@ -30,7 +30,7 @@ def check_epoch():
     if distributed:
         dist.init_process_group("gloo")
     rank = dist.get_rank() if distributed else 0
-    monitor = UEEpochTelemetry(torch.device("cpu"))
+    monitor = UEEpochTelemetry("cpu")
     monitor.accumulate(
         TelemetryModel({"UAV/common": rank + 1.0, "UAV/nonfinite": float("nan")})
     )
