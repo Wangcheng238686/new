@@ -59,3 +59,7 @@ NPROC_PER_NODE=4 CUDA_VISIBLE_DEVICES=0,1,2,3 bash scripts/ue_rgbd.sh dual train
 
 既有实现审核见 [独立审核记录](INDEPENDENT_IMPLEMENTATION_REVIEW.md)。
 此次遥测补充的完整独立判决与校验记录落盘至 `docs/reviews/UE_TELEMETRY_PRETRAIN_20261014.md`。
+
+## 标签失败后重启（EXP-0006/0007）
+
+EXP-0004在第一轮中因1016 clean掩码ID68未登记而失败，single未启动；日志保留于 `/tmp/ue_uav_experiments/20261014_ad_seed42/failed_dual_pid739553/`。完整779样本标签审计仅该点失败。新清单排除该点，627 train/153 val，hash `495841b2174242c87661e6b40dba2ddcca13d64b13798116efc8c933c679ca59`，原清单另存不覆盖。两臂从generic重新初始化；仍4卡×1×2、80轮，每rank156、每epoch78尝试（总6240），训练DistributedSampler(drop_last=True)每epoch丢弃3个样本，不补齐；shuffle使被丢弃样本随epoch变化。主指标、seed、LR及选模规则不变。新运行EXP-0006（dual）/EXP-0007（single），新commit/tag独立登记，不复用原实验数字。

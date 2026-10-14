@@ -117,3 +117,5 @@ CUDA_VISIBLE_DEVICES=0 /data/wangcheng/envs/cvt2/bin/python \
 ### 启动前遥测补齐（2026-10-14）
 
 每50 mini-batch的rank0快照之外，新增每epoch `[UE-EPOCH]` JSON：UAV各字段的跨卡有限forward均值与分母、AMP跳步率、最大rank训练峰值显存。三个入口新增覆盖区域内gate/confidence/effective_gain，梯度按真实UAV/CVT/FPN/SAM独立clip分区打印。定义与不能证明的内容见 [字段字典](../DEBUG_FIELDS.md#4-ue-uav-双流遥测2026-10-14)。首轮注册与日志/检查点路径见 [首轮训练协议](UE_AD_TRAINING_20261014.md)。
+
+启动修正：旧清单中1016标签存在未映射ID68；当前重启排除该点（627 train/153 val），两臂同一新清单，保留审计。`prepare_ue_rgbd.py`现与dataset共享标签映射验证，防止上层status误报进入清单。4rank训练sampler drop_last丢弃3个样本，每rank156、每轮78尝试，两臂同预算。

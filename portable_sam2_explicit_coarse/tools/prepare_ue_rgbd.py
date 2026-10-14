@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT))
 from rsprompter.uav.cameras import load_camera
 from rsprompter.uav.contract import PAYLOAD_SCHEMA
 from data.ue_geometry_cache import YAWS, read_depth, validate_depth_floor
+from data.ue_labels import validate_instance_map
 
 
 def footprint(camera, floor_m):
@@ -54,6 +55,7 @@ def inventory(satellite_root, uav_root, floor_m):
             ]
             if not all(path.is_file() for path in required):
                 raise ValueError("incomplete paired files")
+            validate_instance_map(sat)
             views = [uav / "oblique" / f"view_yaw_{yaw:03d}" for yaw in YAWS]
             cameras = [load_camera(view) for view in views]
             for view, camera in zip(views, cameras):

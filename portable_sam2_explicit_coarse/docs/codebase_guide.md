@@ -136,3 +136,5 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 `scripts/smoke/check_ue_telemetry.py`：两rank缺失/非有限字段分母与AMP+零支持融合输出/梯度不变性检查。
 
 - 2026-10-14 启动修正：UEEpochTelemetry将字符串或torch.device输入统一为torch.device，覆盖实际trainer接口，重训前同一分母smoke复验。
+
+- 2026-10-14：`data/ue_labels.py`统一clean掩码/local-global映射校验；dataset与prepare共用，prepare在几何计算前排除标签合同失败样本。未知ID仍拒绝，不转成背景。

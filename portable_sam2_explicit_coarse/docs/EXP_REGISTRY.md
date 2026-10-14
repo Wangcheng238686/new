@@ -8,3 +8,6 @@
 
 | EXP-0004 | UE RGB-D dual，seed42，4×1×2，80epoch，generic联合初始化 | 见 tag exp/EXP-0004 | 2026-10-14 | registered：首轮开发训练；状态见训练协议的run_state.json |
 | EXP-0005 | UE satellite single，EXP-0004同清单/预算配对，从generic独立初始化 | 见 tag exp/EXP-0005 | 2026-10-14 | queued：同进程队列，dual成功后启动 |
+
+| EXP-0006 | UE dual修复标签清单，627/153，旧EXP-0004首轮因1016未映射ID失败 | 见 tag exp/EXP-0006 | 2026-10-14 | registered：新清单从generic重启 |
+| EXP-0007 | UE single与EXP-0006同清单预算配对 | 见 tag exp/EXP-0007 | 2026-10-14 | queued：dual成功完成后启动；旧EXP-0005未启动 |

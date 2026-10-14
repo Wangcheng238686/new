@@ -14,6 +14,7 @@ from rsprompter.uav.contract import PAYLOAD_SCHEMA, geometry_config, geometry_si
 from .loader import rtmdet_collate_fn, _seed_worker
 from .ue_geometry_cache import YAWS, geometry_for_sample
 from .ue_payload import tensor_payload
+from .ue_labels import validate_instance_map
 
 
 class UERGBDInstanceDataset(Dataset):
@@ -88,16 +89,7 @@ class UERGBDInstanceDataset(Dataset):
             or ids.shape != (size, size)
         ):
             raise ValueError(f"Invalid satellite RGB/instance map: {satellite}")
-        instances = json.loads((satellite / "instances.json").read_text())["instances"]
-        mapping = {
-            int(item["local_instance_id"]): int(item["global_instance_id"])
-            for item in instances
-        }
-        if len(mapping) != len(instances) or any(key <= 0 for key in mapping):
-            raise ValueError(f"Invalid local/global instance mapping: {satellite}")
-        visible_ids = set(map(int, np.unique(ids))) - {0}
-        if visible_ids - mapping.keys():
-            raise ValueError(f"Visible instance IDs have no mapping: {satellite}")
+        validate_instance_map(satellite, ids)
         masks, boxes = [], []
         for local_id in np.unique(ids):
             if local_id == 0:
