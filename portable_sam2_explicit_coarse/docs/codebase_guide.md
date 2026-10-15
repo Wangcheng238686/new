@@ -158,3 +158,5 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 - 2026-10-15：新增`scripts/analysis/ue_p2_transfer_probe.py`（借原P3融合器向P2原生/供体/上采样/压力对照，固定框只看mask，非P2精确不变验收）、`ue_p2_transfer_summary.py`（条件AP/GTIoU配对bootstrap和官方层级分组）。153图五组完成，三支持门未过，不追加完整检测；见`docs/dual_stream/UE_P2_TRANSFER_20261015.md`。未训练/改默认入口/新增生产遥测。
 
 - 2026-10-15：新增`scripts/analysis/ue_p2_prompt_trace.py`（只读捕获RoI/coarse/点/dense/SAM/tail，精确回放上一轮四组GT框终点）、`ue_p2_prompt_trace_summary.py`（阶段到达、粗形状/点质量、密集框支持与配对图像区间）。153图完成，变化可达但质量未稳定改善，见`docs/dual_stream/UE_P2_PROMPT_TRACE_20261015.md`；无训练/生产接线/遥测变更。
+
+- 2026-10-15：新增`scripts/analysis/ue_gt_prompt_oracle_probe.py`（固定GT64±4替换粗形状，原点/dense路径联合生成，视觉/框/权重不变）、`ue_gt_prompt_oracle_summary.py`（独立CPU身份/SHA/不变量/质量及seed1760配对图像区间）。153图完成，最终GT框IoU+.019063，提示条件改善空间门通过，见`docs/dual_stream/UE_GT_PROMPT_ORACLE_20261015.md`；主代理审计脚本与轻量数值归档在`docs/dual_stream/probes/results_20261015/GT_PROMPT_ORACLE_ROOT_AUDIT.py`及对应JSON。未训练/改生产接线/遥测。

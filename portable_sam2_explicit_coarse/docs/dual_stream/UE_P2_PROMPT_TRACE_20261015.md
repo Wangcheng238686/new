@@ -99,3 +99,7 @@ forward hooks只读、返回None，按生产chunk32拼接，捕获RoI、coarse64
 原始工件：`/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/p2_prompt_trace/`。本轮脚本精确副本归档于`scripts/analysis/ue_p2_prompt_trace.py`及`ue_p2_prompt_trace_summary.py`，保留运行时固定路径（含/tmp helper）；它们是实验快照，不是通用生产入口。重放需恢复原数据/检查点与已归档ue_rgb_content_probe helper到预期路径。
 
 源代码SHA和数据/供体/预注册SHA见manifest；完整逐GT标量/点记录与日志留在原工件目录，轻量汇总、manifest、不变量与审核入git。没有新增生产遥测字段，DEBUG_FIELDS定义保持不变。
+
+## 后续GT提示条件诊断
+
+[GT64联合形状提示冻结替换](UE_GT_PROMPT_ORACLE_20261015.md)已完成：在原视觉/框/权重下最终GT框IoU+.019063，提示条件改善门通过。表明该提示构造可被当前SAM利用；尚不证明UAV能生成它，也不改变本轮P2迁移质量基本持平的事实。

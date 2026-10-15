@@ -1,0 +1,60 @@
+{
+  "verdict": "PASS",
+  "delta": 0.019062876898730412,
+  "ci": [
+    0.017034467005178647,
+    0.021300709487178385
+  ],
+  "building_equal_delta": 0.020008995920482,
+  "gate_passed": true,
+  "groups": {
+    "all": {
+      "n": 4496,
+      "mean": 0.019062876898730412,
+      "improved_gt002": 2624,
+      "worse_gt002": 1335
+    },
+    "small": {
+      "n": 881,
+      "mean": 0.013708273923461791,
+      "improved_gt002": 485,
+      "worse_gt002": 243
+    },
+    "medium": {
+      "n": 2510,
+      "mean": 0.01555639987525897,
+      "improved_gt002": 1495,
+      "worse_gt002": 710
+    },
+    "large": {
+      "n": 1105,
+      "mean": 0.03129696065449962,
+      "improved_gt002": 644,
+      "worse_gt002": 382
+    },
+    "P2": {
+      "n": 3657,
+      "mean": 0.015899706085564014,
+      "improved_gt002": 2115,
+      "worse_gt002": 1058
+    },
+    "nonP2": {
+      "n": 839,
+      "mean": 0.03285038066958802,
+      "improved_gt002": 509,
+      "worse_gt002": 277
+    },
+    "dense_support_zero": {
+      "n": 197,
+      "mean": 0.00956340967093728,
+      "improved_gt002": 75,
+      "worse_gt002": 50
+    },
+    "dense_support_nonzero": {
+      "n": 4299,
+      "mean": 0.01949818628320942,
+      "improved_gt002": 2549,
+      "worse_gt002": 1285
+    }
+  }
+}
