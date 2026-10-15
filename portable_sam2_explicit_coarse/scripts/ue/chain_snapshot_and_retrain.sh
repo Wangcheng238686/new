@@ -7,7 +7,7 @@ PROD=/data1/wangcheng/dataset/Satellite_StrictHeroCoverage_TwoPass_Production_v7
 SNAP_ROOT=/data2/wangcheng/dataset_frozen
 SNAP=$SNAP_ROOT/ue_raw_hero_uav_pairset_20261014_frozen
 PKG=/home/wangcheng/project/new/.worktrees/dual-stream-dev/portable_sam2_explicit_coarse
-LOG=/data1/wangcheng/checkpoint/surfbev_b0/launcher_logs/CHAIN-snapshot-retrain.log
+LOG=/data2/wangcheng/checkpoint/surfbev_b0/launcher_logs/CHAIN-snapshot-retrain.log
 STABLE_MIN=20
 
 log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
@@ -29,7 +29,7 @@ log "snapshot frozen: $(sha256sum "${SNAP}_manifest.json" | cut -c1-16)"
 cd "$PKG"
 log "launching EXP-0009 (single-stream snapshot arm)"
 B0_EXP_ID=EXP-0009 bash scripts/ue/run_exp0009_ddp4.sh \
-  > /data1/wangcheng/checkpoint/surfbev_b0/launcher_logs/EXP-0009-ddp4.log 2>&1
+  > /data2/wangcheng/checkpoint/surfbev_b0/launcher_logs/EXP-0009-ddp4.log 2>&1
 RC9=$?
 log "EXP-0009 exited rc=$RC9"
 if [[ $RC9 -ne 0 || ! -f /data1/wangcheng/checkpoint/surfbev_b0/surfacebev_snap_512_sealed_ddp4_s44_EXP-0009/last_model_epoch100.pth ]]; then
@@ -38,7 +38,7 @@ fi
 
 log "launching EXP-0010 (dual-stream snapshot arm)"
 B0_EXP_ID=EXP-0010 bash scripts/ue/run_exp0010_ddp4.sh \
-  > /data1/wangcheng/checkpoint/surfbev_b0/launcher_logs/EXP-0010-ddp4.log 2>&1
+  > /data2/wangcheng/checkpoint/surfbev_b0/launcher_logs/EXP-0010-ddp4.log 2>&1
 RC10=$?
 log "EXP-0010 exited rc=$RC10"
 if [[ ! -f /data2/wangcheng/checkpoint/surfbev_b0/surfacebev_snap_512dual_sealed_ddp4_s44_EXP-0010/last_model_epoch100.pth ]]; then
