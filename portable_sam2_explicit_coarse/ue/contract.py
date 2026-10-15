@@ -13,8 +13,9 @@ BASELINE_ID = "ue-whu-a3sgm-v1"
 BASELINE_CONFIGS = {
     "ue-whu-a3sgm-v1": "configs/a3sgm_whu1024.py",
     "ue-whu-a3sgm-512-v1": "configs/ue_whu_a3sgm_512.py",
-    # experimental dual-stream ARM identity (EXP-0008), not a control baseline
+    # experimental dual-stream ARM identities, not control baselines
     "ue-whu-a3sgm-512-dual-v1": "configs/ue_whu_a3sgm_512_dual.py",
+    "ue-whu-a3sgm-512-dualv2-v1": "configs/ue_whu_a3sgm_512_dualv2.py",
 }
 ROOT = Path(__file__).resolve().parents[1]
 

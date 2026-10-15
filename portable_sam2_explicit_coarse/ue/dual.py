@@ -78,7 +78,7 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
     """
 
     def __init__(self, uav_encoder=None, bev_channels=262, sat_channels=512,
-                 target_level=1, uav_eval_off=False, **kwargs):
+                 target_level=1, target_levels=None, uav_eval_off=False, **kwargs):
         super().__init__(**kwargs)
         if uav_encoder is None:
             raise ValueError("dual arm requires a uav_encoder config")
@@ -90,9 +90,15 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         # gate=0 with DEFAULT proj init: step 0 equals the single-stream
         # forward (0 x finite = 0) while dL/dgate = upstream . proj(bev) != 0
         # (a doubly-zero init is an unescapable saddle - launch-review finding).
-        self.proj = nn.Conv2d(bev_channels, sat_channels, 1)
-        self.gate = nn.Parameter(torch.zeros(sat_channels))
-        self.target_level = int(target_level)
+        levels = [int(t) for t in (target_levels or [target_level])]
+        self.target_levels = levels
+        if len(levels) == 1:
+            # keep EXP-0010's attribute names so its checkpoints strict-load
+            self.proj = nn.Conv2d(bev_channels, sat_channels, 1)
+            self.gate = nn.Parameter(torch.zeros(sat_channels))
+        else:
+            self.proj = nn.ModuleDict({str(t): nn.Conv2d(bev_channels, sat_channels, 1) for t in levels})
+            self.gate = nn.ParameterDict({str(t): nn.Parameter(torch.zeros(sat_channels)) for t in levels})
         self.uav_eval_off = bool(uav_eval_off) or os.environ.get('UE_UAV_EVAL_OFF') == '1'
         self.register_buffer('height_edges', torch.tensor([-1e9, 1e9]))
         self.telemetry = {'gate_mean': [], 'gate_std': [], 'gate_absmax': [],
@@ -137,21 +143,26 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         uav = self._uav_pending
         self._uav_pending = None
         if uav is not None and not (not self.training and self.uav_eval_off):
-            base = x[self.target_level]
             with torch.autocast('cuda', enabled=False):
-                bev, coverage = self._uav_bev(uav, tuple(base.shape[-2:]))
-                delta = self.proj(bev.unsqueeze(0).float())
-                delta = (self.gate.view(1, -1, 1, 1) * delta).to(base.dtype)
-            x[self.target_level] = base + delta
-            if self.training:
-                g = self.gate.detach()
-                self.telemetry['gate_mean'].append(float(g.mean()))
-                self.telemetry['gate_std'].append(float(g.std()))
-                self.telemetry['gate_absmax'].append(float(g.abs().max()))
-                self.telemetry['delta_p3_ratio'].append(
-                    float(delta.detach().float().norm()
-                          / base.detach().float().norm().clamp_min(1e-6)))
-                self.telemetry['bev_coverage'].append(coverage)
+                for t in self.target_levels:
+                    base = x[t]
+                    single = len(self.target_levels) == 1
+                    proj_t = self.proj if single else self.proj[str(t)]
+                    gate_t = self.gate if single else self.gate[str(t)]
+                    bev, coverage = self._uav_bev(uav, tuple(base.shape[-2:]))
+                    delta = proj_t(bev.unsqueeze(0).float())
+                    delta = (gate_t.view(1, -1, 1, 1) * delta).to(base.dtype)
+                    x[t] = base + delta
+                    if self.training:
+                        g = gate_t.detach()
+                        tag = '' if single else f'_L{t}'
+                        self.telemetry.setdefault('gate_mean' + tag, []).append(float(g.mean()))
+                        self.telemetry.setdefault('gate_std' + tag, []).append(float(g.std()))
+                        self.telemetry.setdefault('gate_absmax' + tag, []).append(float(g.abs().max()))
+                        self.telemetry.setdefault('delta_p3_ratio' + tag, []).append(
+                            float(delta.detach().float().norm()
+                                  / base.detach().float().norm().clamp_min(1e-6)))
+                        self.telemetry.setdefault('bev_coverage' + tag, []).append(coverage)
         return tuple(x), *out[1:]
 
     def loss(self, batch_inputs, batch_data_samples, **kwargs):
