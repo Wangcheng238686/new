@@ -1,0 +1,17 @@
+{
+  "training_artifacts_complete": true,
+  "dual": {
+    "epoch": 80,
+    "adam_steps": 6240,
+    "exit_code_recorded": 0
+  },
+  "single": {
+    "epoch": 80,
+    "adam_steps": 6240,
+    "normal_exit_code_not_verified": true,
+    "tcpstore_warnings_since_epoch67": true
+  },
+  "queue_state_stale": true,
+  "processes_no_longer_present": true,
+  "source_state_preserved": true
+}

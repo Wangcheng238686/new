@@ -1,0 +1,42 @@
+{
+  "images": 153,
+  "resamples": 500,
+  "seed": 44,
+  "points": {
+    "single_best": 0.5830004380708173,
+    "dual_correct": 0.5849579676428078,
+    "dual_zero": 0.5096568595968619,
+    "dual_shift": 0.5133018408774852
+  },
+  "checks": {
+    "full_point_exact": true,
+    "duplicate_image_direct_exact": true
+  },
+  "limitations": "Exploratory validation image bootstrap; does not cover model selection, seed variance, or spatial dependence between nearby views.",
+  "comparisons": {
+    "dual_correct minus single_best": {
+      "delta": 0.0019575295719905794,
+      "percentile95": [
+        -0.0020105488731953333,
+        0.0049375246284030895
+      ],
+      "bootstrap_fraction_positive": 0.796
+    },
+    "dual_correct minus dual_zero": {
+      "delta": 0.07530110804594592,
+      "percentile95": [
+        0.06639452173955086,
+        0.08056578310662595
+      ],
+      "bootstrap_fraction_positive": 1.0
+    },
+    "dual_correct minus dual_shift": {
+      "delta": 0.07165612676532263,
+      "percentile95": [
+        0.0637382695852554,
+        0.07532520718548928
+      ],
+      "bootstrap_fraction_positive": 1.0
+    }
+  }
+}
