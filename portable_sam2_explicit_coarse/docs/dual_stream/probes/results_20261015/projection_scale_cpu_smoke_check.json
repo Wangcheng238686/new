@@ -1,0 +1,112 @@
+{
+  "verdict": "PASS",
+  "gpu_used": false,
+  "fit": false,
+  "records": [
+    {
+      "image_id": 7,
+      "split": "train",
+      "n": 34,
+      "zero_cells": 589,
+      "zero_rois": 0,
+      "cache_bytes": 5901186,
+      "native_reconstruction_roi_delta": {
+        "rms": 0.008505837991833687,
+        "mae": 0.003708428703248501,
+        "relative_l2": 0.016175581142306328
+      }
+    },
+    {
+      "image_id": 15,
+      "split": "train",
+      "n": 58,
+      "zero_cells": 2348,
+      "zero_rois": 0,
+      "cache_bytes": 9434492,
+      "native_reconstruction_roi_delta": {
+        "rms": 0.008619437925517559,
+        "mae": 0.00367977237328887,
+        "relative_l2": 0.01714515872299671
+      }
+    },
+    {
+      "image_id": 25,
+      "split": "train",
+      "n": 103,
+      "zero_cells": 1663,
+      "zero_rois": 5,
+      "cache_bytes": 17985979,
+      "native_reconstruction_roi_delta": {
+        "rms": 0.0073299952782690525,
+        "mae": 0.0031545176170766354,
+        "relative_l2": 0.01789853535592556
+      }
+    },
+    {
+      "image_id": 287,
+      "split": "validation",
+      "n": 13,
+      "zero_cells": 1077,
+      "zero_rois": 1,
+      "cache_bytes": 1935260,
+      "native_reconstruction_roi_delta": {
+        "rms": 0.016048023477196693,
+        "mae": 0.008023170754313469,
+        "relative_l2": 0.03178926557302475
+      }
+    },
+    {
+      "image_id": 288,
+      "split": "validation",
+      "n": 14,
+      "zero_cells": 1349,
+      "zero_rois": 1,
+      "cache_bytes": 1988231,
+      "native_reconstruction_roi_delta": {
+        "rms": 0.017529329285025597,
+        "mae": 0.008773854933679104,
+        "relative_l2": 0.03516858443617821
+      }
+    },
+    {
+      "image_id": 295,
+      "split": "validation",
+      "n": 18,
+      "zero_cells": 2463,
+      "zero_rois": 2,
+      "cache_bytes": 2204290,
+      "native_reconstruction_roi_delta": {
+        "rms": 0.017753012478351593,
+        "mae": 0.00851085502654314,
+        "relative_l2": 0.03663337603211403
+      }
+    }
+  ],
+  "cache_bytes": 39449438,
+  "actual_roi_flags": {
+    "coarse_hw": [
+      32,
+      32
+    ],
+    "fine_hw": [
+      128,
+      128
+    ],
+    "coarse_reconstruction": "bilinear128 alignfalse",
+    "roi_output": [
+      16,
+      16
+    ],
+    "roi_spatial_scale": 0.25,
+    "shift_fine_cells": [
+      32,
+      32
+    ],
+    "common_support": "fineD>0 & roll(fineD>0,32,32)",
+    "shared_geometry": "oldp/xy/wh +finequality/finecoverage timesI",
+    "roi_aligned": true,
+    "roi_sampling_ratio": 0
+  },
+  "source_manifest_sha256": "272503c7bd4d81e4d9c4f7d873bf9969b2918c1e2cfae5f0c6080532ed76fed9",
+  "script_sha256": "0fb903aec1ee85293fcff2123098f74cf9880f127609aa23b4fa714f29ea0bff"
+}

@@ -1,0 +1,25 @@
+{
+  "status": "STATIC_ONLY_NO_RUNTIME_RESULT",
+  "files": {
+    "/tmp/ue_projection_scale_probe/PREREGISTRATION_DRAFT.md": {
+      "sha256": "b1af2122f9ec55700a817719014338a7867baf39d8e4137fcfa2d9fcc2becda7",
+      "bytes": 7722
+    },
+    "/tmp/ue_projection_scale_probe/PREREGISTRATION.md": {
+      "sha256": "b1af2122f9ec55700a817719014338a7867baf39d8e4137fcfa2d9fcc2becda7",
+      "bytes": 7722
+    },
+    "/tmp/ue_projection_scale_probe/extract_projection_scale.py": {
+      "sha256": "2784b6db64957b0c6952f982909aee22db1723ac9f97b6da0eae0ed5fe3403db",
+      "bytes": 10213
+    },
+    "/tmp/ue_projection_scale_fit.py": {
+      "sha256": "e11a48b2ac1ab9fec0680da4db2b5b3446d8c8a458a4b76470ea6fce1f5cb231",
+      "bytes": 11364
+    },
+    "/tmp/ue_projection_scale_summary.py": {
+      "sha256": "73e46d5a844d4e679b052514f9f5874f226822232e214f080bca27f9ad06def4",
+      "bytes": 5681
+    }
+  }
+}

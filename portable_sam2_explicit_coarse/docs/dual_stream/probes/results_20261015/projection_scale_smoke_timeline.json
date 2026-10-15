@@ -1,0 +1,21 @@
+{
+  "smoke_exit_code": 0,
+  "pid": 1157297,
+  "term_command_result": "No such process; probe naturally exited before attempted TERM; no signal delivered",
+  "manifest_finished_local": "2026-10-15T22:17:23.956101",
+  "extraction_timer_started_local_estimate": "2026-10-15T22:16:47.808464",
+  "timer_seconds": 36.14763691800181,
+  "peak_cuda_allocated_bytes": 2286659584,
+  "wrapper_sha256": "ada3cc6867c19d62f816a32f52a1b7114c3fccc328206a8c97f9486288d4717b",
+  "allocator_fraction": 0.2,
+  "initialization_timing_limit": "No stage timestamps in original wrapper; exact init duration unavailable. PID at03:05 already emitted3train and finished naturally shortly thereafter. Estimated model extraction timer began before180s wall init cutoff.",
+  "snapshot_files": [
+    "process_after_term.txt",
+    "io_pressure_at_stop.txt",
+    "memory_at_stop.txt",
+    "gpu_before_smoke.txt",
+    "gpu_after_smoke.txt"
+  ],
+  "full_authorized": false,
+  "fit_authorized": false
+}

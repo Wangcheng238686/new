@@ -1,0 +1,36 @@
+{
+  "validation": "PASS",
+  "scope": "Root smoke schema/REUSE byte equality/zero support check only, no effectiveness",
+  "records": [
+    {
+      "image_id": 7,
+      "n": 34,
+      "zero": 0
+    },
+    {
+      "image_id": 15,
+      "n": 58,
+      "zero": 0
+    },
+    {
+      "image_id": 25,
+      "n": 103,
+      "zero": 5
+    },
+    {
+      "image_id": 287,
+      "n": 13,
+      "zero": 1
+    },
+    {
+      "image_id": 288,
+      "n": 14,
+      "zero": 1
+    },
+    {
+      "image_id": 295,
+      "n": 18,
+      "zero": 2
+    }
+  ]
+}
