@@ -1,0 +1,15 @@
+{
+  "scope": "Read-only audit provenance, no numerical result changes",
+  "files": {
+    "/tmp/ue_readout_capacity_audit.py": "68831c37925044c97e7bdb24dbe0ab545a2e27922d405a7b73c8a52a7539b960",
+    "/tmp/ue_readout_capacity_audit.json": "6230f7982a912f4f28c138b7bdc8fa22d955fee722329431be7a2e2c95e98393",
+    "/tmp/ue_readout_capacity_audit.md": "efadf0ff1e44f714e3ca621a3385ca5a0197356d9f6b87704b7d96ec755573b8",
+    "/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/uav_complementarity/features/run_manifest.json": "bca7fff358c3ec4d59ebd367bd3de5c7f03d5259777e722b794750f347a36fb6",
+    "/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/uav_complementarity/ridge_models.json": "cc02918e72691009148356de29e6792ffdb8da9a775aef693d8ee7d2af94d849",
+    "/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/uav_complementarity/val_predictions.npz": "4655c9ceebe976ab5c6d5d29a0d067b77d114e3cd025460fbae47f082b01af19",
+    "/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/uav_complementarity/PREREGISTRATION.md": "c35a0c4f731490df72b1b06fa7c0471248f8c55c39399899ae901c87eac49c01",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/scripts/analysis/ue_complementarity_probe.py": "897a178a5d8c54bc1d607c0bdb660485419eaf38fa17b5ff84a2b4128b0758c2",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/scripts/analysis/ue_complementarity_summary.py": "d0a66c880898709a6accbcf78487733519efa8ffe4415d74727850ac87ef3cf0",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/detection/anchor_roi_head.py": "6b258b33b697f75e62fad0e7c71b0c920b713a9f0d3e71e72a550f891f2ec15a"
+  }
+}

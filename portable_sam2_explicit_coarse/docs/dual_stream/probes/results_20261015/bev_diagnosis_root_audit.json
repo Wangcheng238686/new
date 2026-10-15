@@ -1,0 +1,102 @@
+{
+  "train": {
+    "sat32": {
+      "within_roi_fraction": 0.6830811852284038,
+      "correlation_rank": 16.72180259184843
+    },
+    "uav32": {
+      "within_roi_fraction": 0.2297074985984795,
+      "correlation_rank": 12.343575691792251
+    },
+    "ridge_dof": 68.98543854770779
+  },
+  "validation": {
+    "sat32": {
+      "within_roi_fraction": 0.6955663049559202,
+      "correlation_rank": 15.689318213353955
+    },
+    "uav32": {
+      "within_roi_fraction": 0.41684785692505,
+      "correlation_rank": 12.43325531035862
+    }
+  },
+  "verdict": "PASS",
+  "strata": {
+    "SG": {
+      "all": {
+        "n": 4496,
+        "mean": 0.00035961298060502696
+      },
+      "coverage_zero": {
+        "n": 184,
+        "mean": 7.665437929257558e-05
+      },
+      "coarse_error_high": {
+        "n": 2349,
+        "mean": 0.0006744854733753091
+      },
+      "oracle_nonpositive": {
+        "n": 1772,
+        "mean": 0.00010360006653125266
+      },
+      "oracle_large": {
+        "n": 897,
+        "mean": 0.0012928473045000135
+      }
+    },
+    "SX": {
+      "all": {
+        "n": 4496,
+        "mean": 0.00018677521720668542
+      },
+      "coverage_zero": {
+        "n": 184,
+        "mean": -0.0002851669472058405
+      },
+      "coarse_error_high": {
+        "n": 2349,
+        "mean": 0.0003471904356182239
+      },
+      "oracle_nonpositive": {
+        "n": 1772,
+        "mean": 6.899722526211842e-06
+      },
+      "oracle_large": {
+        "n": 897,
+        "mean": 0.0007611887432899642
+      }
+    },
+    "S64": {
+      "all": {
+        "n": 4496,
+        "mean": 0.00034164403360576877
+      },
+      "coverage_zero": {
+        "n": 184,
+        "mean": 8.970331877050697e-05
+      },
+      "coarse_error_high": {
+        "n": 2349,
+        "mean": 0.0006538632892456032
+      },
+      "oracle_nonpositive": {
+        "n": 1772,
+        "mean": 8.795110017043207e-05
+      },
+      "oracle_large": {
+        "n": 897,
+        "mean": 0.00140566163958547
+      }
+    }
+  },
+  "train_quantile_cuts": {
+    "coverage": [
+      0.8088975350062052,
+      0.9518431027730306
+    ],
+    "coarse_error": [
+      0.006212837217996516,
+      0.014709552129109698
+    ]
+  }
+}

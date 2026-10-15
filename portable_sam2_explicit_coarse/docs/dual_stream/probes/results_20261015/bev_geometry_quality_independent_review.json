@@ -1,0 +1,136 @@
+{
+  "complete": true,
+  "groups": {
+    "valid_height_all": {
+      "z_change_px": {
+        "n": 431153,
+        "p50": 0.0145866141111934,
+        "p90": 4.386001924437372,
+        "p99": 16.67458947008116,
+        "gt4_fraction": 0.10876185484039308
+      },
+      "xy_center_px": {
+        "n": 431153,
+        "p50": 2.3392587480303417,
+        "p90": 3.297465262516321,
+        "p99": 3.9268833005807005,
+        "gt4_fraction": 0.00647102072814059
+      },
+      "total_px": {
+        "n": 431153,
+        "p50": 2.5159387890554616,
+        "p90": 5.047309663440331,
+        "p99": 16.90617691096441,
+        "gt4_fraction": 0.13607002618560002
+      }
+    },
+    "valid_height_satframe": {
+      "z_change_px": {
+        "n": 384632,
+        "p50": 0.012723154990556432,
+        "p90": 3.8878795696873407,
+        "p99": 15.61077937097555,
+        "gt4_fraction": 0.09731639593169575
+      },
+      "xy_center_px": {
+        "n": 384632,
+        "p50": 2.324371684335717,
+        "p90": 3.2716268827098904,
+        "p99": 3.882596953695927,
+        "gt4_fraction": 0.004425008839618129
+      },
+      "total_px": {
+        "n": 384632,
+        "p50": 2.486660395762409,
+        "p90": 4.643127428286096,
+        "p99": 15.932935633753873,
+        "gt4_fraction": 0.12400944279207138
+      }
+    },
+    "selected_bin_all": {
+      "z_change_px": {
+        "n": 263776,
+        "p50": 0.004166479812989924,
+        "p90": 0.02835022730921847,
+        "p99": 0.0992522268317278,
+        "gt4_fraction": 0.0
+      },
+      "xy_center_px": {
+        "n": 263776,
+        "p50": 2.311002094385568,
+        "p90": 3.2462961374417296,
+        "p99": 3.854401723210827,
+        "gt4_fraction": 0.0037342290428242146
+      },
+      "total_px": {
+        "n": 263776,
+        "p50": 2.3106053586633335,
+        "p90": 3.246561351496233,
+        "p99": 3.854616160093777,
+        "gt4_fraction": 0.003722855756399369
+      }
+    },
+    "selected_bin_satframe": {
+      "z_change_px": {
+        "n": 237784,
+        "p50": 0.0040432519744861145,
+        "p90": 0.024751199085261504,
+        "p99": 0.08262935167034328,
+        "gt4_fraction": 0.0
+      },
+      "xy_center_px": {
+        "n": 237784,
+        "p50": 2.2989524100154375,
+        "p90": 3.2263997995064537,
+        "p99": 3.8243250763508376,
+        "gt4_fraction": 0.002573764424856172
+      },
+      "total_px": {
+        "n": 237784,
+        "p50": 2.2986732317979564,
+        "p90": 3.225892281083143,
+        "p99": 3.824157505648544,
+        "gt4_fraction": 0.0025989974094135855
+      }
+    }
+  },
+  "source_checks": true,
+  "records": [
+    {
+      "image_id": 1218,
+      "all_saved_displacement_stats_exact": true,
+      "cache_sha_and_candidate_stats_exact": true,
+      "common_equals_height_valid": true
+    },
+    {
+      "image_id": 950,
+      "all_saved_displacement_stats_exact": true,
+      "cache_sha_and_candidate_stats_exact": true,
+      "common_equals_height_valid": true
+    },
+    {
+      "image_id": 306,
+      "all_saved_displacement_stats_exact": true,
+      "cache_sha_and_candidate_stats_exact": true,
+      "common_equals_height_valid": true
+    },
+    {
+      "image_id": 1216,
+      "all_saved_displacement_stats_exact": true,
+      "cache_sha_and_candidate_stats_exact": true,
+      "common_equals_height_valid": true
+    },
+    {
+      "image_id": 948,
+      "all_saved_displacement_stats_exact": true,
+      "cache_sha_and_candidate_stats_exact": true,
+      "common_equals_height_valid": true
+    },
+    {
+      "image_id": 505,
+      "all_saved_displacement_stats_exact": true,
+      "cache_sha_and_candidate_stats_exact": true,
+      "common_equals_height_valid": true
+    }
+  ]
+}

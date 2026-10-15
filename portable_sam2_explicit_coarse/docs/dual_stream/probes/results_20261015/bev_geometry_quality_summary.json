@@ -1,0 +1,1479 @@
+{
+  "complete": true,
+  "manifest_sha256": "495841b2174242c87661e6b40dba2ddcca13d64b13798116efc8c933c679ca59",
+  "log_config": {
+    "side_m": 512.0,
+    "grid_size": 128,
+    "image_size": 512,
+    "source_stride": 8,
+    "radius_m": 8.0,
+    "candidates_per_view": 8,
+    "depth_sample_stride": 4,
+    "height_bin_m": 2.0,
+    "min_height_points": 3,
+    "collision_band_m": 2.0
+  },
+  "selected_ids": [
+    1218,
+    950,
+    306,
+    1216,
+    948,
+    505
+  ],
+  "script_sha256": "31ad8c650e5257a01933695aa33a83b9e7004515a4393b6bd2678a19533bb571",
+  "protocol_sha256": "4243efee5ac07c11279a6d13919dd2f49262993bb232f8499a66ee023cd05693",
+  "source_sha256": {
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/geometry.py": "81d9a5283cec68a429a488bb22bf3205f707f1d5bd0f2c1772c644aa2448db22",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/surfaces.py": "048ea3e64e19f4878fb77e4729d240e736516b8325f666f89b840440efd13fec",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/cameras.py": "9c4e2fa2ed60a14869e242d585eaaaf306623f344a37549b1399f3856b533393",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/candidates.py": "8185d2701765c82c161da9f166f5b1d77c7f4c42ff1cdc79ca746cd815a68c9e",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/footprints.py": "58765b3e96c58b7a180d19583888b51e0715bd2b27013026cae9d6fa445b85be",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/contract.py": "c0c563a13ef90bc4b5b2f8a274873cfd3eec804af159ae449051ab4e0431732d"
+  },
+  "gt_used": false,
+  "gpu_used": false,
+  "records": [
+    {
+      "image_id": 1218,
+      "source_files_sha256": {
+        "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/satellite/camera_intrinsics.json": "21d653aca49942cdd5734e69543652e78b23058c3a0533e37e3363e8352844d5",
+        "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/satellite/camera_extrinsics.json": "967fc2401b424bc50571795f1fa48c9d8d1006b7c731e222b763ab69dbdcd586",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_000/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_000/camera_extrinsics.json": "d213297d86560c0bc74aa4bce78973a6bb362de0c7f012f5b6dfda8d68fdc8b1",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_072/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_072/camera_extrinsics.json": "67a77be383e66ab091d144c60797b283315f3a22c6d714b0d95fe40c5d846da4",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_144/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_144/camera_extrinsics.json": "d540f88141c2f7f9d32c22e55fd56e545d9daa978ab5367108a6a6715a5a51cb",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_216/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_216/camera_extrinsics.json": "f03b723fc6ef1f85978ab0c459796f5bdecefe982323c563f9c9dd012572db23",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_288/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_288/camera_extrinsics.json": "b224167b999bd2b4a2ca3714bfa4e32ab044542983d82bc56dfe52e92e21dcdd",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_000/depth_camera_z.0000.exr": "9b64da936591f384ea43d1b3b291cc257969cc7a880c1b69b4db661d32f46735",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_072/depth_camera_z.0000.exr": "25a085e847d0cf01e4bc27b0b1326b73dd45115ab8002d28c4787a8b07cbfaf2",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_144/depth_camera_z.0000.exr": "212558ef0754e070129f41801b8e45ba717ccb8068c12108900b9ad23d745a8d",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_216/depth_camera_z.0000.exr": "5845e67f1d4f02e8fdacf2b4a715c82b5444e596e615a8085ff8690061b63074",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001218_pt_gx_8_gy_-12_s_013_gx_8_gy_-12_s_13_X_173750_Y_-230000/oblique/view_yaw_288/depth_camera_z.0000.exr": "1321084302c84caa2e158e3069c8aecf8334f660d60b0f3d71f30165b93f0bf3"
+      },
+      "cache": {
+        "path": "/tmp/uav_dual_dev_data/cache/a869b7b1bf171c51fa4ef6ed59a14a0966953dd39945f58b1cf197735d158da4.npz",
+        "exists": true,
+        "recomputed": true,
+        "sha256": "1863096f61cb5925880aad83718780b8ecb7f2270db707614ff6739279ad8f32",
+        "all_arrays_exact": true
+      },
+      "production_stats": {
+        "projected_pixels": 223926,
+        "rejected_fraction": 0.004202984651125674,
+        "candidate_fraction": 0.828857421875,
+        "observation_fraction": 0.7274169921875,
+        "height_fraction": 0.4810791015625
+      },
+      "point_counts": {
+        "raw_valid": 81920,
+        "in_bev": 79523,
+        "outside_bev": 2397,
+        "valid_height": 71924,
+        "invalid_height": 7599,
+        "selected_bin": 59769,
+        "valid_height_candidate": 71924,
+        "valid_height_projected": 67740
+      },
+      "cell_counts": {
+        "observed": 11918,
+        "height_valid": 7882,
+        "eligible": 7882,
+        "projected": 6960,
+        "multibin_observed": 1821,
+        "multiqualifyingbin_observed": 606
+      },
+      "displacement": {
+        "valid_height_all": {
+          "n": 71924,
+          "z_change_px": {
+            "n": 71924,
+            "mean": 0.2792645194293637,
+            "p50": 0.004700031782977366,
+            "p90": 0.6047298578370165,
+            "p99": 5.466302137582677,
+            "gt1_fraction": 0.07906957343862966,
+            "gt4_fraction": 0.0189366553584339,
+            "gt8_fraction": 0.002238473944719426
+          },
+          "xy_center_px": {
+            "n": 71924,
+            "mean": 2.175214760367439,
+            "p50": 2.259458822400082,
+            "p90": 3.175494569065979,
+            "p99": 3.7566113622472987,
+            "gt1_fraction": 0.9032868027362215,
+            "gt4_fraction": 0.0005978532895834492,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 71924,
+            "mean": 2.303364203428226,
+            "p50": 2.3075826027615003,
+            "p90": 3.3448246829580013,
+            "p99": 6.164739680451683,
+            "gt1_fraction": 0.9070407652522107,
+            "gt4_fraction": 0.030448807074133808,
+            "gt8_fraction": 0.0035871197375006952
+          }
+        },
+        "valid_height_satframe": {
+          "n": 67454,
+          "z_change_px": {
+            "n": 67454,
+            "mean": 0.26815976778723644,
+            "p50": 0.004558139339036191,
+            "p90": 0.5745016651962894,
+            "p99": 5.254371724486905,
+            "gt1_fraction": 0.07750466984908234,
+            "gt4_fraction": 0.017597177335665785,
+            "gt8_fraction": 0.0016603907848311442
+          },
+          "xy_center_px": {
+            "n": 67454,
+            "mean": 2.1688386233642807,
+            "p50": 2.2540400626031936,
+            "p90": 3.1698369298576754,
+            "p99": 3.7526277142398903,
+            "gt1_fraction": 0.9016663207519199,
+            "gt4_fraction": 0.0005188721202597326,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 67454,
+            "mean": 2.2895305531436922,
+            "p50": 2.3011044480203076,
+            "p90": 3.333679685997042,
+            "p99": 5.964956227967677,
+            "gt1_fraction": 0.9054318498532333,
+            "gt4_fraction": 0.028819640050997717,
+            "gt8_fraction": 0.0030835828861149822
+          }
+        },
+        "selected_bin_all": {
+          "n": 59769,
+          "z_change_px": {
+            "n": 59769,
+            "mean": 0.0072759346147395765,
+            "p50": 0.0035084715005970013,
+            "p90": 0.015077945915298424,
+            "p99": 0.06829858772049607,
+            "gt1_fraction": 0.0,
+            "gt4_fraction": 0.0,
+            "gt8_fraction": 0.0
+          },
+          "xy_center_px": {
+            "n": 59769,
+            "mean": 2.1825503133884427,
+            "p50": 2.2699958711851482,
+            "p90": 3.182052874449604,
+            "p99": 3.753668241985354,
+            "gt1_fraction": 0.9051849621041008,
+            "gt4_fraction": 0.00038481487058508593,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 59769,
+            "mean": 2.1826177341974775,
+            "p50": 2.270307708234594,
+            "p90": 3.182326981262806,
+            "p99": 3.7542367290030643,
+            "gt1_fraction": 0.9052184242667604,
+            "gt4_fraction": 0.0004182770332446586,
+            "gt8_fraction": 0.0
+          }
+        },
+        "selected_bin_satframe": {
+          "n": 56024,
+          "z_change_px": {
+            "n": 56024,
+            "mean": 0.006905971468736317,
+            "p50": 0.0034109248419967094,
+            "p90": 0.014338783901168382,
+            "p99": 0.0637695463357902,
+            "gt1_fraction": 0.0,
+            "gt4_fraction": 0.0,
+            "gt8_fraction": 0.0
+          },
+          "xy_center_px": {
+            "n": 56024,
+            "mean": 2.1767781974540785,
+            "p50": 2.2653004879693786,
+            "p90": 3.177094301696148,
+            "p99": 3.750336599550273,
+            "gt1_fraction": 0.9037198343567042,
+            "gt4_fraction": 0.0003212908753391404,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 56024,
+            "mean": 2.1768164733909314,
+            "p50": 2.265420649076547,
+            "p90": 3.1779918433773684,
+            "p99": 3.7511343350927335,
+            "gt1_fraction": 0.9037376838497787,
+            "gt4_fraction": 0.0003569898614879337,
+            "gt8_fraction": 0.0
+          }
+        }
+      },
+      "candidates_eligible": {
+        "cells": 7882,
+        "candidate_votes": 212363,
+        "abs_dz_m": {
+          "n": 212363,
+          "mean": 1.4205464124679565,
+          "p50": 0.06559467315673828,
+          "p90": 2.600160980224613,
+          "p99": 27.917519721984885,
+          "gt1_fraction": 0.13811728031719273,
+          "gt4_fraction": 0.08282045365718134,
+          "gt8_fraction": 0.04743293323224856
+        },
+        "xy_m": {
+          "n": 212363,
+          "mean": 4.748822212219238,
+          "p50": 4.908496856689453,
+          "p90": 7.314601039886475,
+          "p99": 7.926862783432007,
+          "gt1_fraction": 0.968205384177093,
+          "gt4_fraction": 0.6447639183850294,
+          "gt8_fraction": 0.0
+        },
+        "height_compatible_fraction": 0.8891379383414248,
+        "xy_cell_core_fraction": 0.134481995451185
+      },
+      "candidates_projected": {
+        "cells": 6960,
+        "candidate_votes": 202164,
+        "abs_dz_m": {
+          "n": 202164,
+          "mean": 1.3854200839996338,
+          "p50": 0.06523656845092773,
+          "p90": 2.5432129859924326,
+          "p99": 27.45542858123777,
+          "gt1_fraction": 0.13721533012801487,
+          "gt4_fraction": 0.08205714172651907,
+          "gt8_fraction": 0.04686788943629924
+        },
+        "xy_m": {
+          "n": 202164,
+          "mean": 4.749348163604736,
+          "p50": 4.909072637557983,
+          "p90": 7.310533523559571,
+          "p99": 7.926154513359069,
+          "gt1_fraction": 0.9682238182861439,
+          "gt4_fraction": 0.6454165924694802,
+          "gt8_fraction": 0.0
+        },
+        "height_compatible_fraction": 0.8898518034862785,
+        "xy_cell_core_fraction": 0.13403474406917157
+      }
+    },
+    {
+      "image_id": 950,
+      "source_files_sha256": {
+        "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/satellite/camera_intrinsics.json": "21d653aca49942cdd5734e69543652e78b23058c3a0533e37e3363e8352844d5",
+        "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/satellite/camera_extrinsics.json": "321bf76a76eff62d7e0c53f8b368e3ab044031d53ba7d6ff2931a33b928e83ea",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_000/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_000/camera_extrinsics.json": "c769d8d23f699adbf1a92ef4efabc4ad95591874329b49aa3f5d526c7a6f5e9b",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_072/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_072/camera_extrinsics.json": "dcf505e2d3662844654476782e0cd8ac78b91be8c3da41f88dab553d92ab937e",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_144/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_144/camera_extrinsics.json": "670ad00ebc50f3d21e97b59dbb241b085afb696d7796a23591535ac9c28ba7cb",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_216/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_216/camera_extrinsics.json": "cf03b7207069c00f51ced1e05345a18c1c56d265dbed2f5a8c356c64bf071534",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_288/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_288/camera_extrinsics.json": "a83b0f4ac39925952c25aa44be83ad5a17d7ca361a4dd56c2b5643166cbd8b05",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_000/depth_camera_z.0000.exr": "ba1e7e890d413649914885f9858ebff87904fd859ce92933c46ba787343f5554",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_072/depth_camera_z.0000.exr": "7d57e09489b869fe89d029bb870f48505edaf3a39a703f59105a53b6928ec0e2",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_144/depth_camera_z.0000.exr": "fd1029c64139004d5585e8d10129363829f181e7efa988ed23e02223d7e1f016",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_216/depth_camera_z.0000.exr": "5a906064358ac10eb6c842410688b0d8cc5959e6f3a35fab6185d22f7373ed74",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000950_pt_gx_7_gy_-14_s_011_gx_7_gy_-14_s_11_X_146250_Y_-270000/oblique/view_yaw_288/depth_camera_z.0000.exr": "1edb85f25ea9130a4da3fcb65496e8826068a116091bde405793fc334f4475d9"
+      },
+      "cache": {
+        "path": "/tmp/uav_dual_dev_data/cache/5e7de0c37265f792612a65e14fd43e6a8e48b61712a57f21e1feb28fce888b20.npz",
+        "exists": true,
+        "recomputed": true,
+        "sha256": "18e25c561b6e85591e2c4e1d0413fbe2d0e9cad0c66b178c06ab16799cf33d57",
+        "all_arrays_exact": true
+      },
+      "production_stats": {
+        "projected_pixels": 154420,
+        "rejected_fraction": 0.05073582570549817,
+        "candidate_fraction": 0.63458251953125,
+        "observation_fraction": 0.50982666015625,
+        "height_fraction": 0.31494140625
+      },
+      "point_counts": {
+        "raw_valid": 81920,
+        "in_bev": 80674,
+        "outside_bev": 1246,
+        "valid_height": 72425,
+        "invalid_height": 8249,
+        "selected_bin": 30755,
+        "valid_height_candidate": 72425,
+        "valid_height_projected": 63906
+      },
+      "cell_counts": {
+        "observed": 8353,
+        "height_valid": 5160,
+        "eligible": 5160,
+        "projected": 4623,
+        "multibin_observed": 2966,
+        "multiqualifyingbin_observed": 984
+      },
+      "displacement": {
+        "valid_height_all": {
+          "n": 72425,
+          "z_change_px": {
+            "n": 72425,
+            "mean": 2.4111502399740545,
+            "p50": 0.29751167911931214,
+            "p90": 7.488164044097345,
+            "p99": 22.076380081484967,
+            "gt1_fraction": 0.3893406972730411,
+            "gt4_fraction": 0.20209872281670693,
+            "gt8_fraction": 0.09139109423541594
+          },
+          "xy_center_px": {
+            "n": 72425,
+            "mean": 2.3044807216706515,
+            "p50": 2.4207203043695618,
+            "p90": 3.3559308783115127,
+            "p99": 3.962407547517861,
+            "gt1_fraction": 0.9063583016914049,
+            "gt4_fraction": 0.007911632723507075,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 72425,
+            "mean": 3.902300326194803,
+            "p50": 2.761699486826826,
+            "p90": 7.985942782729598,
+            "p99": 22.45193794203588,
+            "gt1_fraction": 0.932136693130825,
+            "gt4_fraction": 0.23616154642733864,
+            "gt8_fraction": 0.09962029685881947
+          }
+        },
+        "valid_height_satframe": {
+          "n": 64970,
+          "z_change_px": {
+            "n": 64970,
+            "mean": 2.211671330109252,
+            "p50": 0.2728478622879972,
+            "p90": 6.847254402292698,
+            "p99": 20.54334418468619,
+            "gt1_fraction": 0.3784054178851778,
+            "gt4_fraction": 0.18782515006926273,
+            "gt8_fraction": 0.07883638602431892
+          },
+          "xy_center_px": {
+            "n": 64970,
+            "mean": 2.296932230052858,
+            "p50": 2.4101625965637754,
+            "p90": 3.34480538040253,
+            "p99": 3.949639990430823,
+            "gt1_fraction": 0.9066030475604125,
+            "gt4_fraction": 0.007341850084654456,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 64970,
+            "mean": 3.7309775626828303,
+            "p50": 2.7310175484079564,
+            "p90": 7.417559005272991,
+            "p99": 20.944338538762917,
+            "gt1_fraction": 0.9303678620901955,
+            "gt4_fraction": 0.2232414960751116,
+            "gt8_fraction": 0.08785593350777282
+          }
+        },
+        "selected_bin_all": {
+          "n": 30755,
+          "z_change_px": {
+            "n": 30755,
+            "mean": 0.015587796204268442,
+            "p50": 0.005527225328218602,
+            "p90": 0.045054440070570995,
+            "p99": 0.1144843010967055,
+            "gt1_fraction": 0.0,
+            "gt4_fraction": 0.0,
+            "gt8_fraction": 0.0
+          },
+          "xy_center_px": {
+            "n": 30755,
+            "mean": 2.2753241886473283,
+            "p50": 2.365792253247235,
+            "p90": 3.3178852432109496,
+            "p99": 3.945574627806629,
+            "gt1_fraction": 0.9123069419606568,
+            "gt4_fraction": 0.007055763290521867,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 30755,
+            "mean": 2.27488116684383,
+            "p50": 2.3648019595357757,
+            "p90": 3.3193297338371153,
+            "p99": 3.9434812612397323,
+            "gt1_fraction": 0.9125670622662981,
+            "gt4_fraction": 0.007088278328727036,
+            "gt8_fraction": 0.0
+          }
+        },
+        "selected_bin_satframe": {
+          "n": 27636,
+          "z_change_px": {
+            "n": 27636,
+            "mean": 0.014625559013118461,
+            "p50": 0.005376111898218388,
+            "p90": 0.04243717574466578,
+            "p99": 0.10418391744891563,
+            "gt1_fraction": 0.0,
+            "gt4_fraction": 0.0,
+            "gt8_fraction": 0.0
+          },
+          "xy_center_px": {
+            "n": 27636,
+            "mean": 2.267919418495291,
+            "p50": 2.3620891549248855,
+            "p90": 3.300331992492345,
+            "p99": 3.9173071908851704,
+            "gt1_fraction": 0.9114560717904183,
+            "gt4_fraction": 0.005934288609060646,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 27636,
+            "mean": 2.2675317126612846,
+            "p50": 2.361159906318239,
+            "p90": 3.3001313822261427,
+            "p99": 3.9153470753720825,
+            "gt1_fraction": 0.9115646258503401,
+            "gt4_fraction": 0.006006657982341873,
+            "gt8_fraction": 0.0
+          }
+        }
+      },
+      "candidates_eligible": {
+        "cells": 5160,
+        "candidate_votes": 103985,
+        "abs_dz_m": {
+          "n": 103985,
+          "mean": 9.534900665283203,
+          "p50": 0.5651168823242188,
+          "p90": 25.52480964660645,
+          "p99": 128.57786071777375,
+          "gt1_fraction": 0.42833100928018464,
+          "gt4_fraction": 0.2848006924075588,
+          "gt8_fraction": 0.21215559936529307
+        },
+        "xy_m": {
+          "n": 103985,
+          "mean": 4.131022930145264,
+          "p50": 4.077791213989258,
+          "p90": 6.91452627182007,
+          "p99": 7.875430126190186,
+          "gt1_fraction": 0.9492042121459826,
+          "gt4_fraction": 0.5134105880655864,
+          "gt8_fraction": 0.0
+        },
+        "height_compatible_fraction": 0.6480453911621868,
+        "xy_cell_core_fraction": 0.20760686637495793
+      },
+      "candidates_projected": {
+        "cells": 4623,
+        "candidate_votes": 98319,
+        "abs_dz_m": {
+          "n": 98319,
+          "mean": 9.353083610534668,
+          "p50": 0.5941314697265625,
+          "p90": 24.785235595703117,
+          "p99": 124.99690322875945,
+          "gt1_fraction": 0.43381238621222756,
+          "gt4_fraction": 0.2865875364883695,
+          "gt8_fraction": 0.21182070606902023
+        },
+        "xy_m": {
+          "n": 98319,
+          "mean": 4.1604323387146,
+          "p50": 4.121000289916992,
+          "p90": 6.928560447692871,
+          "p99": 7.876173524856567,
+          "gt1_fraction": 0.9502232528809285,
+          "gt4_fraction": 0.520387717531708,
+          "gt8_fraction": 0.0
+        },
+        "height_compatible_fraction": 0.6440362493516004,
+        "xy_cell_core_fraction": 0.2034093105096675
+      }
+    },
+    {
+      "image_id": 306,
+      "source_files_sha256": {
+        "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/satellite/camera_intrinsics.json": "21d653aca49942cdd5734e69543652e78b23058c3a0533e37e3363e8352844d5",
+        "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/satellite/camera_extrinsics.json": "d1c34ec2097f96359846a679df92ffab0273d7da94a9234c4cf1d4158eed0ecb",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_000/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_000/camera_extrinsics.json": "a500aabd1ab5b2a416abb92b8ef2979830963b90819aa3dd04194ba0a327614e",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_072/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_072/camera_extrinsics.json": "e262fc643faaf7f4046b46954243a6784bbc497ca17283cdd32948b12ff69ded",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_144/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_144/camera_extrinsics.json": "04305a44476695679dd815796c42933280e7afd3aa548925b3d9318b782e6a00",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_216/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_216/camera_extrinsics.json": "0a7ecacf767b80b89af159b841a14543c162f0d6ef02a24d26e8bbcfaaa03caf",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_288/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_288/camera_extrinsics.json": "32d45a435a8528fe0076cfd661d3700cf5e35445e845f3ed899000648ad947c4",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_000/depth_camera_z.0000.exr": "cc2b77a75d7b6f36f8d8725dccd8259df5da8a84f9443ffe000e6a7c4879d53f",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_072/depth_camera_z.0000.exr": "c6efa1a7711d1ed18e37bc15f8d379bf15e6e3996f0148c03f19de0693a527f8",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_144/depth_camera_z.0000.exr": "6c36365a2dd9e05e0a2520a62585e1f172a5d82d4d6cf0535dfb9f1cbc9ea40e",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_216/depth_camera_z.0000.exr": "92f763ae0314c19d8ae8d6c0ed59d210b8bd0ed05535d04f59e9593a495483f4",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000306_pt_gx_5_gy_-17_s_005_gx_5_gy_-17_s_5_X_117500_Y_-333750/oblique/view_yaw_288/depth_camera_z.0000.exr": "bf979836ba6c317ec81f6f1ce40e893ead0342ab82dcd3163b1d02591e6c2c0f"
+      },
+      "cache": {
+        "path": "/tmp/uav_dual_dev_data/cache/ed3cba8e0de8381a4720bd6172137da5b702fb7a50d21bdb46f1ddccb9acf526.npz",
+        "exists": true,
+        "recomputed": true,
+        "sha256": "701c841838f9f5b69668410bd1b25850cf8d8acf64d6acc2c803754aa30c7acb",
+        "all_arrays_exact": true
+      },
+      "production_stats": {
+        "projected_pixels": 214285,
+        "rejected_fraction": 0.01172358284465913,
+        "candidate_fraction": 0.80926513671875,
+        "observation_fraction": 0.720458984375,
+        "height_fraction": 0.467529296875
+      },
+      "point_counts": {
+        "raw_valid": 81920,
+        "in_bev": 79961,
+        "outside_bev": 1959,
+        "valid_height": 71651,
+        "invalid_height": 8310,
+        "selected_bin": 56867,
+        "valid_height_candidate": 71651,
+        "valid_height_projected": 65099
+      },
+      "cell_counts": {
+        "observed": 11804,
+        "height_valid": 7660,
+        "eligible": 7660,
+        "projected": 6655,
+        "multibin_observed": 1571,
+        "multiqualifyingbin_observed": 486
+      },
+      "displacement": {
+        "valid_height_all": {
+          "n": 71651,
+          "z_change_px": {
+            "n": 71651,
+            "mean": 0.7143010305794764,
+            "p50": 0.00477482298524601,
+            "p90": 2.389936624912836,
+            "p99": 10.849875880063088,
+            "gt1_fraction": 0.13657869394704888,
+            "gt4_fraction": 0.06672621456783576,
+            "gt8_fraction": 0.023363246849311244
+          },
+          "xy_center_px": {
+            "n": 71651,
+            "mean": 2.208541768370917,
+            "p50": 2.29890943783668,
+            "p90": 3.2453992724932887,
+            "p99": 3.825848945994924,
+            "gt1_fraction": 0.9004340483733654,
+            "gt4_fraction": 0.0028192209459742363,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 71651,
+            "mean": 2.672192978193211,
+            "p50": 2.4089210935486154,
+            "p90": 3.7529469655982277,
+            "p99": 11.481493509140305,
+            "gt1_fraction": 0.9136090215070272,
+            "gt4_fraction": 0.08498136801998576,
+            "gt8_fraction": 0.026852381683437773
+          }
+        },
+        "valid_height_satframe": {
+          "n": 65266,
+          "z_change_px": {
+            "n": 65266,
+            "mean": 0.6837069343359241,
+            "p50": 0.004496325551698074,
+            "p90": 2.352480008831924,
+            "p99": 10.454499312510316,
+            "gt1_fraction": 0.13392884503416785,
+            "gt4_fraction": 0.0654858578739313,
+            "gt8_fraction": 0.02146600067416419
+          },
+          "xy_center_px": {
+            "n": 65266,
+            "mean": 2.1944008463757725,
+            "p50": 2.2825061894512273,
+            "p90": 3.229352559952681,
+            "p99": 3.8142657663495267,
+            "gt1_fraction": 0.8986455428553918,
+            "gt4_fraction": 0.0022523212698801827,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 65266,
+            "mean": 2.6357411129123327,
+            "p50": 2.395103497080428,
+            "p90": 3.7286021241050333,
+            "p99": 11.054912795298236,
+            "gt1_fraction": 0.9123739772622805,
+            "gt4_fraction": 0.08293751723715258,
+            "gt8_fraction": 0.02506665032329237
+          }
+        },
+        "selected_bin_all": {
+          "n": 56867,
+          "z_change_px": {
+            "n": 56867,
+            "mean": 0.006833943675556618,
+            "p50": 0.003291841702015766,
+            "p90": 0.01332105725195161,
+            "p99": 0.07004684238310675,
+            "gt1_fraction": 0.0,
+            "gt4_fraction": 0.0,
+            "gt8_fraction": 0.0
+          },
+          "xy_center_px": {
+            "n": 56867,
+            "mean": 2.1910737113457532,
+            "p50": 2.2812584402026226,
+            "p90": 3.1978097547486044,
+            "p99": 3.773809484971652,
+            "gt1_fraction": 0.9036523818734943,
+            "gt4_fraction": 0.0015123006312975891,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 56867,
+            "mean": 2.191024433830411,
+            "p50": 2.2816509563754246,
+            "p90": 3.1974193776581483,
+            "p99": 3.7730776331555074,
+            "gt1_fraction": 0.9036523818734943,
+            "gt4_fraction": 0.0014771308491743893,
+            "gt8_fraction": 0.0
+          }
+        },
+        "selected_bin_satframe": {
+          "n": 52192,
+          "z_change_px": {
+            "n": 52192,
+            "mean": 0.005714434148582155,
+            "p50": 0.0031543184559259703,
+            "p90": 0.011782220898098699,
+            "p99": 0.04956963120423975,
+            "gt1_fraction": 0.0,
+            "gt4_fraction": 0.0,
+            "gt8_fraction": 0.0
+          },
+          "xy_center_px": {
+            "n": 52192,
+            "mean": 2.1781171713296876,
+            "p50": 2.2677046493385524,
+            "p90": 3.1799609174873438,
+            "p99": 3.756950077671077,
+            "gt1_fraction": 0.9022647148988351,
+            "gt4_fraction": 0.0008622011036174127,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 52192,
+            "mean": 2.178168925543773,
+            "p50": 2.2679935758256313,
+            "p90": 3.1815914882643535,
+            "p99": 3.7576023003680783,
+            "gt1_fraction": 0.9022455548743102,
+            "gt4_fraction": 0.000881361128142244,
+            "gt8_fraction": 0.0
+          }
+        }
+      },
+      "candidates_eligible": {
+        "cells": 7660,
+        "candidate_votes": 193711,
+        "abs_dz_m": {
+          "n": 193711,
+          "mean": 2.212738037109375,
+          "p50": 0.0612950325012207,
+          "p90": 1.5112762451171875,
+          "p99": 76.32384185791001,
+          "gt1_fraction": 0.11388614998631982,
+          "gt4_fraction": 0.07517900377366282,
+          "gt8_fraction": 0.04014227379962935
+        },
+        "xy_m": {
+          "n": 193711,
+          "mean": 4.732588291168213,
+          "p50": 4.908395290374756,
+          "p90": 7.292691707611084,
+          "p99": 7.920324802398682,
+          "gt1_fraction": 0.9673998895261497,
+          "gt4_fraction": 0.6417704725080146,
+          "gt8_fraction": 0.0
+        },
+        "height_compatible_fraction": 0.9071813164972562,
+        "xy_cell_core_fraction": 0.13667267217659296
+      },
+      "candidates_projected": {
+        "cells": 6655,
+        "candidate_votes": 183737,
+        "abs_dz_m": {
+          "n": 183737,
+          "mean": 1.8800636529922485,
+          "p50": 0.06042599678039551,
+          "p90": 1.330325984954834,
+          "p99": 62.93992294311507,
+          "gt1_fraction": 0.10856822523498261,
+          "gt4_fraction": 0.07089481160571905,
+          "gt8_fraction": 0.035730419022842436
+        },
+        "xy_m": {
+          "n": 183737,
+          "mean": 4.756365776062012,
+          "p50": 4.9430623054504395,
+          "p90": 7.294777965545654,
+          "p99": 7.91993516921997,
+          "gt1_fraction": 0.9683569449811416,
+          "gt4_fraction": 0.648094831198942,
+          "gt8_fraction": 0.0
+        },
+        "height_compatible_fraction": 0.9118304968514779,
+        "xy_cell_core_fraction": 0.13313594975426832
+      }
+    },
+    {
+      "image_id": 1216,
+      "source_files_sha256": {
+        "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/satellite/camera_intrinsics.json": "21d653aca49942cdd5734e69543652e78b23058c3a0533e37e3363e8352844d5",
+        "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/satellite/camera_extrinsics.json": "35a5b76e11e0d1f611f5046a5c5c3ff289185382c106c42b33616e3d1151a71f",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_000/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_000/camera_extrinsics.json": "709c48ab18ca362e51e610fe94cae22309497df06bac0bdffb5d4be990cadb82",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_072/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_072/camera_extrinsics.json": "ad03e8ad88d559ffaf32b6859d7d83d5bf5ee1df4c1cf4b988d1804550835c04",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_144/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_144/camera_extrinsics.json": "d1738810501136b3a16c68501caa1eb4b3a46df932231b54f661b2c4f5a4f871",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_216/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_216/camera_extrinsics.json": "750d93ff5a97a2c06142e6ac1182ded754ff43bfb13414c3da12814dd8ce57a4",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_288/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_288/camera_extrinsics.json": "d65924734dc2dcde7352bdd2947aeedcd900a30993917879291d0e9195d54837",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_000/depth_camera_z.0000.exr": "698ce65a408e83ad3a0f3521f2ecc292e51ce16ddd97f8c16578f91eabeaac51",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_072/depth_camera_z.0000.exr": "d6cef50b897bd88a7339fca4dd305f143cc60f42b50482a73c72706af556c354",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_144/depth_camera_z.0000.exr": "860f4eeedbb8cac0cc57837b6d28c600ecc085a396500991097bebbf50706e83",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_216/depth_camera_z.0000.exr": "2a9d2210be46df247dd12c009325df0a9b4baae0270d4d4c8b655366816adbb7",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001216_pt_gx_8_gy_-12_s_010_gx_8_gy_-12_s_10_X_162500_Y_-230000/oblique/view_yaw_288/depth_camera_z.0000.exr": "8efe74e03ebbb160839a30250c75aa1fd187313752af754d04d1db56871b31b9"
+      },
+      "cache": {
+        "path": "/tmp/uav_dual_dev_data/cache/f33ec684c864abbfaaa0151cdcb19142ff63a370cc3b009e1780e409b34bbd7c.npz",
+        "exists": true,
+        "recomputed": true,
+        "sha256": "7f4e71a520945c14488f45a8f23855b7624157ad3a6e5e54f560d2e7abfd031c",
+        "all_arrays_exact": true
+      },
+      "production_stats": {
+        "projected_pixels": 211398,
+        "rejected_fraction": 0.01854404499787221,
+        "candidate_fraction": 0.7974853515625,
+        "observation_fraction": 0.6817626953125,
+        "height_fraction": 0.4410400390625
+      },
+      "point_counts": {
+        "raw_valid": 81920,
+        "in_bev": 80315,
+        "outside_bev": 1605,
+        "valid_height": 72116,
+        "invalid_height": 8199,
+        "selected_bin": 48427,
+        "valid_height_candidate": 72116,
+        "valid_height_projected": 68326
+      },
+      "cell_counts": {
+        "observed": 11170,
+        "height_valid": 7226,
+        "eligible": 7226,
+        "projected": 6543,
+        "multibin_observed": 2942,
+        "multiqualifyingbin_observed": 1123
+      },
+      "displacement": {
+        "valid_height_all": {
+          "n": 72116,
+          "z_change_px": {
+            "n": 72116,
+            "mean": 0.5174807165319808,
+            "p50": 0.010306840665134041,
+            "p90": 1.7726243363543692,
+            "p99": 6.175280510805248,
+            "gt1_fraction": 0.15346109046536136,
+            "gt4_fraction": 0.03434744023517666,
+            "gt8_fraction": 0.0032309057629374897
+          },
+          "xy_center_px": {
+            "n": 72116,
+            "mean": 2.1880350594344287,
+            "p50": 2.2762900372301726,
+            "p90": 3.2064643806399484,
+            "p99": 3.7934415909543513,
+            "gt1_fraction": 0.9026429641133729,
+            "gt4_fraction": 0.0013311886405236008,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 72116,
+            "mean": 2.408682968662009,
+            "p50": 2.3591207079327248,
+            "p90": 3.531253765948427,
+            "p99": 7.187891407620724,
+            "gt1_fraction": 0.9100199678296078,
+            "gt4_fraction": 0.0551749958400355,
+            "gt8_fraction": 0.006364745687503466
+          }
+        },
+        "valid_height_satframe": {
+          "n": 68284,
+          "z_change_px": {
+            "n": 68284,
+            "mean": 0.5197408940428048,
+            "p50": 0.010416632570706873,
+            "p90": 1.7789256707725898,
+            "p99": 6.21812247777883,
+            "gt1_fraction": 0.15444320777927478,
+            "gt4_fraction": 0.03426864272743249,
+            "gt8_fraction": 0.0032511276433718
+          },
+          "xy_center_px": {
+            "n": 68284,
+            "mean": 2.1857133078010875,
+            "p50": 2.274405254237272,
+            "p90": 3.204888193668542,
+            "p99": 3.793698219235417,
+            "gt1_fraction": 0.9019243160916174,
+            "gt4_fraction": 0.0013326694394001522,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 68284,
+            "mean": 2.4070403569208865,
+            "p50": 2.35674604479905,
+            "p90": 3.5326278065651544,
+            "p99": 7.215357505328502,
+            "gt1_fraction": 0.9090855837385039,
+            "gt4_fraction": 0.055518130162263486,
+            "gt8_fraction": 0.00644367641028645
+          }
+        },
+        "selected_bin_all": {
+          "n": 48427,
+          "z_change_px": {
+            "n": 48427,
+            "mean": 0.010002624819799126,
+            "p50": 0.004556452804482255,
+            "p90": 0.025608980461953063,
+            "p99": 0.07993622749567722,
+            "gt1_fraction": 0.0,
+            "gt4_fraction": 0.0,
+            "gt8_fraction": 0.0
+          },
+          "xy_center_px": {
+            "n": 48427,
+            "mean": 2.193601569210189,
+            "p50": 2.28377461746901,
+            "p90": 3.204800977330183,
+            "p99": 3.790937723981786,
+            "gt1_fraction": 0.9051149152332376,
+            "gt4_fraction": 0.0010531315175418671,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 48427,
+            "mean": 2.193735723450356,
+            "p50": 2.2821719035195405,
+            "p90": 3.204800057829306,
+            "p99": 3.790522520466685,
+            "gt1_fraction": 0.9050529663204411,
+            "gt4_fraction": 0.0010737811551407273,
+            "gt8_fraction": 0.0
+          }
+        },
+        "selected_bin_satframe": {
+          "n": 45512,
+          "z_change_px": {
+            "n": 45512,
+            "mean": 0.009762208928675192,
+            "p50": 0.004484809581056225,
+            "p90": 0.025225810399192507,
+            "p99": 0.07633299143854719,
+            "gt1_fraction": 0.0,
+            "gt4_fraction": 0.0,
+            "gt8_fraction": 0.0
+          },
+          "xy_center_px": {
+            "n": 45512,
+            "mean": 2.1896609387507144,
+            "p50": 2.2802649396415076,
+            "p90": 3.2015989888373597,
+            "p99": 3.789986499150244,
+            "gt1_fraction": 0.9042889787308842,
+            "gt4_fraction": 0.001054666901037089,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 45512,
+            "mean": 2.1897556132335296,
+            "p50": 2.27888733582477,
+            "p90": 3.2015839194303974,
+            "p99": 3.789468838909192,
+            "gt1_fraction": 0.9042670065037792,
+            "gt4_fraction": 0.001098611355246968,
+            "gt8_fraction": 0.0
+          }
+        }
+      },
+      "candidates_eligible": {
+        "cells": 7226,
+        "candidate_votes": 185673,
+        "abs_dz_m": {
+          "n": 185673,
+          "mean": 3.7190706729888916,
+          "p50": 0.13523101806640625,
+          "p90": 10.541125488281255,
+          "p99": 62.61514526367184,
+          "gt1_fraction": 0.2892612280730101,
+          "gt4_fraction": 0.17628842104129303,
+          "gt8_fraction": 0.11825090347007912
+        },
+        "xy_m": {
+          "n": 185673,
+          "mean": 4.574651718139648,
+          "p50": 4.679314613342285,
+          "p90": 7.220417022705078,
+          "p99": 7.916514453887939,
+          "gt1_fraction": 0.9633387730041525,
+          "gt4_fraction": 0.6105626558519548,
+          "gt8_fraction": 0.0
+        },
+        "height_compatible_fraction": 0.7683561961082117,
+        "xy_cell_core_fraction": 0.15146521034291469
+      },
+      "candidates_projected": {
+        "cells": 6543,
+        "candidate_votes": 176699,
+        "abs_dz_m": {
+          "n": 176699,
+          "mean": 3.6448638439178467,
+          "p50": 0.1378192901611328,
+          "p90": 10.353909111022967,
+          "p99": 59.88544349670369,
+          "gt1_fraction": 0.2902506522391185,
+          "gt4_fraction": 0.1758979960271422,
+          "gt8_fraction": 0.11713139293374608
+        },
+        "xy_m": {
+          "n": 176699,
+          "mean": 4.571145534515381,
+          "p50": 4.676388740539551,
+          "p90": 7.214916324615478,
+          "p99": 7.91482829093933,
+          "gt1_fraction": 0.9633331258241417,
+          "gt4_fraction": 0.6104731775505238,
+          "gt8_fraction": 0.0
+        },
+        "height_compatible_fraction": 0.7679669947198343,
+        "xy_cell_core_fraction": 0.1514722777152106
+      }
+    },
+    {
+      "image_id": 948,
+      "source_files_sha256": {
+        "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/satellite/camera_intrinsics.json": "21d653aca49942cdd5734e69543652e78b23058c3a0533e37e3363e8352844d5",
+        "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/satellite/camera_extrinsics.json": "f2b8200a39ba8fe38e5738d5c3635b6263418daa5900b279c1ca7e31ec8ba419",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_000/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_000/camera_extrinsics.json": "f50bb106436ec56fd3bdbbef573461362a43d369539abb0f37a0f78ab34d2717",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_072/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_072/camera_extrinsics.json": "883786fbedcd30dd3d97c15ef7233082bbe97367afb7635a376703fb120b83ba",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_144/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_144/camera_extrinsics.json": "00461fca4e238748929c598224f659fb271d142d61233f4fd7e6c67fc4a39eb2",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_216/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_216/camera_extrinsics.json": "51e3f5b4258f040e23e4a0154f45650eb0bf05cfd3c7db0ef47ca4393637a80c",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_288/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_288/camera_extrinsics.json": "d5614d835f951a36e5cf6db50fa7dd0a424cfbd97963d087e0e6815a4580eb1c",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_000/depth_camera_z.0000.exr": "972d5c31e7e076bd8f72d02b95453d438a96d4914e34e2b6c9dfa51869e3d718",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_072/depth_camera_z.0000.exr": "b16562bb498c5dbf9016c237948908b06b005a07c827d6ffa3469d83dff1da0e",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_144/depth_camera_z.0000.exr": "f72bbdac06e608bdba286425882b53b7e59e36d3fdf25c8066352c7254719e1b",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_216/depth_camera_z.0000.exr": "4906ea71ae66e0cf362f1b46b4307ae3129ea462a26ed98d5c13b78c9f522585",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000948_pt_gx_7_gy_-14_s_008_gx_7_gy_-14_s_8_X_146250_Y_-273750/oblique/view_yaw_288/depth_camera_z.0000.exr": "ac688a74a1bc99b1b8b9bc98139bf40abb75f18128987e7deab52e1c9d01bc5c"
+      },
+      "cache": {
+        "path": "/tmp/uav_dual_dev_data/cache/2ef96ec11d7adfd3b09ae1b44411b9d00488144cc220c1242b1835dba47ecbe5.npz",
+        "exists": true,
+        "recomputed": true,
+        "sha256": "5f4b3eae7eb8fd2cab9432668186035643d38d98569271846ce86a3e4c2b43e7",
+        "all_arrays_exact": true
+      },
+      "production_stats": {
+        "projected_pixels": 153036,
+        "rejected_fraction": 0.052635149720911545,
+        "candidate_fraction": 0.67169189453125,
+        "observation_fraction": 0.54656982421875,
+        "height_fraction": 0.32080078125
+      },
+      "point_counts": {
+        "raw_valid": 81920,
+        "in_bev": 80511,
+        "outside_bev": 1409,
+        "valid_height": 70942,
+        "invalid_height": 9569,
+        "selected_bin": 32152,
+        "valid_height_candidate": 70942,
+        "valid_height_projected": 61571
+      },
+      "cell_counts": {
+        "observed": 8955,
+        "height_valid": 5256,
+        "eligible": 5256,
+        "projected": 4601,
+        "multibin_observed": 2893,
+        "multiqualifyingbin_observed": 890
+      },
+      "displacement": {
+        "valid_height_all": {
+          "n": 70942,
+          "z_change_px": {
+            "n": 70942,
+            "mean": 2.204738486853898,
+            "p50": 0.18936431176403457,
+            "p90": 7.084044662217114,
+            "p99": 20.740475118194492,
+            "gt1_fraction": 0.3675114882580136,
+            "gt4_fraction": 0.1748470581601872,
+            "gt8_fraction": 0.08590115869301683
+          },
+          "xy_center_px": {
+            "n": 70942,
+            "mean": 2.303145169473713,
+            "p50": 2.398292337038481,
+            "p90": 3.354464933808495,
+            "p99": 4.006794634112814,
+            "gt1_fraction": 0.9127738152293423,
+            "gt4_fraction": 0.010431056355896366,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 70942,
+            "mean": 3.7629211395967817,
+            "p50": 2.719651454220811,
+            "p90": 7.5957665113182244,
+            "p99": 20.982720024652792,
+            "gt1_fraction": 0.9312677962279045,
+            "gt4_fraction": 0.21631755518592652,
+            "gt8_fraction": 0.09320289814214429
+          }
+        },
+        "valid_height_satframe": {
+          "n": 62621,
+          "z_change_px": {
+            "n": 62621,
+            "mean": 2.1788674857257946,
+            "p50": 0.19911310177618366,
+            "p90": 6.836304679693131,
+            "p99": 21.233635857275118,
+            "gt1_fraction": 0.3676721866466521,
+            "gt4_fraction": 0.16880918541703263,
+            "gt8_fraction": 0.08241644176873572
+          },
+          "xy_center_px": {
+            "n": 62621,
+            "mean": 2.2935668367450535,
+            "p50": 2.394365900519217,
+            "p90": 3.3363438748452214,
+            "p99": 3.9737899060713175,
+            "gt1_fraction": 0.9100301815684834,
+            "gt4_fraction": 0.008431676274732118,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 62621,
+            "mean": 3.736299595019169,
+            "p50": 2.7031070443614182,
+            "p90": 7.342247143234164,
+            "p99": 21.338254037475203,
+            "gt1_fraction": 0.9308378978298015,
+            "gt4_fraction": 0.2110154740422542,
+            "gt8_fraction": 0.08945880774819949
+          }
+        },
+        "selected_bin_all": {
+          "n": 32152,
+          "z_change_px": {
+            "n": 32152,
+            "mean": 0.015773978555001053,
+            "p50": 0.0052566804078798554,
+            "p90": 0.04566298026609961,
+            "p99": 0.12380513324169799,
+            "gt1_fraction": 0.0,
+            "gt4_fraction": 0.0,
+            "gt8_fraction": 0.0
+          },
+          "xy_center_px": {
+            "n": 32152,
+            "mean": 2.2880973505768147,
+            "p50": 2.3710634102082127,
+            "p90": 3.329409199589135,
+            "p99": 3.9795621115777307,
+            "gt1_fraction": 0.9135668076635979,
+            "gt4_fraction": 0.008708633988554367,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 32152,
+            "mean": 2.2875591666631774,
+            "p50": 2.369868614102767,
+            "p90": 3.330914960324896,
+            "p99": 3.978923942187021,
+            "gt1_fraction": 0.9138156257775566,
+            "gt4_fraction": 0.008615327195819856,
+            "gt8_fraction": 0.0
+          }
+        },
+        "selected_bin_satframe": {
+          "n": 27956,
+          "z_change_px": {
+            "n": 27956,
+            "mean": 0.013958257447565747,
+            "p50": 0.004974023412672302,
+            "p90": 0.03963566675570299,
+            "p99": 0.10899231259269736,
+            "gt1_fraction": 0.0,
+            "gt4_fraction": 0.0,
+            "gt8_fraction": 0.0
+          },
+          "xy_center_px": {
+            "n": 27956,
+            "mean": 2.277193799296011,
+            "p50": 2.360581588588304,
+            "p90": 3.311192384446165,
+            "p99": 3.95465682470702,
+            "gt1_fraction": 0.9129346115324081,
+            "gt4_fraction": 0.0075475747603376735,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 27956,
+            "mean": 2.276697271136714,
+            "p50": 2.3598966202352747,
+            "p90": 3.311951697166215,
+            "p99": 3.9461692685059284,
+            "gt1_fraction": 0.9131134640148805,
+            "gt4_fraction": 0.007511804263843182,
+            "gt8_fraction": 0.0
+          }
+        }
+      },
+      "candidates_eligible": {
+        "cells": 5256,
+        "candidate_votes": 102005,
+        "abs_dz_m": {
+          "n": 102005,
+          "mean": 9.044415473937988,
+          "p50": 0.44266510009765625,
+          "p90": 24.681513977050795,
+          "p99": 121.93697143554625,
+          "gt1_fraction": 0.4026763393951277,
+          "gt4_fraction": 0.26690848487819224,
+          "gt8_fraction": 0.20230380863683153
+        },
+        "xy_m": {
+          "n": 102005,
+          "mean": 4.153966903686523,
+          "p50": 4.1354475021362305,
+          "p90": 6.935692119598389,
+          "p99": 7.878953914642332,
+          "gt1_fraction": 0.9484829175040439,
+          "gt4_fraction": 0.5215430616146267,
+          "gt8_fraction": 0.0
+        },
+        "height_compatible_fraction": 0.6720847017303073,
+        "xy_cell_core_fraction": 0.20839174550267145
+      },
+      "candidates_projected": {
+        "cells": 4601,
+        "candidate_votes": 94721,
+        "abs_dz_m": {
+          "n": 94721,
+          "mean": 8.739615440368652,
+          "p50": 0.45755767822265625,
+          "p90": 23.629486083984375,
+          "p99": 118.00429840087891,
+          "gt1_fraction": 0.4059712207430243,
+          "gt4_fraction": 0.2662134056861731,
+          "gt8_fraction": 0.19953336641293906
+        },
+        "xy_m": {
+          "n": 94721,
+          "mean": 4.196425914764404,
+          "p50": 4.200096130371094,
+          "p90": 6.951064109802246,
+          "p99": 7.880454540252686,
+          "gt1_fraction": 0.9502222316065075,
+          "gt4_fraction": 0.5326590724337792,
+          "gt8_fraction": 0.0
+        },
+        "height_compatible_fraction": 0.6706221429250113,
+        "xy_cell_core_fraction": 0.20134922562050653
+      }
+    },
+    {
+      "image_id": 505,
+      "source_files_sha256": {
+        "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/satellite/camera_intrinsics.json": "21d653aca49942cdd5734e69543652e78b23058c3a0533e37e3363e8352844d5",
+        "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/satellite/camera_extrinsics.json": "cf0c20454a7641c94b7838c10d72a07b988935583dedd876253aa8103cfa6738",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_000/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_000/camera_extrinsics.json": "60c9ad52539f584632ed952949e95a16a1aaed04a98e90cc3239ff7bac4e9642",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_072/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_072/camera_extrinsics.json": "c22805595b1ba2acffe82e9964608ff310dc2b3e7204a765e863cab658121010",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_144/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_144/camera_extrinsics.json": "e9356edc315b8b0e511aea833009777d1bba48adb4c38f8d0187ff935d735bb2",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_216/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_216/camera_extrinsics.json": "5a5068d07bd5466a0ee51612288cd644565a0ced8303257d57e9b074506eb408",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_288/camera_intrinsics.json": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_288/camera_extrinsics.json": "54018d48d915dd0811845f04fe12bd16f0d91ed99370269f5452401ad4e79cbb",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_000/depth_camera_z.0000.exr": "68f6b6f3e70de72bfe016a272a8f8612fe681eb170c1f89b139ac505d87c3d10",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_072/depth_camera_z.0000.exr": "61f2954ce5377057190b4c49d9d794e080003846034f6932efec5abfb6dec269",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_144/depth_camera_z.0000.exr": "0907d559357b2b9e0bd345a7150b483f0bda0a234c37fc1f95e857d09c36c1f7",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_216/depth_camera_z.0000.exr": "107cd3bb49a97bf7d109973f94264ead7f8e4180b043031491c5e23111af3f2a",
+        "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000505_pt_gx_6_gy_-16_s_010_gx_6_gy_-16_s_10_X_122500_Y_-310000/oblique/view_yaw_288/depth_camera_z.0000.exr": "de96b68781f27c23ef97055623a19d9c5782982b64619dc4333a1e02eb5d0149"
+      },
+      "cache": {
+        "path": "/tmp/uav_dual_dev_data/cache/aacb3d4ec6ddb71a37d776f56048964ed8b9a6c4ebbf33ef52056086a1e098e4.npz",
+        "exists": true,
+        "recomputed": true,
+        "sha256": "74fa588abfc82a9be0b5412f85ca06c495fdbb334a8632d5df224c7824824d44",
+        "all_arrays_exact": true
+      },
+      "production_stats": {
+        "projected_pixels": 154658,
+        "rejected_fraction": 0.032954920508397545,
+        "candidate_fraction": 0.64520263671875,
+        "observation_fraction": 0.53558349609375,
+        "height_fraction": 0.33917236328125
+      },
+      "point_counts": {
+        "raw_valid": 81920,
+        "in_bev": 80640,
+        "outside_bev": 1280,
+        "valid_height": 72095,
+        "invalid_height": 8545,
+        "selected_bin": 35806,
+        "valid_height_candidate": 72095,
+        "valid_height_projected": 55612
+      },
+      "cell_counts": {
+        "observed": 8775,
+        "height_valid": 5557,
+        "eligible": 5557,
+        "projected": 4668,
+        "multibin_observed": 2973,
+        "multiqualifyingbin_observed": 961
+      },
+      "displacement": {
+        "valid_height_all": {
+          "n": 72095,
+          "z_change_px": {
+            "n": 72095,
+            "mean": 1.8808726802046782,
+            "p50": 0.08249303046429851,
+            "p90": 6.523116486264292,
+            "p99": 17.73746676678783,
+            "gt1_fraction": 0.31244885220889107,
+            "gt4_fraction": 0.15579443789444483,
+            "gt8_fraction": 0.07602468964560649
+          },
+          "xy_center_px": {
+            "n": 72095,
+            "mean": 2.3213796333177377,
+            "p50": 2.3936896075548257,
+            "p90": 3.425252001794816,
+            "p99": 4.093017357602709,
+            "gt1_fraction": 0.9153478049795409,
+            "gt4_fraction": 0.01575698730841251,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 72095,
+            "mean": 3.545760644137877,
+            "p50": 2.6620882369698506,
+            "p90": 6.9965818333579435,
+            "p99": 18.237252099577123,
+            "gt1_fraction": 0.9308967334766627,
+            "gt4_fraction": 0.1936195297870865,
+            "gt8_fraction": 0.08266870101948817
+          }
+        },
+        "valid_height_satframe": {
+          "n": 56037,
+          "z_change_px": {
+            "n": 56037,
+            "mean": 1.5026268527781899,
+            "p50": 0.053882113842454185,
+            "p90": 5.009324371656397,
+            "p99": 16.50514104156023,
+            "gt1_fraction": 0.27810196834234524,
+            "gt4_fraction": 0.122347734532541,
+            "gt8_fraction": 0.05403572639506041
+          },
+          "xy_center_px": {
+            "n": 56037,
+            "mean": 2.2708357972940214,
+            "p50": 2.3485304341959057,
+            "p90": 3.3476242478636733,
+            "p99": 3.9592266926226216,
+            "gt1_fraction": 0.9103627960097792,
+            "gt4_fraction": 0.007566429323482699,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 56037,
+            "mean": 3.215283072350105,
+            "p50": 2.579387058029559,
+            "p90": 5.645704464262317,
+            "p99": 16.860836090280213,
+            "gt1_fraction": 0.9260667059264415,
+            "gt4_fraction": 0.15761015043631887,
+            "gt8_fraction": 0.05967485768331638
+          }
+        },
+        "selected_bin_all": {
+          "n": 35806,
+          "z_change_px": {
+            "n": 35806,
+            "mean": 0.016001076656447233,
+            "p50": 0.006009898638140906,
+            "p90": 0.04346181393844352,
+            "p99": 0.13154230680370266,
+            "gt1_fraction": 0.0,
+            "gt4_fraction": 0.0,
+            "gt8_fraction": 0.0
+          },
+          "xy_center_px": {
+            "n": 35806,
+            "mean": 2.286350634266129,
+            "p50": 2.3703186183773832,
+            "p90": 3.336556455047212,
+            "p99": 3.9783640391183845,
+            "gt1_fraction": 0.9159358766687148,
+            "gt4_fraction": 0.009160475897894208,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 35806,
+            "mean": 2.2857864983913174,
+            "p50": 2.368637192839703,
+            "p90": 3.3357166349132745,
+            "p99": 3.9794850377750577,
+            "gt1_fraction": 0.9161034463497738,
+            "gt4_fraction": 0.009104619337541194,
+            "gt8_fraction": 0.0
+          }
+        },
+        "selected_bin_satframe": {
+          "n": 28464,
+          "z_change_px": {
+            "n": 28464,
+            "mean": 0.012990669791646632,
+            "p50": 0.006059637999884654,
+            "p90": 0.03433120236074316,
+            "p99": 0.09094130890377916,
+            "gt1_fraction": 0.0,
+            "gt4_fraction": 0.0,
+            "gt8_fraction": 0.0
+          },
+          "xy_center_px": {
+            "n": 28464,
+            "mean": 2.249984827909622,
+            "p50": 2.3360692065162043,
+            "p90": 3.279294340787922,
+            "p99": 3.888336266536585,
+            "gt1_fraction": 0.9131183249016301,
+            "gt4_fraction": 0.00442664418212479,
+            "gt8_fraction": 0.0
+          },
+          "total_px": {
+            "n": 28464,
+            "mean": 2.2496558224021137,
+            "p50": 2.3362006745869763,
+            "p90": 3.2782846798523324,
+            "p99": 3.8902311401659357,
+            "gt1_fraction": 0.9133291174817313,
+            "gt4_fraction": 0.00442664418212479,
+            "gt8_fraction": 0.0
+          }
+        }
+      },
+      "candidates_eligible": {
+        "cells": 5557,
+        "candidate_votes": 108544,
+        "abs_dz_m": {
+          "n": 108544,
+          "mean": 7.861892223358154,
+          "p50": 0.25954437255859375,
+          "p90": 16.53635864257811,
+          "p99": 120.38958618164051,
+          "gt1_fraction": 0.3310639003537736,
+          "gt4_fraction": 0.22633217865566038,
+          "gt8_fraction": 0.16613539209905662
+        },
+        "xy_m": {
+          "n": 108544,
+          "mean": 4.191066265106201,
+          "p50": 4.166572570800781,
+          "p90": 6.98560037612915,
+          "p99": 7.884022326469421,
+          "gt1_fraction": 0.9487396816037735,
+          "gt4_fraction": 0.5268278301886793,
+          "gt8_fraction": 0.0
+        },
+        "height_compatible_fraction": 0.7234761939858491,
+        "xy_cell_core_fraction": 0.20353036556603774
+      },
+      "candidates_projected": {
+        "cells": 4668,
+        "candidate_votes": 100242,
+        "abs_dz_m": {
+          "n": 100242,
+          "mean": 7.146177291870117,
+          "p50": 0.2660675048828125,
+          "p90": 15.73825836181642,
+          "p99": 110.94808578491197,
+          "gt1_fraction": 0.33241555435845255,
+          "gt4_fraction": 0.22762913748728078,
+          "gt8_fraction": 0.1655294188064883
+        },
+        "xy_m": {
+          "n": 100242,
+          "mean": 4.289872646331787,
+          "p50": 4.304888725280762,
+          "p90": 7.02480525970459,
+          "p99": 7.888588066101074,
+          "gt1_fraction": 0.9529139482452466,
+          "gt4_fraction": 0.5507272400790088,
+          "gt8_fraction": 0.0
+        },
+        "height_compatible_fraction": 0.7224217393906746,
+        "xy_cell_core_fraction": 0.18628918018395482
+      }
+    }
+  ],
+  "elapsed_seconds": 34.68154358997708
+}
