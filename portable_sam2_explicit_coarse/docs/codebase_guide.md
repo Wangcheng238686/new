@@ -174,3 +174,5 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 - 2026-10-15：BEV高度尾部关联最终独立结果审核已补齐PASS；36maps、RLE/ROI/区域及主相关重算通过，替代此前PENDING状态，不改变原结果或生产代码。
 
 - 2026-10-15：新增`scripts/analysis/ue_stage_shape_extract.py`、`ue_stage_shape_helpers.py`、`ue_stage_shape_fit.py`、`ue_stage_shape_summary.py`，共同支持下候选等权与CVT的冻结16²占据读出；仅12离线小头固定1000steps，正式模型不更新。SOURCE/protocol/manifest/轻量JSON/root复算归档，四主门FAIL；独立最终结果审核PENDING，见`UE_STAGE_SHAPE_20261015.md`，无生产配置/遥测变更。
+
+- 2026-10-15：候选等权/CVT形状读出独立正式结果审核补齐PASS，完整cache/主CI及固定小头GPU重放48输出bitexact，原负门结论不变。
