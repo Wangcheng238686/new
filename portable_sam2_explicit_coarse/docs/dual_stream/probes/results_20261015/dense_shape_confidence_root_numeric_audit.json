@@ -1,0 +1,31 @@
+{
+  "verdict": "PASS",
+  "contrasts": {
+    "pred_binary_pm4_minus_baseline": {
+      "mean": -0.0004485558633159997,
+      "interval": [
+        -0.0009231922545678477,
+        2.3090240145994427e-05
+      ],
+      "building_equal_mean": -0.0002692683183011066
+    },
+    "gt_binary_pm4_minus_pred_binary_pm4": {
+      "mean": 0.016067622345924387,
+      "interval": [
+        0.013620570287859218,
+        0.018728375684544902
+      ],
+      "building_equal_mean": 0.015462341976836304
+    },
+    "secondary": {
+      "mean": 0.015619066482608386,
+      "interval": [
+        0.013644460247834085,
+        0.017538619768172656
+      ],
+      "building_equal_mean": 0.015193073658535197
+    }
+  },
+  "sourcepoints_original": true,
+  "support_zero_exact": 197
+}

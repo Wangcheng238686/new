@@ -1,0 +1,24 @@
+{
+  "per_image_npz": {
+    "sat32": "float32[N,64,32], source pre-UAV FPN+PE+productionRoI projected seed1811",
+    "sat_extra32": "float32[N,64,32], independent satellite projection seed1812",
+    "uav32": "float32[N,64,32], aligned BEVToSatellite128 + production stride4RoI + projection1813",
+    "shift32": "float32[N,64,32], projectedUAV128 roll32cells xy beforeRoI, same matrix1813",
+    "noise32": "float32[N,64,32], standardnormal seed fixed per imagehash",
+    "geometry": "float32[N,64,7], [coarse_probability8,local_y,local_x,logwidth,logheight,confidence,coverage]",
+    "prob": "float32[N,64], satellite coarse64 sigmoid area8",
+    "target": "float32[N,64], originalcoarseGT64 area8",
+    "global_id": "int64[N], visible building map",
+    "boxes": "float32[N,4], GTxyxy satellitepixel",
+    "image_id": "int64[N]",
+    "gt_slot": "int64[N], contiguous dataset localID order; uniqueness asserted"
+  },
+  "rows": "64 per ROI; no GTforeground/quality sampling; train selected128imagehash, validation153",
+  "artifacts": {
+    "features/run_manifest.json": "identity+script/protocol/checkpoint hashes, selectedIDs, fileSHA, counters and freezecheck",
+    "ridge_models.json": "train-only standardization and fixedlambda fit coefficients eachcell",
+    "val_predictions.npz": "all fivecell corrected8 probabilities plus baseline/GT/image/globalid",
+    "summary.json": "main Brier gates and CI, companion8IoU, all/supportpositive/size groups and buildingequal, spatialaudit"
+  },
+  "execution_status": "Full281+single fixed 5cell CPUridge complete; primary gates FAIL, independent result audit pending"
+}

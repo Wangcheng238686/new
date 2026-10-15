@@ -68,3 +68,5 @@
 [GT形状提示冻结诊断](UE_GT_PROMPT_ORACLE_20261015.md)：153图固定GT框，原预测→GT64联合点/dense提示使最终IoU .841769→.860831，条件改善门通过。提示通路仍有可利用空间，尚不证明UAV可达或detach重训收益；无训练/AP。
 
 [GT点/dense四组合冻结定位](UE_GT_PROMPT_FACTORIAL_20261015.md)：153图，点only IoU+.004540（正信号但未达.005幅度门），denseonly+.015619通过门；提示来源/对角回放及197例dense空支持阴性通过。优先检查dense构造质量，不推断UAV可达或解除detach收益。
+
+[三路并行排查综合结论](UE_PARALLEL_DIAGNOSIS_20261015.md)：等±4幅度GT形状仍有+.016068最终IoU空间；现有UAV读出仅微弱正信号，两工程幅度门FAIL；dense反传源码可达但P2无显式UAV输入。暂缓性能训练，优先核表征/局部形状信息保留。分项：[dense形状/幅度](UE_DENSE_SHAPE_CONFIDENCE_20261015.md)、[UAV互补](UE_UAV_COMPLEMENTARITY_20261015.md)、[梯度工程](UE_GRADIENT_DESIGN_AUDIT_20261015.md)。

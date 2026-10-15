@@ -1,0 +1,16 @@
+COUNTS {'train': 12621, 'validation': 4496} UNIQUE GIDS {'train': 2239, 'validation': 237}
+SHA_SCRIPT True SHA_PROTOCOL True
+BRIER SG 0.035374335115366036 ACTIVE 39
+BRIER S64 0.035356366168366786 ACTIVE 71
+BRIER SU 0.03501472213476101 ACTIVE 71
+BRIER SX 0.0352014973519677 ACTIVE 71
+BRIER SN 0.0353746573695728 ACTIVE 71
+CONTRAST SU_vs_SG 0.00035961298060502696
+CONTRAST SU_vs_SX 0.00018677521720668542
+CONTRAST SU_vs_S64 0.0003416440336057686
+CONTRAST SU_vs_SN 0.00035993523481178555
+BASELINE {'brier': 0.038096603006124496, 'binary8_iou': 0.8742420512721086, 'train_brier': 0.01921016536653042, 'train_binary8_iou': 0.9084749348394819}
+GATES {'SG': False, 'SX': False} False
+PRIMARY {'n': 4496, 'brier_reduction': 0.00035961298060502696, 'brier_reduction_building_equal': 0.0003517588116649841, 'binary8_iou_delta': 0.0008498402732362175, 'bonferroni_two_primary_CI95': [0.00030887263350047036, 0.00041887626775974975]} {'n': 4496, 'brier_reduction': 0.00018677521720668542, 'brier_reduction_building_equal': 0.00013720308523312928, 'binary8_iou_delta': 0.000545412265355309, 'bonferroni_two_primary_CI95': [0.00014456437183417824, 0.00023435170146347242]}
+SPATIAL {'train_visible_buildings': 2239, 'val_visible_buildings': 237, 'shared_visible_buildings': 0, 'train_val_overlapping_satellite_AABB_pairs': 0, 'val_nearest_selected_train_origin_m_min': 912.5, 'val_nearest_selected_train_origin_m_median': 1352.1395083348464}
+ALL RAW AUDIT PASS

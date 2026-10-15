@@ -1,0 +1,29 @@
+{
+  "verdict": "PASS",
+  "all_five_train_only_ridge_coefficients_reproduced": true,
+  "train_rois": 12621,
+  "val_rois": 4496,
+  "comparisons": {
+    "SU_vs_SG": {
+      "brier_reduction": 0.0003596129806050462,
+      "interval": [
+        0.0003088726335004866,
+        0.00041887626775976916
+      ]
+    },
+    "SU_vs_SX": {
+      "brier_reduction": 0.00018677521720668726,
+      "interval": [
+        0.00014456437183418014,
+        0.00023435170146347332
+      ]
+    },
+    "SU_vs_S64": {
+      "brier_reduction": 0.0003416440336057774
+    },
+    "SU_vs_SN": {
+      "brier_reduction": 0.00035993523481180485
+    }
+  },
+  "overall_gate": false
+}

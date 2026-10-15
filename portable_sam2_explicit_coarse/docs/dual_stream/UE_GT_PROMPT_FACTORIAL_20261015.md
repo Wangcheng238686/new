@@ -108,3 +108,7 @@ GG−PP、交互GG−GP−PG+PP、GTdense下点作用GG−PG、GTpoint下dense�
 原始工件：`/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/gt_prompt_factorial/`，日志`smoke.log`/`full.log`，四组逐GT结果和manifest在smoke/full子目录。源提示中间张量按图释放，不保存大张量。
 
 脚本精确副本为`scripts/analysis/ue_gt_prompt_factorial_probe.py`、`ue_gt_prompt_factorial_summary.py`；保留运行固定路径和/tmp中ue_rgb_content_probe/ue_gt_prompt_oracle_probe及trace helper依赖以匹配来源SHA，不是通用生产入口。没有新增生产遥测，DEBUG_FIELDS定义不变。
+
+## 后续形状/幅度与互补诊断
+
+[三路并行排查](UE_PARALLEL_DIAGNOSIS_20261015.md)完成：本轮后续建议已执行，预测±4无总体改善、等幅GT形状仍有空间；现有UAV表征读出增量微弱未达工程支持门，暂缓自动进入性能训练。
