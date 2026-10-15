@@ -77,3 +77,7 @@ E72的learned SAM alpha=.2136764；每图有效残差范数比`||E1−E0||/||E0|
 正式GPU进程session37600，exit0，日志`/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/sam_strength_audit/full.log`；三图smoke session43440，产物标记complete=false，不作为正式结果。CPU汇总日志`summary.log`。
 
 完整工件在该`sam_strength_audit/`目录，包括预注册、smoke/full的预测/GT框IoU/不变量/manifest、bootstrap样本及源脚本副本。轻量汇总`probes/results_20261015/sam_strength_summary.json`；固定路径诊断源码`scripts/analysis/ue_sam_strength_probe.py`和`ue_sam_strength_summary.py`，依赖已归档RGB probe helper。/tmp不是长期归档，关键结果/协议/源码入git；无新生产遥测字段。
+
+## 后续空间/局部探针
+
+[空间对齐与局部质量检查已完成](UE_SPATIAL_LOCAL_20261015.md)，±4px四方向和平滑均未达工程改善门；上文“尚未执行”为历史状态。未扩强度扫描或训练。
