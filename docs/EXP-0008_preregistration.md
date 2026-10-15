@@ -95,3 +95,17 @@ P3 / 0011 P2+P3）将"层级-分辨率"假设变为可测量对比。零初始�
 fp32 融合岛、UAV-off 消融、四判定门全部继承。工程兼容性：单层情形保留
 EXP-0010 参数命名（`proj`/`gate`），保证其 checkpoint 严格加载不受
 多层支持影响。
+
+## v2.1 追加（EXP-0011 启动前，2026-10-15；分层判读算子闭合）
+
+双层（L0=stride-4、L1=stride-8）下各判定门的参与度算子定义：
+
+- **逐层漂移率** δ_L = mean(|gate_L|) / mean(|proj_L(bev)|)，两项均取末
+  epoch checkpoint 权重与 val 首 batch 前向计算（结论期工具一次性产出，
+  分母为该层投影输出幅值——即"水龙头的相对开度"，无尺度歧义）；
+- 层 L"参与" ⇔ δ_L ≥ 0.20；
+- **DUAL_ENGAGE_NULL** = 两层均未参与；**DUAL_USED_BUT_NULL / DUAL_GAIN /
+  DUAL_HARM** = 任一层参与后按指标口径照常归类；
+- 辅助判读（非门）：末 epoch `delta_p3_ratio_L`（门控增量/P3 范数）与
+  UAV-off 消融差按层报告。
+- 单层臂（EXP-0010）沿用同一算子（L1 单层）。

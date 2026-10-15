@@ -2,7 +2,7 @@
 # EXP-0011: frozen-snapshot dual-stream arm (A/B vs EXP-0009; frozen UAV branch + zero-init gated P3 fusion, data root = versioned snapshot).
 # EXP-0011. Protocol identical to EXP-0011 (and thus EXP-0006); the only
 # variable vs EXP-0011 is the frozen UAV branch + zero-init gated P3 fusion
-# (identity ue-whu-a3sgm-512-dualv2-v1). Telemetry per docs/EXP-0011_preregistration.md.
+# (identity ue-whu-a3sgm-512-dualv2-v1). Telemetry per docs/EXP-0008_preregistration.md v2/v2.1.
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
