@@ -170,3 +170,5 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 - 2026-10-15：新增`scripts/analysis/ue_bev_attention_probe.py`（六图两层全query只读QKV/几何权重、生产SDPA样本对账和smoke特征逐值不变）、`ue_bev_attention_summary.py`（分组/逐图/query及source加权/uniform/熵与尾部CPU汇总）；主代理独立复算脚本、轻量JSON、协议和完整审核归档。结果见`docs/dual_stream/UE_BEV_ATTENTION_20261015.md`。固定路径依赖沿旧/tmp helper链，精确归档不作通用入口；无训练、候选干预、生产接线/配置/遥测变更。
 
 - 2026-10-15：新增`scripts/analysis/ue_bev_tail_map.py`（真实投影归一化/独立FP32生产对账）、`ue_bev_tail_map_roundoff_diagnosis.py`（首次数值门失败定位）、`ue_bev_tail_association.py`（已有GT框RLE误差关联/覆盖分母与图等权）。结果见`docs/dual_stream/UE_BEV_TAIL_ASSOCIATION_20261015.md`；原FP64门FAIL、显式v2及bool分位数类型修复均留档。无GPU/新forward/fit/训练/生产遥测修改；独立结果审核PENDING。
+
+- 2026-10-15：BEV高度尾部关联最终独立结果审核已补齐PASS；36maps、RLE/ROI/区域及主相关重算通过，替代此前PENDING状态，不改变原结果或生产代码。
