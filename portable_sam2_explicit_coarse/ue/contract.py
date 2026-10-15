@@ -18,6 +18,8 @@ BASELINE_CONFIGS = {
     "ue-whu-a3sgm-512-dualv2-v1": "configs/ue_whu_a3sgm_512_dualv2.py",
     "ue-whu-a3sgm-512-duallora-v1": "configs/ue_whu_a3sgm_512_dualv2_lora.py",
     "ue-whu-a3sgm-512-dualv2-l0-v1": "configs/ue_whu_a3sgm_512_dualv2_l0.py",
+    # EXP-0014: dual + frozen per-channel BEV rescale (docs/EXP-0014_preregistration.md)
+    "ue-whu-a3sgm-512-dualnorm-v1": "configs/ue_whu_a3sgm_512_dualnorm.py",
 }
 ROOT = Path(__file__).resolve().parents[1]
 

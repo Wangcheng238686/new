@@ -7,7 +7,9 @@ the single-stream architecture (gate=0 identity); telemetry records whether
 training opens the UAV tap. The sealed rsprompter packages are untouched.
 """
 from __future__ import annotations
+import json
 import os
+from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -78,7 +80,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
     """
 
     def __init__(self, uav_encoder=None, bev_channels=262, sat_channels=512,
-                 target_level=1, target_levels=None, uav_eval_off=False, **kwargs):
+                 target_level=1, target_levels=None, uav_eval_off=False,
+                 bev_stats=None, **kwargs):
         super().__init__(**kwargs)
         if uav_encoder is None:
             raise ValueError("dual arm requires a uav_encoder config")
@@ -104,6 +107,21 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             self.proj = nn.ModuleDict({str(t): nn.Conv2d(bev_channels, sat_channels, 1) for t in levels})
             self.gate = nn.ParameterDict({str(t): nn.Parameter(torch.zeros(sat_channels)) for t in levels})
         self.uav_eval_off = bool(uav_eval_off) or os.environ.get('UE_UAV_EVAL_OFF') == '1'
+        # EXP-0014: optional frozen per-channel rescaling of the BEV before the
+        # projection (identity: ue-whu-a3sgm-512-dualnorm-v1). DUAL-DELTA-DECOMP
+        # showed the raw cm-scale channels (zmean/zres) dominate ||proj(bev)||
+        # by 5 orders of magnitude and the 256 descriptor channels never
+        # participate numerically; the scale vector is harvested offline from
+        # the full train split (scripts/ue/harvest_bev_stats_exp0014.py,
+        # s_c = 1/max(rms_c, 0.05)) and registered as a buffer so it never
+        # trains. None (all pre-EXP-0014 arms) keeps this path bit-identical
+        # (no attribute, no state_dict key); the use site probes with getattr.
+        if bev_stats is not None:
+            payload = json.loads(Path(bev_stats).read_text())
+            scale = torch.tensor(payload['scale'], dtype=torch.float32)
+            if tuple(scale.shape) != (bev_channels,):
+                raise ValueError(f"bev_stats scale has {scale.numel()} channels, expected {bev_channels}")
+            self.register_buffer('bev_scale', scale.view(1, -1, 1, 1))
         self.register_buffer('height_edges', torch.tensor([-1e9, 1e9]))
         self.telemetry = {'gate_mean': [], 'gate_std': [], 'gate_absmax': [],
                           'delta_p3_ratio': [], 'bev_coverage': []}
@@ -146,6 +164,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             desc, uav['devicez_rgb'][0], torch.stack(uk), torch.stack(uc),
             sk, swc, self.height_edges.to(desc.device), hw,
             with_grad=self.uav_encoder_lora)
+        if getattr(self, 'bev_scale', None) is not None:
+            bev = bev * self.bev_scale.to(bev.device)
         coverage = float(stats.get('covered_cells', 0)) / float(hw[0] * hw[1])
         return bev[0], coverage
 
