@@ -140,3 +140,5 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 - 2026-10-14：`data/ue_labels.py`统一clean掩码/local-global映射校验；dataset与prepare共用，prepare在几何计算前排除标签合同失败样本。未知ID仍拒绝，不转成背景。
 
 - 2026-10-15：完成EXP-0006/0007的80轮产物核验、完整153图strict EMA推理、correct/zero/shift依赖诊断与探索性图像bootstrap，结果和判读边界见 `docs/dual_stream/UE_AD_RESULTS_20261015.md`。无训练/模型/遥测生产者变更；字段字典保持原定义，raw训练遥测与EMA验证分开解释。
+
+- 2026-10-15：补充7个典型改善/退化/持平案例，复用固定EMA推理产物、逐目标top100最大IoU与正式COCO逐图匹配，核对几何支持和预测框限制，见 `docs/dual_stream/UE_CASE_AUDIT_20261015.md`。仅新增分析文档，不改模型/标签/遥测定义。

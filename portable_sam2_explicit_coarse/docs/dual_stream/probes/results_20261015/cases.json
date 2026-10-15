@@ -1,0 +1,506 @@
+[
+  {
+    "group": "degraded",
+    "image_id": 307,
+    "per_image_ap": {
+      "image_id": 307,
+      "single_best": 0.3831683168316832,
+      "dual_correct": 0.30407965796579656,
+      "dual_zero": 0.2513501350135013,
+      "dual_shift": 0.26211746174617456
+    },
+    "selected_object": {
+      "image_id": 307,
+      "gt_slot": 7,
+      "export_gt_index": 92,
+      "bbox": [
+        359.0,
+        461.0,
+        127.0,
+        51.0
+      ],
+      "bbox_area": 6477.0,
+      "single_best": {
+        "best_mask_iou": 0.8307191476768274,
+        "pred_rank": 4,
+        "score": 0.9999867677688599,
+        "same_pred_box_iou": 0.7738561293586769,
+        "best_box_iou": 0.7738561293586769,
+        "gt_fraction_inside_pred_box": 0.9563768554983338
+      },
+      "dual_correct": {
+        "best_mask_iou": 0.7875530410183875,
+        "pred_rank": 10,
+        "score": 0.9989157915115356,
+        "same_pred_box_iou": 0.8014822709717067,
+        "best_box_iou": 0.8014822709717067,
+        "gt_fraction_inside_pred_box": 0.9594062405331718
+      },
+      "dual_zero": {
+        "best_mask_iou": 0.7437292233303112,
+        "pred_rank": 10,
+        "score": 0.9987807869911194,
+        "same_pred_box_iou": 0.7923583755232549,
+        "best_box_iou": 0.7923583755232549,
+        "gt_fraction_inside_pred_box": 0.9594062405331718
+      },
+      "dual_shift": {
+        "best_mask_iou": 0.7262662607251591,
+        "pred_rank": 10,
+        "score": 0.9987344145774841,
+        "same_pred_box_iou": 0.7809810994001143,
+        "best_box_iou": 0.7809810994001143,
+        "gt_fraction_inside_pred_box": 0.9581944865192366
+      },
+      "mask_iou_delta": -0.043166106658439896
+    },
+    "gt_count": 11,
+    "geometry": {
+      "projected_pixel_support": 0.7107315063476562,
+      "gt_pixel_support": 0.02181157225083308,
+      "gt_mean_quality": 0.019134987993191244,
+      "height_valid": 0.4085693359375,
+      "gt_grid_s8_support": 0.09451681308694335,
+      "gt_grid_s16_support": 0.10845198424719782
+    },
+    "origin_m": [
+      1100.0,
+      -3337.5,
+      0.0
+    ],
+    "local_instance_id": 8,
+    "global_instance_id": 706000
+  },
+  {
+    "group": "degraded",
+    "image_id": 500,
+    "per_image_ap": {
+      "image_id": 500,
+      "single_best": 0.5984124456401685,
+      "dual_correct": 0.532970297029703,
+      "dual_zero": 0.3867436743674368,
+      "dual_shift": 0.40950313712689956
+    },
+    "selected_object": {
+      "image_id": 500,
+      "gt_slot": 12,
+      "export_gt_index": 351,
+      "bbox": [
+        488.0,
+        360.0,
+        24.0,
+        31.0
+      ],
+      "bbox_area": 744.0,
+      "single_best": {
+        "best_mask_iou": 0.5245901639344263,
+        "pred_rank": 27,
+        "score": 0.05283866822719574,
+        "same_pred_box_iou": 0.5211020618556969,
+        "best_box_iou": 0.5211020618556969,
+        "gt_fraction_inside_pred_box": 0.6333333333333333
+      },
+      "dual_correct": {
+        "best_mask_iou": 0.35240963855421686,
+        "pred_rank": 15,
+        "score": 0.9955248832702637,
+        "same_pred_box_iou": 0.35908975632008344,
+        "best_box_iou": 0.35908975632008344,
+        "gt_fraction_inside_pred_box": 0.6696969696969697
+      },
+      "dual_zero": {
+        "best_mask_iou": 0.40483383685800606,
+        "pred_rank": 16,
+        "score": 0.9955248832702637,
+        "same_pred_box_iou": 0.35908975632008344,
+        "best_box_iou": 0.35908975632008344,
+        "gt_fraction_inside_pred_box": 0.6696969696969697
+      },
+      "dual_shift": {
+        "best_mask_iou": 0.3905325443786982,
+        "pred_rank": 15,
+        "score": 0.9955248832702637,
+        "same_pred_box_iou": 0.35908975632008344,
+        "best_box_iou": 0.35908975632008344,
+        "gt_fraction_inside_pred_box": 0.6696969696969697
+      },
+      "mask_iou_delta": -0.1721805253802094
+    },
+    "gt_count": 16,
+    "geometry": {
+      "projected_pixel_support": 0.7635917663574219,
+      "gt_pixel_support": 0.0,
+      "gt_mean_quality": 0.0,
+      "height_valid": 0.4306640625,
+      "gt_grid_s8_support": 0.0,
+      "gt_grid_s16_support": 0.2
+    },
+    "origin_m": [
+      1337.5,
+      -3175.0,
+      0.0
+    ],
+    "local_instance_id": 13,
+    "global_instance_id": 638009
+  },
+  {
+    "group": "degraded",
+    "image_id": 310,
+    "per_image_ap": {
+      "image_id": 310,
+      "single_best": 0.5018159068654119,
+      "dual_correct": 0.44951302392542175,
+      "dual_zero": 0.3401343705799152,
+      "dual_shift": 0.30390381895332386
+    },
+    "selected_object": {
+      "image_id": 310,
+      "gt_slot": 5,
+      "export_gt_index": 126,
+      "bbox": [
+        321.0,
+        134.0,
+        97.0,
+        116.0
+      ],
+      "bbox_area": 11252.0,
+      "single_best": {
+        "best_mask_iou": 0.801432798629497,
+        "pred_rank": 7,
+        "score": 0.9999716281890869,
+        "same_pred_box_iou": 0.7745742028339138,
+        "best_box_iou": 0.7745742028339138,
+        "gt_fraction_inside_pred_box": 0.9621093067923869
+      },
+      "dual_correct": {
+        "best_mask_iou": 0.6378369704749679,
+        "pred_rank": 9,
+        "score": 0.9999817609786987,
+        "same_pred_box_iou": 0.6242173792043592,
+        "best_box_iou": 0.6242173792043592,
+        "gt_fraction_inside_pred_box": 0.7751004016064257
+      },
+      "dual_zero": {
+        "best_mask_iou": 0.5701098201496101,
+        "pred_rank": 9,
+        "score": 0.9999806880950928,
+        "same_pred_box_iou": 0.6244462652388036,
+        "best_box_iou": 0.6244462652388036,
+        "gt_fraction_inside_pred_box": 0.7751004016064257
+      },
+      "dual_shift": {
+        "best_mask_iou": 0.5798671288272674,
+        "pred_rank": 8,
+        "score": 0.9999827146530151,
+        "same_pred_box_iou": 0.6272942092846199,
+        "best_box_iou": 0.6272942092846199,
+        "gt_fraction_inside_pred_box": 0.7751004016064257
+      },
+      "mask_iou_delta": -0.1635958281545291
+    },
+    "gt_count": 12,
+    "geometry": {
+      "projected_pixel_support": 0.6339340209960938,
+      "gt_pixel_support": 0.9212502182643618,
+      "gt_mean_quality": 0.6952722837056646,
+      "height_valid": 0.34698486328125,
+      "gt_grid_s8_support": 0.9867295268028636,
+      "gt_grid_s16_support": 1.0
+    },
+    "origin_m": [
+      1062.5,
+      -3300.0,
+      0.0
+    ],
+    "local_instance_id": 6,
+    "global_instance_id": 668000
+  },
+  {
+    "group": "improved",
+    "image_id": 952,
+    "per_image_ap": {
+      "image_id": 952,
+      "single_best": 0.5468726307615281,
+      "dual_correct": 0.6158121402356472,
+      "dual_zero": 0.4489030200432308,
+      "dual_shift": 0.5326371604193386
+    },
+    "selected_object": {
+      "image_id": 952,
+      "gt_slot": 0,
+      "export_gt_index": 1817,
+      "bbox": [
+        311.0,
+        294.0,
+        135.0,
+        141.0
+      ],
+      "bbox_area": 19035.0,
+      "single_best": {
+        "best_mask_iou": 0.5175670570457122,
+        "pred_rank": 20,
+        "score": 0.9968017339706421,
+        "same_pred_box_iou": 0.5298753617276099,
+        "best_box_iou": 0.5298753617276099,
+        "gt_fraction_inside_pred_box": 0.8130902908953532
+      },
+      "dual_correct": {
+        "best_mask_iou": 0.8540895632864545,
+        "pred_rank": 17,
+        "score": 0.9992234706878662,
+        "same_pred_box_iou": 0.8110616449028888,
+        "best_box_iou": 0.8110616449028888,
+        "gt_fraction_inside_pred_box": 0.9665659236871931
+      },
+      "dual_zero": {
+        "best_mask_iou": 0.7863823419378975,
+        "pred_rank": 17,
+        "score": 0.9987047910690308,
+        "same_pred_box_iou": 0.8109598684589209,
+        "best_box_iou": 0.8109598684589209,
+        "gt_fraction_inside_pred_box": 0.9645825462788062
+      },
+      "dual_shift": {
+        "best_mask_iou": 0.8219798502634255,
+        "pred_rank": 17,
+        "score": 0.9983633160591125,
+        "same_pred_box_iou": 0.8035762220621109,
+        "best_box_iou": 0.8035762220621109,
+        "gt_fraction_inside_pred_box": 0.9644880997355497
+      },
+      "mask_iou_delta": 0.3365225062407423
+    },
+    "gt_count": 21,
+    "geometry": {
+      "projected_pixel_support": 0.7533760070800781,
+      "gt_pixel_support": 0.8705137891953154,
+      "gt_mean_quality": 0.607017892519449,
+      "height_valid": 0.427001953125,
+      "gt_grid_s8_support": 0.9990555345674348,
+      "gt_grid_s16_support": 1.0
+    },
+    "origin_m": [
+      1575.0,
+      -2700.0,
+      0.0
+    ],
+    "local_instance_id": 1,
+    "global_instance_id": 241000
+  },
+  {
+    "group": "improved",
+    "image_id": 312,
+    "per_image_ap": {
+      "image_id": 312,
+      "single_best": 0.3472560113154173,
+      "dual_correct": 0.42859282631559853,
+      "dual_zero": 0.2925492329452726,
+      "dual_shift": 0.3423237406158199
+    },
+    "selected_object": {
+      "image_id": 312,
+      "gt_slot": 5,
+      "export_gt_index": 149,
+      "bbox": [
+        318.0,
+        299.0,
+        100.0,
+        119.0
+      ],
+      "bbox_area": 11900.0,
+      "single_best": {
+        "best_mask_iou": 0.628992628992629,
+        "pred_rank": 7,
+        "score": 0.9999974966049194,
+        "same_pred_box_iou": 0.6562166384939351,
+        "best_box_iou": 0.6562166384939351,
+        "gt_fraction_inside_pred_box": 0.8072758037225042
+      },
+      "dual_correct": {
+        "best_mask_iou": 0.7463799283154122,
+        "pred_rank": 13,
+        "score": 0.9789390563964844,
+        "same_pred_box_iou": 0.7356638578557038,
+        "best_box_iou": 0.7356638578557038,
+        "gt_fraction_inside_pred_box": 0.9527918781725888
+      },
+      "dual_zero": {
+        "best_mask_iou": 0.6439451063188056,
+        "pred_rank": 13,
+        "score": 0.9789390563964844,
+        "same_pred_box_iou": 0.7356638578557038,
+        "best_box_iou": 0.7356638578557038,
+        "gt_fraction_inside_pred_box": 0.9527918781725888
+      },
+      "dual_shift": {
+        "best_mask_iou": 0.7335061941803515,
+        "pred_rank": 13,
+        "score": 0.9789390563964844,
+        "same_pred_box_iou": 0.7356638578557038,
+        "best_box_iou": 0.7356638578557038,
+        "gt_fraction_inside_pred_box": 0.9527918781725888
+      },
+      "mask_iou_delta": 0.11738729932278325
+    },
+    "gt_count": 9,
+    "geometry": {
+      "projected_pixel_support": 0.7756538391113281,
+      "gt_pixel_support": 0.9084602368866328,
+      "gt_mean_quality": 0.6868533502098065,
+      "height_valid": 0.4432373046875,
+      "gt_grid_s8_support": 0.988155668358714,
+      "gt_grid_s16_support": 1.0
+    },
+    "origin_m": [
+      1175.0,
+      -3300.0,
+      0.0
+    ],
+    "local_instance_id": 6,
+    "global_instance_id": 668000
+  },
+  {
+    "group": "improved",
+    "image_id": 288,
+    "per_image_ap": {
+      "image_id": 288,
+      "single_best": 0.3983910891089109,
+      "dual_correct": 0.5245330109934071,
+      "dual_zero": 0.2940685735240191,
+      "dual_shift": 0.3728424457830399
+    },
+    "selected_object": {
+      "image_id": 288,
+      "gt_slot": 12,
+      "export_gt_index": 25,
+      "bbox": [
+        185.0,
+        334.0,
+        114.0,
+        123.0
+      ],
+      "bbox_area": 14022.0,
+      "single_best": {
+        "best_mask_iou": 0.489733161392719,
+        "pred_rank": 9,
+        "score": 0.9999854564666748,
+        "same_pred_box_iou": 0.6233927212972158,
+        "best_box_iou": 0.6536608375964157,
+        "gt_fraction_inside_pred_box": 0.7993154947106409
+      },
+      "dual_correct": {
+        "best_mask_iou": 0.8324155653450808,
+        "pred_rank": 7,
+        "score": 0.9999990463256836,
+        "same_pred_box_iou": 0.8271918972721681,
+        "best_box_iou": 0.8271918972721681,
+        "gt_fraction_inside_pred_box": 0.9691972619788426
+      },
+      "dual_zero": {
+        "best_mask_iou": 0.5212961076013858,
+        "pred_rank": 7,
+        "score": 0.9999983310699463,
+        "same_pred_box_iou": 0.6872502715989591,
+        "best_box_iou": 0.6872502715989591,
+        "gt_fraction_inside_pred_box": 0.8580170089193113
+      },
+      "dual_shift": {
+        "best_mask_iou": 0.858426517571885,
+        "pred_rank": 7,
+        "score": 0.9999980926513672,
+        "same_pred_box_iou": 0.833955534205023,
+        "best_box_iou": 0.833955534205023,
+        "gt_fraction_inside_pred_box": 0.9614187927815806
+      },
+      "mask_iou_delta": 0.34268240395236177
+    },
+    "gt_count": 14,
+    "geometry": {
+      "projected_pixel_support": 0.6158714294433594,
+      "gt_pixel_support": 0.9709603816635552,
+      "gt_mean_quality": 0.7703188237933308,
+      "height_valid": 0.334716796875,
+      "gt_grid_s8_support": 0.9982368803152872,
+      "gt_grid_s16_support": 1.0
+    },
+    "origin_m": [
+      975.0,
+      -3337.5,
+      0.0
+    ],
+    "local_instance_id": 13,
+    "global_instance_id": 906002
+  },
+  {
+    "group": "near_tie",
+    "image_id": 1196,
+    "per_image_ap": {
+      "image_id": 1196,
+      "single_best": 0.7304917537977615,
+      "dual_correct": 0.730433516024679,
+      "dual_zero": 0.6762263094626491,
+      "dual_shift": 0.6852328473521273
+    },
+    "selected_object": {
+      "image_id": 1196,
+      "gt_slot": 12,
+      "export_gt_index": 3128,
+      "bbox": [
+        438.0,
+        6.0,
+        74.0,
+        87.0
+      ],
+      "bbox_area": 6438.0,
+      "single_best": {
+        "best_mask_iou": 0.9570032573289903,
+        "pred_rank": 2,
+        "score": 1.0,
+        "same_pred_box_iou": 0.9235192614651118,
+        "best_box_iou": 0.9235192614651118,
+        "gt_fraction_inside_pred_box": 0.9993374192479708
+      },
+      "dual_correct": {
+        "best_mask_iou": 0.9529955385595921,
+        "pred_rank": 6,
+        "score": 1.0,
+        "same_pred_box_iou": 0.9318618395458299,
+        "best_box_iou": 0.9318618395458299,
+        "gt_fraction_inside_pred_box": 0.9993374192479708
+      },
+      "dual_zero": {
+        "best_mask_iou": 0.9454976303317536,
+        "pred_rank": 6,
+        "score": 1.0,
+        "same_pred_box_iou": 0.9321215680510919,
+        "best_box_iou": 0.9321215680510919,
+        "gt_fraction_inside_pred_box": 0.9993374192479708
+      },
+      "dual_shift": {
+        "best_mask_iou": 0.9444532866465064,
+        "pred_rank": 2,
+        "score": 1.0,
+        "same_pred_box_iou": 0.9313393842925133,
+        "best_box_iou": 0.9313393842925133,
+        "gt_fraction_inside_pred_box": 0.9993374192479708
+      },
+      "mask_iou_delta": -0.004007718769398205
+    },
+    "gt_count": 50,
+    "geometry": {
+      "projected_pixel_support": 0.7361183166503906,
+      "gt_pixel_support": 0.4490641046877588,
+      "gt_mean_quality": 0.35355741429332865,
+      "height_valid": 0.38446044921875,
+      "gt_grid_s8_support": 0.5650157362928607,
+      "gt_grid_s16_support": 0.6365744575120093
+    },
+    "origin_m": [
+      1500.0,
+      -2337.5,
+      0.0
+    ],
+    "local_instance_id": 14,
+    "global_instance_id": 271006
+  }
+]
