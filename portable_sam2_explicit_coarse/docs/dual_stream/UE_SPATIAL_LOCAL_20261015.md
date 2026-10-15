@@ -108,3 +108,7 @@ P2仍是接线层面更明确的候选：当前大多数RoI未直接读取UAV融
 唯一完整GPU进程session66041，exit0；日志`/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/spatial_local_audit/full.log`。CPU汇总session27740，exit0，日志`summary.log`。三图smoke始终complete=false；仅因相机有效点记录建议重跑，未扩大实验方向。
 
 完整工件在上述`spatial_local_audit/`：sixcell预测、GT IoU及局部指标、local_geometry、相机检查、manifest、per_gt_joined及源码/协议。轻量汇总`probes/results_20261015/spatial_local_summary.json`；源码`scripts/analysis/ue_spatial_local_probe.py`/`ue_spatial_local_summary.py`。/tmp不是长期归档，关键结果/协议/源码入git，无权重或大工件入库。未改生产遥测字段及DEBUG_FIELDS定义。
+
+## 后续P2探针
+
+[P2冻结跨尺度迁移已完成](UE_P2_TRANSFER_20261015.md)，现成P3融合器直接迁移未过改善门；该结果不是新训P2模块的消融结论。上文P2“尚未执行”为历史状态，未进行全层融合或训练。
