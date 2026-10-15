@@ -1,0 +1,54 @@
+{
+  "verdict": "PASS",
+  "contrasts": {
+    "gt_point_only_minus_baseline": {
+      "mean": 0.004540066354651248,
+      "interval": [
+        0.003702401061829746,
+        0.005494398035985416
+      ],
+      "building_equal_mean": 0.005671541683435763
+    },
+    "gt_dense_only_minus_baseline": {
+      "mean": 0.015619066482608386,
+      "interval": [
+        0.013482854423995265,
+        0.01815635503443887
+      ],
+      "building_equal_mean": 0.015193073658535197
+    },
+    "joint_minus_baseline": {
+      "mean": 0.019062876898730412,
+      "interval": [
+        0.0171028149265492,
+        0.021546481730948
+      ],
+      "building_equal_mean": 0.020008995920482
+    },
+    "interaction_GG_minus_GP_minus_PG_plus_PP": {
+      "mean": -0.0010962559385292211,
+      "interval": [
+        -0.0015880661968478034,
+        -0.0005939003245668515
+      ],
+      "building_equal_mean": -0.0008556194214889587
+    },
+    "points_given_GT_dense_GG_minus_PG": {
+      "mean": 0.003443810416122027,
+      "interval": [
+        0.002672023907248404,
+        0.004374261981853885
+      ],
+      "building_equal_mean": 0.004815922261946805
+    },
+    "dense_given_GT_points_GG_minus_GP": {
+      "mean": 0.014522810544079166,
+      "interval": [
+        0.012660032527967848,
+        0.016658444706978675
+      ],
+      "building_equal_mean": 0.014337454237046238
+    }
+  },
+  "support_zero_exact_rois": 197
+}

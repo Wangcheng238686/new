@@ -66,3 +66,5 @@
 [P2→提示→SAM冻结追踪](UE_P2_PROMPT_TRACE_20261015.md)：153图四组精确回放，变化可达decoder但粗掩码/最终IoU未稳定改善；197/881小目标在32² dense框支持为空。P2是提示介导入口，未直接给SAM高分辨率视觉特征注入UAV；无训练。
 
 [GT形状提示冻结诊断](UE_GT_PROMPT_ORACLE_20261015.md)：153图固定GT框，原预测→GT64联合点/dense提示使最终IoU .841769→.860831，条件改善门通过。提示通路仍有可利用空间，尚不证明UAV可达或detach重训收益；无训练/AP。
+
+[GT点/dense四组合冻结定位](UE_GT_PROMPT_FACTORIAL_20261015.md)：153图，点only IoU+.004540（正信号但未达.005幅度门），denseonly+.015619通过门；提示来源/对角回放及197例dense空支持阴性通过。优先检查dense构造质量，不推断UAV可达或解除detach收益。

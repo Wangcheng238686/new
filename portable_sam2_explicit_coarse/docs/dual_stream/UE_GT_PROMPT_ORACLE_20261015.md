@@ -71,3 +71,7 @@ baseline为E72 strict EMA、正确UAV与原GT共同框；joint_gt_prompt在shape
 原始目录：`/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/gt_prompt_oracle/`，日志`smoke.log`/`full.log`及两组逐GT标量/点记录位于其中。没有保存大中间特征。
 
 脚本精确副本归档于`scripts/analysis/ue_gt_prompt_oracle_probe.py`与`ue_gt_prompt_oracle_summary.py`；为保留来源SHA，维持运行时固定路径，包括/tmp下ue_rgb_content_probe和ue_p2_prompt_trace依赖。它们是本次实验快照，不是通用生产入口。代码/依赖/数据/预注册/检查点SHA见manifest。没有新增生产遥测字段，DEBUG_FIELDS定义不变。
+
+## 后续提示通道冻结定位
+
+[GT点/dense四组合交换](UE_GT_PROMPT_FACTORIAL_20261015.md)完成：点only+.004540，denseonly+.015619，联合+.019063精确重放。当前构造下总体dense改善空间较大，但不等同UAV可达、通道普遍排序或解除detach训练收益。

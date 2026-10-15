@@ -160,3 +160,5 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 - 2026-10-15：新增`scripts/analysis/ue_p2_prompt_trace.py`（只读捕获RoI/coarse/点/dense/SAM/tail，精确回放上一轮四组GT框终点）、`ue_p2_prompt_trace_summary.py`（阶段到达、粗形状/点质量、密集框支持与配对图像区间）。153图完成，变化可达但质量未稳定改善，见`docs/dual_stream/UE_P2_PROMPT_TRACE_20261015.md`；无训练/生产接线/遥测变更。
 
 - 2026-10-15：新增`scripts/analysis/ue_gt_prompt_oracle_probe.py`（固定GT64±4替换粗形状，原点/dense路径联合生成，视觉/框/权重不变）、`ue_gt_prompt_oracle_summary.py`（独立CPU身份/SHA/不变量/质量及seed1760配对图像区间）。153图完成，最终GT框IoU+.019063，提示条件改善空间门通过，见`docs/dual_stream/UE_GT_PROMPT_ORACLE_20261015.md`；主代理审计脚本与轻量数值归档在`docs/dual_stream/probes/results_20261015/GT_PROMPT_ORACLE_ROOT_AUDIT.py`及对应JSON。未训练/改生产接线/遥测。
+
+- 2026-10-15：新增`scripts/analysis/ue_gt_prompt_factorial_probe.py`（真实decoder sparse/dense四组合交换，固定box tokens/视觉、两对角回放及空dense支持阴性）、`ue_gt_prompt_factorial_summary.py`（两个主contrast Bonferroni区间、条件差/交互及来源SHA验收）。153图完成，点only+.004540未过幅度门、denseonly+.015619过门，见`docs/dual_stream/UE_GT_PROMPT_FACTORIAL_20261015.md`。主代理独立审计脚本/轻量结果在`docs/dual_stream/probes/results_20261015/GT_PROMPT_FACTORIAL_ROOT_AUDIT.py`及对应JSON。无训练/生产接线/遥测变更。
