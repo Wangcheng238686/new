@@ -85,8 +85,12 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         enc = dict(uav_encoder)
         self.uav_encoder_name = enc.pop('type')
         self.uav_encoder = MODELS.build(ConfigDict({'type': self.uav_encoder_name, **enc}))
+        # with use_lora the encoder self-freezes the base and leaves LoRA
+        # params trainable; a blanket freeze here would silently kill them
+        self.uav_encoder_lora = bool(enc.get('use_lora', False))
+        if not self.uav_encoder_lora:
+            self.uav_encoder.requires_grad_(False)
         self.uav_encoder.eval()
-        self.uav_encoder.requires_grad_(False)
         # gate=0 with DEFAULT proj init: step 0 equals the single-stream
         # forward (0 x finite = 0) while dL/dgate = upstream . proj(bev) != 0
         # (a doubly-zero init is an unescapable saddle - launch-review finding).
@@ -107,7 +111,10 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
 
     def train(self, mode=True):
         super().train(mode)
-        self.uav_encoder.eval()
+        if self.uav_encoder_lora:
+            self.uav_encoder.train(mode)  # LoRA dropout active in training
+        else:
+            self.uav_encoder.eval()
         return self
 
     def _fetch_uav(self):
@@ -122,9 +129,13 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             raise RuntimeError(f"dual arm expects per-GPU batch 1, got {tuple(rgb.shape)}")
         mean = rgb.new_tensor(_UAV_MEAN)[:, None, None]
         std = rgb.new_tensor(_UAV_STD)[:, None, None]
-        with torch.no_grad():
+        if self.uav_encoder_lora:
             _, fpn = self.uav_encoder((rgb[0] - mean) / std)
             desc = max(tuple(fpn[-4:]), key=lambda f: f.shape[-2] * f.shape[-1]).float()
+        else:
+            with torch.no_grad():
+                _, fpn = self.uav_encoder((rgb[0] - mean) / std)
+                desc = max(tuple(fpn[-4:]), key=lambda f: f.shape[-2] * f.shape[-1]).float()
         cams = uav['uav_cameras'][0]  # collate keeps a per-sample batch layer
         dev = desc.device
         uk, _, uc = zip(*(_k_and_w2c(p) for p in cams))
@@ -133,7 +144,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         sk, swc = sk.to(dev), swc.to(dev)
         bev, stats = rasterize_surfacebev(
             desc, uav['devicez_rgb'][0], torch.stack(uk), torch.stack(uc),
-            sk, swc, self.height_edges.to(desc.device), hw)
+            sk, swc, self.height_edges.to(desc.device), hw,
+            with_grad=self.uav_encoder_lora)
         coverage = float(stats.get('covered_cells', 0)) / float(hw[0] * hw[1])
         return bev[0], coverage
 

@@ -9,9 +9,21 @@ def devicez_to_camera_z(devicez_rgb):
     return 10.0 / (1.0 - packed).clamp_min(1e-8)
 
 
-@torch.no_grad()
 def rasterize_surfacebev(descriptors, devicez_rgb, uav_k, uav_c2w, sat_k, sat_w2c,
-                         height_edges, out_hw, sham90=False):
+                         height_edges, out_hw, sham90=False, with_grad=False):
+    """Historical default: no-grad frozen-feature rasterization (probes/harvest).
+    with_grad=True keeps the autograd path alive through the point ops so a
+    LoRA-adapted UAV encoder can receive gradients (EXP-0012)."""
+    if with_grad:
+        return _rasterize_surfacebev_impl(descriptors, devicez_rgb, uav_k, uav_c2w,
+                                          sat_k, sat_w2c, height_edges, out_hw, sham90)
+    with torch.no_grad():
+        return _rasterize_surfacebev_impl(descriptors, devicez_rgb, uav_k, uav_c2w,
+                                          sat_k, sat_w2c, height_edges, out_hw, sham90)
+
+
+def _rasterize_surfacebev_impl(descriptors, devicez_rgb, uav_k, uav_c2w, sat_k, sat_w2c,
+                               height_edges, out_hw, sham90=False):
     """Rasterize frozen UAV descriptors into a satellite P3-aligned 12-bin tensor.
 
     No labels/predictions enter this function.  ``descriptors`` is [V,C,H,W],
@@ -57,33 +69,34 @@ def rasterize_surfacebev(descriptors, devicez_rgb, uav_k, uav_c2w, sat_k, sat_w2
     # Layout is deliberately explicit: frozen descriptor, world-Z mean/std,
     # independent-view count, satellite z-buffer residual, missing flag, and
     # shared satellite-visible-surface flag.  No task label/prediction enters.
-    out = torch.zeros((len(height_edges)-1, channels+6, oh*ow), device=dev)
-    count = torch.zeros((len(height_edges)-1, oh*ow), device=dev)
     nbins = len(height_edges) - 1
     key = bins*oh*ow + cell
     sums = torch.zeros((nbins * oh * ow, channels+2), device=dev)
-    sums.index_add_(0, key, torch.cat((feat, wp[:,2:3], wp[:,2:3]**2), 1))
-    count.flatten().index_add_(0, key, torch.ones_like(key, dtype=torch.float))
+    sums = sums.index_add(0, key, torch.cat((feat, wp[:,2:3], wp[:,2:3]**2), 1))
+    count = torch.zeros(nbins, oh * ow, device=dev)
+    count = count.flatten().index_add(0, key, torch.ones_like(key, dtype=torch.float)).reshape(nbins, oh * ow)
     den = count.clamp_min(1).reshape(-1); packed = sums / den[:,None]
     packed = packed.reshape(nbins, oh * ow, channels + 2).permute(0, 2, 1)
-    out[:, :channels] = packed[:, :channels]
-    out[:, channels] = packed[:, channels]  # world-Z mean
-    second = packed[:, channels + 1]
-    out[:, channels + 1] = (second - out[:, channels].square()).clamp_min(0).sqrt()
+    # out-of-place column assembly keeps the autograd path (LoRA arm) intact;
+    # numerics identical to the historical in-place slice writes
+    zmean = packed[:, channels]
+    zstd = (packed[:, channels + 1] - zmean.square()).clamp_min(0).sqrt()
     residual_sum = torch.zeros(nbins * oh * ow, device=dev)
     residual_count = torch.zeros(nbins * oh * ow, device=dev)
     residual_sum.index_add_(0, all_key, all_z_residual)
     residual_count.index_add_(0, all_key, torch.ones_like(all_z_residual))
-    out[:, channels + 3] = (residual_sum / residual_count.clamp_min(1)).reshape(nbins, oh * ow)
+    zres = (residual_sum / residual_count.clamp_min(1)).reshape(nbins, oh * ow)
     # Unique (view, bin, cell), rather than the number of sampled feature pixels.
     view_key = view_id * (nbins * oh * ow) + key
     unique_view_key = torch.unique(view_key)
     view_bin_cell = unique_view_key % (nbins * oh * ow)
     view_count = torch.zeros(nbins * oh * ow, device=dev)
     view_count.index_add_(0, view_bin_cell, torch.ones_like(view_bin_cell, dtype=torch.float))
-    out[:, channels + 2] = view_count.reshape(nbins, oh * ow)
-    out[:, channels + 4] = (count == 0).reshape(nbins, oh * ow).to(out.dtype)
-    out[:, channels + 5] = torch.isfinite(zmin).reshape(oh, ow).flatten()[None]
+    vcount = view_count.reshape(nbins, oh * ow)
+    cols = [packed[:, :channels], zmean.unsqueeze(1), zstd.unsqueeze(1), vcount.unsqueeze(1),
+            zres.unsqueeze(1), (count == 0).reshape(nbins, oh * ow).unsqueeze(1).float(),
+            torch.isfinite(zmin).reshape(1, 1, oh * ow).float().expand(nbins, 1, -1)]
+    out = torch.cat(cols, dim=1)
     valid_view_counts = view_count[view_count > 0]
     def quantiles(values):
         if not values.numel():
