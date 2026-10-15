@@ -150,3 +150,5 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 - 2026-10-15：新增`scripts/analysis/ue_rgb_content_prepare.py`（冻结供体映射/预注册）、`ue_rgb_content_probe.py`（三模式strict EMA完整推理/共同框/不变量）、`ue_rgb_content_summary.py`（AP配对bootstrap与建筑/尺寸汇总），均为固定路径诊断脚本。153图RGB内容干预已完成，结果见`docs/dual_stream/UE_RGB_CONTENT_20261015.md`，仅支持配对RGB敏感性；生产模型、推理入口及遥测定义未改变。
 
 - 2026-10-15：新增`scripts/analysis/ue_fusion_route_probe.py`（冻结FPN/SAM四组合特征交换、对角精确回放）、`ue_fusion_route_summary.py`（GT框IoU条件效应/交互、1000次配对图像bootstrap）。153图两套供体均完成，结果见`docs/dual_stream/UE_FUSION_ROUTE_20261015.md`；仅定位本干预主要沿SAM，未训练、未改生产接线/遥测。
+
+- 2026-10-15：新增`scripts/analysis/ue_sam_strength_probe.py`（只缩放SAM融合有效残差0/.5/1，单次特征/RPN/bbox复用，完整mask及GT框验收）、`ue_sam_strength_summary.py`（预定半强度对比、AP/IoU配对bootstrap、尺寸/建筑汇总）。153图完成，不支持统一减弱；见`docs/dual_stream/UE_SAM_STRENGTH_20261015.md`。无训练或生产模型/遥测变更。

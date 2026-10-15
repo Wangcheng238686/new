@@ -101,3 +101,7 @@ FPN保持正确、只替换SAM时，IoU明显下降；SAM保持正确、只替�
 两进程均exit0，terminal session15190/29067；日志`donor_a.log`/`donor_b.log`。原首次smoke因inference tensor不支持version计数失败，尚未产生可解释结果；改为特征逐值hash后smoke_fixed.log通过，独立实施审核通过后才启动正式运行。
 
 完整工件：`/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/fusion_route_audit/`，含四组合预测、共同框IoU、不变量检查、manifest、日志、预注册和源码副本。轻量汇总`probes/results_20261015/fusion_route_summary.json`；固定路径诊断源码`scripts/analysis/ue_fusion_route_probe.py`、`ue_fusion_route_summary.py`，依赖同目录已归档`ue_rgb_content_probe.py`（运行时优先/tmp，复现时放同目录或/tmp均可）。/tmp不是长期存储；关键结果/协议/源码入git，无权重或大工件入库。未新增生产遥测字段。
+
+## 后续强度探针
+
+[0/.5/1强度探针已完成](UE_SAM_STRENGTH_20261015.md)，本轮不支持通过统一减弱SAM残差改善整体。上文“尚未运行”为历史状态，未扩展扫描或训练。

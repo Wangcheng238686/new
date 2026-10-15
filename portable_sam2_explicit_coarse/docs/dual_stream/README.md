@@ -56,3 +56,5 @@
 [仅替换UAV RGB的完整验证](UE_RGB_CONTENT_20261015.md)：几何固定，两套供体使segm AP下降约3.4–3.5pp、bbox近似不变；共同框mask同步下降。证明配对RGB敏感性，尚未证明超过单流的有效互补信息。
 
 [FPN/SAM入口冻结定位](UE_FUSION_ROUTE_20261015.md)：两套供体的四组合完整验证，RGB替换mask敏感性主要沿SAM embedding；尚不证明FPN无用或SAM有bug。后续优先冻结残差强度/对齐诊断，不自动训练。
+
+[SAM残差强度冻结探针](UE_SAM_STRENGTH_20261015.md)：正确RGB-D下原强度优于0/.5两种减弱，半强度segm AP下降2.07pp，不支持统一注入过强；不改默认配置，后续优先空间选择/几何对应诊断。
