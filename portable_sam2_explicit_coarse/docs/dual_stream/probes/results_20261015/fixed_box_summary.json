@@ -1,0 +1,170 @@
+{
+  "scope": "3 selected extreme images, 42 GT instances, fixed identity correspondence; not AP or dataset estimate",
+  "no_weight_updates": true,
+  "common_box_hashes_match": true,
+  "replay_pixel_exact": true,
+  "rows": [
+    {
+      "image_id": 310,
+      "box_type": "gt",
+      "gt_count": 12,
+      "selected_gt_slot": 5,
+      "mean_iou": {
+        "single": 0.7885654837291307,
+        "correct": 0.7866906673011763,
+        "zero": 0.678782835331181,
+        "shift": 0.69369085652974
+      },
+      "selected_iou": {
+        "single": 0.7833555456833999,
+        "correct": 0.7818655851680185,
+        "zero": 0.7339656729900632,
+        "shift": 0.704862023653088
+      }
+    },
+    {
+      "image_id": 310,
+      "box_type": "single_pred",
+      "gt_count": 12,
+      "selected_gt_slot": 5,
+      "mean_iou": {
+        "single": 0.7541520763814281,
+        "correct": 0.7570888026670373,
+        "zero": 0.6858516023485476,
+        "shift": 0.6820461975090432
+      },
+      "selected_iou": {
+        "single": 0.801432798629497,
+        "correct": 0.785517452541335,
+        "zero": 0.718409843823947,
+        "shift": 0.7428571428571429
+      }
+    },
+    {
+      "image_id": 310,
+      "box_type": "dual_pred",
+      "gt_count": 12,
+      "selected_gt_slot": 5,
+      "mean_iou": {
+        "single": 0.7352872468616917,
+        "correct": 0.7382256096983849,
+        "zero": 0.6711118662624721,
+        "shift": 0.6602733053632371
+      },
+      "selected_iou": {
+        "single": 0.6375596119059366,
+        "correct": 0.6378369704749679,
+        "zero": 0.5687690579361259,
+        "shift": 0.5853588379116927
+      }
+    },
+    {
+      "image_id": 312,
+      "box_type": "gt",
+      "gt_count": 9,
+      "selected_gt_slot": 5,
+      "mean_iou": {
+        "single": 0.7675937832061215,
+        "correct": 0.7882766838954137,
+        "zero": 0.6727715347887014,
+        "shift": 0.6810280836818945
+      },
+      "selected_iou": {
+        "single": 0.7427666618684324,
+        "correct": 0.7531891292290627,
+        "zero": 0.7187408491947291,
+        "shift": 0.6651060313963095
+      }
+    },
+    {
+      "image_id": 312,
+      "box_type": "single_pred",
+      "gt_count": 9,
+      "selected_gt_slot": 5,
+      "mean_iou": {
+        "single": 0.6584083653716737,
+        "correct": 0.6597365056158574,
+        "zero": 0.5832880831599513,
+        "shift": 0.5944830997897419
+      },
+      "selected_iou": {
+        "single": 0.628992628992629,
+        "correct": 0.6307839084115122,
+        "zero": 0.5701127521041766,
+        "shift": 0.5449429883014957
+      }
+    },
+    {
+      "image_id": 312,
+      "box_type": "dual_pred",
+      "gt_count": 9,
+      "selected_gt_slot": 5,
+      "mean_iou": {
+        "single": 0.6745852970874187,
+        "correct": 0.6805814984886022,
+        "zero": 0.6010182512458804,
+        "shift": 0.6245569469275334
+      },
+      "selected_iou": {
+        "single": 0.7335456475583864,
+        "correct": 0.7463799283154122,
+        "zero": 0.6439451063188056,
+        "shift": 0.7335061941803515
+      }
+    },
+    {
+      "image_id": 952,
+      "box_type": "gt",
+      "gt_count": 21,
+      "selected_gt_slot": 0,
+      "mean_iou": {
+        "single": 0.8266987599112082,
+        "correct": 0.8398973592281913,
+        "zero": 0.7399755782316245,
+        "shift": 0.8067488550941571
+      },
+      "selected_iou": {
+        "single": 0.8239553345546541,
+        "correct": 0.8787715517241379,
+        "zero": 0.7377379209370425,
+        "shift": 0.8212156269466939
+      }
+    },
+    {
+      "image_id": 952,
+      "box_type": "single_pred",
+      "gt_count": 21,
+      "selected_gt_slot": 0,
+      "mean_iou": {
+        "single": 0.7626237959607108,
+        "correct": 0.7846115362672984,
+        "zero": 0.7055894438977357,
+        "shift": 0.7643893243754925
+      },
+      "selected_iou": {
+        "single": 0.5175670570457122,
+        "correct": 0.5606346807706838,
+        "zero": 0.4849829996222138,
+        "shift": 0.5618624858330186
+      }
+    },
+    {
+      "image_id": 952,
+      "box_type": "dual_pred",
+      "gt_count": 21,
+      "selected_gt_slot": 0,
+      "mean_iou": {
+        "single": 0.7808394639484804,
+        "correct": 0.7952781166612362,
+        "zero": 0.714786115424679,
+        "shift": 0.7697791220311685
+      },
+      "selected_iou": {
+        "single": 0.8183684398429133,
+        "correct": 0.8540895632864545,
+        "zero": 0.7907906976744186,
+        "shift": 0.8212680062391045
+      }
+    }
+  ]
+}

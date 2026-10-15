@@ -1,0 +1,614 @@
+[
+  {
+    "arm": "single",
+    "image_id": 310,
+    "mode": "satellite",
+    "gt_slot": 5,
+    "rpn_best_iou": 0.8851068019866943,
+    "rpn_best_rank": 49,
+    "rpn_best_score": 0.9999423027038574,
+    "pre_nms_best_iou": 0.874521791934967,
+    "pre_nms_best_score": 0.3212377429008484,
+    "pre_nms_best_source_proposal_iou": 0.517580509185791,
+    "eligible_pre_nms_best_iou": 0.874521791934967,
+    "eligible_pre_nms_best_score": 0.3212377429008484,
+    "final_best_iou": 0.7745741009712219,
+    "final_best_rank": 7,
+    "final_best_score": 0.9999716281890869,
+    "eligible_best_box": [
+      323.4009094238281,
+      136.90953063964844,
+      410.4349060058594,
+      249.9701690673828
+    ],
+    "final_best_box": [
+      329.18560791015625,
+      134.84982299804688,
+      407.06671142578125,
+      254.1859130859375
+    ],
+    "eligible_best_survives": false,
+    "nms_iou_threshold": 0.5,
+    "suppressor_candidates": [
+      {
+        "final_rank": 7,
+        "score": 0.9999716281890869,
+        "overlap_with_candidate": 0.8524938225746155,
+        "iou_with_gt": 0.7745741009712219,
+        "bbox": [
+          329.18560791015625,
+          134.84982299804688,
+          407.06671142578125,
+          254.1859130859375
+        ]
+      }
+    ],
+    "rpn_top100_best_iou": 0.8851068019866943,
+    "rpn_top300_best_iou": 0.8851068019866943,
+    "rpn_top1000_best_iou": 0.8851068019866943
+  },
+  {
+    "arm": "single",
+    "image_id": 312,
+    "mode": "satellite",
+    "gt_slot": 5,
+    "rpn_best_iou": 0.8098976016044617,
+    "rpn_best_rank": 17,
+    "rpn_best_score": 0.9999979734420776,
+    "pre_nms_best_iou": 0.8821263313293457,
+    "pre_nms_best_score": 0.2360716611146927,
+    "pre_nms_best_source_proposal_iou": 0.5086711049079895,
+    "eligible_pre_nms_best_iou": 0.8821263313293457,
+    "eligible_pre_nms_best_score": 0.2360716611146927,
+    "final_best_iou": 0.6562166213989258,
+    "final_best_rank": 7,
+    "final_best_score": 0.9999974966049194,
+    "eligible_best_box": [
+      321.2442932128906,
+      299.73590087890625,
+      418.9943542480469,
+      409.2213134765625
+    ],
+    "final_best_box": [
+      320.33526611328125,
+      304.02880859375,
+      418.55694580078125,
+      384.2861328125
+    ],
+    "eligible_best_survives": false,
+    "nms_iou_threshold": 0.5,
+    "suppressor_candidates": [
+      {
+        "final_rank": 7,
+        "score": 0.9999974966049194,
+        "overlap_with_candidate": 0.7248200178146362,
+        "iou_with_gt": 0.6562166213989258,
+        "bbox": [
+          320.33526611328125,
+          304.02880859375,
+          418.55694580078125,
+          384.2861328125
+        ]
+      }
+    ],
+    "rpn_top100_best_iou": 0.8098976016044617,
+    "rpn_top300_best_iou": 0.8098976016044617,
+    "rpn_top1000_best_iou": 0.8098976016044617
+  },
+  {
+    "arm": "single",
+    "image_id": 952,
+    "mode": "satellite",
+    "gt_slot": 0,
+    "rpn_best_iou": 0.6471246480941772,
+    "rpn_best_rank": 67,
+    "rpn_best_score": 0.9999648332595825,
+    "pre_nms_best_iou": 0.7709349393844604,
+    "pre_nms_best_score": 0.8054375648498535,
+    "pre_nms_best_source_proposal_iou": 0.6067690849304199,
+    "eligible_pre_nms_best_iou": 0.7709349393844604,
+    "eligible_pre_nms_best_score": 0.8054375648498535,
+    "final_best_iou": 0.5298753976821899,
+    "final_best_rank": 20,
+    "final_best_score": 0.9968017339706421,
+    "eligible_best_box": [
+      319.60723876953125,
+      296.2664489746094,
+      436.35711669921875,
+      421.9603576660156
+    ],
+    "final_best_box": [
+      339.2099609375,
+      306.69219970703125,
+      424.22467041015625,
+      425.33258056640625
+    ],
+    "eligible_best_survives": false,
+    "nms_iou_threshold": 0.5,
+    "suppressor_candidates": [
+      {
+        "final_rank": 20,
+        "score": 0.9968017339706421,
+        "overlap_with_candidate": 0.6549831628799438,
+        "iou_with_gt": 0.5298753976821899,
+        "bbox": [
+          339.2099609375,
+          306.69219970703125,
+          424.22467041015625,
+          425.33258056640625
+        ]
+      }
+    ],
+    "rpn_top100_best_iou": 0.6471246480941772,
+    "rpn_top300_best_iou": 0.6471246480941772,
+    "rpn_top1000_best_iou": 0.6471246480941772
+  },
+  {
+    "arm": "dual",
+    "image_id": 310,
+    "mode": "correct",
+    "gt_slot": 5,
+    "rpn_best_iou": 0.9079561829566956,
+    "rpn_best_rank": 26,
+    "rpn_best_score": 0.9999921321868896,
+    "pre_nms_best_iou": 0.8786986470222473,
+    "pre_nms_best_score": 0.926582396030426,
+    "pre_nms_best_source_proposal_iou": 0.6021090745925903,
+    "eligible_pre_nms_best_iou": 0.8786986470222473,
+    "eligible_pre_nms_best_score": 0.926582396030426,
+    "final_best_iou": 0.6242173314094543,
+    "final_best_rank": 9,
+    "final_best_score": 0.9999817609786987,
+    "eligible_best_box": [
+      325.6592712402344,
+      136.050537109375,
+      413.7638244628906,
+      251.9678955078125
+    ],
+    "final_best_box": [
+      323.1728820800781,
+      140.2508087158203,
+      418.5780944824219,
+      214.60215759277344
+    ],
+    "eligible_best_survives": false,
+    "nms_iou_threshold": 0.5,
+    "suppressor_candidates": [
+      {
+        "final_rank": 9,
+        "score": 0.9999817609786987,
+        "overlap_with_candidate": 0.6090459823608398,
+        "iou_with_gt": 0.6242173314094543,
+        "bbox": [
+          323.1728820800781,
+          140.2508087158203,
+          418.5780944824219,
+          214.60215759277344
+        ]
+      },
+      {
+        "final_rank": 13,
+        "score": 0.9924660921096802,
+        "overlap_with_candidate": 0.5280717611312866,
+        "iou_with_gt": 0.468828022480011,
+        "bbox": [
+          339.8402099609375,
+          163.2127685546875,
+          401.05743408203125,
+          251.310791015625
+        ]
+      }
+    ],
+    "rpn_top100_best_iou": 0.9079561829566956,
+    "rpn_top300_best_iou": 0.9079561829566956,
+    "rpn_top1000_best_iou": 0.9079561829566956
+  },
+  {
+    "arm": "dual",
+    "image_id": 310,
+    "mode": "zero",
+    "gt_slot": 5,
+    "rpn_best_iou": 0.9010605216026306,
+    "rpn_best_rank": 27,
+    "rpn_best_score": 0.9999904632568359,
+    "pre_nms_best_iou": 0.8786986470222473,
+    "pre_nms_best_score": 0.926582396030426,
+    "pre_nms_best_source_proposal_iou": 0.6021090745925903,
+    "eligible_pre_nms_best_iou": 0.8786986470222473,
+    "eligible_pre_nms_best_score": 0.926582396030426,
+    "final_best_iou": 0.6244462728500366,
+    "final_best_rank": 9,
+    "final_best_score": 0.9999806880950928,
+    "eligible_best_box": [
+      325.6592712402344,
+      136.050537109375,
+      413.7638244628906,
+      251.9678955078125
+    ],
+    "final_best_box": [
+      323.13116455078125,
+      140.23873901367188,
+      418.545166015625,
+      214.56845092773438
+    ],
+    "eligible_best_survives": false,
+    "nms_iou_threshold": 0.5,
+    "suppressor_candidates": [
+      {
+        "final_rank": 9,
+        "score": 0.9999806880950928,
+        "overlap_with_candidate": 0.608840823173523,
+        "iou_with_gt": 0.6244462728500366,
+        "bbox": [
+          323.13116455078125,
+          140.23873901367188,
+          418.545166015625,
+          214.56845092773438
+        ]
+      },
+      {
+        "final_rank": 13,
+        "score": 0.9915561676025391,
+        "overlap_with_candidate": 0.5287318825721741,
+        "iou_with_gt": 0.46739089488983154,
+        "bbox": [
+          340.047119140625,
+          162.83084106445312,
+          400.8934326171875,
+          251.57669067382812
+        ]
+      }
+    ],
+    "rpn_top100_best_iou": 0.9010605216026306,
+    "rpn_top300_best_iou": 0.9010605216026306,
+    "rpn_top1000_best_iou": 0.9010605216026306
+  },
+  {
+    "arm": "dual",
+    "image_id": 310,
+    "mode": "shift",
+    "gt_slot": 5,
+    "rpn_best_iou": 0.9149386286735535,
+    "rpn_best_rank": 26,
+    "rpn_best_score": 0.9999899864196777,
+    "pre_nms_best_iou": 0.8786986470222473,
+    "pre_nms_best_score": 0.926582396030426,
+    "pre_nms_best_source_proposal_iou": 0.6021090745925903,
+    "eligible_pre_nms_best_iou": 0.8786986470222473,
+    "eligible_pre_nms_best_score": 0.926582396030426,
+    "final_best_iou": 0.6272943019866943,
+    "final_best_rank": 8,
+    "final_best_score": 0.9999827146530151,
+    "eligible_best_box": [
+      325.6592712402344,
+      136.050537109375,
+      413.7638244628906,
+      251.9678955078125
+    ],
+    "final_best_box": [
+      323.26641845703125,
+      140.06546020507812,
+      418.74188232421875,
+      214.94027709960938
+    ],
+    "eligible_best_survives": false,
+    "nms_iou_threshold": 0.5,
+    "suppressor_candidates": [
+      {
+        "final_rank": 8,
+        "score": 0.9999827146530151,
+        "overlap_with_candidate": 0.612816572189331,
+        "iou_with_gt": 0.6272943019866943,
+        "bbox": [
+          323.26641845703125,
+          140.06546020507812,
+          418.74188232421875,
+          214.94027709960938
+        ]
+      },
+      {
+        "final_rank": 13,
+        "score": 0.9903643727302551,
+        "overlap_with_candidate": 0.5214660167694092,
+        "iou_with_gt": 0.46782323718070984,
+        "bbox": [
+          338.8204040527344,
+          165.12625122070312,
+          401.0730285644531,
+          250.67529296875
+        ]
+      }
+    ],
+    "rpn_top100_best_iou": 0.9149386286735535,
+    "rpn_top300_best_iou": 0.9149386286735535,
+    "rpn_top1000_best_iou": 0.9149386286735535
+  },
+  {
+    "arm": "dual",
+    "image_id": 312,
+    "mode": "correct",
+    "gt_slot": 5,
+    "rpn_best_iou": 0.8734727501869202,
+    "rpn_best_rank": 18,
+    "rpn_best_score": 0.9999977350234985,
+    "pre_nms_best_iou": 0.8925005197525024,
+    "pre_nms_best_score": 0.9990923404693604,
+    "pre_nms_best_source_proposal_iou": 0.6954379677772522,
+    "eligible_pre_nms_best_iou": 0.8925005197525024,
+    "eligible_pre_nms_best_score": 0.9990923404693604,
+    "final_best_iou": 0.735663890838623,
+    "final_best_rank": 13,
+    "final_best_score": 0.9789390563964844,
+    "eligible_best_box": [
+      324.50567626953125,
+      298.4873962402344,
+      415.4627685546875,
+      416.2241516113281
+    ],
+    "final_best_box": [
+      328.4962158203125,
+      295.1080322265625,
+      406.56634521484375,
+      423.43963623046875
+    ],
+    "eligible_best_survives": false,
+    "nms_iou_threshold": 0.5,
+    "suppressor_candidates": [
+      {
+        "final_rank": 9,
+        "score": 0.9999927282333374,
+        "overlap_with_candidate": 0.5959051847457886,
+        "iou_with_gt": 0.5912306904792786,
+        "bbox": [
+          321.4763488769531,
+          307.3544616699219,
+          419.5100402832031,
+          380.9253234863281
+        ]
+      }
+    ],
+    "rpn_top100_best_iou": 0.8734727501869202,
+    "rpn_top300_best_iou": 0.8734727501869202,
+    "rpn_top1000_best_iou": 0.8734727501869202
+  },
+  {
+    "arm": "dual",
+    "image_id": 312,
+    "mode": "zero",
+    "gt_slot": 5,
+    "rpn_best_iou": 0.8712689280509949,
+    "rpn_best_rank": 20,
+    "rpn_best_score": 0.9999969005584717,
+    "pre_nms_best_iou": 0.8925005197525024,
+    "pre_nms_best_score": 0.9990923404693604,
+    "pre_nms_best_source_proposal_iou": 0.6954379677772522,
+    "eligible_pre_nms_best_iou": 0.8925005197525024,
+    "eligible_pre_nms_best_score": 0.9990923404693604,
+    "final_best_iou": 0.735663890838623,
+    "final_best_rank": 13,
+    "final_best_score": 0.9789390563964844,
+    "eligible_best_box": [
+      324.50567626953125,
+      298.4873962402344,
+      415.4627685546875,
+      416.2241516113281
+    ],
+    "final_best_box": [
+      328.4962158203125,
+      295.1080322265625,
+      406.56634521484375,
+      423.43963623046875
+    ],
+    "eligible_best_survives": false,
+    "nms_iou_threshold": 0.5,
+    "suppressor_candidates": [
+      {
+        "final_rank": 9,
+        "score": 0.9999926090240479,
+        "overlap_with_candidate": 0.5957422852516174,
+        "iou_with_gt": 0.592769980430603,
+        "bbox": [
+          321.3071594238281,
+          307.237548828125,
+          419.4820251464844,
+          380.85870361328125
+        ]
+      }
+    ],
+    "rpn_top100_best_iou": 0.8712689280509949,
+    "rpn_top300_best_iou": 0.8712689280509949,
+    "rpn_top1000_best_iou": 0.8712689280509949
+  },
+  {
+    "arm": "dual",
+    "image_id": 312,
+    "mode": "shift",
+    "gt_slot": 5,
+    "rpn_best_iou": 0.8741933107376099,
+    "rpn_best_rank": 10,
+    "rpn_best_score": 0.9999983310699463,
+    "pre_nms_best_iou": 0.8935832381248474,
+    "pre_nms_best_score": 0.012417743913829327,
+    "pre_nms_best_source_proposal_iou": 0.5338111519813538,
+    "eligible_pre_nms_best_iou": 0.8925005197525024,
+    "eligible_pre_nms_best_score": 0.9990923404693604,
+    "final_best_iou": 0.735663890838623,
+    "final_best_rank": 13,
+    "final_best_score": 0.9789390563964844,
+    "eligible_best_box": [
+      324.50567626953125,
+      298.4873962402344,
+      415.4627685546875,
+      416.2241516113281
+    ],
+    "final_best_box": [
+      328.4962158203125,
+      295.1080322265625,
+      406.56634521484375,
+      423.43963623046875
+    ],
+    "eligible_best_survives": false,
+    "nms_iou_threshold": 0.5,
+    "suppressor_candidates": [
+      {
+        "final_rank": 7,
+        "score": 0.9999935626983643,
+        "overlap_with_candidate": 0.5946274399757385,
+        "iou_with_gt": 0.5918742418289185,
+        "bbox": [
+          321.2872314453125,
+          307.39422607421875,
+          419.62078857421875,
+          380.95086669921875
+        ]
+      }
+    ],
+    "rpn_top100_best_iou": 0.8741933107376099,
+    "rpn_top300_best_iou": 0.8741933107376099,
+    "rpn_top1000_best_iou": 0.8741933107376099
+  },
+  {
+    "arm": "dual",
+    "image_id": 952,
+    "mode": "correct",
+    "gt_slot": 0,
+    "rpn_best_iou": 0.686040461063385,
+    "rpn_best_rank": 685,
+    "rpn_best_score": 0.10799199342727661,
+    "pre_nms_best_iou": 0.8647963404655457,
+    "pre_nms_best_score": 0.4465388059616089,
+    "pre_nms_best_source_proposal_iou": 0.5879363417625427,
+    "eligible_pre_nms_best_iou": 0.8647963404655457,
+    "eligible_pre_nms_best_score": 0.4465388059616089,
+    "final_best_iou": 0.811061680316925,
+    "final_best_rank": 17,
+    "final_best_score": 0.9992234706878662,
+    "eligible_best_box": [
+      319.0206604003906,
+      293.6817321777344,
+      440.2990417480469,
+      430.0075988769531
+    ],
+    "final_best_box": [
+      319.8822326660156,
+      296.2833557128906,
+      432.8913879394531,
+      432.8966979980469
+    ],
+    "eligible_best_survives": false,
+    "nms_iou_threshold": 0.5,
+    "suppressor_candidates": [
+      {
+        "final_rank": 17,
+        "score": 0.9992234706878662,
+        "overlap_with_candidate": 0.8963330388069153,
+        "iou_with_gt": 0.811061680316925,
+        "bbox": [
+          319.8822326660156,
+          296.2833557128906,
+          432.8913879394531,
+          432.8966979980469
+        ]
+      }
+    ],
+    "rpn_top100_best_iou": 0.6591319441795349,
+    "rpn_top300_best_iou": 0.6591319441795349,
+    "rpn_top1000_best_iou": 0.686040461063385
+  },
+  {
+    "arm": "dual",
+    "image_id": 952,
+    "mode": "zero",
+    "gt_slot": 0,
+    "rpn_best_iou": 0.6591319441795349,
+    "rpn_best_rank": 85,
+    "rpn_best_score": 0.9997794032096863,
+    "pre_nms_best_iou": 0.8399810791015625,
+    "pre_nms_best_score": 0.23243896663188934,
+    "pre_nms_best_source_proposal_iou": 0.6214584708213806,
+    "eligible_pre_nms_best_iou": 0.8399810791015625,
+    "eligible_pre_nms_best_score": 0.23243896663188934,
+    "final_best_iou": 0.8109598755836487,
+    "final_best_rank": 17,
+    "final_best_score": 0.9987047910690308,
+    "eligible_best_box": [
+      317.267333984375,
+      296.54559326171875,
+      436.9442138671875,
+      430.1473388671875
+    ],
+    "final_best_box": [
+      320.20452880859375,
+      296.27191162109375,
+      432.185791015625,
+      434.1219482421875
+    ],
+    "eligible_best_survives": false,
+    "nms_iou_threshold": 0.5,
+    "suppressor_candidates": [
+      {
+        "final_rank": 17,
+        "score": 0.9987047910690308,
+        "overlap_with_candidate": 0.9086610078811646,
+        "iou_with_gt": 0.8109598755836487,
+        "bbox": [
+          320.20452880859375,
+          296.27191162109375,
+          432.185791015625,
+          434.1219482421875
+        ]
+      }
+    ],
+    "rpn_top100_best_iou": 0.6591319441795349,
+    "rpn_top300_best_iou": 0.6591319441795349,
+    "rpn_top1000_best_iou": 0.6591319441795349
+  },
+  {
+    "arm": "dual",
+    "image_id": 952,
+    "mode": "shift",
+    "gt_slot": 0,
+    "rpn_best_iou": 0.6591319441795349,
+    "rpn_best_rank": 85,
+    "rpn_best_score": 0.9997794032096863,
+    "pre_nms_best_iou": 0.8498130440711975,
+    "pre_nms_best_score": 0.34131693840026855,
+    "pre_nms_best_source_proposal_iou": 0.5859071016311646,
+    "eligible_pre_nms_best_iou": 0.8498130440711975,
+    "eligible_pre_nms_best_score": 0.34131693840026855,
+    "final_best_iou": 0.8035762310028076,
+    "final_best_rank": 17,
+    "final_best_score": 0.9983633160591125,
+    "eligible_best_box": [
+      316.9739074707031,
+      295.9705810546875,
+      440.3594055175781,
+      427.07342529296875
+    ],
+    "final_best_box": [
+      319.25677490234375,
+      298.5376281738281,
+      432.74774169921875,
+      433.3155212402344
+    ],
+    "eligible_best_survives": false,
+    "nms_iou_threshold": 0.5,
+    "suppressor_candidates": [
+      {
+        "final_rank": 17,
+        "score": 0.9983633160591125,
+        "overlap_with_candidate": 0.8639615178108215,
+        "iou_with_gt": 0.8035762310028076,
+        "bbox": [
+          319.25677490234375,
+          298.5376281738281,
+          432.74774169921875,
+          433.3155212402344
+        ]
+      }
+    ],
+    "rpn_top100_best_iou": 0.6591319441795349,
+    "rpn_top300_best_iou": 0.6591319441795349,
+    "rpn_top1000_best_iou": 0.6591319441795349
+  }
+]
