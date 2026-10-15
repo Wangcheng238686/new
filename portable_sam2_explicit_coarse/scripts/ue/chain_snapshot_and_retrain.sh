@@ -27,12 +27,17 @@ fi
 log "snapshot frozen: $(sha256sum "${SNAP}_manifest.json" | cut -c1-16)"
 
 cd "$PKG"
-log "launching EXP-0009 (single-stream snapshot arm)"
-B0_EXP_ID=EXP-0009 bash scripts/ue/run_exp0009_ddp4.sh \
-  > /data2/wangcheng/checkpoint/surfbev_b0/launcher_logs/EXP-0009-ddp4.log 2>&1
-RC9=$?
+if [[ -f /data2/wangcheng/checkpoint/surfbev_b0/surfacebev_snap_512_sealed_ddp4_s44_EXP-0009/last_model_epoch100.pth ]]; then
+  log "EXP-0009 last checkpoint already present; skipping to EXP-0010"
+  RC9=0
+else
+  log "launching EXP-0009 (single-stream snapshot arm)"
+  B0_EXP_ID=EXP-0009 bash scripts/ue/run_exp0009_ddp4.sh \
+    > /data2/wangcheng/checkpoint/surfbev_b0/launcher_logs/EXP-0009-ddp4.log 2>&1
+  RC9=$?
+fi
 log "EXP-0009 exited rc=$RC9"
-if [[ $RC9 -ne 0 || ! -f /data1/wangcheng/checkpoint/surfbev_b0/surfacebev_snap_512_sealed_ddp4_s44_EXP-0009/last_model_epoch100.pth ]]; then
+if [[ $RC9 -ne 0 || ! -f /data2/wangcheng/checkpoint/surfbev_b0/surfacebev_snap_512_sealed_ddp4_s44_EXP-0009/last_model_epoch100.pth ]]; then
   log "FATAL: EXP-0009 did not complete (rc=$RC9); not launching EXP-0010"; exit 2
 fi
 
