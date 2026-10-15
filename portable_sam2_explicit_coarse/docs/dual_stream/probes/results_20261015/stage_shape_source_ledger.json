@@ -1,0 +1,31 @@
+{
+  "git_commit": "884b381c58a464d44c33f74b8f34de34215910b5",
+  "git_status": "",
+  "files_sha256": {
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/__init__.py": "85fe2603f5e9815cefc984c264878d565b0e36ed0046787631a596e280176d57",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/cameras.py": "9c4e2fa2ed60a14869e242d585eaaaf306623f344a37549b1399f3856b533393",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/candidates.py": "8185d2701765c82c161da9f166f5b1d77c7f4c42ff1cdc79ca746cd815a68c9e",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/contract.py": "c0c563a13ef90bc4b5b2f8a274873cfd3eec804af159ae449051ab4e0431732d",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/cvt.py": "21e66ce00bd0275c43f1f47945dec4b7fe8b504134a97d8674f7b3fcc7515ff9",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/diagnostics.py": "aa30838fd3d0b359d5ec2da4f02d0bfdda4dc1576a482d6b012506a719075e9a",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/footprints.py": "58765b3e96c58b7a180d19583888b51e0715bd2b27013026cae9d6fa445b85be",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/fusion.py": "7dff4c62a95c57246fec0d6555418a500f651410aca185edf479abf5d59f583c",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/geometry.py": "81d9a5283cec68a429a488bb22bf3205f707f1d5bd0f2c1772c644aa2448db22",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/projection.py": "30196f55f67ed50316051eef608271e1a251d71d0bf73d19cdf44470d1e81bfa",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/surfaces.py": "048ea3e64e19f4878fb77e4729d240e736516b8325f666f89b840440efd13fec",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/detection/dual_detector.py": "27c6503794440e8e53505ab8f1d7c52a6058b6c5c6c9ca8ec992fbf4a31ccac2",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/detection/anchor_detector.py": "a797045645517367f47b0a56b392021fa6d882696fff046aa6c3ed3dce1225e4",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/detection/anchor_roi_head.py": "6b258b33b697f75e62fad0e7c71b0c920b713a9f0d3e71e72a550f891f2ec15a",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/detection/sam2_neck.py": "ffb3ed6c69b21a55a8079a86f7ebef4677f3b446169ff3e2228e37b8cf0369c7",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/cspm/mask_head.py": "293155539e212f1ea5caca7aecbea3ec41f8b339d664610671f4a445c6c9e78d",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/cspm/mask_head_targets.py": "b62344d7810265e8d66e14e193fa584b7e1405c9671442d69fb3d621041fa0fe",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/data/ue_rgbd_dataset.py": "8cad512d7c595c974963bf74f8895e971d131809393337258d95be45e2c27275",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/data/ue_geometry_cache.py": "454448ecf51803f710b40804a3ab0b2f97a2c33345afb544d39d6d8c66b7bc4a",
+    "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/data/ue_payload.py": "931d93f21dc5fff03f99cf0330bfb8083ac537671e1188d4555f48991b8f0665",
+    "/tmp/ue_rgb_content_probe.py": "c3eae2cc949bae9ab1f02b3558a32cf7da2eab74e54926342cd64cd63909d327",
+    "/tmp/ue_stage_shape_probe/stage_pair_extraction_draft.py": "dcff787fd8390f0d31a37eba92218752f077ca427e61ae079ad63d26236aa6d7",
+    "/tmp/ue_stage_shape_probe/extract_stage_pair.py": "9d0fcfd26cd05114c76a3a10e9cd0b7534d68ed79a5105d2bb9149d7b8ef5d23",
+    "/tmp/ue_stage_shape_probe/PREREGISTRATION_DRAFT.md": "3111683d6800cf78b8da6ec78f2cc1298df8a84452af91244df2e94af23e2a15"
+  },
+  "smoke_manifest_sha256": "afb9f187dd97fd4c3eeb84cd62ab60b28f16cbe3ca3c471aa2aec38dac0236fa"
+}

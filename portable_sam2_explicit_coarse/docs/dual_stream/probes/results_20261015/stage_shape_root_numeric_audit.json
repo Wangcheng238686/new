@@ -1,0 +1,60 @@
+{
+  "train": {
+    "n": 12621,
+    "brier": {
+      "linear_SG": 0.02767486684024334,
+      "linear_S64": 0.027629340067505836,
+      "linear_C": 0.02762935496866703,
+      "linear_CX": 0.027696864679455757,
+      "linear_U": 0.027692249044775963,
+      "linear_UX": 0.027687421068549156,
+      "nonlinear_SG": 0.026563672348856926,
+      "nonlinear_S64": 0.026458941400051117,
+      "nonlinear_C": 0.02659742906689644,
+      "nonlinear_CX": 0.02662341110408306,
+      "nonlinear_U": 0.026578985154628754,
+      "nonlinear_UX": 0.02661176025867462
+    }
+  },
+  "validation": "PASS",
+  "scope": "Root independent Brier, boundary/building means and four main paired bootstrap gates; not independent model replay",
+  "primary": {
+    "C_vs_S64": {
+      "mean": 0.00018294708570465446,
+      "interval": [
+        6.48965301927562e-05,
+        0.0003316734724076618
+      ],
+      "passed": false
+    },
+    "C_vs_CX": {
+      "mean": 0.0005982945440337062,
+      "interval": [
+        0.00047859091225764625,
+        0.0007370416608081815
+      ],
+      "passed": false
+    },
+    "U_vs_S64": {
+      "mean": -0.0005099081317894161,
+      "interval": [
+        -0.0006542920003558961,
+        -0.000381930612835335
+      ],
+      "passed": false
+    },
+    "U_vs_UX": {
+      "mean": 0.00010049637057818472,
+      "interval": [
+        -2.586965924997839e-05,
+        0.00021050618216376422
+      ],
+      "passed": false
+    }
+  },
+  "source_sha256": {
+    "/tmp/ue_stage_shape_root_audit.py": "ab13ffc2d88dfcf82566c7989c40d66b39cff4de52887e0c89c1dd92d4db2ccf",
+    "/tmp/ue_stage_shape_probe/summary.json": "07fe693a86dd7fbff9301706645f6bbf3c09daff41846239c9a93f8a244dce27",
+    "/tmp/ue_stage_shape_probe/fit/fit_manifest.json": "1c9470c59478b695e8d643b4aec8deddd050bc16cd6fc9545086f1368c24d10d"
+  }
+}

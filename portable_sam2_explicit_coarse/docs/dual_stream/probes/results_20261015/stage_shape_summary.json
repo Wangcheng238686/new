@@ -1,0 +1,1022 @@
+{
+  "validation": "PASS",
+  "scope": {
+    "train_images": 128,
+    "val_images": 153,
+    "train_rois": 12621,
+    "val_rois": 4496,
+    "task": "new16x16softoccupancyBrier",
+    "exploratory_reused_development_subset": true
+  },
+  "metrics": {
+    "train": {
+      "uncorrected": {
+        "brier": 0.0288394745439291
+      },
+      "linear_SG": {
+        "brier": 0.02767486684024334,
+        "unclipped_brier": 0.02780100330710411,
+        "clamp_fraction": 0.24965273651057762,
+        "boundary_brier": 0.06755794584751129,
+        "boundary_rois": 12621,
+        "binary16_iou": 0.9050740413672586,
+        "building_equal_brier": 0.02880493737757206,
+        "groups": {
+          "all": {
+            "n": 12621,
+            "brier": 0.02767486684024334
+          },
+          "support_positive": {
+            "n": 12469,
+            "brier": 0.02715170569717884
+          },
+          "support_zero": {
+            "n": 152,
+            "brier": 0.07059098780155182
+          },
+          "small": {
+            "n": 5107,
+            "brier": 0.04484438896179199
+          },
+          "medium": {
+            "n": 7156,
+            "brier": 0.016189811751246452
+          },
+          "large": {
+            "n": 358,
+            "brier": 0.012318028137087822
+          }
+        }
+      },
+      "linear_S64": {
+        "brier": 0.027629340067505836,
+        "unclipped_brier": 0.02774389088153839,
+        "clamp_fraction": 0.23672723040963473,
+        "boundary_brier": 0.06740116328001022,
+        "boundary_rois": 12621,
+        "binary16_iou": 0.9051181872099382,
+        "building_equal_brier": 0.02877029962837696,
+        "groups": {
+          "all": {
+            "n": 12621,
+            "brier": 0.027629340067505836
+          },
+          "support_positive": {
+            "n": 12469,
+            "brier": 0.027108704671263695
+          },
+          "support_zero": {
+            "n": 152,
+            "brier": 0.07033856213092804
+          },
+          "small": {
+            "n": 5107,
+            "brier": 0.044763367623090744
+          },
+          "medium": {
+            "n": 7156,
+            "brier": 0.016167623922228813
+          },
+          "large": {
+            "n": 358,
+            "brier": 0.012312526814639568
+          }
+        }
+      },
+      "linear_C": {
+        "brier": 0.02762935496866703,
+        "unclipped_brier": 0.0277714766561985,
+        "clamp_fraction": 0.2545967534268283,
+        "boundary_brier": 0.06729833036661148,
+        "boundary_rois": 12621,
+        "binary16_iou": 0.9050634614069946,
+        "building_equal_brier": 0.028761809691786766,
+        "groups": {
+          "all": {
+            "n": 12621,
+            "brier": 0.02762935496866703
+          },
+          "support_positive": {
+            "n": 12469,
+            "brier": 0.02710677497088909
+          },
+          "support_zero": {
+            "n": 152,
+            "brier": 0.07049825042486191
+          },
+          "small": {
+            "n": 5107,
+            "brier": 0.044693950563669205
+          },
+          "medium": {
+            "n": 7156,
+            "brier": 0.016212714836001396
+          },
+          "large": {
+            "n": 358,
+            "brier": 0.012401971034705639
+          }
+        }
+      },
+      "linear_CX": {
+        "brier": 0.027696864679455757,
+        "unclipped_brier": 0.027861647307872772,
+        "clamp_fraction": 0.2605995835314159,
+        "boundary_brier": 0.06743865460157394,
+        "boundary_rois": 12621,
+        "binary16_iou": 0.9050832859159998,
+        "building_equal_brier": 0.028823375701904297,
+        "groups": {
+          "all": {
+            "n": 12621,
+            "brier": 0.027696864679455757
+          },
+          "support_positive": {
+            "n": 12469,
+            "brier": 0.027173278853297234
+          },
+          "support_zero": {
+            "n": 152,
+            "brier": 0.07064813375473022
+          },
+          "small": {
+            "n": 5107,
+            "brier": 0.044777173548936844
+          },
+          "medium": {
+            "n": 7156,
+            "brier": 0.01627197116613388
+          },
+          "large": {
+            "n": 358,
+            "brier": 0.012410219758749008
+          }
+        }
+      },
+      "linear_U": {
+        "brier": 0.027692249044775963,
+        "unclipped_brier": 0.02782762609422207,
+        "clamp_fraction": 0.2594178972545757,
+        "boundary_brier": 0.06750161945819855,
+        "boundary_rois": 12621,
+        "binary16_iou": 0.9052071369702279,
+        "building_equal_brier": 0.02881038561463356,
+        "groups": {
+          "all": {
+            "n": 12621,
+            "brier": 0.027692249044775963
+          },
+          "support_positive": {
+            "n": 12469,
+            "brier": 0.027170492336153984
+          },
+          "support_zero": {
+            "n": 152,
+            "brier": 0.07049313187599182
+          },
+          "small": {
+            "n": 5107,
+            "brier": 0.04485303908586502
+          },
+          "medium": {
+            "n": 7156,
+            "brier": 0.016207097098231316
+          },
+          "large": {
+            "n": 358,
+            "brier": 0.012462028302252293
+          }
+        }
+      },
+      "linear_UX": {
+        "brier": 0.027687421068549156,
+        "unclipped_brier": 0.02783234976232052,
+        "clamp_fraction": 0.2535732236946359,
+        "boundary_brier": 0.06750015914440155,
+        "boundary_rois": 12621,
+        "binary16_iou": 0.9051519771962823,
+        "building_equal_brier": 0.028801938518881798,
+        "groups": {
+          "all": {
+            "n": 12621,
+            "brier": 0.027687421068549156
+          },
+          "support_positive": {
+            "n": 12469,
+            "brier": 0.027165109291672707
+          },
+          "support_zero": {
+            "n": 152,
+            "brier": 0.07053443044424057
+          },
+          "small": {
+            "n": 5107,
+            "brier": 0.04482639953494072
+          },
+          "medium": {
+            "n": 7156,
+            "brier": 0.016223158687353134
+          },
+          "large": {
+            "n": 358,
+            "brier": 0.012350844219326973
+          }
+        }
+      },
+      "nonlinear_SG": {
+        "brier": 0.026563672348856926,
+        "unclipped_brier": 0.026716448366642,
+        "clamp_fraction": 0.36458085730132317,
+        "boundary_brier": 0.06390345841646194,
+        "boundary_rois": 12621,
+        "binary16_iou": 0.9087466587498821,
+        "building_equal_brier": 0.02767964079976082,
+        "groups": {
+          "all": {
+            "n": 12621,
+            "brier": 0.026563672348856926
+          },
+          "support_positive": {
+            "n": 12469,
+            "brier": 0.026052432134747505
+          },
+          "support_zero": {
+            "n": 152,
+            "brier": 0.06850192695856094
+          },
+          "small": {
+            "n": 5107,
+            "brier": 0.04302456974983215
+          },
+          "medium": {
+            "n": 7156,
+            "brier": 0.015564304776489735
+          },
+          "large": {
+            "n": 358,
+            "brier": 0.011607433669269085
+          }
+        }
+      },
+      "nonlinear_S64": {
+        "brier": 0.026458941400051117,
+        "unclipped_brier": 0.02662709914147854,
+        "clamp_fraction": 0.3334794192219317,
+        "boundary_brier": 0.06364994496107101,
+        "boundary_rois": 12621,
+        "binary16_iou": 0.9090788692548812,
+        "building_equal_brier": 0.027562346309423447,
+        "groups": {
+          "all": {
+            "n": 12621,
+            "brier": 0.026458941400051117
+          },
+          "support_positive": {
+            "n": 12469,
+            "brier": 0.025949303060770035
+          },
+          "support_zero": {
+            "n": 152,
+            "brier": 0.06826607137918472
+          },
+          "small": {
+            "n": 5107,
+            "brier": 0.0427996851503849
+          },
+          "medium": {
+            "n": 7156,
+            "brier": 0.015540744177997112
+          },
+          "large": {
+            "n": 358,
+            "brier": 0.011594249866902828
+          }
+        }
+      },
+      "nonlinear_C": {
+        "brier": 0.02659742906689644,
+        "unclipped_brier": 0.026751577854156494,
+        "clamp_fraction": 0.3228012216741938,
+        "boundary_brier": 0.0638437569141388,
+        "boundary_rois": 12621,
+        "binary16_iou": 0.9082042108435998,
+        "building_equal_brier": 0.02769496478140354,
+        "groups": {
+          "all": {
+            "n": 12621,
+            "brier": 0.02659742906689644
+          },
+          "support_positive": {
+            "n": 12469,
+            "brier": 0.026088232174515724
+          },
+          "support_zero": {
+            "n": 152,
+            "brier": 0.06836846470832825
+          },
+          "small": {
+            "n": 5107,
+            "brier": 0.04303610324859619
+          },
+          "medium": {
+            "n": 7156,
+            "brier": 0.015608071349561214
+          },
+          "large": {
+            "n": 358,
+            "brier": 0.011758151464164257
+          }
+        }
+      },
+      "nonlinear_CX": {
+        "brier": 0.02662341110408306,
+        "unclipped_brier": 0.026771865785121918,
+        "clamp_fraction": 0.32190056503050474,
+        "boundary_brier": 0.0640898123383522,
+        "boundary_rois": 12621,
+        "binary16_iou": 0.9081392824727889,
+        "building_equal_brier": 0.027732007205486298,
+        "groups": {
+          "all": {
+            "n": 12621,
+            "brier": 0.02662341110408306
+          },
+          "support_positive": {
+            "n": 12469,
+            "brier": 0.02611217275261879
+          },
+          "support_zero": {
+            "n": 152,
+            "brier": 0.06856156885623932
+          },
+          "small": {
+            "n": 5107,
+            "brier": 0.04304682835936546
+          },
+          "medium": {
+            "n": 7156,
+            "brier": 0.015652230009436607
+          },
+          "large": {
+            "n": 358,
+            "brier": 0.01163841225206852
+          }
+        }
+      },
+      "nonlinear_U": {
+        "brier": 0.026578985154628754,
+        "unclipped_brier": 0.026800846680998802,
+        "clamp_fraction": 0.35908747078282227,
+        "boundary_brier": 0.06409905105829239,
+        "boundary_rois": 12621,
+        "binary16_iou": 0.908189041072263,
+        "building_equal_brier": 0.027689574286341667,
+        "groups": {
+          "all": {
+            "n": 12621,
+            "brier": 0.026578985154628754
+          },
+          "support_positive": {
+            "n": 12469,
+            "brier": 0.02606651932001114
+          },
+          "support_zero": {
+            "n": 152,
+            "brier": 0.06861820816993713
+          },
+          "small": {
+            "n": 5107,
+            "brier": 0.04304658994078636
+          },
+          "medium": {
+            "n": 7156,
+            "brier": 0.01557206828147173
+          },
+          "large": {
+            "n": 358,
+            "brier": 0.011678113602101803
+          }
+        }
+      },
+      "nonlinear_UX": {
+        "brier": 0.02661176025867462,
+        "unclipped_brier": 0.026775162667036057,
+        "clamp_fraction": 0.3425091984589177,
+        "boundary_brier": 0.06405901163816452,
+        "boundary_rois": 12621,
+        "binary16_iou": 0.9083617667173765,
+        "building_equal_brier": 0.027724456042051315,
+        "groups": {
+          "all": {
+            "n": 12621,
+            "brier": 0.02661176025867462
+          },
+          "support_positive": {
+            "n": 12469,
+            "brier": 0.026100020855665207
+          },
+          "support_zero": {
+            "n": 152,
+            "brier": 0.06859142333269119
+          },
+          "small": {
+            "n": 5107,
+            "brier": 0.04305832460522652
+          },
+          "medium": {
+            "n": 7156,
+            "brier": 0.015622328966856003
+          },
+          "large": {
+            "n": 358,
+            "brier": 0.011661485768854618
+          }
+        }
+      }
+    },
+    "validation": {
+      "uncorrected": {
+        "brier": 0.04983914643526077
+      },
+      "linear_SG": {
+        "brier": 0.0466926172375679,
+        "unclipped_brier": 0.046834543347358704,
+        "clamp_fraction": 0.2532120565502669,
+        "boundary_brier": 0.09354472160339355,
+        "boundary_rois": 4496,
+        "binary16_iou": 0.8735924118653997,
+        "building_equal_brier": 0.05289159342646599,
+        "groups": {
+          "all": {
+            "n": 4496,
+            "brier": 0.0466926172375679
+          },
+          "support_positive": {
+            "n": 4405,
+            "brier": 0.04550560191273689
+          },
+          "support_zero": {
+            "n": 91,
+            "brier": 0.10415182262659073
+          },
+          "small": {
+            "n": 881,
+            "brier": 0.07319789379835129
+          },
+          "medium": {
+            "n": 2510,
+            "brier": 0.03467545658349991
+          },
+          "large": {
+            "n": 1105,
+            "brier": 0.052857253700494766
+          }
+        }
+      },
+      "linear_S64": {
+        "brier": 0.04664255678653717,
+        "unclipped_brier": 0.04678335413336754,
+        "clamp_fraction": 0.24614153553158363,
+        "boundary_brier": 0.09343302994966507,
+        "boundary_rois": 4496,
+        "binary16_iou": 0.8735962614057984,
+        "building_equal_brier": 0.052865199744701385,
+        "groups": {
+          "all": {
+            "n": 4496,
+            "brier": 0.04664255678653717
+          },
+          "support_positive": {
+            "n": 4405,
+            "brier": 0.04544717073440552
+          },
+          "support_zero": {
+            "n": 91,
+            "brier": 0.10450708866119385
+          },
+          "small": {
+            "n": 881,
+            "brier": 0.07316374778747559
+          },
+          "medium": {
+            "n": 2510,
+            "brier": 0.0346568301320076
+          },
+          "large": {
+            "n": 1105,
+            "brier": 0.05272311344742775
+          }
+        }
+      },
+      "linear_C": {
+        "brier": 0.04626131057739258,
+        "unclipped_brier": 0.04641259089112282,
+        "clamp_fraction": 0.27455915675044484,
+        "boundary_brier": 0.09275201708078384,
+        "boundary_rois": 4496,
+        "binary16_iou": 0.8740858300314348,
+        "building_equal_brier": 0.05245784670114517,
+        "groups": {
+          "all": {
+            "n": 4496,
+            "brier": 0.04626131057739258
+          },
+          "support_positive": {
+            "n": 4405,
+            "brier": 0.0450679287314415
+          },
+          "support_zero": {
+            "n": 91,
+            "brier": 0.10402867197990417
+          },
+          "small": {
+            "n": 881,
+            "brier": 0.07291364669799805
+          },
+          "medium": {
+            "n": 2510,
+            "brier": 0.03443368896842003
+          },
+          "large": {
+            "n": 1105,
+            "brier": 0.051878150552511215
+          }
+        }
+      },
+      "linear_CX": {
+        "brier": 0.04658399894833565,
+        "unclipped_brier": 0.04673425480723381,
+        "clamp_fraction": 0.24462629976645908,
+        "boundary_brier": 0.09320024400949478,
+        "boundary_rois": 4496,
+        "binary16_iou": 0.8737488455595609,
+        "building_equal_brier": 0.0527336411178112,
+        "groups": {
+          "all": {
+            "n": 4496,
+            "brier": 0.04658399894833565
+          },
+          "support_positive": {
+            "n": 4405,
+            "brier": 0.04540596529841423
+          },
+          "support_zero": {
+            "n": 91,
+            "brier": 0.10360872000455856
+          },
+          "small": {
+            "n": 881,
+            "brier": 0.07299425452947617
+          },
+          "medium": {
+            "n": 2510,
+            "brier": 0.03464087098836899
+          },
+          "large": {
+            "n": 1105,
+            "brier": 0.052656229585409164
+          }
+        }
+      },
+      "linear_U": {
+        "brier": 0.0462886281311512,
+        "unclipped_brier": 0.046461232006549835,
+        "clamp_fraction": 0.27926385954181493,
+        "boundary_brier": 0.0927024558186531,
+        "boundary_rois": 4496,
+        "binary16_iou": 0.8743264950942831,
+        "building_equal_brier": 0.05246332287788391,
+        "groups": {
+          "all": {
+            "n": 4496,
+            "brier": 0.0462886281311512
+          },
+          "support_positive": {
+            "n": 4405,
+            "brier": 0.04510540887713432
+          },
+          "support_zero": {
+            "n": 91,
+            "brier": 0.10356439650058746
+          },
+          "small": {
+            "n": 881,
+            "brier": 0.07297356426715851
+          },
+          "medium": {
+            "n": 2510,
+            "brier": 0.03447753190994263
+          },
+          "large": {
+            "n": 1105,
+            "brier": 0.051841963082551956
+          }
+        }
+      },
+      "linear_UX": {
+        "brier": 0.046567585319280624,
+        "unclipped_brier": 0.046727173030376434,
+        "clamp_fraction": 0.2578029428936833,
+        "boundary_brier": 0.09325038641691208,
+        "boundary_rois": 4496,
+        "binary16_iou": 0.8737322166563247,
+        "building_equal_brier": 0.05270233750343323,
+        "groups": {
+          "all": {
+            "n": 4496,
+            "brier": 0.046567585319280624
+          },
+          "support_positive": {
+            "n": 4405,
+            "brier": 0.04538419097661972
+          },
+          "support_zero": {
+            "n": 91,
+            "brier": 0.1038518100976944
+          },
+          "small": {
+            "n": 881,
+            "brier": 0.07310067862272263
+          },
+          "medium": {
+            "n": 2510,
+            "brier": 0.034578680992126465
+          },
+          "large": {
+            "n": 1105,
+            "brier": 0.05264587327837944
+          }
+        }
+      },
+      "nonlinear_SG": {
+        "brier": 0.04634428396821022,
+        "unclipped_brier": 0.04672033339738846,
+        "clamp_fraction": 0.4242225728425267,
+        "boundary_brier": 0.09128473699092865,
+        "boundary_rois": 4496,
+        "binary16_iou": 0.8767815727633483,
+        "building_equal_brier": 0.05251242220401764,
+        "groups": {
+          "all": {
+            "n": 4496,
+            "brier": 0.04634428396821022
+          },
+          "support_positive": {
+            "n": 4405,
+            "brier": 0.04518314078450203
+          },
+          "support_zero": {
+            "n": 91,
+            "brier": 0.1025514155626297
+          },
+          "small": {
+            "n": 881,
+            "brier": 0.07157425582408905
+          },
+          "medium": {
+            "n": 2510,
+            "brier": 0.03403323516249657
+          },
+          "large": {
+            "n": 1105,
+            "brier": 0.054193273186683655
+          }
+        }
+      },
+      "nonlinear_S64": {
+        "brier": 0.04600232467055321,
+        "unclipped_brier": 0.04633321240544319,
+        "clamp_fraction": 0.3868021574733096,
+        "boundary_brier": 0.09058310836553574,
+        "boundary_rois": 4496,
+        "binary16_iou": 0.8770925713925926,
+        "building_equal_brier": 0.05225561559200287,
+        "groups": {
+          "all": {
+            "n": 4496,
+            "brier": 0.04600232467055321
+          },
+          "support_positive": {
+            "n": 4405,
+            "brier": 0.044802937656641006
+          },
+          "support_zero": {
+            "n": 91,
+            "brier": 0.10406067967414856
+          },
+          "small": {
+            "n": 881,
+            "brier": 0.07186982035636902
+          },
+          "medium": {
+            "n": 2510,
+            "brier": 0.033724475651979446
+          },
+          "large": {
+            "n": 1105,
+            "brier": 0.05326758697628975
+          }
+        }
+      },
+      "nonlinear_C": {
+        "brier": 0.04581937938928604,
+        "unclipped_brier": 0.04611799493432045,
+        "clamp_fraction": 0.38232161226645905,
+        "boundary_brier": 0.09014192223548889,
+        "boundary_rois": 4496,
+        "binary16_iou": 0.8769737538378726,
+        "building_equal_brier": 0.052079565823078156,
+        "groups": {
+          "all": {
+            "n": 4496,
+            "brier": 0.04581937938928604
+          },
+          "support_positive": {
+            "n": 4405,
+            "brier": 0.04465794935822487
+          },
+          "support_zero": {
+            "n": 91,
+            "brier": 0.10204026103019714
+          },
+          "small": {
+            "n": 881,
+            "brier": 0.07142383605241776
+          },
+          "medium": {
+            "n": 2510,
+            "brier": 0.03372349590063095
+          },
+          "large": {
+            "n": 1105,
+            "brier": 0.05288103595376015
+          }
+        }
+      },
+      "nonlinear_CX": {
+        "brier": 0.04641767218708992,
+        "unclipped_brier": 0.04673447459936142,
+        "clamp_fraction": 0.3360982331516904,
+        "boundary_brier": 0.09184066951274872,
+        "boundary_rois": 4496,
+        "binary16_iou": 0.8756682533989381,
+        "building_equal_brier": 0.05244189873337746,
+        "groups": {
+          "all": {
+            "n": 4496,
+            "brier": 0.04641767218708992
+          },
+          "support_positive": {
+            "n": 4405,
+            "brier": 0.045277077704668045
+          },
+          "support_zero": {
+            "n": 91,
+            "brier": 0.10163000971078873
+          },
+          "small": {
+            "n": 881,
+            "brier": 0.0715506300330162
+          },
+          "medium": {
+            "n": 2510,
+            "brier": 0.03422173112630844
+          },
+          "large": {
+            "n": 1105,
+            "brier": 0.05408252775669098
+          }
+        }
+      },
+      "nonlinear_U": {
+        "brier": 0.04651223123073578,
+        "unclipped_brier": 0.04694221913814545,
+        "clamp_fraction": 0.40306487711298933,
+        "boundary_brier": 0.09154967963695526,
+        "boundary_rois": 4496,
+        "binary16_iou": 0.8760738093229098,
+        "building_equal_brier": 0.05263398587703705,
+        "groups": {
+          "all": {
+            "n": 4496,
+            "brier": 0.04651223123073578
+          },
+          "support_positive": {
+            "n": 4405,
+            "brier": 0.04535811394453049
+          },
+          "support_zero": {
+            "n": 91,
+            "brier": 0.10237917304039001
+          },
+          "small": {
+            "n": 881,
+            "brier": 0.07191391289234161
+          },
+          "medium": {
+            "n": 2510,
+            "brier": 0.034170471131801605
+          },
+          "large": {
+            "n": 1105,
+            "brier": 0.05429407209157944
+          }
+        }
+      },
+      "nonlinear_UX": {
+        "brier": 0.046612728387117386,
+        "unclipped_brier": 0.047015901654958725,
+        "clamp_fraction": 0.4102075108429715,
+        "boundary_brier": 0.09197507798671722,
+        "boundary_rois": 4496,
+        "binary16_iou": 0.8760141114573964,
+        "building_equal_brier": 0.05277595669031143,
+        "groups": {
+          "all": {
+            "n": 4496,
+            "brier": 0.046612728387117386
+          },
+          "support_positive": {
+            "n": 4405,
+            "brier": 0.04545771703124046
+          },
+          "support_zero": {
+            "n": 91,
+            "brier": 0.10252279788255692
+          },
+          "small": {
+            "n": 881,
+            "brier": 0.07202872633934021
+          },
+          "medium": {
+            "n": 2510,
+            "brier": 0.03420937806367874
+          },
+          "large": {
+            "n": 1105,
+            "brier": 0.0545230507850647
+          }
+        }
+      }
+    }
+  },
+  "primary_nonlinear": {
+    "C_vs_S64": {
+      "mean": 0.00018294708570465446,
+      "interval": [
+        6.48965301927562e-05,
+        0.0003316734724076618
+      ],
+      "quantiles": [
+        0.00625,
+        0.99375
+      ],
+      "building_equal_mean": 0.00017604963795747608,
+      "gate": {
+        "minimum_effect": 0.001,
+        "passed": false
+      }
+    },
+    "C_vs_CX": {
+      "mean": 0.0005982945440337062,
+      "interval": [
+        0.00047859091225764625,
+        0.0007370416608081815
+      ],
+      "quantiles": [
+        0.00625,
+        0.99375
+      ],
+      "building_equal_mean": 0.0003623340162448585,
+      "gate": {
+        "minimum_effect": 0.001,
+        "passed": false
+      }
+    },
+    "U_vs_S64": {
+      "mean": -0.0005099081317894161,
+      "interval": [
+        -0.0006542920003558961,
+        -0.000381930612835335
+      ],
+      "quantiles": [
+        0.00625,
+        0.99375
+      ],
+      "building_equal_mean": -0.00037837092531844974,
+      "gate": {
+        "minimum_effect": 0.001,
+        "passed": false
+      }
+    },
+    "U_vs_UX": {
+      "mean": 0.00010049637057818472,
+      "interval": [
+        -2.586965924997839e-05,
+        0.00021050618216376422
+      ],
+      "quantiles": [
+        0.00625,
+        0.99375
+      ],
+      "building_equal_mean": 0.0001419726322637871,
+      "gate": {
+        "minimum_effect": 0.001,
+        "passed": false
+      }
+    }
+  },
+  "stage_support": {
+    "C": false,
+    "U": false
+  },
+  "linear_companion": {
+    "C_vs_S64": {
+      "mean": 0.00038125229184515774,
+      "interval": [
+        0.00031998707128497145,
+        0.0004469647996705833
+      ],
+      "quantiles": [
+        0.025,
+        0.975
+      ],
+      "building_equal_mean": 0.0004073573218192905
+    },
+    "C_vs_CX": {
+      "mean": 0.00032269294024445117,
+      "interval": [
+        0.00026422861149883126,
+        0.00039362983472650964
+      ],
+      "quantiles": [
+        0.025,
+        0.975
+      ],
+      "building_equal_mean": 0.0002757969486992806
+    },
+    "U_vs_S64": {
+      "mean": 0.00035392839345149696,
+      "interval": [
+        0.0002881724826220571,
+        0.00042389433368349367
+      ],
+      "quantiles": [
+        0.025,
+        0.975
+      ],
+      "building_equal_mean": 0.00040188367711380124
+    },
+    "U_vs_UX": {
+      "mean": 0.0002789568097796291,
+      "interval": [
+        0.00021646609974521652,
+        0.0003491646477713309
+      ],
+      "quantiles": [
+        0.025,
+        0.975
+      ],
+      "building_equal_mean": 0.00023901808890514076
+    }
+  },
+  "C_minus_U_descriptive": {
+    "direction": "U_Brier minus C_Brier; positive favors C",
+    "results": {
+      "linear": {
+        "mean": 2.732384564296808e-05,
+        "interval": [
+          -2.9211228750273347e-05,
+          7.996863255096307e-05
+        ],
+        "quantiles": [
+          0.025,
+          0.975
+        ],
+        "building_equal_mean": 5.473669716593577e-06
+      },
+      "nonlinear": {
+        "mean": 0.0006928552174940705,
+        "interval": [
+          0.0005733235645437314,
+          0.000829412820069741
+        ],
+        "quantiles": [
+          0.025,
+          0.975
+        ],
+        "building_equal_mean": 0.0005544205196201801
+      }
+    }
+  },
+  "bootstrap": {
+    "seed": 1830,
+    "draws": 1000,
+    "method": "paired image sum/count, four primary Bonferroni98.75% intervals, descriptive95%"
+  },
+  "source_sha256": {
+    "/tmp/ue_stage_shape_summary.py": "91a846740b99fc4d428df7b571af5e608372b222de26a76f190822a9882de66b",
+    "/tmp/ue_stage_shape_probe/fit/fit_manifest.json": "1c9470c59478b695e8d643b4aec8deddd050bc16cd6fc9545086f1368c24d10d"
+  },
+  "limitations": "Fixed32 random feature compression, candidate-uniform substitute not complete raw tokens, C contains learned query/residual/FFN. Same support/projection/readout budget, not proof of irreversible information loss. Six cells and both architectures fully reported; no fit extension or val tuning if gates fail. Shape Brier not SAMIoU/AP/UAV net model gain."
+}

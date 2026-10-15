@@ -1,0 +1,1 @@
+{"validation": "PASS", "files": 281, "rois": {"train": 12621, "validation": 4496}, "bytes": 2879598544, "seconds": 614.0310072820284, "peak_bytes": 2316940288, "visible_buildings": {"train": 2239, "validation": 237}}

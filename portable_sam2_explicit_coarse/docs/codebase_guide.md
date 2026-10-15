@@ -172,3 +172,5 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 - 2026-10-15：新增`scripts/analysis/ue_bev_tail_map.py`（真实投影归一化/独立FP32生产对账）、`ue_bev_tail_map_roundoff_diagnosis.py`（首次数值门失败定位）、`ue_bev_tail_association.py`（已有GT框RLE误差关联/覆盖分母与图等权）。结果见`docs/dual_stream/UE_BEV_TAIL_ASSOCIATION_20261015.md`；原FP64门FAIL、显式v2及bool分位数类型修复均留档。无GPU/新forward/fit/训练/生产遥测修改；独立结果审核PENDING。
 
 - 2026-10-15：BEV高度尾部关联最终独立结果审核已补齐PASS；36maps、RLE/ROI/区域及主相关重算通过，替代此前PENDING状态，不改变原结果或生产代码。
+
+- 2026-10-15：新增`scripts/analysis/ue_stage_shape_extract.py`、`ue_stage_shape_helpers.py`、`ue_stage_shape_fit.py`、`ue_stage_shape_summary.py`，共同支持下候选等权与CVT的冻结16²占据读出；仅12离线小头固定1000steps，正式模型不更新。SOURCE/protocol/manifest/轻量JSON/root复算归档，四主门FAIL；独立最终结果审核PENDING，见`UE_STAGE_SHAPE_20261015.md`，无生产配置/遥测变更。
