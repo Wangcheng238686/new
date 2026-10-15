@@ -1,0 +1,16 @@
+{
+  "scope": "GT common-box RoI assignment, not predicted proposals",
+  "finest_scale": 56,
+  "formula": "clamp(floor(log2(sqrt(bbox_area)/56+1e-6)),0,3)",
+  "counts": {
+    "P2": 3657,
+    "P3": 839,
+    "P4": 0,
+    "P5": 0
+  },
+  "total": 4496,
+  "fpn_fused_levels": [
+    "P3",
+    "P4"
+  ]
+}

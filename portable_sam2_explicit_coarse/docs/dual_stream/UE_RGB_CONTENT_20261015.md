@@ -91,3 +91,7 @@ bbox AP近似不变而segm AP下降，结合下列共同框结果，支持mask�
 完整产物：`/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/rgb_content_audit/`，包含三模式正式输出、smoke、原始日志、供体文件hash、bootstrap样本及源脚本副本。进程终端session依次58246/69007/86437，均exit0；日志为`correct_replay.log`、`donor_a.log`、`donor_b.log`；bootstrap为`summary.log`。
 
 轻量汇总：`probes/results_20261015/rgb_content_summary.json`；精简供体映射与完整映射hash：`rgb_content_donor_pairs.json`。源脚本按原字节保存于`scripts/analysis/ue_rgb_content_*`，是本次固定路径诊断脚本，不是生产推理入口。大工件在/tmp，非长期归档；关键结果、协议及源码已纳入git。
+
+## 后续探针
+
+用户要求控制训练成本，后续优先[冻结FPN/SAM入口定位](UE_FUSION_ROUTE_20261015.md)，已完成153图两套供体四组合。上文匹配训练仅保留为可能的最终证据，不作为当前下一步；目前未启动新训练。
