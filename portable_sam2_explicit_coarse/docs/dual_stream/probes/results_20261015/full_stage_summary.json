@@ -1,0 +1,2189 @@
+{
+  "scope": "All 153 validation images of current frozen development subset, 4496 appearances; not complete future dataset or independent test",
+  "metrics": "Per-GT best geometric overlap / potential coverage; not one-to-one detector recall or AP",
+  "names": {
+    "single_best": {
+      "overall": {
+        "n": 4496,
+        "unique_global_buildings": 237,
+        "stage_mean": {
+          "rpn_best_iou": 0.8185123125272104,
+          "raw_best_iou": 0.8586651883419614,
+          "eligible_best_iou": 0.8398298867500056,
+          "uncapped_nms_best_iou": 0.7979061503092416,
+          "final_best_iou": 0.7979061503092416,
+          "final_top100_best_iou": 0.7979061503092416
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 4351,
+              "raw_best_iou": 4345,
+              "eligible_best_iou": 4247,
+              "uncapped_nms_best_iou": 4157,
+              "final_best_iou": 4157,
+              "final_top100_best_iou": 4157
+            },
+            "score_threshold_loss": 98,
+            "nms_threshold_loss": 90,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 3736,
+              "raw_best_iou": 3918,
+              "eligible_best_iou": 3793,
+              "uncapped_nms_best_iou": 3424,
+              "final_best_iou": 3424,
+              "final_top100_best_iou": 3424
+            },
+            "score_threshold_loss": 125,
+            "nms_threshold_loss": 369,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 1132,
+              "raw_best_iou": 2359,
+              "eligible_best_iou": 2272,
+              "uncapped_nms_best_iou": 1563,
+              "final_best_iou": 1563,
+              "final_top100_best_iou": 1563
+            },
+            "score_threshold_loss": 87,
+            "nms_threshold_loss": 709,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 3954,
+        "nms_gap_mean": 0.041923736440763956,
+        "nms_gap_quantiles": {
+          "0.5": 0.029408633708953857,
+          "0.75": 0.0528549998998642,
+          "0.9": 0.09531046450138092,
+          "0.95": 0.13964518904685974,
+          "0.99": 0.24156518876552643
+        },
+        "nms_gap_gt05": 1223,
+        "nms_gap_gt10": 410,
+        "discard_without_gap_gt05": 2731,
+        "nms_loss_with_higher_kept_overlap": 1219,
+        "global_building_ever_gap_gt05": 196,
+        "global_building_ever_gap_gt10": 103,
+        "building_equal_weight_mean_gap": 0.041484501971875545
+      },
+      "by_size": {
+        "small": {
+          "n": 881,
+          "unique_global_buildings": 145,
+          "stage_mean": {
+            "rpn_best_iou": 0.7181928763638966,
+            "raw_best_iou": 0.742661118794988,
+            "eligible_best_iou": 0.6875982206077957,
+            "uncapped_nms_best_iou": 0.6557580229169053,
+            "final_best_iou": 0.6557580229169053,
+            "final_top100_best_iou": 0.6557580229169053
+          },
+          "thresholds": {
+            "0.5": {
+              "coverage": {
+                "rpn_best_iou": 764,
+                "raw_best_iou": 759,
+                "eligible_best_iou": 697,
+                "uncapped_nms_best_iou": 679,
+                "final_best_iou": 679,
+                "final_top100_best_iou": 679
+              },
+              "score_threshold_loss": 62,
+              "nms_threshold_loss": 18,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.75": {
+              "coverage": {
+                "rpn_best_iou": 601,
+                "raw_best_iou": 638,
+                "eligible_best_iou": 588,
+                "uncapped_nms_best_iou": 523,
+                "final_best_iou": 523,
+                "final_top100_best_iou": 523
+              },
+              "score_threshold_loss": 50,
+              "nms_threshold_loss": 65,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.9": {
+              "coverage": {
+                "rpn_best_iou": 81,
+                "raw_best_iou": 245,
+                "eligible_best_iou": 226,
+                "uncapped_nms_best_iou": 130,
+                "final_best_iou": 130,
+                "final_top100_best_iou": 130
+              },
+              "score_threshold_loss": 19,
+              "nms_threshold_loss": 96,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            }
+          },
+          "nms_best_candidate_discarded": 653,
+          "nms_gap_mean": 0.031840197690890505,
+          "nms_gap_quantiles": {
+            "0.5": 0.01526818796992302,
+            "0.75": 0.04284697771072388,
+            "0.9": 0.08020240068435669,
+            "0.95": 0.12408477067947388,
+            "0.99": 0.2184782564640047
+          },
+          "nms_gap_gt05": 177,
+          "nms_gap_gt10": 64,
+          "discard_without_gap_gt05": 476,
+          "nms_loss_with_higher_kept_overlap": 177,
+          "global_building_ever_gap_gt05": 76,
+          "global_building_ever_gap_gt10": 37,
+          "building_equal_weight_mean_gap": 0.03333467564670388
+        },
+        "medium": {
+          "n": 2510,
+          "unique_global_buildings": 193,
+          "stage_mean": {
+            "rpn_best_iou": 0.8581925764679909,
+            "raw_best_iou": 0.8985257343615431,
+            "eligible_best_iou": 0.8890469003839797,
+            "uncapped_nms_best_iou": 0.851472210459619,
+            "final_best_iou": 0.851472210459619,
+            "final_top100_best_iou": 0.851472210459619
+          },
+          "thresholds": {
+            "0.5": {
+              "coverage": {
+                "rpn_best_iou": 2500,
+                "raw_best_iou": 2494,
+                "eligible_best_iou": 2476,
+                "uncapped_nms_best_iou": 2450,
+                "final_best_iou": 2450,
+                "final_top100_best_iou": 2450
+              },
+              "score_threshold_loss": 18,
+              "nms_threshold_loss": 26,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.75": {
+              "coverage": {
+                "rpn_best_iou": 2326,
+                "raw_best_iou": 2357,
+                "eligible_best_iou": 2317,
+                "uncapped_nms_best_iou": 2170,
+                "final_best_iou": 2170,
+                "final_top100_best_iou": 2170
+              },
+              "score_threshold_loss": 40,
+              "nms_threshold_loss": 147,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.9": {
+              "coverage": {
+                "rpn_best_iou": 781,
+                "raw_best_iou": 1567,
+                "eligible_best_iou": 1518,
+                "uncapped_nms_best_iou": 1061,
+                "final_best_iou": 1061,
+                "final_top100_best_iou": 1061
+              },
+              "score_threshold_loss": 49,
+              "nms_threshold_loss": 457,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            }
+          },
+          "nms_best_candidate_discarded": 2273,
+          "nms_gap_mean": 0.03757468992436075,
+          "nms_gap_quantiles": {
+            "0.5": 0.02845895290374756,
+            "0.75": 0.048129335045814514,
+            "0.9": 0.07672215104103086,
+            "0.95": 0.10862561166286468,
+            "0.99": 0.20078178763389576
+          },
+          "nms_gap_gt05": 587,
+          "nms_gap_gt10": 154,
+          "discard_without_gap_gt05": 1686,
+          "nms_loss_with_higher_kept_overlap": 583,
+          "global_building_ever_gap_gt05": 153,
+          "global_building_ever_gap_gt10": 59,
+          "building_equal_weight_mean_gap": 0.04312110366210594
+        },
+        "large": {
+          "n": 1105,
+          "unique_global_buildings": 74,
+          "stage_mean": {
+            "rpn_best_iou": 0.8083620507792649,
+            "raw_best_iou": 0.8606105410675118,
+            "eligible_best_iou": 0.84940580860522,
+            "uncapped_nms_best_iou": 0.7895637876442655,
+            "final_best_iou": 0.7895637876442655,
+            "final_top100_best_iou": 0.7895637876442655
+          },
+          "thresholds": {
+            "0.5": {
+              "coverage": {
+                "rpn_best_iou": 1087,
+                "raw_best_iou": 1092,
+                "eligible_best_iou": 1074,
+                "uncapped_nms_best_iou": 1028,
+                "final_best_iou": 1028,
+                "final_top100_best_iou": 1028
+              },
+              "score_threshold_loss": 18,
+              "nms_threshold_loss": 46,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.75": {
+              "coverage": {
+                "rpn_best_iou": 809,
+                "raw_best_iou": 923,
+                "eligible_best_iou": 888,
+                "uncapped_nms_best_iou": 731,
+                "final_best_iou": 731,
+                "final_top100_best_iou": 731
+              },
+              "score_threshold_loss": 35,
+              "nms_threshold_loss": 157,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.9": {
+              "coverage": {
+                "rpn_best_iou": 270,
+                "raw_best_iou": 547,
+                "eligible_best_iou": 528,
+                "uncapped_nms_best_iou": 372,
+                "final_best_iou": 372,
+                "final_top100_best_iou": 372
+              },
+              "score_threshold_loss": 19,
+              "nms_threshold_loss": 156,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            }
+          },
+          "nms_best_candidate_discarded": 1028,
+          "nms_gap_mean": 0.05984202096095452,
+          "nms_gap_quantiles": {
+            "0.5": 0.04056656360626221,
+            "0.75": 0.07719236612319946,
+            "0.9": 0.14409843087196353,
+            "0.95": 0.19119215011596677,
+            "0.99": 0.2782979202270512
+          },
+          "nms_gap_gt05": 459,
+          "nms_gap_gt10": 192,
+          "discard_without_gap_gt05": 569,
+          "nms_loss_with_higher_kept_overlap": 459,
+          "global_building_ever_gap_gt05": 65,
+          "global_building_ever_gap_gt10": 43,
+          "building_equal_weight_mean_gap": 0.06205478745970108
+        }
+      },
+      "images_with_nms_gap_gt05": 153,
+      "max_final_count": 68,
+      "max_uncapped_count": 68,
+      "nms_configs": [
+        [
+          0.05,
+          0.5,
+          300
+        ]
+      ],
+      "replay_all_exact": true
+    },
+    "dual_correct": {
+      "overall": {
+        "n": 4496,
+        "unique_global_buildings": 237,
+        "stage_mean": {
+          "rpn_best_iou": 0.8185922224276795,
+          "raw_best_iou": 0.8582599730196233,
+          "eligible_best_iou": 0.839482735822519,
+          "uncapped_nms_best_iou": 0.7979002346316367,
+          "final_best_iou": 0.7979002346316367,
+          "final_top100_best_iou": 0.7979002346316367
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 4339,
+              "raw_best_iou": 4340,
+              "eligible_best_iou": 4236,
+              "uncapped_nms_best_iou": 4139,
+              "final_best_iou": 4139,
+              "final_top100_best_iou": 4139
+            },
+            "score_threshold_loss": 104,
+            "nms_threshold_loss": 97,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 3748,
+              "raw_best_iou": 3908,
+              "eligible_best_iou": 3782,
+              "uncapped_nms_best_iou": 3419,
+              "final_best_iou": 3419,
+              "final_top100_best_iou": 3419
+            },
+            "score_threshold_loss": 126,
+            "nms_threshold_loss": 363,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 1132,
+              "raw_best_iou": 2399,
+              "eligible_best_iou": 2305,
+              "uncapped_nms_best_iou": 1571,
+              "final_best_iou": 1571,
+              "final_top100_best_iou": 1571
+            },
+            "score_threshold_loss": 94,
+            "nms_threshold_loss": 734,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 3937,
+        "nms_gap_mean": 0.04158250119088219,
+        "nms_gap_quantiles": {
+          "0.5": 0.028167754411697388,
+          "0.75": 0.05287078022956848,
+          "0.9": 0.0946628749370575,
+          "0.95": 0.13775858283042908,
+          "0.99": 0.2447886005043986
+        },
+        "nms_gap_gt05": 1213,
+        "nms_gap_gt10": 411,
+        "discard_without_gap_gt05": 2724,
+        "nms_loss_with_higher_kept_overlap": 1202,
+        "global_building_ever_gap_gt05": 186,
+        "global_building_ever_gap_gt10": 113,
+        "building_equal_weight_mean_gap": 0.043130899492139295
+      },
+      "by_size": {
+        "small": {
+          "n": 881,
+          "unique_global_buildings": 145,
+          "stage_mean": {
+            "rpn_best_iou": 0.7184589210928968,
+            "raw_best_iou": 0.7423832784387598,
+            "eligible_best_iou": 0.690906610178884,
+            "uncapped_nms_best_iou": 0.6599136063455835,
+            "final_best_iou": 0.6599136063455835,
+            "final_top100_best_iou": 0.6599136063455835
+          },
+          "thresholds": {
+            "0.5": {
+              "coverage": {
+                "rpn_best_iou": 759,
+                "raw_best_iou": 759,
+                "eligible_best_iou": 699,
+                "uncapped_nms_best_iou": 679,
+                "final_best_iou": 679,
+                "final_top100_best_iou": 679
+              },
+              "score_threshold_loss": 60,
+              "nms_threshold_loss": 20,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.75": {
+              "coverage": {
+                "rpn_best_iou": 606,
+                "raw_best_iou": 625,
+                "eligible_best_iou": 578,
+                "uncapped_nms_best_iou": 520,
+                "final_best_iou": 520,
+                "final_top100_best_iou": 520
+              },
+              "score_threshold_loss": 47,
+              "nms_threshold_loss": 58,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.9": {
+              "coverage": {
+                "rpn_best_iou": 89,
+                "raw_best_iou": 260,
+                "eligible_best_iou": 237,
+                "uncapped_nms_best_iou": 136,
+                "final_best_iou": 136,
+                "final_top100_best_iou": 136
+              },
+              "score_threshold_loss": 23,
+              "nms_threshold_loss": 101,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            }
+          },
+          "nms_best_candidate_discarded": 667,
+          "nms_gap_mean": 0.030993003833300444,
+          "nms_gap_quantiles": {
+            "0.5": 0.015422999858856201,
+            "0.75": 0.03938964009284973,
+            "0.9": 0.07811200618743896,
+            "0.95": 0.13080555200576782,
+            "0.99": 0.2220830559730533
+          },
+          "nms_gap_gt05": 161,
+          "nms_gap_gt10": 62,
+          "discard_without_gap_gt05": 506,
+          "nms_loss_with_higher_kept_overlap": 161,
+          "global_building_ever_gap_gt05": 72,
+          "global_building_ever_gap_gt10": 39,
+          "building_equal_weight_mean_gap": 0.032257739626865845
+        },
+        "medium": {
+          "n": 2510,
+          "unique_global_buildings": 193,
+          "stage_mean": {
+            "rpn_best_iou": 0.8615275541855676,
+            "raw_best_iou": 0.8986240325042926,
+            "eligible_best_iou": 0.8881823108238409,
+            "uncapped_nms_best_iou": 0.8506737939271319,
+            "final_best_iou": 0.8506737939271319,
+            "final_top100_best_iou": 0.8506737939271319
+          },
+          "thresholds": {
+            "0.5": {
+              "coverage": {
+                "rpn_best_iou": 2497,
+                "raw_best_iou": 2495,
+                "eligible_best_iou": 2469,
+                "uncapped_nms_best_iou": 2442,
+                "final_best_iou": 2442,
+                "final_top100_best_iou": 2442
+              },
+              "score_threshold_loss": 26,
+              "nms_threshold_loss": 27,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.75": {
+              "coverage": {
+                "rpn_best_iou": 2351,
+                "raw_best_iou": 2368,
+                "eligible_best_iou": 2319,
+                "uncapped_nms_best_iou": 2166,
+                "final_best_iou": 2166,
+                "final_top100_best_iou": 2166
+              },
+              "score_threshold_loss": 49,
+              "nms_threshold_loss": 153,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.9": {
+              "coverage": {
+                "rpn_best_iou": 808,
+                "raw_best_iou": 1590,
+                "eligible_best_iou": 1536,
+                "uncapped_nms_best_iou": 1058,
+                "final_best_iou": 1058,
+                "final_top100_best_iou": 1058
+              },
+              "score_threshold_loss": 54,
+              "nms_threshold_loss": 478,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            }
+          },
+          "nms_best_candidate_discarded": 2255,
+          "nms_gap_mean": 0.037508516896709025,
+          "nms_gap_quantiles": {
+            "0.5": 0.028343647718429565,
+            "0.75": 0.048605307936668396,
+            "0.9": 0.08053314089775086,
+            "0.95": 0.10887042582035064,
+            "0.99": 0.19112556546926462
+          },
+          "nms_gap_gt05": 598,
+          "nms_gap_gt10": 156,
+          "discard_without_gap_gt05": 1657,
+          "nms_loss_with_higher_kept_overlap": 588,
+          "global_building_ever_gap_gt05": 146,
+          "global_building_ever_gap_gt10": 71,
+          "building_equal_weight_mean_gap": 0.043844288723832135
+        },
+        "large": {
+          "n": 1105,
+          "unique_global_buildings": 74,
+          "stage_mean": {
+            "rpn_best_iou": 0.8008996937069958,
+            "raw_best_iou": 0.8589600441682392,
+            "eligible_best_iou": 0.8473195081652559,
+            "uncapped_nms_best_iou": 0.7880401311821528,
+            "final_best_iou": 0.7880401311821528,
+            "final_top100_best_iou": 0.7880401311821528
+          },
+          "thresholds": {
+            "0.5": {
+              "coverage": {
+                "rpn_best_iou": 1083,
+                "raw_best_iou": 1086,
+                "eligible_best_iou": 1068,
+                "uncapped_nms_best_iou": 1018,
+                "final_best_iou": 1018,
+                "final_top100_best_iou": 1018
+              },
+              "score_threshold_loss": 18,
+              "nms_threshold_loss": 50,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.75": {
+              "coverage": {
+                "rpn_best_iou": 791,
+                "raw_best_iou": 915,
+                "eligible_best_iou": 885,
+                "uncapped_nms_best_iou": 733,
+                "final_best_iou": 733,
+                "final_top100_best_iou": 733
+              },
+              "score_threshold_loss": 30,
+              "nms_threshold_loss": 152,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.9": {
+              "coverage": {
+                "rpn_best_iou": 235,
+                "raw_best_iou": 549,
+                "eligible_best_iou": 532,
+                "uncapped_nms_best_iou": 377,
+                "final_best_iou": 377,
+                "final_top100_best_iou": 377
+              },
+              "score_threshold_loss": 17,
+              "nms_threshold_loss": 155,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            }
+          },
+          "nms_best_candidate_discarded": 1015,
+          "nms_gap_mean": 0.05927937698310317,
+          "nms_gap_quantiles": {
+            "0.5": 0.03986787796020508,
+            "0.75": 0.07648181915283203,
+            "0.9": 0.1463695526123047,
+            "0.95": 0.2029233455657959,
+            "0.99": 0.2689372050762177
+          },
+          "nms_gap_gt05": 454,
+          "nms_gap_gt10": 193,
+          "discard_without_gap_gt05": 561,
+          "nms_loss_with_higher_kept_overlap": 453,
+          "global_building_ever_gap_gt05": 69,
+          "global_building_ever_gap_gt10": 43,
+          "building_equal_weight_mean_gap": 0.06638541105895154
+        }
+      },
+      "images_with_nms_gap_gt05": 153,
+      "max_final_count": 69,
+      "max_uncapped_count": 69,
+      "nms_configs": [
+        [
+          0.05,
+          0.5,
+          300
+        ]
+      ],
+      "replay_all_exact": true
+    },
+    "dual_zero": {
+      "overall": {
+        "n": 4496,
+        "unique_global_buildings": 237,
+        "stage_mean": {
+          "rpn_best_iou": 0.8174797716764037,
+          "raw_best_iou": 0.8572720690967637,
+          "eligible_best_iou": 0.8385574622818411,
+          "uncapped_nms_best_iou": 0.7966068824066844,
+          "final_best_iou": 0.7966068824066844,
+          "final_top100_best_iou": 0.7966068824066844
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 4341,
+              "raw_best_iou": 4335,
+              "eligible_best_iou": 4230,
+              "uncapped_nms_best_iou": 4137,
+              "final_best_iou": 4137,
+              "final_top100_best_iou": 4137
+            },
+            "score_threshold_loss": 105,
+            "nms_threshold_loss": 93,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 3740,
+              "raw_best_iou": 3900,
+              "eligible_best_iou": 3769,
+              "uncapped_nms_best_iou": 3412,
+              "final_best_iou": 3412,
+              "final_top100_best_iou": 3412
+            },
+            "score_threshold_loss": 131,
+            "nms_threshold_loss": 357,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 1123,
+              "raw_best_iou": 2396,
+              "eligible_best_iou": 2297,
+              "uncapped_nms_best_iou": 1551,
+              "final_best_iou": 1551,
+              "final_top100_best_iou": 1551
+            },
+            "score_threshold_loss": 99,
+            "nms_threshold_loss": 746,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 3949,
+        "nms_gap_mean": 0.04195057987515666,
+        "nms_gap_quantiles": {
+          "0.5": 0.02908375859260559,
+          "0.75": 0.05307374894618988,
+          "0.9": 0.09498670697212219,
+          "0.95": 0.14032810926437378,
+          "0.99": 0.2444398641586305
+        },
+        "nms_gap_gt05": 1244,
+        "nms_gap_gt10": 417,
+        "discard_without_gap_gt05": 2705,
+        "nms_loss_with_higher_kept_overlap": 1237,
+        "global_building_ever_gap_gt05": 181,
+        "global_building_ever_gap_gt10": 110,
+        "building_equal_weight_mean_gap": 0.04358226836831523
+      },
+      "by_size": {
+        "small": {
+          "n": 881,
+          "unique_global_buildings": 145,
+          "stage_mean": {
+            "rpn_best_iou": 0.7183966953903838,
+            "raw_best_iou": 0.7423524898222281,
+            "eligible_best_iou": 0.6910699164029755,
+            "uncapped_nms_best_iou": 0.6602453260343989,
+            "final_best_iou": 0.6602453260343989,
+            "final_top100_best_iou": 0.6602453260343989
+          },
+          "thresholds": {
+            "0.5": {
+              "coverage": {
+                "rpn_best_iou": 759,
+                "raw_best_iou": 759,
+                "eligible_best_iou": 699,
+                "uncapped_nms_best_iou": 680,
+                "final_best_iou": 680,
+                "final_top100_best_iou": 680
+              },
+              "score_threshold_loss": 60,
+              "nms_threshold_loss": 19,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.75": {
+              "coverage": {
+                "rpn_best_iou": 605,
+                "raw_best_iou": 626,
+                "eligible_best_iou": 579,
+                "uncapped_nms_best_iou": 523,
+                "final_best_iou": 523,
+                "final_top100_best_iou": 523
+              },
+              "score_threshold_loss": 47,
+              "nms_threshold_loss": 56,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.9": {
+              "coverage": {
+                "rpn_best_iou": 90,
+                "raw_best_iou": 259,
+                "eligible_best_iou": 237,
+                "uncapped_nms_best_iou": 136,
+                "final_best_iou": 136,
+                "final_top100_best_iou": 136
+              },
+              "score_threshold_loss": 22,
+              "nms_threshold_loss": 101,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            }
+          },
+          "nms_best_candidate_discarded": 660,
+          "nms_gap_mean": 0.0308245903685767,
+          "nms_gap_quantiles": {
+            "0.5": 0.015574932098388672,
+            "0.75": 0.03966259956359863,
+            "0.9": 0.07876825332641602,
+            "0.95": 0.12667077779769897,
+            "0.99": 0.2220830559730533
+          },
+          "nms_gap_gt05": 164,
+          "nms_gap_gt10": 61,
+          "discard_without_gap_gt05": 496,
+          "nms_loss_with_higher_kept_overlap": 164,
+          "global_building_ever_gap_gt05": 72,
+          "global_building_ever_gap_gt10": 38,
+          "building_equal_weight_mean_gap": 0.030794846229868587
+        },
+        "medium": {
+          "n": 2510,
+          "unique_global_buildings": 193,
+          "stage_mean": {
+            "rpn_best_iou": 0.8595957789281605,
+            "raw_best_iou": 0.8984655829361711,
+            "eligible_best_iou": 0.888254507651842,
+            "uncapped_nms_best_iou": 0.850307042404,
+            "final_best_iou": 0.850307042404,
+            "final_top100_best_iou": 0.850307042404
+          },
+          "thresholds": {
+            "0.5": {
+              "coverage": {
+                "rpn_best_iou": 2497,
+                "raw_best_iou": 2495,
+                "eligible_best_iou": 2469,
+                "uncapped_nms_best_iou": 2441,
+                "final_best_iou": 2441,
+                "final_top100_best_iou": 2441
+              },
+              "score_threshold_loss": 26,
+              "nms_threshold_loss": 28,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.75": {
+              "coverage": {
+                "rpn_best_iou": 2346,
+                "raw_best_iou": 2365,
+                "eligible_best_iou": 2317,
+                "uncapped_nms_best_iou": 2170,
+                "final_best_iou": 2170,
+                "final_top100_best_iou": 2170
+              },
+              "score_threshold_loss": 48,
+              "nms_threshold_loss": 147,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.9": {
+              "coverage": {
+                "rpn_best_iou": 789,
+                "raw_best_iou": 1597,
+                "eligible_best_iou": 1542,
+                "uncapped_nms_best_iou": 1055,
+                "final_best_iou": 1055,
+                "final_top100_best_iou": 1055
+              },
+              "score_threshold_loss": 55,
+              "nms_threshold_loss": 487,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            }
+          },
+          "nms_best_candidate_discarded": 2279,
+          "nms_gap_mean": 0.03794746524784195,
+          "nms_gap_quantiles": {
+            "0.5": 0.029013633728027344,
+            "0.75": 0.049093082547187805,
+            "0.9": 0.08055476546287535,
+            "0.95": 0.11051080524921397,
+            "0.99": 0.19362383127212485
+          },
+          "nms_gap_gt05": 614,
+          "nms_gap_gt10": 160,
+          "discard_without_gap_gt05": 1665,
+          "nms_loss_with_higher_kept_overlap": 607,
+          "global_building_ever_gap_gt05": 142,
+          "global_building_ever_gap_gt10": 71,
+          "building_equal_weight_mean_gap": 0.044519244308273455
+        },
+        "large": {
+          "n": 1105,
+          "unique_global_buildings": 74,
+          "stage_mean": {
+            "rpn_best_iou": 0.8008110042610859,
+            "raw_best_iou": 0.8553249465664048,
+            "eligible_best_iou": 0.8432605790606451,
+            "uncapped_nms_best_iou": 0.7833463661810931,
+            "final_best_iou": 0.7833463661810931,
+            "final_top100_best_iou": 0.7833463661810931
+          },
+          "thresholds": {
+            "0.5": {
+              "coverage": {
+                "rpn_best_iou": 1085,
+                "raw_best_iou": 1081,
+                "eligible_best_iou": 1062,
+                "uncapped_nms_best_iou": 1016,
+                "final_best_iou": 1016,
+                "final_top100_best_iou": 1016
+              },
+              "score_threshold_loss": 19,
+              "nms_threshold_loss": 46,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.75": {
+              "coverage": {
+                "rpn_best_iou": 789,
+                "raw_best_iou": 909,
+                "eligible_best_iou": 873,
+                "uncapped_nms_best_iou": 719,
+                "final_best_iou": 719,
+                "final_top100_best_iou": 719
+              },
+              "score_threshold_loss": 36,
+              "nms_threshold_loss": 154,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.9": {
+              "coverage": {
+                "rpn_best_iou": 244,
+                "raw_best_iou": 540,
+                "eligible_best_iou": 518,
+                "uncapped_nms_best_iou": 360,
+                "final_best_iou": 360,
+                "final_top100_best_iou": 360
+              },
+              "score_threshold_loss": 22,
+              "nms_threshold_loss": 158,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            }
+          },
+          "nms_best_candidate_discarded": 1010,
+          "nms_gap_mean": 0.05991421287955202,
+          "nms_gap_quantiles": {
+            "0.5": 0.0417022705078125,
+            "0.75": 0.07575345039367676,
+            "0.9": 0.1471184492111207,
+            "0.95": 0.2049611330032347,
+            "0.99": 0.2759730672836306
+          },
+          "nms_gap_gt05": 466,
+          "nms_gap_gt10": 196,
+          "discard_without_gap_gt05": 544,
+          "nms_loss_with_higher_kept_overlap": 466,
+          "global_building_ever_gap_gt05": 66,
+          "global_building_ever_gap_gt10": 44,
+          "building_equal_weight_mean_gap": 0.06686853806015447
+        }
+      },
+      "images_with_nms_gap_gt05": 153,
+      "max_final_count": 68,
+      "max_uncapped_count": 68,
+      "nms_configs": [
+        [
+          0.05,
+          0.5,
+          300
+        ]
+      ],
+      "replay_all_exact": true
+    },
+    "dual_shift": {
+      "overall": {
+        "n": 4496,
+        "unique_global_buildings": 237,
+        "stage_mean": {
+          "rpn_best_iou": 0.8163303961906564,
+          "raw_best_iou": 0.8574659469231248,
+          "eligible_best_iou": 0.8387375856520385,
+          "uncapped_nms_best_iou": 0.796725159764207,
+          "final_best_iou": 0.796725159764207,
+          "final_top100_best_iou": 0.796725159764207
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 4341,
+              "raw_best_iou": 4339,
+              "eligible_best_iou": 4235,
+              "uncapped_nms_best_iou": 4139,
+              "final_best_iou": 4139,
+              "final_top100_best_iou": 4139
+            },
+            "score_threshold_loss": 104,
+            "nms_threshold_loss": 96,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 3731,
+              "raw_best_iou": 3903,
+              "eligible_best_iou": 3772,
+              "uncapped_nms_best_iou": 3411,
+              "final_best_iou": 3411,
+              "final_top100_best_iou": 3411
+            },
+            "score_threshold_loss": 131,
+            "nms_threshold_loss": 361,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 1044,
+              "raw_best_iou": 2409,
+              "eligible_best_iou": 2303,
+              "uncapped_nms_best_iou": 1567,
+              "final_best_iou": 1567,
+              "final_top100_best_iou": 1567
+            },
+            "score_threshold_loss": 106,
+            "nms_threshold_loss": 736,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 3970,
+        "nms_gap_mean": 0.042012425887831543,
+        "nms_gap_quantiles": {
+          "0.5": 0.028705507516860962,
+          "0.75": 0.05294777452945709,
+          "0.9": 0.09629988670349121,
+          "0.95": 0.1385616883635521,
+          "0.99": 0.2448700457811356
+        },
+        "nms_gap_gt05": 1240,
+        "nms_gap_gt10": 421,
+        "discard_without_gap_gt05": 2730,
+        "nms_loss_with_higher_kept_overlap": 1227,
+        "global_building_ever_gap_gt05": 183,
+        "global_building_ever_gap_gt10": 109,
+        "building_equal_weight_mean_gap": 0.04312387169310545
+      },
+      "by_size": {
+        "small": {
+          "n": 881,
+          "unique_global_buildings": 145,
+          "stage_mean": {
+            "rpn_best_iou": 0.718472150353332,
+            "raw_best_iou": 0.7428117668733834,
+            "eligible_best_iou": 0.6914323878914196,
+            "uncapped_nms_best_iou": 0.6599785508857646,
+            "final_best_iou": 0.6599785508857646,
+            "final_top100_best_iou": 0.6599785508857646
+          },
+          "thresholds": {
+            "0.5": {
+              "coverage": {
+                "rpn_best_iou": 759,
+                "raw_best_iou": 759,
+                "eligible_best_iou": 699,
+                "uncapped_nms_best_iou": 679,
+                "final_best_iou": 679,
+                "final_top100_best_iou": 679
+              },
+              "score_threshold_loss": 60,
+              "nms_threshold_loss": 20,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.75": {
+              "coverage": {
+                "rpn_best_iou": 608,
+                "raw_best_iou": 626,
+                "eligible_best_iou": 579,
+                "uncapped_nms_best_iou": 521,
+                "final_best_iou": 521,
+                "final_top100_best_iou": 521
+              },
+              "score_threshold_loss": 47,
+              "nms_threshold_loss": 58,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.9": {
+              "coverage": {
+                "rpn_best_iou": 93,
+                "raw_best_iou": 266,
+                "eligible_best_iou": 241,
+                "uncapped_nms_best_iou": 137,
+                "final_best_iou": 137,
+                "final_top100_best_iou": 137
+              },
+              "score_threshold_loss": 25,
+              "nms_threshold_loss": 104,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            }
+          },
+          "nms_best_candidate_discarded": 675,
+          "nms_gap_mean": 0.031453837005655044,
+          "nms_gap_quantiles": {
+            "0.5": 0.01618194580078125,
+            "0.75": 0.039806067943573,
+            "0.9": 0.07895022630691528,
+            "0.95": 0.13080555200576782,
+            "0.99": 0.22815806865692145
+          },
+          "nms_gap_gt05": 166,
+          "nms_gap_gt10": 63,
+          "discard_without_gap_gt05": 509,
+          "nms_loss_with_higher_kept_overlap": 166,
+          "global_building_ever_gap_gt05": 74,
+          "global_building_ever_gap_gt10": 39,
+          "building_equal_weight_mean_gap": 0.0320641161668863
+        },
+        "medium": {
+          "n": 2510,
+          "unique_global_buildings": 193,
+          "stage_mean": {
+            "rpn_best_iou": 0.8575338453879076,
+            "raw_best_iou": 0.8985872707340822,
+            "eligible_best_iou": 0.8882972524341834,
+            "uncapped_nms_best_iou": 0.8504620210582992,
+            "final_best_iou": 0.8504620210582992,
+            "final_top100_best_iou": 0.8504620210582992
+          },
+          "thresholds": {
+            "0.5": {
+              "coverage": {
+                "rpn_best_iou": 2498,
+                "raw_best_iou": 2495,
+                "eligible_best_iou": 2471,
+                "uncapped_nms_best_iou": 2443,
+                "final_best_iou": 2443,
+                "final_top100_best_iou": 2443
+              },
+              "score_threshold_loss": 24,
+              "nms_threshold_loss": 28,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.75": {
+              "coverage": {
+                "rpn_best_iou": 2339,
+                "raw_best_iou": 2372,
+                "eligible_best_iou": 2321,
+                "uncapped_nms_best_iou": 2170,
+                "final_best_iou": 2170,
+                "final_top100_best_iou": 2170
+              },
+              "score_threshold_loss": 51,
+              "nms_threshold_loss": 151,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.9": {
+              "coverage": {
+                "rpn_best_iou": 718,
+                "raw_best_iou": 1591,
+                "eligible_best_iou": 1533,
+                "uncapped_nms_best_iou": 1065,
+                "final_best_iou": 1065,
+                "final_top100_best_iou": 1065
+              },
+              "score_threshold_loss": 58,
+              "nms_threshold_loss": 468,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            }
+          },
+          "nms_best_candidate_discarded": 2275,
+          "nms_gap_mean": 0.03783523137588425,
+          "nms_gap_quantiles": {
+            "0.5": 0.02858668565750122,
+            "0.75": 0.04939842224121094,
+            "0.9": 0.08002715706825257,
+            "0.95": 0.110575097799301,
+            "0.99": 0.1932310742139809
+          },
+          "nms_gap_gt05": 611,
+          "nms_gap_gt10": 162,
+          "discard_without_gap_gt05": 1664,
+          "nms_loss_with_higher_kept_overlap": 598,
+          "global_building_ever_gap_gt05": 144,
+          "global_building_ever_gap_gt10": 69,
+          "building_equal_weight_mean_gap": 0.04428973310927681
+        },
+        "large": {
+          "n": 1105,
+          "unique_global_buildings": 74,
+          "stage_mean": {
+            "rpn_best_iou": 0.8007579591748941,
+            "raw_best_iou": 0.8554712047134589,
+            "eligible_best_iou": 0.8436073735288905,
+            "uncapped_nms_best_iou": 0.7836882734055972,
+            "final_best_iou": 0.7836882734055972,
+            "final_top100_best_iou": 0.7836882734055972
+          },
+          "thresholds": {
+            "0.5": {
+              "coverage": {
+                "rpn_best_iou": 1084,
+                "raw_best_iou": 1085,
+                "eligible_best_iou": 1065,
+                "uncapped_nms_best_iou": 1017,
+                "final_best_iou": 1017,
+                "final_top100_best_iou": 1017
+              },
+              "score_threshold_loss": 20,
+              "nms_threshold_loss": 48,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.75": {
+              "coverage": {
+                "rpn_best_iou": 784,
+                "raw_best_iou": 905,
+                "eligible_best_iou": 872,
+                "uncapped_nms_best_iou": 720,
+                "final_best_iou": 720,
+                "final_top100_best_iou": 720
+              },
+              "score_threshold_loss": 33,
+              "nms_threshold_loss": 152,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            },
+            "0.9": {
+              "coverage": {
+                "rpn_best_iou": 233,
+                "raw_best_iou": 552,
+                "eligible_best_iou": 529,
+                "uncapped_nms_best_iou": 365,
+                "final_best_iou": 365,
+                "final_top100_best_iou": 365
+              },
+              "score_threshold_loss": 23,
+              "nms_threshold_loss": 164,
+              "output300_loss": 0,
+              "top100_budget_loss": 0
+            }
+          },
+          "nms_best_candidate_discarded": 1020,
+          "nms_gap_mean": 0.05991910012329326,
+          "nms_gap_quantiles": {
+            "0.5": 0.04057520627975464,
+            "0.75": 0.07493895292282104,
+            "0.9": 0.14378930330276496,
+            "0.95": 0.2043270885944365,
+            "0.99": 0.27409081459045426
+          },
+          "nms_gap_gt05": 463,
+          "nms_gap_gt10": 196,
+          "discard_without_gap_gt05": 557,
+          "nms_loss_with_higher_kept_overlap": 463,
+          "global_building_ever_gap_gt05": 63,
+          "global_building_ever_gap_gt10": 42,
+          "building_equal_weight_mean_gap": 0.06419106613386678
+        }
+      },
+      "images_with_nms_gap_gt05": 153,
+      "max_final_count": 69,
+      "max_uncapped_count": 69,
+      "nms_configs": [
+        [
+          0.05,
+          0.5,
+          300
+        ]
+      ],
+      "replay_all_exact": true
+    }
+  },
+  "pairs": {
+    "dual_correct_minus_single": {
+      "rpn_best_iou": {
+        "mean": 7.990990046911386e-05,
+        "improved_gt05": 699,
+        "worse_gt05": 654
+      },
+      "raw_best_iou": {
+        "mean": -0.0004052153223380638,
+        "improved_gt05": 322,
+        "worse_gt05": 349
+      },
+      "eligible_best_iou": {
+        "mean": -0.00034715092748662635,
+        "improved_gt05": 295,
+        "worse_gt05": 294
+      },
+      "uncapped_nms_best_iou": {
+        "mean": -5.915677604864341e-06,
+        "improved_gt05": 350,
+        "worse_gt05": 344
+      },
+      "final_best_iou": {
+        "mean": -5.915677604864341e-06,
+        "improved_gt05": 350,
+        "worse_gt05": 344
+      },
+      "final_top100_best_iou": {
+        "mean": -5.915677604864341e-06,
+        "improved_gt05": 350,
+        "worse_gt05": 344
+      }
+    },
+    "dual_zero_minus_single": {
+      "rpn_best_iou": {
+        "mean": -0.0010325408508066705,
+        "improved_gt05": 673,
+        "worse_gt05": 678
+      },
+      "raw_best_iou": {
+        "mean": -0.0013931192451976217,
+        "improved_gt05": 313,
+        "worse_gt05": 368
+      },
+      "eligible_best_iou": {
+        "mean": -0.001272424468164466,
+        "improved_gt05": 288,
+        "worse_gt05": 311
+      },
+      "uncapped_nms_best_iou": {
+        "mean": -0.0012992679025571672,
+        "improved_gt05": 346,
+        "worse_gt05": 369
+      },
+      "final_best_iou": {
+        "mean": -0.0012992679025571672,
+        "improved_gt05": 346,
+        "worse_gt05": 369
+      },
+      "final_top100_best_iou": {
+        "mean": -0.0012992679025571672,
+        "improved_gt05": 346,
+        "worse_gt05": 369
+      }
+    },
+    "dual_shift_minus_single": {
+      "rpn_best_iou": {
+        "mean": -0.002181916336553918,
+        "improved_gt05": 680,
+        "worse_gt05": 722
+      },
+      "raw_best_iou": {
+        "mean": -0.0011992414188365295,
+        "improved_gt05": 321,
+        "worse_gt05": 365
+      },
+      "eligible_best_iou": {
+        "mean": -0.0010923010979671116,
+        "improved_gt05": 291,
+        "worse_gt05": 308
+      },
+      "uncapped_nms_best_iou": {
+        "mean": -0.0011809905450346958,
+        "improved_gt05": 339,
+        "worse_gt05": 366
+      },
+      "final_best_iou": {
+        "mean": -0.0011809905450346958,
+        "improved_gt05": 339,
+        "worse_gt05": 366
+      },
+      "final_top100_best_iou": {
+        "mean": -0.0011809905450346958,
+        "improved_gt05": 339,
+        "worse_gt05": 366
+      }
+    }
+  },
+  "by_projected_support": {
+    "support_0_25": {
+      "single_best": {
+        "n": 852,
+        "unique_global_buildings": 201,
+        "stage_mean": {
+          "rpn_best_iou": 0.7307211315972962,
+          "raw_best_iou": 0.7582551696210055,
+          "eligible_best_iou": 0.7030032375754365,
+          "uncapped_nms_best_iou": 0.658997328680823,
+          "final_best_iou": 0.658997328680823,
+          "final_top100_best_iou": 0.658997328680823
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 756,
+              "raw_best_iou": 749,
+              "eligible_best_iou": 689,
+              "uncapped_nms_best_iou": 657,
+              "final_best_iou": 657,
+              "final_top100_best_iou": 657
+            },
+            "score_threshold_loss": 60,
+            "nms_threshold_loss": 32,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 587,
+              "raw_best_iou": 614,
+              "eligible_best_iou": 558,
+              "uncapped_nms_best_iou": 476,
+              "final_best_iou": 476,
+              "final_top100_best_iou": 476
+            },
+            "score_threshold_loss": 56,
+            "nms_threshold_loss": 82,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 94,
+              "raw_best_iou": 266,
+              "eligible_best_iou": 249,
+              "uncapped_nms_best_iou": 131,
+              "final_best_iou": 131,
+              "final_top100_best_iou": 131
+            },
+            "score_threshold_loss": 17,
+            "nms_threshold_loss": 118,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 702,
+        "nms_gap_mean": 0.044005908894613525,
+        "nms_gap_quantiles": {
+          "0.5": 0.030624061822891235,
+          "0.75": 0.05900254845619202,
+          "0.9": 0.1147349715232849,
+          "0.95": 0.1494033440947532,
+          "0.99": 0.22952855765819552
+        },
+        "nms_gap_gt05": 277,
+        "nms_gap_gt10": 105,
+        "discard_without_gap_gt05": 425,
+        "nms_loss_with_higher_kept_overlap": 277,
+        "global_building_ever_gap_gt05": 118,
+        "global_building_ever_gap_gt10": 61,
+        "building_equal_weight_mean_gap": 0.04109762903576656
+      },
+      "dual_correct": {
+        "n": 852,
+        "unique_global_buildings": 201,
+        "stage_mean": {
+          "rpn_best_iou": 0.7281625633159722,
+          "raw_best_iou": 0.7546185557837329,
+          "eligible_best_iou": 0.7013918042464464,
+          "uncapped_nms_best_iou": 0.6534887592891256,
+          "final_best_iou": 0.6534887592891256,
+          "final_top100_best_iou": 0.6534887592891256
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 746,
+              "raw_best_iou": 747,
+              "eligible_best_iou": 685,
+              "uncapped_nms_best_iou": 656,
+              "final_best_iou": 656,
+              "final_top100_best_iou": 656
+            },
+            "score_threshold_loss": 62,
+            "nms_threshold_loss": 29,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 567,
+              "raw_best_iou": 594,
+              "eligible_best_iou": 547,
+              "uncapped_nms_best_iou": 448,
+              "final_best_iou": 448,
+              "final_top100_best_iou": 448
+            },
+            "score_threshold_loss": 47,
+            "nms_threshold_loss": 99,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 117,
+              "raw_best_iou": 288,
+              "eligible_best_iou": 261,
+              "uncapped_nms_best_iou": 132,
+              "final_best_iou": 132,
+              "final_top100_best_iou": 132
+            },
+            "score_threshold_loss": 27,
+            "nms_threshold_loss": 129,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 720,
+        "nms_gap_mean": 0.047903044957320805,
+        "nms_gap_quantiles": {
+          "0.5": 0.030452460050582886,
+          "0.75": 0.06362544000148773,
+          "0.9": 0.11613492369651793,
+          "0.95": 0.17342602163553236,
+          "0.99": 0.2625210225582123
+        },
+        "nms_gap_gt05": 286,
+        "nms_gap_gt10": 115,
+        "discard_without_gap_gt05": 434,
+        "nms_loss_with_higher_kept_overlap": 283,
+        "global_building_ever_gap_gt05": 129,
+        "global_building_ever_gap_gt10": 69,
+        "building_equal_weight_mean_gap": 0.04552662816993141
+      },
+      "dual_zero": {
+        "n": 852,
+        "unique_global_buildings": 201,
+        "stage_mean": {
+          "rpn_best_iou": 0.7273716950844467,
+          "raw_best_iou": 0.7549326553875068,
+          "eligible_best_iou": 0.7014954976593757,
+          "uncapped_nms_best_iou": 0.6536998090220075,
+          "final_best_iou": 0.6536998090220075,
+          "final_top100_best_iou": 0.6536998090220075
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 746,
+              "raw_best_iou": 747,
+              "eligible_best_iou": 685,
+              "uncapped_nms_best_iou": 656,
+              "final_best_iou": 656,
+              "final_top100_best_iou": 656
+            },
+            "score_threshold_loss": 62,
+            "nms_threshold_loss": 29,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 564,
+              "raw_best_iou": 597,
+              "eligible_best_iou": 547,
+              "uncapped_nms_best_iou": 450,
+              "final_best_iou": 450,
+              "final_top100_best_iou": 450
+            },
+            "score_threshold_loss": 50,
+            "nms_threshold_loss": 97,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 116,
+              "raw_best_iou": 286,
+              "eligible_best_iou": 259,
+              "uncapped_nms_best_iou": 129,
+              "final_best_iou": 129,
+              "final_top100_best_iou": 129
+            },
+            "score_threshold_loss": 27,
+            "nms_threshold_loss": 130,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 717,
+        "nms_gap_mean": 0.04779568863736806,
+        "nms_gap_quantiles": {
+          "0.5": 0.030443638563156128,
+          "0.75": 0.06443873047828674,
+          "0.9": 0.11498316526412962,
+          "0.95": 0.1703665971755981,
+          "0.99": 0.2607206308841705
+        },
+        "nms_gap_gt05": 285,
+        "nms_gap_gt10": 116,
+        "discard_without_gap_gt05": 432,
+        "nms_loss_with_higher_kept_overlap": 282,
+        "global_building_ever_gap_gt05": 130,
+        "global_building_ever_gap_gt10": 69,
+        "building_equal_weight_mean_gap": 0.04533238923382735
+      },
+      "dual_shift": {
+        "n": 852,
+        "unique_global_buildings": 201,
+        "stage_mean": {
+          "rpn_best_iou": 0.7273334634930182,
+          "raw_best_iou": 0.7546664197898408,
+          "eligible_best_iou": 0.7014005520623429,
+          "uncapped_nms_best_iou": 0.653509266258935,
+          "final_best_iou": 0.653509266258935,
+          "final_top100_best_iou": 0.653509266258935
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 746,
+              "raw_best_iou": 747,
+              "eligible_best_iou": 685,
+              "uncapped_nms_best_iou": 656,
+              "final_best_iou": 656,
+              "final_top100_best_iou": 656
+            },
+            "score_threshold_loss": 62,
+            "nms_threshold_loss": 29,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 562,
+              "raw_best_iou": 594,
+              "eligible_best_iou": 546,
+              "uncapped_nms_best_iou": 449,
+              "final_best_iou": 449,
+              "final_top100_best_iou": 449
+            },
+            "score_threshold_loss": 48,
+            "nms_threshold_loss": 97,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 112,
+              "raw_best_iou": 287,
+              "eligible_best_iou": 261,
+              "uncapped_nms_best_iou": 131,
+              "final_best_iou": 131,
+              "final_top100_best_iou": 131
+            },
+            "score_threshold_loss": 26,
+            "nms_threshold_loss": 130,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 721,
+        "nms_gap_mean": 0.04789128580340785,
+        "nms_gap_quantiles": {
+          "0.5": 0.03139263391494751,
+          "0.75": 0.06329649686813354,
+          "0.9": 0.1137256771326065,
+          "0.95": 0.16734302937984447,
+          "0.99": 0.26344294160604476
+        },
+        "nms_gap_gt05": 288,
+        "nms_gap_gt10": 114,
+        "discard_without_gap_gt05": 433,
+        "nms_loss_with_higher_kept_overlap": 286,
+        "global_building_ever_gap_gt05": 129,
+        "global_building_ever_gap_gt10": 68,
+        "building_equal_weight_mean_gap": 0.04569941182415605
+      }
+    },
+    "support_25_75": {
+      "single_best": {
+        "n": 1292,
+        "unique_global_buildings": 205,
+        "stage_mean": {
+          "rpn_best_iou": 0.8008631187128988,
+          "raw_best_iou": 0.8446676572478876,
+          "eligible_best_iou": 0.8252118678281719,
+          "uncapped_nms_best_iou": 0.771681695853954,
+          "final_best_iou": 0.771681695853954,
+          "final_top100_best_iou": 0.771681695853954
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 1258,
+              "raw_best_iou": 1260,
+              "eligible_best_iou": 1228,
+              "uncapped_nms_best_iou": 1190,
+              "final_best_iou": 1190,
+              "final_top100_best_iou": 1190
+            },
+            "score_threshold_loss": 32,
+            "nms_threshold_loss": 38,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 985,
+              "raw_best_iou": 1064,
+              "eligible_best_iou": 1026,
+              "uncapped_nms_best_iou": 863,
+              "final_best_iou": 863,
+              "final_top100_best_iou": 863
+            },
+            "score_threshold_loss": 38,
+            "nms_threshold_loss": 163,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 219,
+              "raw_best_iou": 554,
+              "eligible_best_iou": 519,
+              "uncapped_nms_best_iou": 306,
+              "final_best_iou": 306,
+              "final_top100_best_iou": 306
+            },
+            "score_threshold_loss": 35,
+            "nms_threshold_loss": 213,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 1167,
+        "nms_gap_mean": 0.05353017197421791,
+        "nms_gap_quantiles": {
+          "0.5": 0.038875967264175415,
+          "0.75": 0.07053452730178833,
+          "0.9": 0.11904994249343877,
+          "0.95": 0.16498081088066108,
+          "0.99": 0.2674485844373703
+        },
+        "nms_gap_gt05": 509,
+        "nms_gap_gt10": 183,
+        "discard_without_gap_gt05": 658,
+        "nms_loss_with_higher_kept_overlap": 508,
+        "global_building_ever_gap_gt05": 127,
+        "global_building_ever_gap_gt10": 67,
+        "building_equal_weight_mean_gap": 0.04713607972798559
+      },
+      "dual_correct": {
+        "n": 1292,
+        "unique_global_buildings": 205,
+        "stage_mean": {
+          "rpn_best_iou": 0.8033139287014225,
+          "raw_best_iou": 0.8445247464958856,
+          "eligible_best_iou": 0.8240715776536217,
+          "uncapped_nms_best_iou": 0.7737131278897742,
+          "final_best_iou": 0.7737131278897742,
+          "final_top100_best_iou": 0.7737131278897742
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 1258,
+              "raw_best_iou": 1258,
+              "eligible_best_iou": 1226,
+              "uncapped_nms_best_iou": 1184,
+              "final_best_iou": 1184,
+              "final_top100_best_iou": 1184
+            },
+            "score_threshold_loss": 32,
+            "nms_threshold_loss": 42,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 999,
+              "raw_best_iou": 1066,
+              "eligible_best_iou": 1014,
+              "uncapped_nms_best_iou": 865,
+              "final_best_iou": 865,
+              "final_top100_best_iou": 865
+            },
+            "score_threshold_loss": 52,
+            "nms_threshold_loss": 149,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 231,
+              "raw_best_iou": 559,
+              "eligible_best_iou": 529,
+              "uncapped_nms_best_iou": 314,
+              "final_best_iou": 314,
+              "final_top100_best_iou": 314
+            },
+            "score_threshold_loss": 30,
+            "nms_threshold_loss": 215,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 1149,
+        "nms_gap_mean": 0.05035844976384746,
+        "nms_gap_quantiles": {
+          "0.5": 0.035408973693847656,
+          "0.75": 0.06825029850006104,
+          "0.9": 0.11541818976402288,
+          "0.95": 0.16153486967086794,
+          "0.99": 0.25792361140251097
+        },
+        "nms_gap_gt05": 468,
+        "nms_gap_gt10": 175,
+        "discard_without_gap_gt05": 681,
+        "nms_loss_with_higher_kept_overlap": 463,
+        "global_building_ever_gap_gt05": 126,
+        "global_building_ever_gap_gt10": 66,
+        "building_equal_weight_mean_gap": 0.04211892931833816
+      },
+      "dual_zero": {
+        "n": 1292,
+        "unique_global_buildings": 205,
+        "stage_mean": {
+          "rpn_best_iou": 0.801170209001558,
+          "raw_best_iou": 0.8424559702841796,
+          "eligible_best_iou": 0.82280760107067,
+          "uncapped_nms_best_iou": 0.7717877191807873,
+          "final_best_iou": 0.7717877191807873,
+          "final_top100_best_iou": 0.7717877191807873
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 1260,
+              "raw_best_iou": 1254,
+              "eligible_best_iou": 1220,
+              "uncapped_nms_best_iou": 1184,
+              "final_best_iou": 1184,
+              "final_top100_best_iou": 1184
+            },
+            "score_threshold_loss": 34,
+            "nms_threshold_loss": 36,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 992,
+              "raw_best_iou": 1056,
+              "eligible_best_iou": 1007,
+              "uncapped_nms_best_iou": 861,
+              "final_best_iou": 861,
+              "final_top100_best_iou": 861
+            },
+            "score_threshold_loss": 49,
+            "nms_threshold_loss": 146,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 224,
+              "raw_best_iou": 561,
+              "eligible_best_iou": 529,
+              "uncapped_nms_best_iou": 316,
+              "final_best_iou": 316,
+              "final_top100_best_iou": 316
+            },
+            "score_threshold_loss": 32,
+            "nms_threshold_loss": 213,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 1158,
+        "nms_gap_mean": 0.05101988188988272,
+        "nms_gap_quantiles": {
+          "0.5": 0.03644409775733948,
+          "0.75": 0.06624852120876312,
+          "0.9": 0.11771397590637211,
+          "0.95": 0.1618640840053559,
+          "0.99": 0.2514550912380211
+        },
+        "nms_gap_gt05": 485,
+        "nms_gap_gt10": 182,
+        "discard_without_gap_gt05": 673,
+        "nms_loss_with_higher_kept_overlap": 483,
+        "global_building_ever_gap_gt05": 120,
+        "global_building_ever_gap_gt10": 66,
+        "building_equal_weight_mean_gap": 0.04248210494392538
+      },
+      "dual_shift": {
+        "n": 1292,
+        "unique_global_buildings": 205,
+        "stage_mean": {
+          "rpn_best_iou": 0.8012050546641478,
+          "raw_best_iou": 0.8431975289244483,
+          "eligible_best_iou": 0.8234549588317803,
+          "uncapped_nms_best_iou": 0.771720322018025,
+          "final_best_iou": 0.771720322018025,
+          "final_top100_best_iou": 0.771720322018025
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 1259,
+              "raw_best_iou": 1257,
+              "eligible_best_iou": 1225,
+              "uncapped_nms_best_iou": 1184,
+              "final_best_iou": 1184,
+              "final_top100_best_iou": 1184
+            },
+            "score_threshold_loss": 32,
+            "nms_threshold_loss": 41,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 992,
+              "raw_best_iou": 1061,
+              "eligible_best_iou": 1007,
+              "uncapped_nms_best_iou": 859,
+              "final_best_iou": 859,
+              "final_top100_best_iou": 859
+            },
+            "score_threshold_loss": 54,
+            "nms_threshold_loss": 148,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 208,
+              "raw_best_iou": 567,
+              "eligible_best_iou": 533,
+              "uncapped_nms_best_iou": 317,
+              "final_best_iou": 317,
+              "final_top100_best_iou": 317
+            },
+            "score_threshold_loss": 34,
+            "nms_threshold_loss": 216,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 1150,
+        "nms_gap_mean": 0.0517346368137553,
+        "nms_gap_quantiles": {
+          "0.5": 0.03626701235771179,
+          "0.75": 0.0693768709897995,
+          "0.9": 0.12053136825561528,
+          "0.95": 0.16293121874332434,
+          "0.99": 0.26523222923278805
+        },
+        "nms_gap_gt05": 484,
+        "nms_gap_gt10": 188,
+        "discard_without_gap_gt05": 666,
+        "nms_loss_with_higher_kept_overlap": 478,
+        "global_building_ever_gap_gt05": 125,
+        "global_building_ever_gap_gt10": 68,
+        "building_equal_weight_mean_gap": 0.0424253304636214
+      }
+    },
+    "support_75_100": {
+      "single_best": {
+        "n": 2352,
+        "unique_global_buildings": 191,
+        "stage_mean": {
+          "rpn_best_iou": 0.8600092702484593,
+          "raw_best_iou": 0.9027273252993583,
+          "eligible_best_iou": 0.8974246084947939,
+          "uncapped_nms_best_iou": 0.8626307724111313,
+          "final_best_iou": 0.8626307724111313,
+          "final_top100_best_iou": 0.8626307724111313
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 2337,
+              "raw_best_iou": 2336,
+              "eligible_best_iou": 2330,
+              "uncapped_nms_best_iou": 2310,
+              "final_best_iou": 2310,
+              "final_top100_best_iou": 2310
+            },
+            "score_threshold_loss": 6,
+            "nms_threshold_loss": 20,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 2164,
+              "raw_best_iou": 2240,
+              "eligible_best_iou": 2209,
+              "uncapped_nms_best_iou": 2085,
+              "final_best_iou": 2085,
+              "final_top100_best_iou": 2085
+            },
+            "score_threshold_loss": 31,
+            "nms_threshold_loss": 124,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 819,
+              "raw_best_iou": 1539,
+              "eligible_best_iou": 1504,
+              "uncapped_nms_best_iou": 1126,
+              "final_best_iou": 1126,
+              "final_top100_best_iou": 1126
+            },
+            "score_threshold_loss": 35,
+            "nms_threshold_loss": 378,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 2085,
+        "nms_gap_mean": 0.03479383608366263,
+        "nms_gap_quantiles": {
+          "0.5": 0.025688230991363525,
+          "0.75": 0.042356088757514954,
+          "0.9": 0.07022090554237366,
+          "0.95": 0.10392448604106899,
+          "0.99": 0.2288997372984884
+        },
+        "nms_gap_gt05": 437,
+        "nms_gap_gt10": 122,
+        "discard_without_gap_gt05": 1648,
+        "nms_loss_with_higher_kept_overlap": 434,
+        "global_building_ever_gap_gt05": 129,
+        "global_building_ever_gap_gt10": 37,
+        "building_equal_weight_mean_gap": 0.036690199254596025
+      },
+      "dual_correct": {
+        "n": 2352,
+        "unique_global_buildings": 191,
+        "stage_mean": {
+          "rpn_best_iou": 0.8597425732174323,
+          "raw_best_iou": 0.9033485785271265,
+          "eligible_best_iou": 0.8979711244522082,
+          "uncapped_nms_best_iou": 0.8634990096751342,
+          "final_best_iou": 0.8634990096751342,
+          "final_top100_best_iou": 0.8634990096751342
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 2335,
+              "raw_best_iou": 2335,
+              "eligible_best_iou": 2325,
+              "uncapped_nms_best_iou": 2299,
+              "final_best_iou": 2299,
+              "final_top100_best_iou": 2299
+            },
+            "score_threshold_loss": 10,
+            "nms_threshold_loss": 26,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 2182,
+              "raw_best_iou": 2248,
+              "eligible_best_iou": 2221,
+              "uncapped_nms_best_iou": 2106,
+              "final_best_iou": 2106,
+              "final_top100_best_iou": 2106
+            },
+            "score_threshold_loss": 27,
+            "nms_threshold_loss": 115,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 784,
+              "raw_best_iou": 1552,
+              "eligible_best_iou": 1515,
+              "uncapped_nms_best_iou": 1125,
+              "final_best_iou": 1125,
+              "final_top100_best_iou": 1125
+            },
+            "score_threshold_loss": 37,
+            "nms_threshold_loss": 390,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 2068,
+        "nms_gap_mean": 0.03447211477707403,
+        "nms_gap_quantiles": {
+          "0.5": 0.02545100450515747,
+          "0.75": 0.04363355040550232,
+          "0.9": 0.07024039030075074,
+          "0.95": 0.1006885156035423,
+          "0.99": 0.223891710042953
+        },
+        "nms_gap_gt05": 459,
+        "nms_gap_gt10": 121,
+        "discard_without_gap_gt05": 1609,
+        "nms_loss_with_higher_kept_overlap": 456,
+        "global_building_ever_gap_gt05": 118,
+        "global_building_ever_gap_gt10": 41,
+        "building_equal_weight_mean_gap": 0.03726507240955397
+      },
+      "dual_zero": {
+        "n": 2352,
+        "unique_global_buildings": 191,
+        "stage_mean": {
+          "rpn_best_iou": 0.8590801272173255,
+          "raw_best_iou": 0.9024827749412133,
+          "eligible_best_iou": 0.8968591691454354,
+          "uncapped_nms_best_iou": 0.8620078966122984,
+          "final_best_iou": 0.8620078966122984,
+          "final_top100_best_iou": 0.8620078966122984
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 2335,
+              "raw_best_iou": 2334,
+              "eligible_best_iou": 2325,
+              "uncapped_nms_best_iou": 2297,
+              "final_best_iou": 2297,
+              "final_top100_best_iou": 2297
+            },
+            "score_threshold_loss": 9,
+            "nms_threshold_loss": 28,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 2184,
+              "raw_best_iou": 2247,
+              "eligible_best_iou": 2215,
+              "uncapped_nms_best_iou": 2101,
+              "final_best_iou": 2101,
+              "final_top100_best_iou": 2101
+            },
+            "score_threshold_loss": 32,
+            "nms_threshold_loss": 114,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 783,
+              "raw_best_iou": 1549,
+              "eligible_best_iou": 1509,
+              "uncapped_nms_best_iou": 1106,
+              "final_best_iou": 1106,
+              "final_top100_best_iou": 1106
+            },
+            "score_threshold_loss": 40,
+            "nms_threshold_loss": 403,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 2074,
+        "nms_gap_mean": 0.03485127253313702,
+        "nms_gap_quantiles": {
+          "0.5": 0.026195943355560303,
+          "0.75": 0.04417775571346283,
+          "0.9": 0.06907641887664795,
+          "0.95": 0.10134394764900187,
+          "0.99": 0.21293309330940183
+        },
+        "nms_gap_gt05": 474,
+        "nms_gap_gt10": 119,
+        "discard_without_gap_gt05": 1600,
+        "nms_loss_with_higher_kept_overlap": 472,
+        "global_building_ever_gap_gt05": 118,
+        "global_building_ever_gap_gt10": 38,
+        "building_equal_weight_mean_gap": 0.036971395484257034
+      },
+      "dual_shift": {
+        "n": 2352,
+        "unique_global_buildings": 191,
+        "stage_mean": {
+          "rpn_best_iou": 0.8568777294859953,
+          "raw_best_iou": 0.9025424746322438,
+          "eligible_best_iou": 0.896882273777121,
+          "uncapped_nms_best_iou": 0.8623400371598526,
+          "final_best_iou": 0.8623400371598526,
+          "final_top100_best_iou": 0.8623400371598526
+        },
+        "thresholds": {
+          "0.5": {
+            "coverage": {
+              "rpn_best_iou": 2336,
+              "raw_best_iou": 2335,
+              "eligible_best_iou": 2325,
+              "uncapped_nms_best_iou": 2299,
+              "final_best_iou": 2299,
+              "final_top100_best_iou": 2299
+            },
+            "score_threshold_loss": 10,
+            "nms_threshold_loss": 26,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.75": {
+            "coverage": {
+              "rpn_best_iou": 2177,
+              "raw_best_iou": 2248,
+              "eligible_best_iou": 2219,
+              "uncapped_nms_best_iou": 2103,
+              "final_best_iou": 2103,
+              "final_top100_best_iou": 2103
+            },
+            "score_threshold_loss": 29,
+            "nms_threshold_loss": 116,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          },
+          "0.9": {
+            "coverage": {
+              "rpn_best_iou": 724,
+              "raw_best_iou": 1555,
+              "eligible_best_iou": 1509,
+              "uncapped_nms_best_iou": 1119,
+              "final_best_iou": 1119,
+              "final_top100_best_iou": 1119
+            },
+            "score_threshold_loss": 46,
+            "nms_threshold_loss": 390,
+            "output300_loss": 0,
+            "top100_budget_loss": 0
+          }
+        },
+        "nms_best_candidate_discarded": 2099,
+        "nms_gap_mean": 0.0345422366172684,
+        "nms_gap_quantiles": {
+          "0.5": 0.025499284267425537,
+          "0.75": 0.04343955218791962,
+          "0.9": 0.07024751901626589,
+          "0.95": 0.10075570344924921,
+          "0.99": 0.22123709887266133
+        },
+        "nms_gap_gt05": 468,
+        "nms_gap_gt10": 119,
+        "discard_without_gap_gt05": 1631,
+        "nms_loss_with_higher_kept_overlap": 463,
+        "global_building_ever_gap_gt05": 122,
+        "global_building_ever_gap_gt10": 39,
+        "building_equal_weight_mean_gap": 0.036435060012525146
+      }
+    }
+  },
+  "identities_match": true
+}

@@ -144,3 +144,5 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 - 2026-10-15：补充7个典型改善/退化/持平案例，复用固定EMA推理产物、逐目标top100最大IoU与正式COCO逐图匹配，核对几何支持和预测框限制，见 `docs/dual_stream/UE_CASE_AUDIT_20261015.md`。仅新增分析文档，不改模型/标签/遥测定义。
 
 - 2026-10-15：复用冻结EMA完成3例/42GT共同框mask诊断，12次原框逐像素复现；追加RPN/解码框/score-NMS阶段审计并核对最终框score完全复现，见 `docs/dual_stream/UE_FIXED_BOX_DIAGNOSIS_20261015.md`。仅分析文档，无生产模型/指标/遥测变更。
+
+- 2026-10-15：完成当前冻结开发子集153验证图、4496次建筑出现的全候选阶段与三种共同框审计，修正先前42GT代表性判断，见 `docs/dual_stream/UE_DEV_SUBSET_AUDIT_20261015.md`。轻量JSON汇总与两项独立审核归档；仅分析文档，无生产模型/遥测变更。
