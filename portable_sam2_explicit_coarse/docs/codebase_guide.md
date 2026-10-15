@@ -146,3 +146,5 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 - 2026-10-15：复用冻结EMA完成3例/42GT共同框mask诊断，12次原框逐像素复现；追加RPN/解码框/score-NMS阶段审计并核对最终框score完全复现，见 `docs/dual_stream/UE_FIXED_BOX_DIAGNOSIS_20261015.md`。仅分析文档，无生产模型/指标/遥测变更。
 
 - 2026-10-15：完成当前冻结开发子集153验证图、4496次建筑出现的全候选阶段与三种共同框审计，修正先前42GT代表性判断，见 `docs/dual_stream/UE_DEV_SUBSET_AUDIT_20261015.md`。轻量JSON汇总与两项独立审核归档；仅分析文档，无生产模型/遥测变更。
+
+- 2026-10-15：新增`scripts/analysis/ue_rgb_content_prepare.py`（冻结供体映射/预注册）、`ue_rgb_content_probe.py`（三模式strict EMA完整推理/共同框/不变量）、`ue_rgb_content_summary.py`（AP配对bootstrap与建筑/尺寸汇总），均为固定路径诊断脚本。153图RGB内容干预已完成，结果见`docs/dual_stream/UE_RGB_CONTENT_20261015.md`，仅支持配对RGB敏感性；生产模型、推理入口及遥测定义未改变。
