@@ -62,3 +62,7 @@ train/val coverage均值.75443/.59950，原卫星粗8² Brier .01921/.03810；�
 ## 复核与归档
 
 [主代理读出/分层审核](../reviews/UE_BEV_WEAKNESS_DIAGNOSIS_20261015.md)、[几何独立审核](../reviews/UE_BEV_GEOMETRY_QUALITY_20261015.md)。主代理从281缓存独立累积协方差/ROI方差、训练谱并重算关键分组/区域均值及分母；几何由独立代理从保存NPZ及cache复算全部分位/比例。没有重新拟合、GPU或额外数据选择。轻量JSON/协议/脚本归档在probes/results_20261015；六图raw_geometry NPZ保留/tmp，原feature cache610MB不进git。
+
+## 后续证据
+
+[实际CVT注意力来源探针](UE_BEV_ATTENTION_20261015.md)已完成：固定六图、两层全query只读观测与独立数值审查。有效投影query高度相容约79.6%，局部XY/joint相对uniform更多，高度距离尾部亦更重；不能把旧全候选统计直接解释为污染。详见新报告的集合、加权及因果边界。

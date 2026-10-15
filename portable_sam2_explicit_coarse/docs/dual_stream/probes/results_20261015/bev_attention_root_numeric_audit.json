@@ -1,0 +1,17 @@
+{
+  "verdict": "PASS",
+  "projected_height_mass_by_weighting": {
+    "0": {
+      "query_equal": 0.7958870868230028,
+      "source_raw_mass": 0.7963005221515076,
+      "source_mass_quality": 0.8461388947515771
+    },
+    "1": {
+      "query_equal": 0.7961101825278603,
+      "source_raw_mass": 0.7971029032676911,
+      "source_mass_quality": 0.8443646944907296
+    }
+  },
+  "all_pooled_metric_means_and_uniform_differences_reproduced": true,
+  "image_equal_means_reproduced": true
+}

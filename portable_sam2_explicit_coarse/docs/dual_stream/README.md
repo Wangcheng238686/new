@@ -71,4 +71,6 @@
 
 [三路并行排查综合结论](UE_PARALLEL_DIAGNOSIS_20261015.md)：等±4幅度GT形状仍有+.016068最终IoU空间；现有UAV读出仅微弱正信号，两工程幅度门FAIL；dense反传源码可达但P2无显式UAV输入。暂缓性能训练，优先核表征/局部形状信息保留。分项：[dense形状/幅度](UE_DENSE_SHAPE_CONFIDENCE_20261015.md)、[UAV互补](UE_UAV_COMPLEMENTARITY_20261015.md)、[梯度工程](UE_GRADIENT_DESIGN_AUDIT_20261015.md)。
 
-[BEV形状修正偏弱的三路定位](UE_BEV_WEAKNESS_DIAGNOSIS_20261015.md)：无过强ridge/全坍塌证据，信号更集中高错误/GTdense空间大目标，小目标有支持后仍弱；固定六图几何cache精确重建、所选bin均值位移小，未定位明确对齐bug。下一候选是有效投影query实际attention来源，尚未执行。
+[BEV形状修正偏弱的三路定位](UE_BEV_WEAKNESS_DIAGNOSIS_20261015.md)：无过强ridge/全坍塌证据，信号更集中高错误/GTdense空间大目标，小目标有支持后仍弱；固定六图几何cache精确重建、所选bin均值位移小，未定位明确对齐bug。后续实际attention来源探针已完成，见下。
+
+[实际CVT注意力来源探针](UE_BEV_ATTENTION_20261015.md)：固定六图E72 EMA，两层完整query只读观察，192个QKV样本和主代理统计独立复核通过。最终投影query高度相容mass约79.6%（uniform80.4%），XY及joint相容反而更高；绝对高度距离尾部更重。未发现整体丢弃局部证据的明确故障；不证明语义正确或分割收益，无训练/干预/AP。
