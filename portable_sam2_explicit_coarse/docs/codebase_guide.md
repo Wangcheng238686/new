@@ -168,3 +168,5 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 - 2026-10-15：新增`scripts/analysis/ue_readout_capacity_audit.py`（固定缓存谱/空间变异/旧读出复现）、`ue_bev_error_strata.py`（traincut分层/占据区域/GTdense空间关联）、`ue_bev_geometry_quality_audit.py`及`ue_bev_geometry_quality_summary.py`（固定六图rawdepth缓存重建/单表面量化和候选相容性）。本轮无新fit/网络forward/GPU/训练/生产遥测变更；综合见`UE_BEV_WEAKNESS_DIAGNOSIS_20261015.md`，原始几何仅/tmp保存NPZ，复核脚本与轻量JSON在probes/results_20261015。
 
 - 2026-10-15：新增`scripts/analysis/ue_bev_attention_probe.py`（六图两层全query只读QKV/几何权重、生产SDPA样本对账和smoke特征逐值不变）、`ue_bev_attention_summary.py`（分组/逐图/query及source加权/uniform/熵与尾部CPU汇总）；主代理独立复算脚本、轻量JSON、协议和完整审核归档。结果见`docs/dual_stream/UE_BEV_ATTENTION_20261015.md`。固定路径依赖沿旧/tmp helper链，精确归档不作通用入口；无训练、候选干预、生产接线/配置/遥测变更。
+
+- 2026-10-15：新增`scripts/analysis/ue_bev_tail_map.py`（真实投影归一化/独立FP32生产对账）、`ue_bev_tail_map_roundoff_diagnosis.py`（首次数值门失败定位）、`ue_bev_tail_association.py`（已有GT框RLE误差关联/覆盖分母与图等权）。结果见`docs/dual_stream/UE_BEV_TAIL_ASSOCIATION_20261015.md`；原FP64门FAIL、显式v2及bool分位数类型修复均留档。无GPU/新forward/fit/训练/生产遥测修改；独立结果审核PENDING。

@@ -1,0 +1,30 @@
+{
+  "max_abs": 6.826917480218242e-05,
+  "fail_count": 2,
+  "failures": [
+    {
+      "field": "weighted_abs_dz_m",
+      "target": 572,
+      "numpy": 11.933320573025398,
+      "production": 11.933364868164062,
+      "absdiff": 4.4295138664551814e-05,
+      "tol": 4.386672662803903e-05,
+      "votes": 220,
+      "source_unique": 14,
+      "denominator": 192.14132323861122,
+      "local_float64": 11.933320573025377
+    },
+    {
+      "field": "weighted_abs_dz_m",
+      "target": 740,
+      "numpy": 14.356607995432126,
+      "production": 14.356539726257324,
+      "absdiff": 6.826917480218242e-05,
+      "tol": 4.871307828580029e-05,
+      "votes": 256,
+      "source_unique": 9,
+      "denominator": 230.80833077430725,
+      "local_float64": 14.35660799543212
+    }
+  ]
+}

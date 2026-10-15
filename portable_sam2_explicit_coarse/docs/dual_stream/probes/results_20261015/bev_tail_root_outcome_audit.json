@@ -1,0 +1,50 @@
+{
+  "validation": "PASS",
+  "scope": "Independent existing fixed-GT-box outcome identities and means only; no spatial/tail relation",
+  "per_image": [
+    {
+      "image_id": 1218,
+      "n": 26,
+      "dual": 0.8969790941683219,
+      "single": 0.9067793807454291,
+      "degradation_single_minus_dual": 0.009800286577107175
+    },
+    {
+      "image_id": 950,
+      "n": 27,
+      "dual": 0.8145170791714329,
+      "single": 0.8126689125101964,
+      "degradation_single_minus_dual": -0.0018481666612365439
+    },
+    {
+      "image_id": 306,
+      "n": 9,
+      "dual": 0.7756055504448734,
+      "single": 0.7684923789914813,
+      "degradation_single_minus_dual": -0.007113171453392149
+    },
+    {
+      "image_id": 1216,
+      "n": 49,
+      "dual": 0.8989287413451696,
+      "single": 0.8933070667052544,
+      "degradation_single_minus_dual": -0.005621674639915278
+    },
+    {
+      "image_id": 948,
+      "n": 24,
+      "dual": 0.790192666368701,
+      "single": 0.7856553210043042,
+      "degradation_single_minus_dual": -0.0045373453643968165
+    },
+    {
+      "image_id": 505,
+      "n": 29,
+      "dual": 0.7803478436504724,
+      "single": 0.7884742856010039,
+      "degradation_single_minus_dual": 0.00812644195053141
+    }
+  ],
+  "n": 164,
+  "image_equal_degradation": -0.00019893826521703387
+}

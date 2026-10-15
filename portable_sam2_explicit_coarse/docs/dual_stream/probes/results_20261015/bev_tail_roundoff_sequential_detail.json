@@ -1,0 +1,36 @@
+[
+  {
+    "field": "weighted_abs_dz_m",
+    "target": 572,
+    "production": 11.933364868164062,
+    "numpy_sequential_float32": 11.933364868164062,
+    "sequential_bitexact": true,
+    "denominator_float64": 192.14132323861122,
+    "denominator_float32": 192.14097595214844,
+    "denominator_product_quantization_error": 0.0,
+    "denominator_sum_order_error": -0.0003472864627838135,
+    "numerator_float64": 2292.884005531638,
+    "numerator_float32": 2292.888427734375,
+    "numerator_product_quantization_error": -4.33399968642334e-05,
+    "numerator_sum_order_error": 0.004465542733669281,
+    "absolute_error": 4.4295138664551814e-05,
+    "relative_error": 3.711887097433592e-06
+  },
+  {
+    "field": "weighted_abs_dz_m",
+    "target": 740,
+    "production": 14.356539726257324,
+    "numpy_sequential_float32": 14.356539726257324,
+    "sequential_bitexact": true,
+    "denominator_float64": 230.80833077430725,
+    "denominator_float32": 230.80897521972656,
+    "denominator_product_quantization_error": 0.0,
+    "denominator_sum_order_error": 0.0006444454193115234,
+    "numerator_float64": 3313.6247270067606,
+    "numerator_float32": 3313.6181640625,
+    "numerator_product_quantization_error": -2.5268403078371193e-05,
+    "numerator_sum_order_error": -0.006537675857543945,
+    "absolute_error": 6.826917480218242e-05,
+    "relative_error": 4.755244053741927e-06
+  }
+]
