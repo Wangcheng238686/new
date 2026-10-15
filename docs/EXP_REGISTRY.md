@@ -14,7 +14,7 @@
 | EXP-0010 | SURFBEV-snap512dual-sealed-DDP4-v2-noaug | 44 | 同 EXP-0009 + 冻结 UAV 支路与零初始化门控融合（EXP-0008 谱系）；A/B 对 EXP-0009 | 事故后替代 run；链式跟随 EXP-0009 |
 | EXP-0011 | SURFBEV-snap512dualv2-sealed-DDP4-v2-noaug | 44 | 同 EXP-0010 唯一变量=融合层从仅 P3 扩为 **P2+P3 双层**（`target_levels=[0,1]`，逐层独立 proj+零初始化门控，分层遥测；身份 `ue-whu-a3sgm-512-dualv2-v1`，指纹 `d26f1f97…`）；与 EXP-0010 并行共租四卡；A/B 对 EXP-0009 | PI 决议 2026-10-15：检验"融合点上移至 RPN 小目标主力层"假设；2026-10-15 启动 |
 | EXP-0012 | SURFBEV-snap512duallora-sealed-DDP4-v2-noaug | 44 | 同 EXP-0011 唯一变量=**UAV 编码器 LoRA**（use_lora=True，r=16/α=32/qkv+proj/neck，+1.06M 可训；身份 `ue-whu-a3sgm-512-duallora-v1`，指纹 `50f6b097…`）；与 0010/0011 并行共租 | 检验"冻结特征质量是瓶颈"假设；启动前修复两处静默梯度断点（rasterizer @no_grad 装饰、out 装配原地写）；2026-10-15 待审计放行 |
-| EXP-0013 | SURFBEV-snap512dualv2l0-sealed-DDP4-v2-noaug | 44 | 同 EXP-0011 唯一变量=融合层从 P2+P3 双层改为**仅 P2 单层**（`target_levels=[0]`；身份 `ue-whu-a3sgm-512-dualv2-l0-v1`，指纹 `277a95dd…`）；与 0011/0012 并行共租；A/B 对 EXP-0009 | PI 决议 2026-10-15：EXP-0010（仅P3）判负后补齐 {P2}×{P3} 因子表做层级归因；预注册 v2.3；2026-10-15 待审计放行 |
+| EXP-0013 | SURFBEV-snap512dualv2l0-sealed-DDP4-v2-noaug | 44 | 同 EXP-0011 唯一变量=融合层从 P2+P3 双层改为**仅 P2 单层**（`target_levels=[0]`；身份 `ue-whu-a3sgm-512-dualv2-l0-v1`，指纹 `277a95dd…`）；与 0011/0012 并行共租；A/B 对 EXP-0009 | PI 决议 2026-10-15：EXP-0010（仅P3）判负后补齐 {P2}×{P3} 因子表做层级归因；预注册 v2.3；审计 PASS（`docs/reviews/EXP-0013_implementation_review.md`，tag `EXP-0013`→`9ab3798`）；2026-10-15 22:50 启动，epoch 1 遥测单层键正常（gate_steps=174，bev_coverage 0.898） |
 
 EXP-0001 至 EXP-0005 的 pair manifest SHA256：`f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a`；v1 split SHA256：`894df4561b166d37d06d033a6fc326223062384b402f730591b4c76d41f926d5`。EXP-0006 使用同一 pair manifest、v2 split。测试集只在协议冻结与 last checkpoint 产生后运行标准推理。
 
