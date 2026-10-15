@@ -174,8 +174,11 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         return super().predict(batch_inputs, batch_data_samples, rescale=rescale, **kwargs)
 
     def drain_telemetry(self):
-        out = {k: (float(sum(v) / len(v)) if v else 0.0) for k, v in self.telemetry.items()}
-        out['gate_steps'] = len(self.telemetry['gate_mean'])
+        out = {k: (float(sum(v) / len(v)) if v else 0.0)
+               for k, v in self.telemetry.items() if v}
+        # count steps from whatever per-level gate key actually recorded
+        out['gate_steps'] = sum(len(v) for k, v in self.telemetry.items()
+                                if k.startswith('gate_absmax'))
         for k in self.telemetry:
             self.telemetry[k] = []
         return out
