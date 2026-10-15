@@ -90,3 +90,7 @@ P2有3657/4496（81.34%）GT RoI直接读取，P3为839；这说明补P2有覆�
 正式GPU session49379，exit0，日志`/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/p2_transfer_audit/full.log`；smoke session79144，complete=false。smoke协议原字节与修正文案版本分别保存，修正仅将hook“各一次”澄清为两次提取中总计各2，未重跑无必要GPU；正式记录新hash。CPU汇总日志`summary.log`。
 
 完整工件在上述`p2_transfer_audit/`，含五cell固定框预测、GT IoU/边界/官方层级、身份、检查、manifest、bootstrap样本及源码。版本化轻量汇总`probes/results_20261015/p2_transfer_summary.json`；源码`scripts/analysis/ue_p2_transfer_probe.py`和`ue_p2_transfer_summary.py`，依赖已归档RGB helper。/tmp非长期归档，关键结果、协议、源码入git；无训练权重入库，无生产遥测字段改动。
+
+## 后续只读链路追踪
+
+[153图P2→提示→SAM追踪](UE_P2_PROMPT_TRACE_20261015.md)精确复现本轮四组GT框端点，明确变化能到达decoder，但尚未形成稳定质量改善；未改变本轮判定门和结论。

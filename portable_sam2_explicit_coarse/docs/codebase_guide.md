@@ -156,3 +156,5 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 - 2026-10-15：新增`scripts/analysis/ue_spatial_local_probe.py`（SAM残差四方向±4px/对称平滑、相机内部代数和GT边界/支持统计）、`ue_spatial_local_summary.py`（8contrast同时区间、局部分组和半强度关联）。153图六对照完成，未达到方向/平滑改善门，见`docs/dual_stream/UE_SPATIAL_LOCAL_20261015.md`。P2列为待验证候选，未新增入口；无训练或生产模型/遥测变更。
 
 - 2026-10-15：新增`scripts/analysis/ue_p2_transfer_probe.py`（借原P3融合器向P2原生/供体/上采样/压力对照，固定框只看mask，非P2精确不变验收）、`ue_p2_transfer_summary.py`（条件AP/GTIoU配对bootstrap和官方层级分组）。153图五组完成，三支持门未过，不追加完整检测；见`docs/dual_stream/UE_P2_TRANSFER_20261015.md`。未训练/改默认入口/新增生产遥测。
+
+- 2026-10-15：新增`scripts/analysis/ue_p2_prompt_trace.py`（只读捕获RoI/coarse/点/dense/SAM/tail，精确回放上一轮四组GT框终点）、`ue_p2_prompt_trace_summary.py`（阶段到达、粗形状/点质量、密集框支持与配对图像区间）。153图完成，变化可达但质量未稳定改善，见`docs/dual_stream/UE_P2_PROMPT_TRACE_20261015.md`；无训练/生产接线/遥测变更。
