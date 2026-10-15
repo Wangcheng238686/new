@@ -27,7 +27,7 @@ fi
 log "snapshot frozen: $(sha256sum "${SNAP}_manifest.json" | cut -c1-16)"
 
 cd "$PKG"
-if [[ -f /data2/wangcheng/checkpoint/surfbev_b0/surfacebev_snap_512_sealed_ddp4_s44_EXP-0009/last_model_epoch100.pth ]]; then
+if [[ -f /data2/wangcheng/checkpoint/surfbev_b0/surfacebev_v2_512_sealed_ddp4_s44_EXP-0009/last_model_epoch100.pth ]]; then
   log "EXP-0009 last checkpoint already present; skipping to EXP-0010"
   RC9=0
 else
@@ -37,7 +37,7 @@ else
   RC9=$?
 fi
 log "EXP-0009 exited rc=$RC9"
-if [[ $RC9 -ne 0 || ! -f /data2/wangcheng/checkpoint/surfbev_b0/surfacebev_snap_512_sealed_ddp4_s44_EXP-0009/last_model_epoch100.pth ]]; then
+if [[ $RC9 -ne 0 || ! -f /data2/wangcheng/checkpoint/surfbev_b0/surfacebev_v2_512_sealed_ddp4_s44_EXP-0009/last_model_epoch100.pth ]]; then
   log "FATAL: EXP-0009 did not complete (rc=$RC9); not launching EXP-0010"; exit 2
 fi
 
@@ -46,7 +46,7 @@ B0_EXP_ID=EXP-0010 bash scripts/ue/run_exp0010_ddp4.sh \
   > /data2/wangcheng/checkpoint/surfbev_b0/launcher_logs/EXP-0010-ddp4.log 2>&1
 RC10=$?
 log "EXP-0010 exited rc=$RC10"
-if [[ ! -f /data2/wangcheng/checkpoint/surfbev_b0/surfacebev_snap_512dual_sealed_ddp4_s44_EXP-0010/last_model_epoch100.pth ]]; then
+if [[ ! -f /data2/wangcheng/checkpoint/surfbev_b0/surfacebev_v2_512dual_sealed_ddp4_s44_EXP-0010/last_model_epoch100.pth ]]; then
   log "FATAL: EXP-0010 last checkpoint missing (rc=$RC10)"; exit 3
 fi
 log "CHAIN COMPLETE: both snapshot arms trained; ready for A/B analysis"
