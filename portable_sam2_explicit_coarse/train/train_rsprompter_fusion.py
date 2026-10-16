@@ -214,8 +214,9 @@ def main():
     # construction; only fusion/UAV modules train. Applied BEFORE the DDP
     # wrap so bucket construction sees the final requires_grad state.
     if args.freeze_base:
-        if not args.init_from:
-            raise SystemExit("--freeze-base requires --init-from (warm-start protocol)")
+        if not args.init_from and not args.resume_from:
+            raise SystemExit("--freeze-base requires --init-from (fresh warm-start) "
+                             "or --resume-from (SCREEN-EXT extension)")
         prefixes = tuple(p for p in args.freeze_allow_prefixes.split(",") if p)
         if not prefixes:
             raise SystemExit("--freeze-base requires a non-empty --freeze-allow-prefixes")
