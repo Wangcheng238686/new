@@ -219,6 +219,13 @@ def main():
         prefixes = tuple(p for p in args.freeze_allow_prefixes.split(",") if p)
         if not prefixes:
             raise SystemExit("--freeze-base requires a non-empty --freeze-allow-prefixes")
+        # Audit finding (DUAL-WARMSTART-SCREEN implementation review): a
+        # blanket requires_grad_(True) over the allow-prefixes would re-enable
+        # the peft-LoRA-frozen base of the UAV encoder (70.6M params) and
+        # break the "EXP-0015 recipe verbatim" anchor. Trainable = prefix
+        # match AND already trainable at build time (LoRA adapters + the
+        # modules_to_save neck keep 0015's exact trainable set).
+        pre_trainable = {name for name, p in model.named_parameters() if p.requires_grad}
         frozen_params, trainable_names = 0, []
         frozen_modules = []
         for name, module in model.named_modules():
@@ -230,8 +237,8 @@ def main():
             if not allowed_module:
                 frozen_modules.append(module)
         for name, param in model.named_parameters():
-            if any(name == p.rstrip(".") or name.startswith(p) for p in prefixes):
-                param.requires_grad_(True)
+            if (any(name == p.rstrip(".") or name.startswith(p) for p in prefixes)
+                    and name in pre_trainable):
                 trainable_names.append(name)
             else:
                 param.requires_grad_(False)

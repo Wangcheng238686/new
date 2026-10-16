@@ -1,7 +1,7 @@
 """WARM-R1G screen arm (DUAL-WARMSTART-SCREEN-20261017): EXP-0015 recipe
 (ue-whu-a3sgm-512-dualv2-l0-lora-v1) verbatim with the single model-side
-addition gate_init=0.01 - non-zero initial gate participation at ~2x the
-EXP-0015 final gate std (0.0055), inside the k=2 gate-sweep envelope.
+addition gate_init=0.001 - non-zero initial gate participation (amended
+from 0.01 after the prereg guardrail fired; step-0 delta ratio 0.205).
 Trainer side (run_warm_screen.sh): --init-from EXP-0009 last + --freeze-base
 (uav_encoder./proj/gate trainable only) + fusion wd exemption. Identity:
 ue-whu-a3sgm-512-warm-r1g-v1 (screening arm, not a control baseline).
