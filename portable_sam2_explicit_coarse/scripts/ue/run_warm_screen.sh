@@ -56,11 +56,19 @@ fi
 
 RESUME_ARGS=()
 if [[ "$RESUME" == "--resume" ]]; then
+  # SCREEN-EXT: the checkpoint already carries the warm-initialised dual
+  # state + optimizer groups; --init-from is mutually exclusive with
+  # --resume-from and must be dropped (freeze-base is kept and recomputed
+  # identically from the config's LoRA trainable set).
+  INIT_FLAGS=()
   RESUME_ARGS=(--resume-from "$WORK_DIR/last_checkpoint.pth")
+else
+  INIT_FLAGS=(--init-from "$INIT_FROM" --allow-task-init --allow-cross-arch-init \
+              --init-allowed-missing-prefixes "uav_encoder.,proj,gate,bev_head,height_edges")
 fi
 
 echo "WARMSCREEN_CONTRACT arm=$ARM commit=$(git rev-parse HEAD) dirty=$(git status --porcelain | wc -l) gpu=$CUDA_VISIBLE_DEVICES epochs=$EPOCHS seed=44 run_tag=$RUN_TAG"
-echo "WARMSCREEN_CONTRACT baseline_id=$BASELINE_ID init_from=$INIT_FROM freeze_prefixes=uav_encoder.,proj,gate,bev_head data_manifest=f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a split=17f49430b15037c8da25c63a1bf7fe4d510cf5ff153263d2feba62c4393441d5 prereg=docs/DUAL-WARMSTART-SCREEN-20261017_preregistration.md"
+echo "WARMSCREEN_CONTRACT baseline_id=$BASELINE_ID init_from=${INIT_FLAGS[1]:-none(resume)} freeze_prefixes=uav_encoder.,proj,gate,bev_head data_manifest=f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a split=17f49430b15037c8da25c63a1bf7fe4d510cf5ff153263d2feba62c4393441d5 prereg=docs/DUAL-WARMSTART-SCREEN-20261017_preregistration.md"
 
 exec /data2/wangcheng/envs/cvt2/bin/python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=4 train/train_rsprompter_fusion.py \
   --config "$CONFIG" --run-tag "$RUN_TAG" --data-root "$UE_DATA_ROOT" \
@@ -69,7 +77,6 @@ exec /data2/wangcheng/envs/cvt2/bin/python -m torch.distributed.run --standalone
   --lr 5e-4 --weight-decay 0.05 --warmup-iters 100 --seed 44 \
   --val-batch-size 1 --val-every-n-epochs 1 --compute-val-loss 0 --amp 1 \
   --fusion-no-wd 1 \
-  --init-from "$INIT_FROM" --allow-task-init --allow-cross-arch-init \
-  --init-allowed-missing-prefixes "uav_encoder.,proj,gate,bev_head,height_edges" \
+  "${INIT_FLAGS[@]}" \
   --freeze-base --freeze-allow-prefixes "uav_encoder.,proj,gate,bev_head" \
   --ema-enabled 0 --ema-eval 0 --checkpoint-dir "$WORK_DIR" "${RESUME_ARGS[@]}"
