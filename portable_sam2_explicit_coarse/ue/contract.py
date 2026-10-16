@@ -20,6 +20,9 @@ BASELINE_CONFIGS = {
     "ue-whu-a3sgm-512-dualv2-l0-v1": "configs/ue_whu_a3sgm_512_dualv2_l0.py",
     # EXP-0014: dual + frozen per-channel BEV rescale (docs/EXP-0014_preregistration.md)
     "ue-whu-a3sgm-512-dualnorm-v1": "configs/ue_whu_a3sgm_512_dualnorm.py",
+    # EXP-0015/0016: DUAL-WHY-NULL follow-ups (wd exemption is trainer-side, see run_exp00{15,16})
+    "ue-whu-a3sgm-512-dualv2-l0-lora-v1": "configs/ue_whu_a3sgm_512_dualv2_l0_lora.py",
+    "ue-whu-a3sgm-512-dualembed-v1": "configs/ue_whu_a3sgm_512_dualembed.py",
 }
 ROOT = Path(__file__).resolve().parents[1]
 

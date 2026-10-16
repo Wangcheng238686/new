@@ -26,6 +26,7 @@ def _build_optimizer(
     shape_prior_lr_mult: float = 1.0,
     decoder_tail_lr_mult: float = 1.0,
     weight_decay: float = 0.05,
+    fusion_no_wd: bool = False,
 ) -> optim.Optimizer:
     params_backbone = []
     names_backbone = []
@@ -45,11 +46,23 @@ def _build_optimizer(
     names_bbox_head = []
     params_other = []
     names_other = []
+    params_fusion = []
+    names_fusion = []
+    # EXP-0015/0016: the DUAL-WHY-NULL diagnosis names wd 0.05 as one of the
+    # forces holding the zero-init fusion gates shut. Matched attrs are the
+    # RSPrompterAnchorDual fusion modules only (top-level gate/proj/gate_e/
+    # proj_e, incl. ModuleDict children); nested backbone blocks never start
+    # with these tokens after prefix stripping.
+    FUSION_ROOTS = ("gate", "proj", "gate_e", "proj_e")
 
     for name, param in model.named_parameters():
         if not param.requires_grad:
             continue
         match_name = name.replace("_fsdp_wrapped_module.", "").replace("module.", "")
+        if fusion_no_wd and match_name.split(".")[0] in FUSION_ROOTS:
+            params_fusion.append(param)
+            names_fusion.append(name)
+            continue
         if "roi_head.mask_head.decoder_tail_refiner" in match_name:
             params_decoder_tail.append(param)
             names_decoder_tail.append(name)
@@ -89,6 +102,18 @@ def _build_optimizer(
 
     param_groups = []
     audit_groups = []
+    if params_fusion:
+        # same LR the fusion params would have received in 'other'; only the
+        # decay differs (the single preregistered lever of EXP-0015/0016)
+        param_groups.append(
+            {
+                "params": params_fusion,
+                "lr": lr * other_lr_mult,
+                "weight_decay": 0.0,
+                "name": "fusion",
+            }
+        )
+        audit_groups.append(("fusion", params_fusion, names_fusion, lr * other_lr_mult, 0.0))
     if params_backbone:
         param_groups.append(
             {

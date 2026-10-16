@@ -402,6 +402,7 @@ def main():
         shape_prior_lr_mult=args.shape_prior_lr_mult,
         decoder_tail_lr_mult=args.decoder_tail_lr_mult,
         weight_decay=args.weight_decay,
+        fusion_no_wd=bool(getattr(args, "fusion_no_wd", 0)),
     )
     if is_main:
         _log_trainable_state(model)

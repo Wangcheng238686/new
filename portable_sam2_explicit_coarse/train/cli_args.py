@@ -114,6 +114,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--warmup-epochs", type=int, default=0, help="Number of warmup epochs for learning rate scheduling")
     parser.add_argument("--warmup-iters", type=int, default=100, help="Number of warmup optimizer steps (overrides warmup-epochs if > 0)")
     parser.add_argument("--weight-decay", type=float, default=0.05, help="Weight decay for optimizer")
+    parser.add_argument("--fusion-no-wd", type=int, default=0,
+                        help="Exempt the dual fusion modules (gate/proj[_e]) from weight decay (EXP-0015/0016)")
     parser.add_argument("--max-train-batches", type=int, default=0)
     parser.add_argument("--max-val-batches", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")

@@ -81,7 +81,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
 
     def __init__(self, uav_encoder=None, bev_channels=262, sat_channels=512,
                  target_level=1, target_levels=None, uav_eval_off=False,
-                 bev_stats=None, **kwargs):
+                 bev_stats=None, embed_fusion=False, embed_channels=256,
+                 **kwargs):
         super().__init__(**kwargs)
         if uav_encoder is None:
             raise ValueError("dual arm requires a uav_encoder config")
@@ -97,15 +98,26 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         # gate=0 with DEFAULT proj init: step 0 equals the single-stream
         # forward (0 x finite = 0) while dL/dgate = upstream . proj(bev) != 0
         # (a doubly-zero init is an unescapable saddle - launch-review finding).
-        levels = [int(t) for t in (target_levels or [target_level])]
+        # target_levels=[] (explicit empty list) means no pyramid fusion at
+        # all - the EXP-0016 embed-only arm.
+        levels = [int(t) for t in target_levels] if target_levels is not None else [int(target_level)]
         self.target_levels = levels
         if len(levels) == 1:
             # keep EXP-0010's attribute names so its checkpoints strict-load
             self.proj = nn.Conv2d(bev_channels, sat_channels, 1)
             self.gate = nn.Parameter(torch.zeros(sat_channels))
-        else:
+        elif len(levels) > 1:
             self.proj = nn.ModuleDict({str(t): nn.Conv2d(bev_channels, sat_channels, 1) for t in levels})
             self.gate = nn.ParameterDict({str(t): nn.Parameter(torch.zeros(sat_channels)) for t in levels})
+        # EXP-0016 injection site: image_embeddings (the SAM2 mask-decoder
+        # dense condition field, stride-16) instead of the PAFN pyramid.
+        # Mutually exclusive with pyramid levels by prereg contract.
+        self.embed_fusion = bool(embed_fusion)
+        if self.embed_fusion:
+            if levels:
+                raise ValueError("embed_fusion arm must not also fuse pyramid levels (prereg single-site)")
+            self.proj_e = nn.Conv2d(bev_channels, embed_channels, 1)
+            self.gate_e = nn.Parameter(torch.zeros(embed_channels))
         self.uav_eval_off = bool(uav_eval_off) or os.environ.get('UE_UAV_EVAL_OFF') == '1'
         # EXP-0014: optional frozen per-channel rescaling of the BEV before the
         # projection (identity: ue-whu-a3sgm-512-dualnorm-v1). DUAL-DELTA-DECOMP
@@ -172,6 +184,7 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
     def extract_feat(self, batch_inputs: torch.Tensor):
         out = super().extract_feat(batch_inputs)
         x = list(out[0])
+        image_embeddings = out[1]
         uav = self._uav_pending
         self._uav_pending = None
         if uav is not None and not (not self.training and self.uav_eval_off):
@@ -195,7 +208,22 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                             float(delta.detach().float().norm()
                                   / base.detach().float().norm().clamp_min(1e-6)))
                         self.telemetry.setdefault('bev_coverage' + tag, []).append(coverage)
-        return tuple(x), *out[1:]
+                if self.embed_fusion:
+                    base_e = image_embeddings
+                    bev, coverage = self._uav_bev(uav, tuple(base_e.shape[-2:]))
+                    delta = self.proj_e(bev.unsqueeze(0).float())
+                    delta = (self.gate_e.view(1, -1, 1, 1) * delta).to(base_e.dtype)
+                    image_embeddings = base_e + delta
+                    if self.training:
+                        g = self.gate_e.detach()
+                        self.telemetry.setdefault('gate_mean_E', []).append(float(g.mean()))
+                        self.telemetry.setdefault('gate_std_E', []).append(float(g.std()))
+                        self.telemetry.setdefault('gate_absmax_E', []).append(float(g.abs().max()))
+                        self.telemetry.setdefault('delta_p3_ratio_E', []).append(
+                            float(delta.detach().float().norm()
+                                  / base_e.detach().float().norm().clamp_min(1e-6)))
+                        self.telemetry.setdefault('bev_coverage_E', []).append(coverage)
+        return tuple(x), image_embeddings, *out[2:]
 
     def loss(self, batch_inputs, batch_data_samples, **kwargs):
         self._fetch_uav()
