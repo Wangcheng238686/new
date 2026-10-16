@@ -1,0 +1,250 @@
+{
+  "verdict": "PASS",
+  "method": "All fragment identities recomputed directly from decoded Boolean mask intersections/unions; border from mask edge pixels; full strata counts independently recomputed",
+  "fragment_instances_by_mode": {
+    "single_best": 70,
+    "dual_correct": 63
+  },
+  "strata": {
+    "all": {
+      "appearances": 3734,
+      "unique_physical_pairs": 290,
+      "modes": {
+        "single_best": {
+          "0.5": {
+            "mask_pair_success": 3343,
+            "box_pair_success": 3370,
+            "mask_fail_box_success": 62,
+            "mask_fail_box_fail": 329,
+            "mask_fail_gtbox_both_pass": 318
+          },
+          "0.75": {
+            "mask_pair_success": 2617,
+            "box_pair_success": 2634,
+            "mask_fail_box_success": 226,
+            "mask_fail_box_fail": 891,
+            "mask_fail_gtbox_both_pass": 543
+          },
+          "mask05_failure_with_fragment_proxy": 76
+        },
+        "dual_correct": {
+          "0.5": {
+            "mask_pair_success": 3360,
+            "box_pair_success": 3363,
+            "mask_fail_box_success": 47,
+            "mask_fail_box_fail": 327,
+            "mask_fail_gtbox_both_pass": 305
+          },
+          "0.75": {
+            "mask_pair_success": 2618,
+            "box_pair_success": 2618,
+            "mask_fail_box_success": 234,
+            "mask_fail_box_fail": 882,
+            "mask_fail_gtbox_both_pass": 512
+          },
+          "mask05_failure_with_fragment_proxy": 73
+        }
+      }
+    },
+    "any_border": {
+      "appearances": 1663,
+      "unique_physical_pairs": 272,
+      "modes": {
+        "single_best": {
+          "0.5": {
+            "mask_pair_success": 1352,
+            "box_pair_success": 1357,
+            "mask_fail_box_success": 37,
+            "mask_fail_box_fail": 274,
+            "mask_fail_gtbox_both_pass": 243
+          },
+          "0.75": {
+            "mask_pair_success": 916,
+            "box_pair_success": 908,
+            "mask_fail_box_success": 130,
+            "mask_fail_box_fail": 617,
+            "mask_fail_gtbox_both_pass": 315
+          },
+          "mask05_failure_with_fragment_proxy": 57
+        },
+        "dual_correct": {
+          "0.5": {
+            "mask_pair_success": 1362,
+            "box_pair_success": 1358,
+            "mask_fail_box_success": 35,
+            "mask_fail_box_fail": 266,
+            "mask_fail_gtbox_both_pass": 233
+          },
+          "0.75": {
+            "mask_pair_success": 901,
+            "box_pair_success": 888,
+            "mask_fail_box_success": 138,
+            "mask_fail_box_fail": 624,
+            "mask_fail_gtbox_both_pass": 303
+          },
+          "mask05_failure_with_fragment_proxy": 54
+        }
+      }
+    },
+    "neither_border": {
+      "appearances": 2071,
+      "unique_physical_pairs": 190,
+      "modes": {
+        "single_best": {
+          "0.5": {
+            "mask_pair_success": 1991,
+            "box_pair_success": 2013,
+            "mask_fail_box_success": 25,
+            "mask_fail_box_fail": 55,
+            "mask_fail_gtbox_both_pass": 75
+          },
+          "0.75": {
+            "mask_pair_success": 1701,
+            "box_pair_success": 1726,
+            "mask_fail_box_success": 96,
+            "mask_fail_box_fail": 274,
+            "mask_fail_gtbox_both_pass": 228
+          },
+          "mask05_failure_with_fragment_proxy": 19
+        },
+        "dual_correct": {
+          "0.5": {
+            "mask_pair_success": 1998,
+            "box_pair_success": 2005,
+            "mask_fail_box_success": 12,
+            "mask_fail_box_fail": 61,
+            "mask_fail_gtbox_both_pass": 72
+          },
+          "0.75": {
+            "mask_pair_success": 1717,
+            "box_pair_success": 1730,
+            "mask_fail_box_success": 96,
+            "mask_fail_box_fail": 258,
+            "mask_fail_gtbox_both_pass": 209
+          },
+          "mask05_failure_with_fragment_proxy": 19
+        }
+      }
+    },
+    "any_small": {
+      "appearances": 1198,
+      "unique_physical_pairs": 180,
+      "modes": {
+        "single_best": {
+          "0.5": {
+            "mask_pair_success": 935,
+            "box_pair_success": 935,
+            "mask_fail_box_success": 20,
+            "mask_fail_box_fail": 243,
+            "mask_fail_gtbox_both_pass": 206
+          },
+          "0.75": {
+            "mask_pair_success": 700,
+            "box_pair_success": 662,
+            "mask_fail_box_success": 68,
+            "mask_fail_box_fail": 430,
+            "mask_fail_gtbox_both_pass": 271
+          },
+          "mask05_failure_with_fragment_proxy": 9
+        },
+        "dual_correct": {
+          "0.5": {
+            "mask_pair_success": 941,
+            "box_pair_success": 938,
+            "mask_fail_box_success": 17,
+            "mask_fail_box_fail": 240,
+            "mask_fail_gtbox_both_pass": 196
+          },
+          "0.75": {
+            "mask_pair_success": 684,
+            "box_pair_success": 657,
+            "mask_fail_box_success": 79,
+            "mask_fail_box_fail": 435,
+            "mask_fail_gtbox_both_pass": 261
+          },
+          "mask05_failure_with_fragment_proxy": 7
+        }
+      }
+    },
+    "neither_small": {
+      "appearances": 2536,
+      "unique_physical_pairs": 203,
+      "modes": {
+        "single_best": {
+          "0.5": {
+            "mask_pair_success": 2408,
+            "box_pair_success": 2435,
+            "mask_fail_box_success": 42,
+            "mask_fail_box_fail": 86,
+            "mask_fail_gtbox_both_pass": 112
+          },
+          "0.75": {
+            "mask_pair_success": 1917,
+            "box_pair_success": 1972,
+            "mask_fail_box_success": 158,
+            "mask_fail_box_fail": 461,
+            "mask_fail_gtbox_both_pass": 272
+          },
+          "mask05_failure_with_fragment_proxy": 67
+        },
+        "dual_correct": {
+          "0.5": {
+            "mask_pair_success": 2419,
+            "box_pair_success": 2425,
+            "mask_fail_box_success": 30,
+            "mask_fail_box_fail": 87,
+            "mask_fail_gtbox_both_pass": 109
+          },
+          "0.75": {
+            "mask_pair_success": 1934,
+            "box_pair_success": 1961,
+            "mask_fail_box_success": 155,
+            "mask_fail_box_fail": 447,
+            "mask_fail_gtbox_both_pass": 251
+          },
+          "mask05_failure_with_fragment_proxy": 66
+        }
+      }
+    },
+    "interior_nonsmall": {
+      "appearances": 1544,
+      "unique_physical_pairs": 141,
+      "modes": {
+        "single_best": {
+          "0.5": {
+            "mask_pair_success": 1501,
+            "box_pair_success": 1520,
+            "mask_fail_box_success": 19,
+            "mask_fail_box_fail": 24,
+            "mask_fail_gtbox_both_pass": 39
+          },
+          "0.75": {
+            "mask_pair_success": 1282,
+            "box_pair_success": 1320,
+            "mask_fail_box_success": 77,
+            "mask_fail_box_fail": 185,
+            "mask_fail_gtbox_both_pass": 143
+          },
+          "mask05_failure_with_fragment_proxy": 17
+        },
+        "dual_correct": {
+          "0.5": {
+            "mask_pair_success": 1505,
+            "box_pair_success": 1506,
+            "mask_fail_box_success": 6,
+            "mask_fail_box_fail": 33,
+            "mask_fail_gtbox_both_pass": 39
+          },
+          "0.75": {
+            "mask_pair_success": 1297,
+            "box_pair_success": 1311,
+            "mask_fail_box_success": 66,
+            "mask_fail_box_fail": 181,
+            "mask_fail_gtbox_both_pass": 135
+          },
+          "mask05_failure_with_fragment_proxy": 18
+        }
+      }
+    }
+  }
+}

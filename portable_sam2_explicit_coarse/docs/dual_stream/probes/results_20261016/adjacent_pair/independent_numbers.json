@@ -1,0 +1,281 @@
+{
+  "verdict": "PASS",
+  "adjacency_implementation": "independent Euclidean-disk morphology and 3x3 contact dilation",
+  "matching": "independent cost assembly; sparse maximum matching validates cardinality for 2448 image/mode/threshold mask-or-box matrices",
+  "source_stage_max_abs_error": 3.8096111876217975e-07,
+  "source_fixed_mask_max_abs_error": 0,
+  "counts": {
+    "contact": {
+      "n": 3375,
+      "physical": 253,
+      "single_best@0.5": {
+        "mask_pair_success": 3032,
+        "box_pair_success": 3061,
+        "mask_fail_box_success": 55,
+        "mask_fail_box_fail": 288,
+        "nms_coverage_loss_among_mask_fail": 66,
+        "rpn_lacks_coverage_among_mask_fail": 130
+      },
+      "single_best@0.75": {
+        "mask_pair_success": 2410,
+        "box_pair_success": 2418,
+        "mask_fail_box_success": 196,
+        "mask_fail_box_fail": 769,
+        "nms_coverage_loss_among_mask_fail": 272,
+        "rpn_lacks_coverage_among_mask_fail": 540
+      },
+      "dual_correct@0.5": {
+        "mask_pair_success": 3048,
+        "box_pair_success": 3050,
+        "mask_fail_box_success": 39,
+        "mask_fail_box_fail": 288,
+        "nms_coverage_loss_among_mask_fail": 75,
+        "rpn_lacks_coverage_among_mask_fail": 133
+      },
+      "dual_correct@0.75": {
+        "mask_pair_success": 2415,
+        "box_pair_success": 2405,
+        "mask_fail_box_success": 204,
+        "mask_fail_box_fail": 756,
+        "nms_coverage_loss_among_mask_fail": 270,
+        "rpn_lacks_coverage_among_mask_fail": 492
+      },
+      "dual_zero@0.5": {
+        "mask_pair_success": 2997,
+        "box_pair_success": 3054,
+        "mask_fail_box_success": 84,
+        "mask_fail_box_fail": 294,
+        "nms_coverage_loss_among_mask_fail": 75,
+        "rpn_lacks_coverage_among_mask_fail": 133
+      },
+      "dual_zero@0.75": {
+        "mask_pair_success": 2046,
+        "box_pair_success": 2407,
+        "mask_fail_box_success": 503,
+        "mask_fail_box_fail": 826,
+        "nms_coverage_loss_among_mask_fail": 319,
+        "rpn_lacks_coverage_among_mask_fail": 555
+      },
+      "dual_shift@0.5": {
+        "mask_pair_success": 3011,
+        "box_pair_success": 3053,
+        "mask_fail_box_success": 73,
+        "mask_fail_box_fail": 291,
+        "nms_coverage_loss_among_mask_fail": 78,
+        "rpn_lacks_coverage_among_mask_fail": 134
+      },
+      "dual_shift@0.75": {
+        "mask_pair_success": 2051,
+        "box_pair_success": 2404,
+        "mask_fail_box_success": 491,
+        "mask_fail_box_fail": 833,
+        "nms_coverage_loss_among_mask_fail": 322,
+        "rpn_lacks_coverage_among_mask_fail": 555
+      }
+    },
+    "near": {
+      "n": 359,
+      "physical": 75,
+      "single_best@0.5": {
+        "mask_pair_success": 311,
+        "box_pair_success": 309,
+        "mask_fail_box_success": 7,
+        "mask_fail_box_fail": 41,
+        "nms_coverage_loss_among_mask_fail": 10,
+        "rpn_lacks_coverage_among_mask_fail": 16
+      },
+      "single_best@0.75": {
+        "mask_pair_success": 207,
+        "box_pair_success": 216,
+        "mask_fail_box_success": 30,
+        "mask_fail_box_fail": 122,
+        "nms_coverage_loss_among_mask_fail": 36,
+        "rpn_lacks_coverage_among_mask_fail": 84
+      },
+      "dual_correct@0.5": {
+        "mask_pair_success": 312,
+        "box_pair_success": 313,
+        "mask_fail_box_success": 8,
+        "mask_fail_box_fail": 39,
+        "nms_coverage_loss_among_mask_fail": 12,
+        "rpn_lacks_coverage_among_mask_fail": 15
+      },
+      "dual_correct@0.75": {
+        "mask_pair_success": 203,
+        "box_pair_success": 213,
+        "mask_fail_box_success": 30,
+        "mask_fail_box_fail": 126,
+        "nms_coverage_loss_among_mask_fail": 47,
+        "rpn_lacks_coverage_among_mask_fail": 83
+      },
+      "dual_zero@0.5": {
+        "mask_pair_success": 304,
+        "box_pair_success": 312,
+        "mask_fail_box_success": 13,
+        "mask_fail_box_fail": 42,
+        "nms_coverage_loss_among_mask_fail": 13,
+        "rpn_lacks_coverage_among_mask_fail": 15
+      },
+      "dual_zero@0.75": {
+        "mask_pair_success": 164,
+        "box_pair_success": 213,
+        "mask_fail_box_success": 65,
+        "mask_fail_box_fail": 130,
+        "nms_coverage_loss_among_mask_fail": 46,
+        "rpn_lacks_coverage_among_mask_fail": 84
+      },
+      "dual_shift@0.5": {
+        "mask_pair_success": 305,
+        "box_pair_success": 312,
+        "mask_fail_box_success": 11,
+        "mask_fail_box_fail": 43,
+        "nms_coverage_loss_among_mask_fail": 14,
+        "rpn_lacks_coverage_among_mask_fail": 15
+      },
+      "dual_shift@0.75": {
+        "mask_pair_success": 159,
+        "box_pair_success": 215,
+        "mask_fail_box_success": 73,
+        "mask_fail_box_fail": 127,
+        "nms_coverage_loss_among_mask_fail": 45,
+        "rpn_lacks_coverage_among_mask_fail": 86
+      }
+    },
+    "all_adjacent": {
+      "n": 3734,
+      "physical": 290,
+      "single_best@0.5": {
+        "mask_pair_success": 3343,
+        "box_pair_success": 3370,
+        "mask_fail_box_success": 62,
+        "mask_fail_box_fail": 329,
+        "nms_coverage_loss_among_mask_fail": 76,
+        "rpn_lacks_coverage_among_mask_fail": 146
+      },
+      "single_best@0.75": {
+        "mask_pair_success": 2617,
+        "box_pair_success": 2634,
+        "mask_fail_box_success": 226,
+        "mask_fail_box_fail": 891,
+        "nms_coverage_loss_among_mask_fail": 308,
+        "rpn_lacks_coverage_among_mask_fail": 624
+      },
+      "dual_correct@0.5": {
+        "mask_pair_success": 3360,
+        "box_pair_success": 3363,
+        "mask_fail_box_success": 47,
+        "mask_fail_box_fail": 327,
+        "nms_coverage_loss_among_mask_fail": 87,
+        "rpn_lacks_coverage_among_mask_fail": 148
+      },
+      "dual_correct@0.75": {
+        "mask_pair_success": 2618,
+        "box_pair_success": 2618,
+        "mask_fail_box_success": 234,
+        "mask_fail_box_fail": 882,
+        "nms_coverage_loss_among_mask_fail": 317,
+        "rpn_lacks_coverage_among_mask_fail": 575
+      },
+      "dual_zero@0.5": {
+        "mask_pair_success": 3301,
+        "box_pair_success": 3366,
+        "mask_fail_box_success": 97,
+        "mask_fail_box_fail": 336,
+        "nms_coverage_loss_among_mask_fail": 88,
+        "rpn_lacks_coverage_among_mask_fail": 148
+      },
+      "dual_zero@0.75": {
+        "mask_pair_success": 2210,
+        "box_pair_success": 2620,
+        "mask_fail_box_success": 568,
+        "mask_fail_box_fail": 956,
+        "nms_coverage_loss_among_mask_fail": 365,
+        "rpn_lacks_coverage_among_mask_fail": 639
+      },
+      "dual_shift@0.5": {
+        "mask_pair_success": 3316,
+        "box_pair_success": 3365,
+        "mask_fail_box_success": 84,
+        "mask_fail_box_fail": 334,
+        "nms_coverage_loss_among_mask_fail": 92,
+        "rpn_lacks_coverage_among_mask_fail": 149
+      },
+      "dual_shift@0.75": {
+        "mask_pair_success": 2210,
+        "box_pair_success": 2619,
+        "mask_fail_box_success": 564,
+        "mask_fail_box_fail": 960,
+        "nms_coverage_loss_among_mask_fail": 367,
+        "rpn_lacks_coverage_among_mask_fail": 641
+      }
+    },
+    "largest_components_near": {
+      "n": 3691,
+      "physical": 275,
+      "single_best@0.5": {
+        "mask_pair_success": 3317,
+        "box_pair_success": 3343,
+        "mask_fail_box_success": 57,
+        "mask_fail_box_fail": 317,
+        "nms_coverage_loss_among_mask_fail": 73,
+        "rpn_lacks_coverage_among_mask_fail": 139
+      },
+      "single_best@0.75": {
+        "mask_pair_success": 2614,
+        "box_pair_success": 2624,
+        "mask_fail_box_success": 219,
+        "mask_fail_box_fail": 858,
+        "nms_coverage_loss_among_mask_fail": 296,
+        "rpn_lacks_coverage_among_mask_fail": 593
+      },
+      "dual_correct@0.5": {
+        "mask_pair_success": 3331,
+        "box_pair_success": 3336,
+        "mask_fail_box_success": 45,
+        "mask_fail_box_fail": 315,
+        "nms_coverage_loss_among_mask_fail": 87,
+        "rpn_lacks_coverage_among_mask_fail": 139
+      },
+      "dual_correct@0.75": {
+        "mask_pair_success": 2613,
+        "box_pair_success": 2610,
+        "mask_fail_box_success": 229,
+        "mask_fail_box_fail": 849,
+        "nms_coverage_loss_among_mask_fail": 304,
+        "rpn_lacks_coverage_among_mask_fail": 548
+      },
+      "dual_zero@0.5": {
+        "mask_pair_success": 3278,
+        "box_pair_success": 3339,
+        "mask_fail_box_success": 90,
+        "mask_fail_box_fail": 323,
+        "nms_coverage_loss_among_mask_fail": 88,
+        "rpn_lacks_coverage_among_mask_fail": 138
+      },
+      "dual_zero@0.75": {
+        "mask_pair_success": 2209,
+        "box_pair_success": 2612,
+        "mask_fail_box_success": 561,
+        "mask_fail_box_fail": 921,
+        "nms_coverage_loss_among_mask_fail": 352,
+        "rpn_lacks_coverage_among_mask_fail": 608
+      },
+      "dual_shift@0.5": {
+        "mask_pair_success": 3290,
+        "box_pair_success": 3338,
+        "mask_fail_box_success": 80,
+        "mask_fail_box_fail": 321,
+        "nms_coverage_loss_among_mask_fail": 92,
+        "rpn_lacks_coverage_among_mask_fail": 139
+      },
+      "dual_shift@0.75": {
+        "mask_pair_success": 2210,
+        "box_pair_success": 2610,
+        "mask_fail_box_success": 555,
+        "mask_fail_box_fail": 926,
+        "nms_coverage_loss_among_mask_fail": 356,
+        "rpn_lacks_coverage_among_mask_fail": 609
+      }
+    }
+  }
+}

@@ -184,3 +184,6 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 - 2026-10-16：新增H1数据优势/H2表征损失/H3共适应三路独立判断与交叉质疑，见 `docs/dual_stream/UE_HYPOTHESES_JUDGMENT_20261016.md`；仅定性原RGB接触板复核，无模型/训练/遥测定义变更。纠正将条件依赖写为已证能力让渡的归因措辞。
 
 - 2026-10-16：根据用户澄清将核心目标对准相邻建筑实例粘连，纠正把跨视角信息优势收窄为GSD优势的表述；新增 `docs/dual_stream/UE_INSTANCE_SEPARATION_DIRECTION_20261016.md`。仅研究方向/评价定义草案，未计算新指标、修改模型或启动训练。
+
+
+- 2026-10-16：新增`scripts/analysis/ue_adjacent_pair_audit.py`（既有153图GT/DT、全局一对一配对、接触/近邻及候选摘要定位）、`ue_adjacent_pair_cases.py`（六类首序案例轮廓图）、`ue_adjacent_pair_sensitivity.py`（明确事后的触边/small及多块覆盖代理）。结果见[邻接对定位](dual_stream/UE_ADJACENT_PAIR_DIAGNOSIS_20261016.md)，轻量身份/数字及独立复算存`dual_stream/probes/results_20261016/adjacent_pair/`。仅CPU已有产物；无新forward、fit、训练、生产接线/配置/遥测定义变更。数值/实施审核PASS，报告终审三处措辞已主代理修正，完整记录保留。

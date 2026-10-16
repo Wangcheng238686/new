@@ -1,0 +1,15 @@
+{
+  "/tmp/ue_adjacent_pair_20261016/PROTOCOL.md": "06a3ce7e59c1f2add4b3eaa810a2cf11e0e27327fc937de62b2d58cd6ee5170e",
+  "/tmp/ue_adjacent_pair_20261016/POSTHOC_SCOPE.md": "9ed5956035fa68a4b1c11e979b2f728c87d9b1df2f7bb74c40bb6ca13d232619",
+  "/tmp/ue_adjacent_pair_20261016/ue_adjacent_pair_audit.py": "6ed4d79e002cd2c68d8bbc1860e361b84c7cbe128f70d8c607cdfc5812623c65",
+  "/tmp/ue_adjacent_pair_20261016/ue_adjacent_pair_sensitivity.py": "6f79de7d27d3edb78cc2d5fe7a7e7175f14d51d9e60f364399e7818c6e590586",
+  "/tmp/ue_adjacent_pair_20261016/ue_adjacent_pair_cases.py": "719979243c52749d3ea70a2ee0c220d684e0671149a49f8f49e6b557171d651f",
+  "/tmp/ue_adjacent_pair_20261016/independent_check.py": "d9dc1c67b37f49064b76735dde9c17d9c40876541d8594e6b82bcd29fc82fae2",
+  "/tmp/ue_adjacent_pair_20261016/independent_sensitivity.py": "eae0ccf17406c6d3597c66b630a7ff22bc07140248bbbdcad6244e28f870134b",
+  "/tmp/ue_adjacent_pair_20261016/outputs/case_dual_regressed.png": "b9aa001b555999dea386844c7a1f5d2b468d0802933184432454bfab62072db4",
+  "/tmp/ue_adjacent_pair_20261016/outputs/case_both_success.png": "82b12383856961247533e95b8337844d92425b9f882f3d7ae540e39846c13599",
+  "/tmp/ue_adjacent_pair_20261016/outputs/case_both_fail_dual_rpn_lack.png": "e7e87414c8ec81cf0d9133c72c45eaafe939e26bccfbf189820ac83a941c0f1b",
+  "/tmp/ue_adjacent_pair_20261016/outputs/case_both_fail_dual_box_ok.png": "6a531b85a685056ff8ac5f9b8567293934aaf5c8c6d20ee3bf3ad706b2266644",
+  "/tmp/ue_adjacent_pair_20261016/outputs/case_dual_improved.png": "fa32a19cc8e1428c89e6e1bf3f026abe488078e8985800875ca784abcf1739d2",
+  "/tmp/ue_adjacent_pair_20261016/outputs/case_both_fail_dual_nms_loss.png": "3cef2bb61b784a1e26dbb0bb1ac813d56126c7ccfdeb9cdcf1d730ff5f1eced2"
+}
