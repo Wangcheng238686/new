@@ -58,6 +58,13 @@ def train_one_epoch(
     model.train()
     if args.freeze_bn:
         _set_norm_eval(model)
+    # DUAL-WARMSTART-SCREEN-20261017: re-pin frozen modules to eval mode
+    # after train() - frozen LoRA dropout must never fire in the warm-start
+    # satellite stack (a train/eval mismatch would break the bit-identical
+    # UAV-off == EXP-0009 construction).
+    for _m in getattr(model.module if hasattr(model, "module") else model,
+                      "_warm_frozen_modules", ()) or ():
+        _m.eval()
 
     # EXP-0017 fusion delayed unfreeze: pin the dual fusion gate(s) at exactly
     # zero through the end of --fusion-unlock-epoch epochs (epoch_number is

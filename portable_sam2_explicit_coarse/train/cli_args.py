@@ -36,6 +36,45 @@ def _parse_args() -> argparse.Namespace:
         default="",
         help="Comma-separated model state prefixes excluded from --init-from",
     )
+    parser.add_argument(
+        "--allow-task-init",
+        action="store_true",
+        help=(
+            "Preregistered protocol exception (DUAL-WARMSTART-SCREEN-20261017): "
+            "allow --init-from for ue_raw_surface warm-start from the EXP-0009 "
+            "method-baseline weights. Cross-architecture opt-in is still "
+            "required separately via --allow-cross-arch-init."
+        ),
+    )
+    parser.add_argument(
+        "--init-allowed-missing-prefixes",
+        type=str,
+        default="",
+        help=(
+            "Comma-separated prefixes permitted to be missing from the "
+            "--init-from state (warm-start: exactly the new dual modules). "
+            "When set, any other missing key / shape mismatch / unexpected "
+            "key is a hard error (governance: missing-keys must be exactly "
+            "the newly added module keys)."
+        ),
+    )
+    parser.add_argument(
+        "--freeze-base",
+        action="store_true",
+        help=(
+            "Warm-start screening mode: freeze every parameter outside "
+            "--freeze-allow-prefixes (satellite stack incl. its LoRA) and "
+            "pin those modules to eval mode, training only the listed "
+            "fusion/UAV modules."
+        ),
+    )
+    parser.add_argument(
+        "--freeze-allow-prefixes",
+        type=str,
+        default="",
+        help="Comma-separated trainable prefixes under --freeze-base (e.g. "
+             "'uav_encoder.,proj,gate,bev_head')",
+    )
 
     parser.add_argument(
         "--dataset",

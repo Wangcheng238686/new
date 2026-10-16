@@ -82,6 +82,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
     def __init__(self, uav_encoder=None, bev_channels=262, sat_channels=512,
                  target_level=1, target_levels=None, uav_eval_off=False,
                  bev_stats=None, embed_fusion=False, embed_channels=256,
+                 gate_init=0.0, bev_head_hidden=0, bev_head_stats=None,
+                 bev_aux_weight=0.05,
                  **kwargs):
         super().__init__(**kwargs)
         if uav_encoder is None:
@@ -102,13 +104,18 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         # all - the EXP-0016 embed-only arm.
         levels = [int(t) for t in target_levels] if target_levels is not None else [int(target_level)]
         self.target_levels = levels
+        # WARM-R1G (DUAL-WARMSTART-SCREEN-20261017): non-zero initial gate
+        # participation. Default 0.0 keeps every earlier arm bit-identical;
+        # 0.01 sits at ~2x the EXP-0015 final gate std (0.0055) so step-0
+        # injection stays inside the k=2 gate-sweep envelope.
+        self.gate_init = float(gate_init)
         if len(levels) == 1:
             # keep EXP-0010's attribute names so its checkpoints strict-load
             self.proj = nn.Conv2d(bev_channels, sat_channels, 1)
-            self.gate = nn.Parameter(torch.zeros(sat_channels))
+            self.gate = nn.Parameter(torch.full((sat_channels,), self.gate_init))
         elif len(levels) > 1:
             self.proj = nn.ModuleDict({str(t): nn.Conv2d(bev_channels, sat_channels, 1) for t in levels})
-            self.gate = nn.ParameterDict({str(t): nn.Parameter(torch.zeros(sat_channels)) for t in levels})
+            self.gate = nn.ParameterDict({str(t): nn.Parameter(torch.full((sat_channels,), self.gate_init)) for t in levels})
         # EXP-0016 injection site: image_embeddings (the SAM2 mask-decoder
         # dense condition field, stride-16) instead of the PAFN pyramid.
         # Mutually exclusive with pyramid levels by prereg contract.
@@ -117,7 +124,35 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             if levels:
                 raise ValueError("embed_fusion arm must not also fuse pyramid levels (prereg single-site)")
             self.proj_e = nn.Conv2d(bev_channels, embed_channels, 1)
-            self.gate_e = nn.Parameter(torch.zeros(embed_channels))
+            self.gate_e = nn.Parameter(torch.full((embed_channels,), self.gate_init))
+        # WARM-R1B (DUAL-WARMSTART-SCREEN-20261017): buildingness spatial gate
+        # + auxiliary supervision. The head consumes the SAME BEV tensor as
+        # the injection path but through its own frozen per-channel rescale
+        # (0014-lineage harvest JSON, s_c = 1/max(rms_c, 0.05)); the proj path
+        # stays untouched so the EXP-0015 recipe remains the single base.
+        # Default bev_head_hidden=0 creates no attribute and no state_dict
+        # key - every earlier arm is bit-identical (same pattern as bev_stats).
+        if bev_head_hidden > 0:
+            if bev_head_stats is None:
+                raise ValueError("bev_head requires bev_head_stats (0014-lineage harvest JSON)")
+            if len(levels) != 1 or self.embed_fusion:
+                raise ValueError("bev_head arm is single-level pyramid fusion only (prereg)")
+            payload = json.loads(Path(bev_head_stats).read_text())
+            scale = torch.tensor(payload['scale'], dtype=torch.float32)
+            if tuple(scale.shape) != (bev_channels,):
+                raise ValueError(f"bev_head_stats scale has {scale.numel()} channels, expected {bev_channels}")
+            self.register_buffer('bev_head_scale', scale.view(1, -1, 1, 1))
+            self.bev_head = nn.Sequential(
+                nn.Conv2d(bev_channels, int(bev_head_hidden), 3, padding=1, bias=False),
+                nn.GroupNorm(8, int(bev_head_hidden)),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(int(bev_head_hidden), int(bev_head_hidden), 3, padding=1, bias=False),
+                nn.GroupNorm(8, int(bev_head_hidden)),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(int(bev_head_hidden), 1, 1),
+            )
+            self.bev_aux_weight = float(bev_aux_weight)
+            self._bev_aux_logits = None
         self.uav_eval_off = bool(uav_eval_off) or os.environ.get('UE_UAV_EVAL_OFF') == '1'
         # EXP-0014: optional frozen per-channel rescaling of the BEV before the
         # projection (identity: ue-whu-a3sgm-512-dualnorm-v1). DUAL-DELTA-DECOMP
@@ -196,7 +231,16 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                     gate_t = self.gate if single else self.gate[str(t)]
                     bev, coverage = self._uav_bev(uav, tuple(base.shape[-2:]))
                     delta = proj_t(bev.unsqueeze(0).float())
-                    delta = (gate_t.view(1, -1, 1, 1) * delta).to(base.dtype)
+                    delta = (gate_t.view(1, -1, 1, 1) * delta)
+                    if getattr(self, 'bev_head', None) is not None:
+                        b_in = bev.unsqueeze(0).float() * self.bev_head_scale.to(bev.device)
+                        b_logits = self.bev_head(b_in)
+                        delta = delta * (1.0 + torch.sigmoid(b_logits))
+                        if self.training:
+                            # kept graph-attached: the aux BCE (loss()) trains
+                            # bev_head AND feeds the UAV LoRA supply-side
+                            self._bev_aux_logits = b_logits
+                    delta = delta.to(base.dtype)
                     x[t] = base + delta
                     if self.training:
                         g = gate_t.detach()
@@ -227,10 +271,34 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
 
     def loss(self, batch_inputs, batch_data_samples, **kwargs):
         self._fetch_uav()
-        return super().loss(batch_inputs, batch_data_samples, **kwargs)
+        if getattr(self, 'bev_head', None) is not None:
+            self._bev_aux_logits = None
+        losses = super().loss(batch_inputs, batch_data_samples, **kwargs)
+        # WARM-R1B auxiliary supervision: BCE(buildingness logits, GT union
+        # footprint downsampled to the BEV grid). Per-GPU batch is asserted 1
+        # upstream, so a single scene's union is the target.
+        logits = getattr(self, '_bev_aux_logits', None)
+        if getattr(self, 'bev_head', None) is not None and logits is not None:
+            self._bev_aux_logits = None
+            target = torch.zeros(logits.shape[-2:], device=logits.device, dtype=torch.float32)
+            for sample in batch_data_samples:
+                masks = getattr(getattr(sample, 'gt_instances', None), 'masks', None)
+                if masks is None or len(masks) == 0:
+                    continue
+                union = torch.from_numpy(masks.to_ndarray().astype(bool).any(0)).float()
+                union = union[None, None].to(logits.device)
+                target = torch.maximum(
+                    target,
+                    torch.nn.functional.interpolate(union, size=logits.shape[-2:], mode='area')[0, 0],
+                )
+            losses['loss_bev_aux'] = self.bev_aux_weight * F.binary_cross_entropy_with_logits(
+                logits[0, 0], target)
+        return losses
 
     def predict(self, batch_inputs, batch_data_samples, rescale=True, **kwargs):
         self._fetch_uav()
+        if getattr(self, 'bev_head', None) is not None:
+            self._bev_aux_logits = None
         return super().predict(batch_inputs, batch_data_samples, rescale=rescale, **kwargs)
 
     def drain_telemetry(self):

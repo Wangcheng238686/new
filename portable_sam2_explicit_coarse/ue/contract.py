@@ -23,6 +23,11 @@ BASELINE_CONFIGS = {
     # EXP-0015/0016: DUAL-WHY-NULL follow-ups (wd exemption is trainer-side, see run_exp00{15,16})
     "ue-whu-a3sgm-512-dualv2-l0-lora-v1": "configs/ue_whu_a3sgm_512_dualv2_l0_lora.py",
     "ue-whu-a3sgm-512-dualembed-v1": "configs/ue_whu_a3sgm_512_dualembed.py",
+    # DUAL-WARMSTART-SCREEN-20261017: warm-start screening arms (not control
+    # baselines); each is the EXP-0015 recipe plus exactly one model-side key
+    # (see docs/DUAL-WARMSTART-SCREEN-20261017_preregistration.md)
+    "ue-whu-a3sgm-512-warm-r1g-v1": "configs/ue_whu_a3sgm_512_warm_r1g.py",
+    "ue-whu-a3sgm-512-warm-r1b-v1": "configs/ue_whu_a3sgm_512_warm_r1b.py",
 }
 ROOT = Path(__file__).resolve().parents[1]
 

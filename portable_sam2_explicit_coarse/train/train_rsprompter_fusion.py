@@ -207,6 +207,48 @@ def main():
     if args.freeze_bn:
         _set_norm_eval(model)
 
+    # DUAL-WARMSTART-SCREEN-20261017 (--freeze-base): warm-start screening -
+    # every parameter outside the allow-prefixes (the whole satellite stack,
+    # including its LoRA adapters) is frozen and pinned to eval mode so the
+    # UAV-off forward is bit-identical to the EXP-0009 baseline by
+    # construction; only fusion/UAV modules train. Applied BEFORE the DDP
+    # wrap so bucket construction sees the final requires_grad state.
+    if args.freeze_base:
+        if not args.init_from:
+            raise SystemExit("--freeze-base requires --init-from (warm-start protocol)")
+        prefixes = tuple(p for p in args.freeze_allow_prefixes.split(",") if p)
+        if not prefixes:
+            raise SystemExit("--freeze-base requires a non-empty --freeze-allow-prefixes")
+        frozen_params, trainable_names = 0, []
+        frozen_modules = []
+        for name, module in model.named_modules():
+            if name == "":
+                continue
+            allowed_module = any(
+                name == p.rstrip(".") or name.startswith(p) for p in prefixes
+            )
+            if not allowed_module:
+                frozen_modules.append(module)
+        for name, param in model.named_parameters():
+            if any(name == p.rstrip(".") or name.startswith(p) for p in prefixes):
+                param.requires_grad_(True)
+                trainable_names.append(name)
+            else:
+                param.requires_grad_(False)
+                frozen_params += 1
+        # pin frozen modules to eval mode; loops.py re-applies after every
+        # model.train() call (frozen LoRA dropout must never fire).
+        model._warm_frozen_modules = frozen_modules
+        if not trainable_names:
+            raise SystemExit("--freeze-base froze everything: empty allow-prefixes match")
+        if is_main:
+            logger.info(
+                "WARM-START freeze: frozen_params=%d trainable_tensors=%d prefixes=%s "
+                "first=%s last=%s",
+                frozen_params, len(trainable_names), list(prefixes),
+                trainable_names[0], trainable_names[-1],
+            )
+
     if distributed:
         from torch.nn.parallel import DistributedDataParallel as DDP
 
@@ -490,15 +532,22 @@ def main():
     if args.resume_from and args.init_from:
         raise ValueError("--resume-from and --init-from are mutually exclusive")
 
-    if args.init_from and args.dataset == "ue_raw_surface":
-        raise ValueError("UE baseline starts from SAM2; task-weight initialization needs a separate protocol")
+    if args.init_from and args.dataset == "ue_raw_surface" and not args.allow_task_init:
+        raise ValueError("UE baseline starts from SAM2; task-weight initialization needs a separate protocol (preregistered exception: --allow-task-init)")
     if args.init_from:
         exclude_prefixes = tuple(
             prefix.strip()
             for prefix in args.init_exclude_prefixes.split(",")
             if prefix.strip()
         )
-        allowed_missing_prefixes = ()
+        # warm-start screening: missing keys must be exactly the new dual
+        # modules (governance missing-keys check); empty keeps legacy lenient
+        # behaviour for the non-UE init paths.
+        allowed_missing_prefixes = tuple(
+            prefix.strip()
+            for prefix in args.init_allowed_missing_prefixes.split(",")
+            if prefix.strip()
+        )
         init_stats = _load_init_checkpoint(
             Path(args.init_from),
             model,

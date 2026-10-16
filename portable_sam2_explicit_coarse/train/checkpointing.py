@@ -180,8 +180,10 @@ def _load_init_checkpoint(
     model_to_load = model.module if hasattr(model, "module") else model
     target_state = model_to_load.state_dict()
     # Historical legacy-key migration (shape_prompt_scale era) was removed
-    # with its arms; a3sgm checkpoints load with zero migrations.
-    migrations = 0
+    # with its arms; a3sgm checkpoints load with zero migrations. Kept as a
+    # list: the return contract uses len(migrations) (latent TypeError on
+    # the never-exercised init-from path, surfaced by WARM-SCREEN smoke).
+    migrations: list = []
     migration_pairs: list = []
 
     compatible = {}
