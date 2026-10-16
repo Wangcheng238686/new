@@ -187,3 +187,6 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 
 
 - 2026-10-16：新增`scripts/analysis/ue_adjacent_pair_audit.py`（既有153图GT/DT、全局一对一配对、接触/近邻及候选摘要定位）、`ue_adjacent_pair_cases.py`（六类首序案例轮廓图）、`ue_adjacent_pair_sensitivity.py`（明确事后的触边/small及多块覆盖代理）。结果见[邻接对定位](dual_stream/UE_ADJACENT_PAIR_DIAGNOSIS_20261016.md)，轻量身份/数字及独立复算存`dual_stream/probes/results_20261016/adjacent_pair/`。仅CPU已有产物；无新forward、fit、训练、生产接线/配置/遥测定义变更。数值/实施审核PASS，报告终审三处措辞已主代理修正，完整记录保留。
+
+
+- 2026-10-16：完成两个子代理的RoI-UAV冻结可行性探针及第三代理独立复算/审图。仅CPU已有真实候选与原RGB-D，无forward/fit/训练/标签清洗或生产遥测变更；候选存在空间，但缺关键消费证据，不准入训练。见[综合报告](dual_stream/UE_ROI_UAV_FEASIBILITY_20261016.md)。精确脚本归档在`docs/dual_stream/probes/results_20261016/roi_feasibility/`：`candidates/probe.py`为有限真实候选去重/一对一/NMS兼容；`uav_evidence/freeze_cases.py`为固定六例选择；`uav_evidence/run_probe.py`为camera-Z投影/位置阴性/12图；`review_recompute.py`与`review_uav_recompute.py`为独立数值复算。它们固定历史/tmp路径，不是通用运行入口；大逐对JSON/图留/tmp。完整复核PASS。

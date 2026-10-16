@@ -1,0 +1,636 @@
+{
+  "0.5": [
+    {
+      "mode": "dual_correct",
+      "image_id": 505,
+      "slots": [
+        14,
+        18
+      ],
+      "physical_pair": [
+        "638008",
+        "638012"
+      ],
+      "threshold": 0.5,
+      "risk": false,
+      "interior_nonsmall": true,
+      "E": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "U": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "witness": {
+        "indices": [
+          14,
+          18
+        ],
+        "boxes": [
+          [
+            375.42626953125,
+            112.66829681396484,
+            435.9991455078125,
+            172.79461669921875
+          ],
+          [
+            422.10491943359375,
+            77.78167724609375,
+            478.143310546875,
+            133.12359619140625
+          ]
+        ],
+        "gt_ious": [
+          0.8808002620515701,
+          0.6102463791454017
+        ],
+        "mutual_iou": 0.04400166971461738
+      },
+      "F": {
+        "global_pair_success": false,
+        "pair_local_feasible": false,
+        "pair_local_nms_compatible": false
+      },
+      "final_box_failure": true,
+      "partial_union_rerank_opportunity": true,
+      "partial_union_fixed_nms_blocked": false,
+      "partial_union_no_distinct_geometry": false,
+      "already_final_pair_local_possible": false,
+      "cached_addition_enables_pair": true,
+      "mask_failure": true,
+      "mask_failure_with_rerank_opportunity": true
+    },
+    {
+      "mode": "dual_correct",
+      "image_id": 505,
+      "slots": [
+        18,
+        19
+      ],
+      "physical_pair": [
+        "638012",
+        "638013"
+      ],
+      "threshold": 0.5,
+      "risk": false,
+      "interior_nonsmall": true,
+      "E": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "U": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "witness": {
+        "indices": [
+          18,
+          19
+        ],
+        "boxes": [
+          [
+            422.10491943359375,
+            77.78167724609375,
+            478.143310546875,
+            133.12359619140625
+          ],
+          [
+            413.5352478027344,
+            128.66273498535156,
+            489.4614562988281,
+            203.4590606689453
+          ]
+        ],
+        "gt_ious": [
+          0.6102463791454017,
+          0.9503147964097082
+        ],
+        "mutual_iou": 0.02930490836730603
+      },
+      "F": {
+        "global_pair_success": false,
+        "pair_local_feasible": false,
+        "pair_local_nms_compatible": false
+      },
+      "final_box_failure": true,
+      "partial_union_rerank_opportunity": true,
+      "partial_union_fixed_nms_blocked": false,
+      "partial_union_no_distinct_geometry": false,
+      "already_final_pair_local_possible": false,
+      "cached_addition_enables_pair": true,
+      "mask_failure": true,
+      "mask_failure_with_rerank_opportunity": true
+    },
+    {
+      "mode": "dual_correct",
+      "image_id": 507,
+      "slots": [
+        11,
+        16
+      ],
+      "physical_pair": [
+        "638007",
+        "638012"
+      ],
+      "threshold": 0.5,
+      "risk": false,
+      "interior_nonsmall": true,
+      "E": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "U": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "witness": {
+        "indices": [
+          11,
+          16
+        ],
+        "boxes": [
+          [
+            357.4783935546875,
+            217.77317810058594,
+            426.88592529296875,
+            284.26300048828125
+          ],
+          [
+            415.2557678222656,
+            245.2167205810547,
+            475.4225769042969,
+            295.3619079589844
+          ]
+        ],
+        "gt_ious": [
+          0.9282985860926093,
+          0.6107441124191455
+        ],
+        "mutual_iou": 0.06326602047465978
+      },
+      "F": {
+        "global_pair_success": false,
+        "pair_local_feasible": false,
+        "pair_local_nms_compatible": false
+      },
+      "final_box_failure": true,
+      "partial_union_rerank_opportunity": true,
+      "partial_union_fixed_nms_blocked": false,
+      "partial_union_no_distinct_geometry": false,
+      "already_final_pair_local_possible": false,
+      "cached_addition_enables_pair": true,
+      "mask_failure": true,
+      "mask_failure_with_rerank_opportunity": true
+    },
+    {
+      "mode": "dual_correct",
+      "image_id": 507,
+      "slots": [
+        12,
+        16
+      ],
+      "physical_pair": [
+        "638008",
+        "638012"
+      ],
+      "threshold": 0.5,
+      "risk": false,
+      "interior_nonsmall": true,
+      "E": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "U": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "witness": {
+        "indices": [
+          12,
+          16
+        ],
+        "boxes": [
+          [
+            372.70721435546875,
+            278.2431945800781,
+            435.65167236328125,
+            339.5871276855469
+          ],
+          [
+            415.2557678222656,
+            245.2167205810547,
+            475.4225769042969,
+            295.3619079589844
+          ]
+        ],
+        "gt_ious": [
+          0.8735883758803703,
+          0.6107441124191455
+        ],
+        "mutual_iou": 0.053475533266973144
+      },
+      "F": {
+        "global_pair_success": false,
+        "pair_local_feasible": false,
+        "pair_local_nms_compatible": false
+      },
+      "final_box_failure": true,
+      "partial_union_rerank_opportunity": true,
+      "partial_union_fixed_nms_blocked": false,
+      "partial_union_no_distinct_geometry": false,
+      "already_final_pair_local_possible": false,
+      "cached_addition_enables_pair": true,
+      "mask_failure": true,
+      "mask_failure_with_rerank_opportunity": true
+    },
+    {
+      "mode": "dual_correct",
+      "image_id": 507,
+      "slots": [
+        15,
+        16
+      ],
+      "physical_pair": [
+        "638011",
+        "638012"
+      ],
+      "threshold": 0.5,
+      "risk": false,
+      "interior_nonsmall": true,
+      "E": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "U": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "witness": {
+        "indices": [
+          15,
+          16
+        ],
+        "boxes": [
+          [
+            392.66363525390625,
+            186.03204345703125,
+            459.84765625,
+            250.27484130859375
+          ],
+          [
+            415.2557678222656,
+            245.2167205810547,
+            475.4225769042969,
+            295.3619079589844
+          ]
+        ],
+        "gt_ious": [
+          0.968141960169661,
+          0.6107441124191455
+        ],
+        "mutual_iou": 0.03173373617684252
+      },
+      "F": {
+        "global_pair_success": false,
+        "pair_local_feasible": false,
+        "pair_local_nms_compatible": false
+      },
+      "final_box_failure": true,
+      "partial_union_rerank_opportunity": true,
+      "partial_union_fixed_nms_blocked": false,
+      "partial_union_no_distinct_geometry": false,
+      "already_final_pair_local_possible": false,
+      "cached_addition_enables_pair": true,
+      "mask_failure": true,
+      "mask_failure_with_rerank_opportunity": true
+    }
+  ],
+  "0.75": [
+    {
+      "mode": "dual_correct",
+      "image_id": 287,
+      "slots": [
+        9,
+        10
+      ],
+      "physical_pair": [
+        "906000",
+        "906001"
+      ],
+      "threshold": 0.75,
+      "risk": false,
+      "interior_nonsmall": true,
+      "E": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "U": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "witness": {
+        "indices": [
+          9,
+          10
+        ],
+        "boxes": [
+          [
+            275.5899353027344,
+            224.2698974609375,
+            427.6846008300781,
+            366.49346923828125
+          ],
+          [
+            207.66275024414062,
+            185.8253936767578,
+            305.0861511230469,
+            301.4620056152344
+          ]
+        ],
+        "gt_ious": [
+          0.8987574645254877,
+          0.7614300602641048
+        ],
+        "mutual_iou": 0.07435839324670869
+      },
+      "F": {
+        "global_pair_success": false,
+        "pair_local_feasible": false,
+        "pair_local_nms_compatible": false
+      },
+      "final_box_failure": true,
+      "partial_union_rerank_opportunity": true,
+      "partial_union_fixed_nms_blocked": false,
+      "partial_union_no_distinct_geometry": false,
+      "already_final_pair_local_possible": false,
+      "cached_addition_enables_pair": true,
+      "mask_failure": true,
+      "mask_failure_with_rerank_opportunity": true
+    },
+    {
+      "mode": "dual_correct",
+      "image_id": 287,
+      "slots": [
+        10,
+        12
+      ],
+      "physical_pair": [
+        "906001",
+        "906003"
+      ],
+      "threshold": 0.75,
+      "risk": false,
+      "interior_nonsmall": true,
+      "E": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "U": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "witness": {
+        "indices": [
+          10,
+          12
+        ],
+        "boxes": [
+          [
+            207.66275024414062,
+            185.8253936767578,
+            305.0861511230469,
+            301.4620056152344
+          ],
+          [
+            138.9339599609375,
+            276.8684387207031,
+            256.5344543457031,
+            396.4926452636719
+          ]
+        ],
+        "gt_ious": [
+          0.7614300602641048,
+          0.9529783111934995
+        ],
+        "mutual_iou": 0.04980718717529412
+      },
+      "F": {
+        "global_pair_success": false,
+        "pair_local_feasible": false,
+        "pair_local_nms_compatible": false
+      },
+      "final_box_failure": true,
+      "partial_union_rerank_opportunity": true,
+      "partial_union_fixed_nms_blocked": false,
+      "partial_union_no_distinct_geometry": false,
+      "already_final_pair_local_possible": false,
+      "cached_addition_enables_pair": true,
+      "mask_failure": true,
+      "mask_failure_with_rerank_opportunity": true
+    },
+    {
+      "mode": "dual_correct",
+      "image_id": 288,
+      "slots": [
+        3,
+        4
+      ],
+      "physical_pair": [
+        "668000",
+        "668001"
+      ],
+      "threshold": 0.75,
+      "risk": false,
+      "interior_nonsmall": true,
+      "E": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "U": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "witness": {
+        "indices": [
+          3,
+          4
+        ],
+        "boxes": [
+          [
+            380.1297302246094,
+            5.622039794921875,
+            468.9895324707031,
+            117.61764526367188
+          ],
+          [
+            269.1903076171875,
+            16.86017608642578,
+            391.67132568359375,
+            188.57192993164062
+          ]
+        ],
+        "gt_ious": [
+          0.8549748586241117,
+          0.8332909554629764
+        ],
+        "mutual_iou": 0.03899681263281755
+      },
+      "F": {
+        "global_pair_success": false,
+        "pair_local_feasible": false,
+        "pair_local_nms_compatible": false
+      },
+      "final_box_failure": true,
+      "partial_union_rerank_opportunity": true,
+      "partial_union_fixed_nms_blocked": false,
+      "partial_union_no_distinct_geometry": false,
+      "already_final_pair_local_possible": false,
+      "cached_addition_enables_pair": true,
+      "mask_failure": true,
+      "mask_failure_with_rerank_opportunity": true
+    },
+    {
+      "mode": "dual_correct",
+      "image_id": 307,
+      "slots": [
+        5,
+        6
+      ],
+      "physical_pair": [
+        "668000",
+        "668001"
+      ],
+      "threshold": 0.75,
+      "risk": false,
+      "interior_nonsmall": true,
+      "E": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "U": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "witness": {
+        "indices": [
+          5,
+          6
+        ],
+        "boxes": [
+          [
+            381.57684326171875,
+            192.09925842285156,
+            465.05108642578125,
+            306.0115966796875
+          ],
+          [
+            267.6790771484375,
+            185.83856201171875,
+            395.49444580078125,
+            372.56304931640625
+          ]
+        ],
+        "gt_ious": [
+          0.819567658428075,
+          0.8196881692255408
+        ],
+        "mutual_iou": 0.049871206707914485
+      },
+      "F": {
+        "global_pair_success": false,
+        "pair_local_feasible": false,
+        "pair_local_nms_compatible": false
+      },
+      "final_box_failure": true,
+      "partial_union_rerank_opportunity": true,
+      "partial_union_fixed_nms_blocked": false,
+      "partial_union_no_distinct_geometry": false,
+      "already_final_pair_local_possible": false,
+      "cached_addition_enables_pair": true,
+      "mask_failure": true,
+      "mask_failure_with_rerank_opportunity": true
+    },
+    {
+      "mode": "dual_correct",
+      "image_id": 308,
+      "slots": [
+        4,
+        5
+      ],
+      "physical_pair": [
+        "668000",
+        "668001"
+      ],
+      "threshold": 0.75,
+      "risk": false,
+      "interior_nonsmall": true,
+      "E": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "U": {
+        "global_pair_success": true,
+        "pair_local_feasible": true,
+        "pair_local_nms_compatible": true
+      },
+      "witness": {
+        "indices": [
+          4,
+          5
+        ],
+        "boxes": [
+          [
+            381.4901123046875,
+            135.26165771484375,
+            467.18212890625,
+            250.00927734375
+          ],
+          [
+            255.42364501953125,
+            144.64306640625,
+            411.216552734375,
+            314.7181701660156
+          ]
+        ],
+        "gt_ious": [
+          0.8648374728253589,
+          0.8728814574067215
+        ],
+        "mutual_iou": 0.09434994936856542
+      },
+      "F": {
+        "global_pair_success": false,
+        "pair_local_feasible": false,
+        "pair_local_nms_compatible": false
+      },
+      "final_box_failure": true,
+      "partial_union_rerank_opportunity": true,
+      "partial_union_fixed_nms_blocked": false,
+      "partial_union_no_distinct_geometry": false,
+      "already_final_pair_local_possible": false,
+      "cached_addition_enables_pair": true,
+      "mask_failure": true,
+      "mask_failure_with_rerank_opportunity": true
+    }
+  ]
+}

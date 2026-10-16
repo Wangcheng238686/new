@@ -1,0 +1,873 @@
+{
+  "scope": "Partial GT-selected saved candidate geometry, NOT UAV learnability or AP",
+  "candidate_counts": {
+    "single_best": {
+      "eligible_saved_rows": 4496,
+      "eligible_unique": 4470,
+      "union_unique": 10475,
+      "final_rows": 6533,
+      "final_dedup": 6533,
+      "gt_best_iou_max_difference": 3.1156857260850046e-07
+    },
+    "dual_correct": {
+      "eligible_saved_rows": 4496,
+      "eligible_unique": 4475,
+      "union_unique": 10438,
+      "final_rows": 6514,
+      "final_dedup": 6514,
+      "gt_best_iou_max_difference": 2.7494746801526304e-07
+    }
+  },
+  "strata": {
+    "all": {
+      "single_best": {
+        "0.5": {
+          "appearances": 3734,
+          "physical_pairs": 290,
+          "counts": {
+            "final_box_failure": 364,
+            "partial_union_rerank_opportunity": 92,
+            "partial_union_fixed_nms_blocked": 8,
+            "partial_union_no_distinct_geometry": 264,
+            "already_final_pair_local_possible": 9,
+            "cached_addition_enables_pair": 83,
+            "mask_failure": 391,
+            "mask_failure_with_rerank_opportunity": 77
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.18233976821309855,
+            "partial_union_rerank_opportunity": 0.052646903139091254,
+            "partial_union_fixed_nms_blocked": 0.002985174079626853,
+            "partial_union_no_distinct_geometry": 0.12670769099438045,
+            "already_final_pair_local_possible": 0.005047476261869065,
+            "cached_addition_enables_pair": 0.04759942687722219,
+            "mask_failure": 0.18987877421675384,
+            "mask_failure_with_rerank_opportunity": 0.03761898892787396
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 3370,
+              "pair_local_feasible": 3379,
+              "pair_local_nms_compatible": 3379
+            },
+            "E": {
+              "global_pair_success": 3470,
+              "pair_local_feasible": 3470,
+              "pair_local_nms_compatible": 3462
+            },
+            "U": {
+              "global_pair_success": 3470,
+              "pair_local_feasible": 3470,
+              "pair_local_nms_compatible": 3462
+            }
+          }
+        },
+        "0.75": {
+          "appearances": 3734,
+          "physical_pairs": 290,
+          "counts": {
+            "final_box_failure": 1100,
+            "partial_union_rerank_opportunity": 367,
+            "partial_union_fixed_nms_blocked": 2,
+            "partial_union_no_distinct_geometry": 731,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 367,
+            "mask_failure": 1117,
+            "mask_failure_with_rerank_opportunity": 232
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.420089309414812,
+            "partial_union_rerank_opportunity": 0.09778073858774533,
+            "partial_union_fixed_nms_blocked": 0.0013793103448275863,
+            "partial_union_no_distinct_geometry": 0.3209292604822391,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.09778073858774533,
+            "mask_failure": 0.4537988585418042,
+            "mask_failure_with_rerank_opportunity": 0.07026013403328364
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 2634,
+              "pair_local_feasible": 2634,
+              "pair_local_nms_compatible": 2634
+            },
+            "E": {
+              "global_pair_success": 3003,
+              "pair_local_feasible": 3003,
+              "pair_local_nms_compatible": 3001
+            },
+            "U": {
+              "global_pair_success": 3003,
+              "pair_local_feasible": 3003,
+              "pair_local_nms_compatible": 3001
+            }
+          }
+        }
+      },
+      "dual_correct": {
+        "0.5": {
+          "appearances": 3734,
+          "physical_pairs": 290,
+          "counts": {
+            "final_box_failure": 371,
+            "partial_union_rerank_opportunity": 95,
+            "partial_union_fixed_nms_blocked": 5,
+            "partial_union_no_distinct_geometry": 271,
+            "already_final_pair_local_possible": 6,
+            "cached_addition_enables_pair": 89,
+            "mask_failure": 374,
+            "mask_failure_with_rerank_opportunity": 80
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.18305723161239829,
+            "partial_union_rerank_opportunity": 0.05454268875984334,
+            "partial_union_fixed_nms_blocked": 0.001912377144760953,
+            "partial_union_no_distinct_geometry": 0.126602165707794,
+            "already_final_pair_local_possible": 0.004597701149425287,
+            "cached_addition_enables_pair": 0.04994498761041805,
+            "mask_failure": 0.18101315876928417,
+            "mask_failure_with_rerank_opportunity": 0.04385920489755414
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 3363,
+              "pair_local_feasible": 3369,
+              "pair_local_nms_compatible": 3369
+            },
+            "E": {
+              "global_pair_success": 3459,
+              "pair_local_feasible": 3462,
+              "pair_local_nms_compatible": 3458
+            },
+            "U": {
+              "global_pair_success": 3461,
+              "pair_local_feasible": 3463,
+              "pair_local_nms_compatible": 3458
+            }
+          }
+        },
+        "0.75": {
+          "appearances": 3734,
+          "physical_pairs": 290,
+          "counts": {
+            "final_box_failure": 1116,
+            "partial_union_rerank_opportunity": 391,
+            "partial_union_fixed_nms_blocked": 1,
+            "partial_union_no_distinct_geometry": 724,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 391,
+            "mask_failure": 1116,
+            "mask_failure_with_rerank_opportunity": 249
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.4423285228238742,
+            "partial_union_rerank_opportunity": 0.13458475275187348,
+            "partial_union_fixed_nms_blocked": 0.0006896551724137932,
+            "partial_union_no_distinct_geometry": 0.30705411489958684,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.13458475275187348,
+            "mask_failure": 0.4721971940880302,
+            "mask_failure_with_rerank_opportunity": 0.10535801578880725
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 2618,
+              "pair_local_feasible": 2618,
+              "pair_local_nms_compatible": 2618
+            },
+            "E": {
+              "global_pair_success": 3007,
+              "pair_local_feasible": 3009,
+              "pair_local_nms_compatible": 3009
+            },
+            "U": {
+              "global_pair_success": 3009,
+              "pair_local_feasible": 3010,
+              "pair_local_nms_compatible": 3009
+            }
+          }
+        }
+      }
+    },
+    "interior_nonsmall": {
+      "single_best": {
+        "0.5": {
+          "appearances": 1544,
+          "physical_pairs": 141,
+          "counts": {
+            "final_box_failure": 24,
+            "partial_union_rerank_opportunity": 14,
+            "partial_union_fixed_nms_blocked": 0,
+            "partial_union_no_distinct_geometry": 10,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 14,
+            "mask_failure": 43,
+            "mask_failure_with_rerank_opportunity": 14
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.02092393422180656,
+            "partial_union_rerank_opportunity": 0.00997908710674668,
+            "partial_union_fixed_nms_blocked": 0.0,
+            "partial_union_no_distinct_geometry": 0.01094484711505988,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.00997908710674668,
+            "mask_failure": 0.0356311537162601,
+            "mask_failure_with_rerank_opportunity": 0.00997908710674668
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 1520,
+              "pair_local_feasible": 1520,
+              "pair_local_nms_compatible": 1520
+            },
+            "E": {
+              "global_pair_success": 1534,
+              "pair_local_feasible": 1534,
+              "pair_local_nms_compatible": 1534
+            },
+            "U": {
+              "global_pair_success": 1534,
+              "pair_local_feasible": 1534,
+              "pair_local_nms_compatible": 1534
+            }
+          }
+        },
+        "0.75": {
+          "appearances": 1544,
+          "physical_pairs": 141,
+          "counts": {
+            "final_box_failure": 224,
+            "partial_union_rerank_opportunity": 123,
+            "partial_union_fixed_nms_blocked": 0,
+            "partial_union_no_distinct_geometry": 101,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 123,
+            "mask_failure": 262,
+            "mask_failure_with_rerank_opportunity": 91
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.197911151041709,
+            "partial_union_rerank_opportunity": 0.09742178113332847,
+            "partial_union_fixed_nms_blocked": 0.0,
+            "partial_union_no_distinct_geometry": 0.10048936990838052,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.09742178113332847,
+            "mask_failure": 0.22654519728905476,
+            "mask_failure_with_rerank_opportunity": 0.07236145926449597
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 1320,
+              "pair_local_feasible": 1320,
+              "pair_local_nms_compatible": 1320
+            },
+            "E": {
+              "global_pair_success": 1443,
+              "pair_local_feasible": 1443,
+              "pair_local_nms_compatible": 1443
+            },
+            "U": {
+              "global_pair_success": 1443,
+              "pair_local_feasible": 1443,
+              "pair_local_nms_compatible": 1443
+            }
+          }
+        }
+      },
+      "dual_correct": {
+        "0.5": {
+          "appearances": 1544,
+          "physical_pairs": 141,
+          "counts": {
+            "final_box_failure": 38,
+            "partial_union_rerank_opportunity": 26,
+            "partial_union_fixed_nms_blocked": 0,
+            "partial_union_no_distinct_geometry": 12,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 26,
+            "mask_failure": 39,
+            "mask_failure_with_rerank_opportunity": 23
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.032036560759965006,
+            "partial_union_rerank_opportunity": 0.017624416560586775,
+            "partial_union_fixed_nms_blocked": 0.0,
+            "partial_union_no_distinct_geometry": 0.014412144199378241,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.017624416560586775,
+            "mask_failure": 0.033142822504524626,
+            "mask_failure_with_rerank_opportunity": 0.015775595562829606
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 1506,
+              "pair_local_feasible": 1506,
+              "pair_local_nms_compatible": 1506
+            },
+            "E": {
+              "global_pair_success": 1532,
+              "pair_local_feasible": 1532,
+              "pair_local_nms_compatible": 1532
+            },
+            "U": {
+              "global_pair_success": 1532,
+              "pair_local_feasible": 1532,
+              "pair_local_nms_compatible": 1532
+            }
+          }
+        },
+        "0.75": {
+          "appearances": 1544,
+          "physical_pairs": 141,
+          "counts": {
+            "final_box_failure": 233,
+            "partial_union_rerank_opportunity": 121,
+            "partial_union_fixed_nms_blocked": 0,
+            "partial_union_no_distinct_geometry": 112,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 121,
+            "mask_failure": 247,
+            "mask_failure_with_rerank_opportunity": 80
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.20574125797595924,
+            "partial_union_rerank_opportunity": 0.09566578091049469,
+            "partial_union_fixed_nms_blocked": 0.0,
+            "partial_union_no_distinct_geometry": 0.11007547706546454,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.09566578091049469,
+            "mask_failure": 0.21153728650517398,
+            "mask_failure_with_rerank_opportunity": 0.06404587113038467
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 1311,
+              "pair_local_feasible": 1311,
+              "pair_local_nms_compatible": 1311
+            },
+            "E": {
+              "global_pair_success": 1432,
+              "pair_local_feasible": 1432,
+              "pair_local_nms_compatible": 1432
+            },
+            "U": {
+              "global_pair_success": 1432,
+              "pair_local_feasible": 1432,
+              "pair_local_nms_compatible": 1432
+            }
+          }
+        }
+      }
+    },
+    "risk_flagged": {
+      "single_best": {
+        "0.5": {
+          "appearances": 432,
+          "physical_pairs": 114,
+          "counts": {
+            "final_box_failure": 75,
+            "partial_union_rerank_opportunity": 18,
+            "partial_union_fixed_nms_blocked": 4,
+            "partial_union_no_distinct_geometry": 53,
+            "already_final_pair_local_possible": 3,
+            "cached_addition_enables_pair": 15,
+            "mask_failure": 69,
+            "mask_failure_with_rerank_opportunity": 13
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.2263512316143895,
+            "partial_union_rerank_opportunity": 0.05818365357839042,
+            "partial_union_fixed_nms_blocked": 0.014035087719298246,
+            "partial_union_no_distinct_geometry": 0.15413249031670084,
+            "already_final_pair_local_possible": 0.01023391812865497,
+            "cached_addition_enables_pair": 0.047949735449735444,
+            "mask_failure": 0.22531043517885618,
+            "mask_failure_with_rerank_opportunity": 0.037437343358395984
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 357,
+              "pair_local_feasible": 360,
+              "pair_local_nms_compatible": 360
+            },
+            "E": {
+              "global_pair_success": 379,
+              "pair_local_feasible": 379,
+              "pair_local_nms_compatible": 375
+            },
+            "U": {
+              "global_pair_success": 379,
+              "pair_local_feasible": 379,
+              "pair_local_nms_compatible": 375
+            }
+          }
+        },
+        "0.75": {
+          "appearances": 432,
+          "physical_pairs": 114,
+          "counts": {
+            "final_box_failure": 218,
+            "partial_union_rerank_opportunity": 59,
+            "partial_union_fixed_nms_blocked": 2,
+            "partial_union_no_distinct_geometry": 157,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 59,
+            "mask_failure": 210,
+            "mask_failure_with_rerank_opportunity": 39
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.5669736209209894,
+            "partial_union_rerank_opportunity": 0.11926691729323308,
+            "partial_union_fixed_nms_blocked": 0.0035087719298245615,
+            "partial_union_no_distinct_geometry": 0.4441979316979317,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.11926691729323308,
+            "mask_failure": 0.5819137490190122,
+            "mask_failure_with_rerank_opportunity": 0.06972639933166248
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 214,
+              "pair_local_feasible": 214,
+              "pair_local_nms_compatible": 214
+            },
+            "E": {
+              "global_pair_success": 275,
+              "pair_local_feasible": 275,
+              "pair_local_nms_compatible": 273
+            },
+            "U": {
+              "global_pair_success": 275,
+              "pair_local_feasible": 275,
+              "pair_local_nms_compatible": 273
+            }
+          }
+        }
+      },
+      "dual_correct": {
+        "0.5": {
+          "appearances": 432,
+          "physical_pairs": 114,
+          "counts": {
+            "final_box_failure": 77,
+            "partial_union_rerank_opportunity": 10,
+            "partial_union_fixed_nms_blocked": 3,
+            "partial_union_no_distinct_geometry": 64,
+            "already_final_pair_local_possible": 3,
+            "cached_addition_enables_pair": 7,
+            "mask_failure": 62,
+            "mask_failure_with_rerank_opportunity": 6
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.22420698210171894,
+            "partial_union_rerank_opportunity": 0.032772904483430794,
+            "partial_union_fixed_nms_blocked": 0.012280701754385965,
+            "partial_union_no_distinct_geometry": 0.17915337586390218,
+            "already_final_pair_local_possible": 0.01023391812865497,
+            "cached_addition_enables_pair": 0.022538986354775827,
+            "mask_failure": 0.21608598516493255,
+            "mask_failure_with_rerank_opportunity": 0.025584795321637425
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 355,
+              "pair_local_feasible": 358,
+              "pair_local_nms_compatible": 358
+            },
+            "E": {
+              "global_pair_success": 364,
+              "pair_local_feasible": 367,
+              "pair_local_nms_compatible": 365
+            },
+            "U": {
+              "global_pair_success": 366,
+              "pair_local_feasible": 368,
+              "pair_local_nms_compatible": 365
+            }
+          }
+        },
+        "0.75": {
+          "appearances": 432,
+          "physical_pairs": 114,
+          "counts": {
+            "final_box_failure": 227,
+            "partial_union_rerank_opportunity": 84,
+            "partial_union_fixed_nms_blocked": 1,
+            "partial_union_no_distinct_geometry": 142,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 84,
+            "mask_failure": 200,
+            "mask_failure_with_rerank_opportunity": 55
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.604264765448976,
+            "partial_union_rerank_opportunity": 0.22632623224728485,
+            "partial_union_fixed_nms_blocked": 0.0017543859649122807,
+            "partial_union_no_distinct_geometry": 0.3761841472367788,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.22632623224728485,
+            "mask_failure": 0.5678368902053114,
+            "mask_failure_with_rerank_opportunity": 0.14918546365914787
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 205,
+              "pair_local_feasible": 205,
+              "pair_local_nms_compatible": 205
+            },
+            "E": {
+              "global_pair_success": 287,
+              "pair_local_feasible": 289,
+              "pair_local_nms_compatible": 289
+            },
+            "U": {
+              "global_pair_success": 289,
+              "pair_local_feasible": 290,
+              "pair_local_nms_compatible": 289
+            }
+          }
+        }
+      }
+    },
+    "risk_unflagged": {
+      "single_best": {
+        "0.5": {
+          "appearances": 3302,
+          "physical_pairs": 266,
+          "counts": {
+            "final_box_failure": 289,
+            "partial_union_rerank_opportunity": 74,
+            "partial_union_fixed_nms_blocked": 4,
+            "partial_union_no_distinct_geometry": 211,
+            "already_final_pair_local_possible": 6,
+            "cached_addition_enables_pair": 68,
+            "mask_failure": 322,
+            "mask_failure_with_rerank_opportunity": 64
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.1503552240081765,
+            "partial_union_rerank_opportunity": 0.04556601841690151,
+            "partial_union_fixed_nms_blocked": 0.0008268753725746592,
+            "partial_union_no_distinct_geometry": 0.10396233021870034,
+            "already_final_pair_local_possible": 0.0011430296756383713,
+            "cached_addition_enables_pair": 0.04442298874126314,
+            "mask_failure": 0.16354474709484693,
+            "mask_failure_with_rerank_opportunity": 0.033755022395379176
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 3013,
+              "pair_local_feasible": 3019,
+              "pair_local_nms_compatible": 3019
+            },
+            "E": {
+              "global_pair_success": 3091,
+              "pair_local_feasible": 3091,
+              "pair_local_nms_compatible": 3087
+            },
+            "U": {
+              "global_pair_success": 3091,
+              "pair_local_feasible": 3091,
+              "pair_local_nms_compatible": 3087
+            }
+          }
+        },
+        "0.75": {
+          "appearances": 3302,
+          "physical_pairs": 266,
+          "counts": {
+            "final_box_failure": 882,
+            "partial_union_rerank_opportunity": 308,
+            "partial_union_fixed_nms_blocked": 0,
+            "partial_union_no_distinct_geometry": 574,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 308,
+            "mask_failure": 907,
+            "mask_failure_with_rerank_opportunity": 193
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.38758672488330626,
+            "partial_union_rerank_opportunity": 0.10598700245564828,
+            "partial_union_fixed_nms_blocked": 0.0,
+            "partial_union_no_distinct_geometry": 0.2815997224276579,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.10598700245564828,
+            "mask_failure": 0.40765688825854735,
+            "mask_failure_with_rerank_opportunity": 0.0745630369244203
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 2420,
+              "pair_local_feasible": 2420,
+              "pair_local_nms_compatible": 2420
+            },
+            "E": {
+              "global_pair_success": 2728,
+              "pair_local_feasible": 2728,
+              "pair_local_nms_compatible": 2728
+            },
+            "U": {
+              "global_pair_success": 2728,
+              "pair_local_feasible": 2728,
+              "pair_local_nms_compatible": 2728
+            }
+          }
+        }
+      },
+      "dual_correct": {
+        "0.5": {
+          "appearances": 3302,
+          "physical_pairs": 266,
+          "counts": {
+            "final_box_failure": 294,
+            "partial_union_rerank_opportunity": 85,
+            "partial_union_fixed_nms_blocked": 2,
+            "partial_union_no_distinct_geometry": 207,
+            "already_final_pair_local_possible": 3,
+            "cached_addition_enables_pair": 82,
+            "mask_failure": 312,
+            "mask_failure_with_rerank_opportunity": 74
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.15296988063681982,
+            "partial_union_rerank_opportunity": 0.05469808509872494,
+            "partial_union_fixed_nms_blocked": 0.0003845931965463531,
+            "partial_union_no_distinct_geometry": 0.09788720234154853,
+            "already_final_pair_local_possible": 0.0006526733500417711,
+            "cached_addition_enables_pair": 0.05404541174868317,
+            "mask_failure": 0.15628982892931512,
+            "mask_failure_with_rerank_opportunity": 0.04369519909583894
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 3008,
+              "pair_local_feasible": 3011,
+              "pair_local_nms_compatible": 3011
+            },
+            "E": {
+              "global_pair_success": 3095,
+              "pair_local_feasible": 3095,
+              "pair_local_nms_compatible": 3093
+            },
+            "U": {
+              "global_pair_success": 3095,
+              "pair_local_feasible": 3095,
+              "pair_local_nms_compatible": 3093
+            }
+          }
+        },
+        "0.75": {
+          "appearances": 3302,
+          "physical_pairs": 266,
+          "counts": {
+            "final_box_failure": 889,
+            "partial_union_rerank_opportunity": 307,
+            "partial_union_fixed_nms_blocked": 0,
+            "partial_union_no_distinct_geometry": 582,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 307,
+            "mask_failure": 916,
+            "mask_failure_with_rerank_opportunity": 194
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.40628708753207265,
+            "partial_union_rerank_opportunity": 0.13342741234739,
+            "partial_union_fixed_nms_blocked": 0.0,
+            "partial_union_no_distinct_geometry": 0.27285967518468274,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.13342741234739,
+            "mask_failure": 0.4220203780854817,
+            "mask_failure_with_rerank_opportunity": 0.09606573760099581
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 2413,
+              "pair_local_feasible": 2413,
+              "pair_local_nms_compatible": 2413
+            },
+            "E": {
+              "global_pair_success": 2720,
+              "pair_local_feasible": 2720,
+              "pair_local_nms_compatible": 2720
+            },
+            "U": {
+              "global_pair_success": 2720,
+              "pair_local_feasible": 2720,
+              "pair_local_nms_compatible": 2720
+            }
+          }
+        }
+      }
+    },
+    "interior_nonsmall_unflagged": {
+      "single_best": {
+        "0.5": {
+          "appearances": 1378,
+          "physical_pairs": 140,
+          "counts": {
+            "final_box_failure": 19,
+            "partial_union_rerank_opportunity": 10,
+            "partial_union_fixed_nms_blocked": 0,
+            "partial_union_no_distinct_geometry": 9,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 10,
+            "mask_failure": 37,
+            "mask_failure_with_rerank_opportunity": 10
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.01822213500784929,
+            "partial_union_rerank_opportunity": 0.008287545787545786,
+            "partial_union_fixed_nms_blocked": 0.0,
+            "partial_union_no_distinct_geometry": 0.009934589220303505,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.008287545787545786,
+            "mask_failure": 0.03496025799597228,
+            "mask_failure_with_rerank_opportunity": 0.008287545787545786
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 1359,
+              "pair_local_feasible": 1359,
+              "pair_local_nms_compatible": 1359
+            },
+            "E": {
+              "global_pair_success": 1369,
+              "pair_local_feasible": 1369,
+              "pair_local_nms_compatible": 1369
+            },
+            "U": {
+              "global_pair_success": 1369,
+              "pair_local_feasible": 1369,
+              "pair_local_nms_compatible": 1369
+            }
+          }
+        },
+        "0.75": {
+          "appearances": 1378,
+          "physical_pairs": 140,
+          "counts": {
+            "final_box_failure": 178,
+            "partial_union_rerank_opportunity": 102,
+            "partial_union_fixed_nms_blocked": 0,
+            "partial_union_no_distinct_geometry": 76,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 102,
+            "mask_failure": 209,
+            "mask_failure_with_rerank_opportunity": 74
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.19463727719035104,
+            "partial_union_rerank_opportunity": 0.10466678114013363,
+            "partial_union_fixed_nms_blocked": 0.0,
+            "partial_union_no_distinct_geometry": 0.08997049605021741,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.10466678114013363,
+            "mask_failure": 0.22343663724871302,
+            "mask_failure_with_rerank_opportunity": 0.07703093192865418
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 1200,
+              "pair_local_feasible": 1200,
+              "pair_local_nms_compatible": 1200
+            },
+            "E": {
+              "global_pair_success": 1302,
+              "pair_local_feasible": 1302,
+              "pair_local_nms_compatible": 1302
+            },
+            "U": {
+              "global_pair_success": 1302,
+              "pair_local_feasible": 1302,
+              "pair_local_nms_compatible": 1302
+            }
+          }
+        }
+      },
+      "dual_correct": {
+        "0.5": {
+          "appearances": 1378,
+          "physical_pairs": 140,
+          "counts": {
+            "final_box_failure": 33,
+            "partial_union_rerank_opportunity": 22,
+            "partial_union_fixed_nms_blocked": 0,
+            "partial_union_no_distinct_geometry": 11,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 22,
+            "mask_failure": 36,
+            "mask_failure_with_rerank_opportunity": 21
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.03186363239934668,
+            "partial_union_rerank_opportunity": 0.016393328893328892,
+            "partial_union_fixed_nms_blocked": 0.0,
+            "partial_union_no_distinct_geometry": 0.015470303506017791,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.016393328893328892,
+            "mask_failure": 0.03419949098520527,
+            "mask_failure_with_rerank_opportunity": 0.015500471750471749
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 1345,
+              "pair_local_feasible": 1345,
+              "pair_local_nms_compatible": 1345
+            },
+            "E": {
+              "global_pair_success": 1367,
+              "pair_local_feasible": 1367,
+              "pair_local_nms_compatible": 1367
+            },
+            "U": {
+              "global_pair_success": 1367,
+              "pair_local_feasible": 1367,
+              "pair_local_nms_compatible": 1367
+            }
+          }
+        },
+        "0.75": {
+          "appearances": 1378,
+          "physical_pairs": 140,
+          "counts": {
+            "final_box_failure": 185,
+            "partial_union_rerank_opportunity": 93,
+            "partial_union_fixed_nms_blocked": 0,
+            "partial_union_no_distinct_geometry": 92,
+            "already_final_pair_local_possible": 0,
+            "cached_addition_enables_pair": 93,
+            "mask_failure": 198,
+            "mask_failure_with_rerank_opportunity": 60
+          },
+          "physical_pair_equal_weight_rates": {
+            "final_box_failure": 0.21038106740671972,
+            "partial_union_rerank_opportunity": 0.09956098560145442,
+            "partial_union_fixed_nms_blocked": 0.0,
+            "partial_union_no_distinct_geometry": 0.11082008180526536,
+            "already_final_pair_local_possible": 0.0,
+            "cached_addition_enables_pair": 0.09956098560145442,
+            "mask_failure": 0.19613659434318817,
+            "mask_failure_with_rerank_opportunity": 0.05049913009001908
+          },
+          "candidate_sets": {
+            "F": {
+              "global_pair_success": 1193,
+              "pair_local_feasible": 1193,
+              "pair_local_nms_compatible": 1193
+            },
+            "E": {
+              "global_pair_success": 1286,
+              "pair_local_feasible": 1286,
+              "pair_local_nms_compatible": 1286
+            },
+            "U": {
+              "global_pair_success": 1286,
+              "pair_local_feasible": 1286,
+              "pair_local_nms_compatible": 1286
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "selection_independent_reproduction": true,
+  "selected": [
+    [
+      "fragment_failure",
+      507,
+      [
+        11,
+        16
+      ]
+    ],
+    [
+      "fragment_failure",
+      931,
+      [
+        17,
+        18
+      ]
+    ],
+    [
+      "other_failure",
+      928,
+      [
+        19,
+        20
+      ]
+    ],
+    [
+      "other_failure",
+      1196,
+      [
+        28,
+        30
+      ]
+    ],
+    [
+      "both_success",
+      287,
+      [
+        9,
+        10
+      ]
+    ],
+    [
+      "both_success",
+      288,
+      [
+        3,
+        4
+      ]
+    ]
+  ],
+  "unique_buildings": 12,
+  "candidate_pair_set_independent_checks": 44808,
+  "candidate_witness_checks": 12930,
+  "independent_sparse_matching_cardinalities": 1836,
+  "candidate_all_summary_counts_reproduced": true,
+  "uav_independent_support_checks": 240,
+  "uav_independent_crossview_pairs": 120,
+  "uav_all_30_views_valid_depth": true,
+  "uav_all_six_xy4m_sets_reproduced": true
+}

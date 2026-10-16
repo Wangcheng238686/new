@@ -1,0 +1,90 @@
+[
+  {
+    "category": "fragment_failure",
+    "image_id": 507,
+    "slots": [
+      11,
+      16
+    ],
+    "global_ids": [
+      "638007",
+      "638012"
+    ],
+    "fragment_slots": [
+      16
+    ],
+    "dual_box_success": false
+  },
+  {
+    "category": "fragment_failure",
+    "image_id": 931,
+    "slots": [
+      17,
+      18
+    ],
+    "global_ids": [
+      "673000",
+      "673001"
+    ],
+    "fragment_slots": [
+      18
+    ],
+    "dual_box_success": false
+  },
+  {
+    "category": "other_failure",
+    "image_id": 928,
+    "slots": [
+      19,
+      20
+    ],
+    "global_ids": [
+      "644000",
+      "644001"
+    ],
+    "fragment_slots": [],
+    "dual_box_success": true
+  },
+  {
+    "category": "other_failure",
+    "image_id": 1196,
+    "slots": [
+      28,
+      30
+    ],
+    "global_ids": [
+      "304000",
+      "304002"
+    ],
+    "fragment_slots": [],
+    "dual_box_success": false
+  },
+  {
+    "category": "both_success",
+    "image_id": 287,
+    "slots": [
+      9,
+      10
+    ],
+    "global_ids": [
+      "906000",
+      "906001"
+    ],
+    "fragment_slots": [],
+    "dual_box_success": true
+  },
+  {
+    "category": "both_success",
+    "image_id": 288,
+    "slots": [
+      3,
+      4
+    ],
+    "global_ids": [
+      "668000",
+      "668001"
+    ],
+    "fragment_slots": [],
+    "dual_box_success": true
+  }
+]

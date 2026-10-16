@@ -1,0 +1,714 @@
+{
+  "/tmp/ue_uav_experiments/20261014_ad_seed42/dataset/manifest.json": {
+    "size": 1909992,
+    "sha256": "495841b2174242c87661e6b40dba2ddcca13d64b13798116efc8c933c679ca59"
+  },
+  "/home/wangcheng2021/project/new-uav-dual/portable_sam2_explicit_coarse/rsprompter/uav/cameras.py": {
+    "size": 2065,
+    "sha256": "9c4e2fa2ed60a14869e242d585eaaaf306623f344a37549b1399f3856b533393"
+  },
+  "/tmp/ue_roi_feasibility_20261016/uav_evidence/selected_cases.json": {
+    "size": 1337,
+    "sha256": "2f68631b6348901c9aa6e854dedc99ccf5d36cd2838462a877d2e1f2bb2978c3"
+  },
+  "/tmp/ue_roi_feasibility_20261016/uav_evidence/PROTOCOL.md": {
+    "size": 2492,
+    "sha256": "aba1d6dd5b68e895bea59fde6e8436b95a2e7eb5565b36b6c0ea0c34a60efca8"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/satellite/camera_intrinsics.json": {
+    "size": 356,
+    "sha256": "21d653aca49942cdd5734e69543652e78b23058c3a0533e37e3363e8352844d5"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/satellite/camera_extrinsics.json": {
+    "size": 2310,
+    "sha256": "ded22d14fac8ecec07a3a1bc592e733a5ba0158f728813d1a1c76735a8ea2bb7"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/satellite/satellite_rgb.0000.png": {
+    "size": 577516,
+    "sha256": "085f7bfc1e7276d4cb06d0346eb66302faf07de688efda6a1b26f6f217b553dc"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_000/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_000/camera_extrinsics.json": {
+    "size": 2930,
+    "sha256": "129889b4c5ce71ed2827b64e9e752d74255923462e0e8a07769242f6830d8c51"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_000/depth_camera_z.0000.exr": {
+    "size": 371282,
+    "sha256": "0b600afbbf96d1fbea8db201b97276917706b75ea6fc2e4acb9190cc42ef7870"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_000/oblique_rgb.0000.png": {
+    "size": 546449,
+    "sha256": "18ed6e55ad4ce7acf8633df6b7ff43b7edaa7e85b798ac55807982bcacac8c5e"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_000/depth_scenecapture_metadata.json": {
+    "size": 1087,
+    "sha256": "3987d5225c4e6a44612db3f8b64d0db618752e844a80b5658a26e7e4ca22ee58"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_072/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_072/camera_extrinsics.json": {
+    "size": 3033,
+    "sha256": "05d4b42d4c8d51aaa37bc7334f643e2570298839a4d7ce4aeb0811c6a57f7621"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_072/depth_camera_z.0000.exr": {
+    "size": 400302,
+    "sha256": "1660c4ce00ac0384efec6f847196e3abc008b5453823cccaed3c418a40900525"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_072/oblique_rgb.0000.png": {
+    "size": 551540,
+    "sha256": "0d3ead0a71fb2c7705ee8a07a1d867d7f46fc8a2a422cb7438b8eac1c90bab45"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_072/depth_scenecapture_metadata.json": {
+    "size": 1119,
+    "sha256": "b2d78654e2c7ea0937fc5ba1222aca831dd7708f1ed8d2707378bd2ca4e99955"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_144/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_144/camera_extrinsics.json": {
+    "size": 2890,
+    "sha256": "a8d6209f70df483424a365f315e65c64daa6d638e54b7d39a884c55cc76259e3"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_144/depth_camera_z.0000.exr": {
+    "size": 428451,
+    "sha256": "741fd21c78e5d9cb4e2a5d5c129dc5058c8c6060d1c1b4c8912ed12865aca1ed"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_144/oblique_rgb.0000.png": {
+    "size": 508564,
+    "sha256": "a7830bf882e2f2ace01561d618408e24c3f536742d566627c5e218911273232c"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_144/depth_scenecapture_metadata.json": {
+    "size": 1091,
+    "sha256": "1cdf5ac88f5536de90f4adde270c73219672b14e1dee170f59f4b94188339e13"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_216/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_216/camera_extrinsics.json": {
+    "size": 3005,
+    "sha256": "3982e9a42465198e0834104cd26f4f61280f845ead5b1db9d83e15ef2ff28304"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_216/depth_camera_z.0000.exr": {
+    "size": 349353,
+    "sha256": "f6d39cbff07eed6d5c28ab39c737c97bb86b55b394151b16836465417b47e678"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_216/oblique_rgb.0000.png": {
+    "size": 576330,
+    "sha256": "3d58c82b77a9fa1afdde6c6eaab6f6b8cd2bb7769d395ee72451b0897488bdfc"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_216/depth_scenecapture_metadata.json": {
+    "size": 1118,
+    "sha256": "7d1ccc1f5e13d4c6c2c79bc6c3b5e126fc97c66fdee7ea3e8c8ef71fd09ad64d"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_288/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_288/camera_extrinsics.json": {
+    "size": 3014,
+    "sha256": "06f9bc7db2482815c685b2b4f33c6baf5ee58939a3bd0723bfbe858f1f7793a1"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_288/depth_camera_z.0000.exr": {
+    "size": 375647,
+    "sha256": "59b2e1454e1a3217e9bc2c9cf97f0cab67bad0db09507f7a12ea62c4cab98285"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_288/oblique_rgb.0000.png": {
+    "size": 550476,
+    "sha256": "f17a353ef911d8fc484498248816b0d8926066c133c2a4ab01b6ac62ef870192"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000507_pt_gx_6_gy_-16_s_013_gx_6_gy_-16_s_13_X_133750_Y_-310000/oblique/view_yaw_288/depth_scenecapture_metadata.json": {
+    "size": 1106,
+    "sha256": "9ff39805adca70aecf3a27d899c392e53435fd57bb0eab6aea30392396e55409"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/satellite/camera_intrinsics.json": {
+    "size": 356,
+    "sha256": "21d653aca49942cdd5734e69543652e78b23058c3a0533e37e3363e8352844d5"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/satellite/camera_extrinsics.json": {
+    "size": 2310,
+    "sha256": "64792d0d4e2720c74cacbe4e50aa5eda4d67c551532a371ed8f96a06dc066dce"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/satellite/satellite_rgb.0000.png": {
+    "size": 619096,
+    "sha256": "ca150fbf4b0793f47820ba422cd5b58aa65d09d6815a5f04470c2be1ddcf8f1e"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_000/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_000/camera_extrinsics.json": {
+    "size": 2930,
+    "sha256": "be0573610fec99cbd3551edd2406d6b803fff884e647b67ce4fafdc10ee57c01"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_000/depth_camera_z.0000.exr": {
+    "size": 586744,
+    "sha256": "3e5c5eb587377f20b2b609a5cd0bf1e8fed16a9d96cf8ebcb53ec41faf216b26"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_000/oblique_rgb.0000.png": {
+    "size": 612572,
+    "sha256": "41db547ee1eaf1c9d1923a000b3b56cc096f4313129981d4fc1f9446fefbfe89"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_000/depth_scenecapture_metadata.json": {
+    "size": 1085,
+    "sha256": "ba35ec680d0a87d3acbc2ed04bd708e3ef1f9acc7ff4e1a6d9c7778a2ec2c1bd"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_072/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_072/camera_extrinsics.json": {
+    "size": 3027,
+    "sha256": "d54d920eed8739c731b016cdbd4b842489fc95be07cdcea67e35b3fd866185d3"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_072/depth_camera_z.0000.exr": {
+    "size": 658139,
+    "sha256": "3c34f3969be5e658b7903051aef06f2f84aa84e039b4d3ea68162fe04ffddc23"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_072/oblique_rgb.0000.png": {
+    "size": 616778,
+    "sha256": "06dc618c485be6b75b45bc85a5c8c561bc5e795208d62767d04fa52850a7aa5c"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_072/depth_scenecapture_metadata.json": {
+    "size": 1117,
+    "sha256": "0e52baadd2fbd782d425f642ef3b684729951bae1f955c852eea96f7e604819a"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_144/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_144/camera_extrinsics.json": {
+    "size": 2894,
+    "sha256": "d1fa097d05eb3b0b101f1a83bb02b2bab7fcbeaa0aecc212032212df02e87d65"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_144/depth_camera_z.0000.exr": {
+    "size": 637073,
+    "sha256": "df965e9be7461c8851701f35e218ff0b4e984d974fda59b810a1b8f940e73b03"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_144/oblique_rgb.0000.png": {
+    "size": 610668,
+    "sha256": "b30d33520508673c7734858b2e69ce3cdf5ede92d4888e6cab1cdfb649e4885d"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_144/depth_scenecapture_metadata.json": {
+    "size": 1088,
+    "sha256": "6bb23250d896250978c685ead6e6977634efc314bab6426febf65de7d5bed19b"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_216/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_216/camera_extrinsics.json": {
+    "size": 3009,
+    "sha256": "11ef6409230ec5bca0896767fde51c8c5a30e88bcf73772a74c86b69cfec1588"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_216/depth_camera_z.0000.exr": {
+    "size": 578275,
+    "sha256": "826458b4b12f215994b00f6941bfc7b9e091e851e82daad5fcfa14b38164b371"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_216/oblique_rgb.0000.png": {
+    "size": 560818,
+    "sha256": "5b8d5a757a3910475268824c85726df651a873bc672aa257b505f2b7f9d5d0e5"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_216/depth_scenecapture_metadata.json": {
+    "size": 1115,
+    "sha256": "d112604f93971e0a3435b57f5ab1ac603b1488dc213625171fbb9a5251a8c247"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_288/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_288/camera_extrinsics.json": {
+    "size": 3011,
+    "sha256": "6b4cee0bd83f7f1101a75bbe95f58b37ca91711060177f22c7558563cc31037a"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_288/depth_camera_z.0000.exr": {
+    "size": 510579,
+    "sha256": "648949dd70efc2b9588844a8b615db78abe3e392cded9eb87970636815dbe56b"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_288/oblique_rgb.0000.png": {
+    "size": 557138,
+    "sha256": "7d2f2a9b02f9e904aeefa6172baedb2f1658686d0dedbd286956d7aefae60a91"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000931_pt_gx_6_gy_-14_s_009_gx_6_gy_-14_s_9_X_122500_Y_-273750/oblique/view_yaw_288/depth_scenecapture_metadata.json": {
+    "size": 1104,
+    "sha256": "1d447a405f220b4313bed7ddfe58f9a4347ed3c09106f9014c57952198e92bdd"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/satellite/camera_intrinsics.json": {
+    "size": 356,
+    "sha256": "21d653aca49942cdd5734e69543652e78b23058c3a0533e37e3363e8352844d5"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/satellite/camera_extrinsics.json": {
+    "size": 2310,
+    "sha256": "612c34872f30e1dfa805dea4ec8bfc35f09ccc7fec634f00cbb93af70eef1c86"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/satellite/satellite_rgb.0000.png": {
+    "size": 635742,
+    "sha256": "9b3d8b00698bd42a4c590c9c2afa78db700107a23cbe82cba1aba40f1def019a"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_000/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_000/camera_extrinsics.json": {
+    "size": 2924,
+    "sha256": "4b9b9907c6a6e1d39eebe43c279e7c0ad0dc9d8cb278d18b7962250694454007"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_000/depth_camera_z.0000.exr": {
+    "size": 552728,
+    "sha256": "12d72b0278682ad069fe2f330e91a61ab6c8b0c03313140f52dc38079c62d37a"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_000/oblique_rgb.0000.png": {
+    "size": 612336,
+    "sha256": "fa402926cd104be48d9a741166017484d4337473c5259bca106aa9739ce720f5"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_000/depth_scenecapture_metadata.json": {
+    "size": 1086,
+    "sha256": "8f57d2cdc128c53e13f3ebc975791b7918c2bb046bbba96e634748d92d98afdd"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_072/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_072/camera_extrinsics.json": {
+    "size": 3030,
+    "sha256": "1582066e036891cc1eaa9cfaa0a7b4c61dcfc04c0dddc7dad7f3288a61845ff7"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_072/depth_camera_z.0000.exr": {
+    "size": 551615,
+    "sha256": "9a80dc6f1c33279042a8c83bfe5ae4c166061788e668d61c64a95376a3ea4b18"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_072/oblique_rgb.0000.png": {
+    "size": 631332,
+    "sha256": "bcbd53608e20b896a61acc035b4cb8ecbcf4f063af93dad60e96961d181b1952"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_072/depth_scenecapture_metadata.json": {
+    "size": 1118,
+    "sha256": "af55bd409fa8b9408b2e77ddb853b15870aaf778b2287ebff1b4a5a8b2830084"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_144/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_144/camera_extrinsics.json": {
+    "size": 2896,
+    "sha256": "ecf4d9adafa40eb22d99f2a37d31a6212206040d5ded921d5340b1ad8cc9db80"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_144/depth_camera_z.0000.exr": {
+    "size": 611584,
+    "sha256": "781e54687b9258c1303784cf4c6767cb07ff96e42c253c9eeba6d7d17e2a3ab5"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_144/oblique_rgb.0000.png": {
+    "size": 616409,
+    "sha256": "de73abb1f96887b21f373d6059c93d7897a7ddd3a797c589149f4271b0e11fb3"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_144/depth_scenecapture_metadata.json": {
+    "size": 1090,
+    "sha256": "a1721815d25b6a0fc4d344b6ee2ef1d038f2791c03d358d3fe3ed4094d9df9ff"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_216/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_216/camera_extrinsics.json": {
+    "size": 3011,
+    "sha256": "845089b3aac17e841e38164b280877deed1008866a88e19f4de1eef3863bc11f"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_216/depth_camera_z.0000.exr": {
+    "size": 511425,
+    "sha256": "d99d16111d98053e586f09156e442ef8f7b028d2332a482573c847ef2d940cfc"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_216/oblique_rgb.0000.png": {
+    "size": 571183,
+    "sha256": "3d125964c4c41e6bf81212529ca78b5175e9980386b61625ec4a5355da896d50"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_216/depth_scenecapture_metadata.json": {
+    "size": 1117,
+    "sha256": "c5af2c7b0303447161e12d55340011f4be670229029ca30cf45818fe23cdb153"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_288/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_288/camera_extrinsics.json": {
+    "size": 3002,
+    "sha256": "4a837eeb95c2cf66291b9a92fb532a00d4080600f59b738161b39db6af9f8e7b"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_288/depth_camera_z.0000.exr": {
+    "size": 540566,
+    "sha256": "b4bd4782a16a1ab01a426ef304cbf7c826afc7006b6428d90c3425f39a8869e8"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_288/oblique_rgb.0000.png": {
+    "size": 565623,
+    "sha256": "9879f6122b0d6fc9d1b1a6a665f0ea67fe267fbc7943c75dbf97071c707bb2e4"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000928_pt_gx_6_gy_-14_s_005_gx_6_gy_-14_s_5_X_137500_Y_-273750/oblique/view_yaw_288/depth_scenecapture_metadata.json": {
+    "size": 1105,
+    "sha256": "ae9e69fe05d64e045026f850c9886310a71deebb1b1784d37e720557a357a3b7"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/satellite/camera_intrinsics.json": {
+    "size": 356,
+    "sha256": "21d653aca49942cdd5734e69543652e78b23058c3a0533e37e3363e8352844d5"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/satellite/camera_extrinsics.json": {
+    "size": 2310,
+    "sha256": "97d94a10fb4c6760eaac66ad4c42bd07abfd4388ec433b52400dfd6405b79cbc"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/satellite/satellite_rgb.0000.png": {
+    "size": 622293,
+    "sha256": "8177bc18a79c3eb1e07f3688d840639cfe721e227d4e8fbde01364987557bf72"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_000/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_000/camera_extrinsics.json": {
+    "size": 2960,
+    "sha256": "fe49a777ed20202f7ca17b0b60a882e1bed2a6fda7c9ffdf0ac976820b244e8f"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_000/depth_camera_z.0000.exr": {
+    "size": 382275,
+    "sha256": "c569e1cc9851e20b4f8c28972522c57ef7effa3d23e012123a1f0166845e5f69"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_000/oblique_rgb.0000.png": {
+    "size": 584744,
+    "sha256": "f93afc49b5be9e7cdf4e2cc3640c17abecbaec3853d2d4c9f490512674db8dc3"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_000/depth_scenecapture_metadata.json": {
+    "size": 1085,
+    "sha256": "932898bb1466e939c948528edd42718f4914c978584501b5d58aa0e2e3bc7d0a"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_072/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_072/camera_extrinsics.json": {
+    "size": 3030,
+    "sha256": "8a26296e8f2ae331f479fd4ba2dae13f2ee813dadea50ef27352e4fac6ccfc7c"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_072/depth_camera_z.0000.exr": {
+    "size": 473873,
+    "sha256": "64c2a4205d27ead19734f76f74d42d0e9fdee7c039f769c47c7ac15c87fa3ae9"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_072/oblique_rgb.0000.png": {
+    "size": 609314,
+    "sha256": "004f9aaf31d893ce39d7528b691c14c7350efe6f79db42fd1579d32bb6cddb7f"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_072/depth_scenecapture_metadata.json": {
+    "size": 1117,
+    "sha256": "2e69831f0050b09f61f4e6f1206f113831f21243f4e33e04320d0c7521dc0103"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_144/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_144/camera_extrinsics.json": {
+    "size": 2893,
+    "sha256": "8f661f5d4883f7486ad0761d75c44a65da277e6a043dc3ae06e2e3f1594f85ec"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_144/depth_camera_z.0000.exr": {
+    "size": 475599,
+    "sha256": "c502f05b4b5171af79878c34d5d1476b7fe82156e99fbbc0fc02508c1cbb7a92"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_144/oblique_rgb.0000.png": {
+    "size": 582429,
+    "sha256": "08f530997bfec43beaf842fd7fc77300a0ca243570fcf818e1aefcae5f00528b"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_144/depth_scenecapture_metadata.json": {
+    "size": 1089,
+    "sha256": "90c67820f4bb5db8e5cde84348ba06a44db2b52d45652fb0d9c485f1aa870da3"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_216/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_216/camera_extrinsics.json": {
+    "size": 2914,
+    "sha256": "eb072f6ee12f219a2edb6221f013c080200f8db404dd61f6456d60912786f5be"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_216/depth_camera_z.0000.exr": {
+    "size": 498283,
+    "sha256": "0af375d5aa172b730f7c76bd932ef4606ced707cfbaa2dde9e193774f19fef7a"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_216/oblique_rgb.0000.png": {
+    "size": 585153,
+    "sha256": "a6e12717134d6ec8ea90b6891e0ed7fee23d4e9207d603b3bca626aa4de3ac89"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_216/depth_scenecapture_metadata.json": {
+    "size": 1100,
+    "sha256": "81d554127f7ddc2f288114d5e78dfbe394150e9dcc6ea03111abe09d82c15a7a"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_288/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_288/camera_extrinsics.json": {
+    "size": 3008,
+    "sha256": "18584c570e78933e45697fba98178e061d4bab991031982131e3cba2a80740fb"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_288/depth_camera_z.0000.exr": {
+    "size": 492520,
+    "sha256": "51dfd5ab6576908f71f6c0567cda8da61d37bb0ac9547344eaa2245acbc0a187"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_288/oblique_rgb.0000.png": {
+    "size": 568437,
+    "sha256": "8a15cb4408e77d68222974722fc2893f5938c8e2b46592f451b3227487bdfe8b"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_001196_pt_gx_7_gy_-12_s_007_gx_7_gy_-12_s_7_X_150000_Y_-233750/oblique/view_yaw_288/depth_scenecapture_metadata.json": {
+    "size": 1104,
+    "sha256": "7a911bd359ddf50947e7f47bfef2b18053d7a41b1acb5ab720ac280f40b2a7f5"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/satellite/camera_intrinsics.json": {
+    "size": 356,
+    "sha256": "21d653aca49942cdd5734e69543652e78b23058c3a0533e37e3363e8352844d5"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/satellite/camera_extrinsics.json": {
+    "size": 2305,
+    "sha256": "71050238b2f9f7f571bbac0aa6da90905b31bdee9ec1d224b1c30a5d37e24ada"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/satellite/satellite_rgb.0000.png": {
+    "size": 591915,
+    "sha256": "a011def980ec8b0630c8b8b844936555ea5ec3c049e7bc6d285d4deda40dfa92"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_000/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_000/camera_extrinsics.json": {
+    "size": 2926,
+    "sha256": "2f8f700ba3827f1f7f0357c699f2b49cd56839bfa45dbf47dc70a1e684874569"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_000/depth_camera_z.0000.exr": {
+    "size": 377079,
+    "sha256": "d8b1ce1ed75805529bda58429084283b9472347e8f978aeaad3388525788e9a2"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_000/oblique_rgb.0000.png": {
+    "size": 570883,
+    "sha256": "4c29b685ab52b29570245910b439f961a46009c5388aca4e172360018e1cbe07"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_000/depth_scenecapture_metadata.json": {
+    "size": 1085,
+    "sha256": "77f73bfa9d0e93f74ba8710a10df6c127ab0c52199ff484948fd93d851198f9a"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_072/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_072/camera_extrinsics.json": {
+    "size": 2928,
+    "sha256": "467172202a90a05283c025bcaa225e5fd286aa8b657e730916e4e28ab85e7125"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_072/depth_camera_z.0000.exr": {
+    "size": 510496,
+    "sha256": "710f8294aae126328bbd46f66fbd98530605d36e298bb535e1fdb0f5335fde28"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_072/oblique_rgb.0000.png": {
+    "size": 593991,
+    "sha256": "323fadc6de1e89fcfa78cee8cda3884445eafd53614f7c696ec92db5ac7be5d2"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_072/depth_scenecapture_metadata.json": {
+    "size": 1100,
+    "sha256": "f8d5bb0c4a37d1554292bccf3122fec3ed2d91e02b6613ba0ea8a0c209c61112"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_144/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_144/camera_extrinsics.json": {
+    "size": 2890,
+    "sha256": "5f44d5d673d232248e4fc8e07b97b6e4d4b02f1faa1ffcefca505e29d44f2777"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_144/depth_camera_z.0000.exr": {
+    "size": 537098,
+    "sha256": "04429c57b991d2c3792570fd7df37ee5e6188a92d21671e5aad9f60aec6c31ec"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_144/oblique_rgb.0000.png": {
+    "size": 551930,
+    "sha256": "cd40a97953155c6ff7dea8a413c47da328b55b49f6fa7ba8e68832fbe8e2eeaa"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_144/depth_scenecapture_metadata.json": {
+    "size": 1088,
+    "sha256": "d46797ea00a45c6a100671a54105f91faea03d595e2944076a5be28be8d3947a"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_216/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_216/camera_extrinsics.json": {
+    "size": 3008,
+    "sha256": "00adaef061ef08099a2b0540d860a86ce7b9bbac0178ab82b9fb8dbb7dbe206a"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_216/depth_camera_z.0000.exr": {
+    "size": 396580,
+    "sha256": "d9c74ac286d6f9f11262f29466b21ac88428500986e6348b9e1a7272835c6923"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_216/oblique_rgb.0000.png": {
+    "size": 570099,
+    "sha256": "4664ce9fac95ffedbe6784a549201d0f34212ef0854cace5b6ca6b8546c7cbca"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_216/depth_scenecapture_metadata.json": {
+    "size": 1115,
+    "sha256": "4e9400dd79dd52cb80861e1a03883a9d5d32da50531cedb0ee83b608f82fca95"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_288/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_288/camera_extrinsics.json": {
+    "size": 3026,
+    "sha256": "2cfef6db01e4b69d9d450e9ecfc15a0b9083b0eaf204d0dcd59686766b84b0a9"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_288/depth_camera_z.0000.exr": {
+    "size": 381977,
+    "sha256": "12868bedd5340737fb120c03949f913f50c6072c4b97577d15f22e388b8e829e"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_288/oblique_rgb.0000.png": {
+    "size": 560371,
+    "sha256": "f277167ca07be2795d60fd35733b1a818aafb9b01bf6b903f7c3ed40b557d68e"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000287_pt_gx_4_gy_-17_s_004_gx_4_gy_-17_s_4_X_97500_Y_-337500/oblique/view_yaw_288/depth_scenecapture_metadata.json": {
+    "size": 1103,
+    "sha256": "32320b4de3796ea8648a661f4310ba8d450dd11599b584386c363b08221c289d"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/satellite/camera_intrinsics.json": {
+    "size": 356,
+    "sha256": "21d653aca49942cdd5734e69543652e78b23058c3a0533e37e3363e8352844d5"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/satellite/camera_extrinsics.json": {
+    "size": 2305,
+    "sha256": "4a34d2626918de40b324d6328a014e32c4919062e0a3b247e310722f6a5ee574"
+  },
+  "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/satellite/satellite_rgb.0000.png": {
+    "size": 601660,
+    "sha256": "9b57df21f286161ad53c007058e1364ecf50f89a3a180d777d374a9b6a86cb22"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_000/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_000/camera_extrinsics.json": {
+    "size": 2926,
+    "sha256": "536781d8126ca1bfbc47e6ca4e4f6d19ff94dc0c02ebb68d5870f6396bb99826"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_000/depth_camera_z.0000.exr": {
+    "size": 424320,
+    "sha256": "0d9fe4345d27c49d1692443acd7b9c67e296adfb0d94f90dff7d00899999445c"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_000/oblique_rgb.0000.png": {
+    "size": 580283,
+    "sha256": "6a7180a87e0a70cb6a3dffc3ae59f26513d8fe47b929feb56278904fa357912b"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_000/depth_scenecapture_metadata.json": {
+    "size": 1085,
+    "sha256": "378fb2cb2f8e60529d53bde13554781cb5c66d25472c7328375da88737ae19d3"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_072/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_072/camera_extrinsics.json": {
+    "size": 2922,
+    "sha256": "f606d48825c4de59c31aa83d3cf6304d2e76839505785b34d517b19306287890"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_072/depth_camera_z.0000.exr": {
+    "size": 577494,
+    "sha256": "8c3a00783dd301772823492728bb4b2826531fdfa771c2482a816bac7dfcdfb1"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_072/oblique_rgb.0000.png": {
+    "size": 616394,
+    "sha256": "f2259078d97bf2ad7050df522b1bccc65067e06a14f5fad0727c50d2ede4b2cb"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_072/depth_scenecapture_metadata.json": {
+    "size": 1100,
+    "sha256": "42d0a9a88b43bb3524fea47dc2ed49cf444c704de5bc4a6b7e0fdc3b922caa99"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_144/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_144/camera_extrinsics.json": {
+    "size": 2893,
+    "sha256": "93f25ca0424c2c244434762bf18f91645385e19a61a2276820a8e8f8b79141dc"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_144/depth_camera_z.0000.exr": {
+    "size": 636475,
+    "sha256": "82b10ec4cc96b212a145c3104b2b86c82d128979161e7049d542240820185251"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_144/oblique_rgb.0000.png": {
+    "size": 568980,
+    "sha256": "2361288ef6f24e2fbc1c25105bd5d27a0ae17d37a827f4a85cb914ed77db50ff"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_144/depth_scenecapture_metadata.json": {
+    "size": 1088,
+    "sha256": "a4c44365542eb5718560c978d827b86d554e7fc15c166b880635c130d25de2ae"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_216/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_216/camera_extrinsics.json": {
+    "size": 3008,
+    "sha256": "40f1a3f167bd6032f04ca3da9f548789f8a3de2e9de864d03230daf962293511"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_216/depth_camera_z.0000.exr": {
+    "size": 432799,
+    "sha256": "d396a75b75e84c59a9ec81cfe111e90660468296ac9a4f147f825993bc4c7a86"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_216/oblique_rgb.0000.png": {
+    "size": 565943,
+    "sha256": "1a5f9ecaf31f10a3f647628a9d9aaf617ba9fc05c0a895ad0468134c456ddc9f"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_216/depth_scenecapture_metadata.json": {
+    "size": 1115,
+    "sha256": "9b9421d8d16ea21547805ed6f83071624c2c827fa86e8fa023a2c3202be88eb3"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_288/camera_intrinsics.json": {
+    "size": 359,
+    "sha256": "bb197002968b0560e5e46f9bbe4590bc111f58402d760e7668c95ced3491cfe6"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_288/camera_extrinsics.json": {
+    "size": 3023,
+    "sha256": "cf85ad0e0cbc1caaf530fcd5b919bba9c770eca3964ec9386a519d7302bbb9bf"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_288/depth_camera_z.0000.exr": {
+    "size": 432997,
+    "sha256": "4155fa78ec6889c34ffd381c465c0c6ae9043010fc7c459e528ad20b0ed03030"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_288/oblique_rgb.0000.png": {
+    "size": 584522,
+    "sha256": "019a57f924e65251d3c724572c4d5a5c67516d0d3c4f2677e4cacba325ad4f3d"
+  },
+  "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000288_pt_gx_4_gy_-17_s_005_gx_4_gy_-17_s_5_X_97500_Y_-333750/oblique/view_yaw_288/depth_scenecapture_metadata.json": {
+    "size": 1103,
+    "sha256": "2a40f682c2fe3500ca36ebeb08c495d7818c5816ec896e27643e98ebc857e52d"
+  },
+  "/tmp/ue_roi_feasibility_20261016/uav_evidence/run_probe.py": {
+    "size": 8589,
+    "sha256": "56fc7816911e05d0288ed93d97fc3d09197774b20bed08fdd4b4230bdaf9e0ca"
+  },
+  "/tmp/ue_roi_feasibility_20261016/uav_evidence/freeze_cases.py": {
+    "size": 1676,
+    "sha256": "03aadf0a5c64fd9f4c728f91a4a0f38405f8639e3e0597c28131e06ec807e4e6"
+  },
+  "/tmp/ue_adjacent_pair_20261016/outputs/pairs.json": {
+    "size": 32493222,
+    "sha256": "506de2f63565bec70ceed999aaba16e711ee3368f95497d7dda6fc4d1818c4e5"
+  },
+  "/tmp/ue_adjacent_pair_20261016/outputs/instances.json": {
+    "size": 5185109,
+    "sha256": "1eac2d077d23fd924a4d92ad423484fb159fed7fe073648a8a2b7600375ae870"
+  },
+  "/tmp/ue_adjacent_pair_20261016/outputs/posthoc_sensitivity.json": {
+    "size": 36549,
+    "sha256": "b2a0d2f713cf3dd1616a76d982c2e72a265d2ccef54e8b9cf358dd4a10e27aaa"
+  },
+  "/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/single_best/gt_records.json": {
+    "size": 1806589,
+    "sha256": "869dbc5abb8ebedbf588a7754a500fc8ee4965eba450d4c5372d64a00fbaff24"
+  }
+}
