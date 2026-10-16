@@ -116,6 +116,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--weight-decay", type=float, default=0.05, help="Weight decay for optimizer")
     parser.add_argument("--fusion-no-wd", type=int, default=0,
                         help="Exempt the dual fusion modules (gate/proj[_e]) from weight decay (EXP-0015/0016)")
+    parser.add_argument("--fusion-unlock-epoch", type=int, default=0,
+                        help="Pin dual fusion gates at zero through this (1-indexed) epoch; 0 = never lock (EXP-0017)")
     parser.add_argument("--max-train-batches", type=int, default=0)
     parser.add_argument("--max-val-batches", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")

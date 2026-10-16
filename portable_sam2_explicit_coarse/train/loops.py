@@ -59,6 +59,26 @@ def train_one_epoch(
     if args.freeze_bn:
         _set_norm_eval(model)
 
+    # EXP-0017 fusion delayed unfreeze: pin the dual fusion gate(s) at exactly
+    # zero through the end of --fusion-unlock-epoch epochs (epoch_number is
+    # 1-indexed), so the satellite side first converges on the clean
+    # single-stream-equivalent objective. Value-pinning (not requires_grad
+    # toggling) keeps DDP buckets and optimizer group membership unchanged;
+    # the gate re-learns from 0 after unlock. With gate=0 the UAV branch
+    # (incl. LoRA) receives no gradient either - the whole tap is inert by
+    # construction during the lock phase.
+    unlock = int(getattr(args, "fusion_unlock_epoch", 0) or 0)
+    fusion_gate_params = []
+    if unlock > 0 and epoch_number <= unlock:
+        core = model.module if hasattr(model, "module") else model
+        fusion_gate_params = [p for n, p in core.named_parameters()
+                              if n == "gate" or n.startswith("gate.") or n == "gate_e"]
+        if is_main and epoch_number == 1:
+            logger.info("fusion gates pinned to zero through epoch %d (%d tensors)",
+                        unlock, len(fusion_gate_params))
+    elif unlock > 0 and is_main and epoch_number == unlock + 1:
+        logger.info("fusion gate unlock takes effect at epoch %d", epoch_number)
+
     total_loss = 0.0
     loss_meter = {}
     dense_monitor_sums = {key: 0.0 for key in _DENSE_RESIDUAL_MONITOR_KEYS}
@@ -225,6 +245,10 @@ def train_one_epoch(
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
             scaler.step(optimizer)
             scaler.update()
+            if fusion_gate_params:
+                with torch.no_grad():
+                    for p in fusion_gate_params:
+                        p.zero_()
             ema_update_steps += 1
             if (
                 not ddp_sync_audited
