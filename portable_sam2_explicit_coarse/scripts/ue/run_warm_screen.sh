@@ -13,7 +13,9 @@ RESUME="${2:-}"
 export SAM2_CKPT="${SAM2_CKPT:-/data1/wangcheng/pretrained/sam2_hiera_base_plus.pt}"
 export UE_DATA_ROOT="${UE_DATA_ROOT:-/data2/wangcheng/dataset_frozen/ue_raw_hero_uav_pairset_20261014_frozen}"
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
-EPOCHS=30
+# 30 = preregistered screen budget; 60 = the one-time SCREEN-EXT extension
+# (identical warm-restart schedule for every extended arm; see conclusion doc)
+EPOCHS="${WARM_EPOCHS:-30}"
 
 case "$ARM" in
   r1)  CONFIG=configs/ue_whu_a3sgm_512_dualv2_l0_lora.py
