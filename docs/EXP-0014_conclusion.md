@@ -62,4 +62,6 @@ seed 20261014，last-epoch checkpoint，与阶梯 A/B 同工具同基准）：
 - 逐场 A/B（on/off + bootstrap）：`probes/DUAL-AB-LADDER-20261016/rows_dual_norm*.jsonl`、
   `eval_dual_norm.log`（驱动脚本一次性复用 probe_dual_ab_ladder 机制）
 - 开度分解：`probes/DUAL-DELTA-DECOMP-0014-20261016/decomp.json`
-- 结果子代理复核：待归档（结论写回论文口径前完成）
+- 结果子代理复核：`docs/reviews/DUAL-AB-LADDER-20261016_result_audit.md`
+  加遗节（dual_norm 并入六臂拉通后独立复算，VERDICT PASS；本臂逐场数字与
+  上表逐一核对一致）
