@@ -93,3 +93,42 @@ inference_results}`、`docs/dual_branch_improvement_proposal.md`、
 `修复总结.md`、`QUICK_START_ABLATIONS.sh`；本地副本 `/tmp/scvt4/`。
 判读边界：远端工件只读未改动；无训练/评估运行；引用数字均为既有
 eval_results.json 原值。
+
+## 五、附录（同日追问）：COLMAP 相对位姿 + DepthAnything 相对深度的利用是否合理
+
+逐路径核查（`uav/cross_view_attention.py`、`uav/bev_embedding.py`、
+`uav/depth_aware_bev.py`、`data/satellite_drone_dataset.py`；`_large`
+项目同源抽查确认）：
+
+**主通路（BEV 特征）——形式上合理，因为它不消费度量几何。**
+数据集对 COLMAP 内外参原样透传（仅 resize/flip 修正，无尺度归一、无
+与卫星帧配准）。但 CrossViewAttention（simple-bev 血统）只把相机用于
+位置编码：光线方向（I_inv）+ 相机中心/朝向（E_inv）→ 编码归一化后进
+注意力；BEV 是纯学习画布（`h_meters=None` ⇒ `V_inv=I` 且可训 +
+逐格偏移可训 + 场景级 4×4 对齐矩阵可训）。场景内 COLMAP 相对几何自洽
++ 对应关系由注意力学出 ⇒ 规范不变性使相对位姿"够用"。残留缺陷：全局
+单一 V_inv 无法吸收各场景 COLMAP 尺度差异，位置编码带场景相关噪声
+（退化、不致命）。
+
+**高度图通路——名义合理，实际是伪几何。**
+`_compute_height_map`：自训深度头（ReLU、仅方差/双峰损失约束，无度量
+监督）× COLMAP 内参反投影 → 取世界系 Y 作"高度"。两处不成立：
+(1) 深度尺度与 COLMAP 重建尺度互不相关，相乘无量纲意义；COLMAP 世界
+系 Y 轴为规范任意方向，不保证对齐重力；(2) `_aggregate_height_to_bev`
+把各视角**图像平面**高度图直接 bilinear resize 到 80×80 再跨视角
+max——没有任何投影几何。故"height_map"实为各视角高点马赛克，非地理
+高度场。下游消费端是可学习的 height_encoder/sigmoid 门，只需一致可学
+的先验——方差损失把它推向粗糙的"建筑性"图，功能上退化但不崩。
+佐证：官方度量深度变体反而更差（0.684 vs 0.712），与本链不消费度量
+正确性的判断相容；`multiview_depth_consistency`（本可约束跨视角几何
+一致）在配置中关闭。
+
+**DepthAnything 特征用法合理**：冻结 DINOv2 特征（384→64d）注入注意力
+key/val——纯外观先验，与相对性无冲突。
+
+**对增益形态的再解读**：正因为该 BEV 是"注意力软化的无人机语义包"
+而非几何产品，其增益表现为大建筑 bbox（+4.1）而非需要几何对齐的精
+细掩码增益（segm 持平）。光谱两端对照：SCVT4 把几何全部换成可学软先
+验（容忍了相对性、牺牲了几何正确性）；本项目 UE 链路是强几何弱学习
+（真度量相机契约 + 逐位投影 + 零初始化门）。两端证据合并指向同一设
+计原则：度量几何做锚 + 归一化/注意力/非零初始参与把信息任务形态化。
