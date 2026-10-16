@@ -22,7 +22,8 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'inference'))
 sys.path.insert(0, str(HERE))
 
-import probe_dual_ab_ladder as L  # same-file protocol reuse
+import probe_dual_ab_ladder as L
+from ue.features import build_baseline  # same-file protocol reuse
 
 SNAP = L.SNAP
 OUTDIR = Path('/data2/wangcheng/checkpoint/surfbev_b0/probes/WARM-SCREEN-20261017')
@@ -57,7 +58,7 @@ def main():
     if not manifest.exists():
         ck = torch.load(a.ckpt, map_location='cpu', weights_only=False)
         manifest.write_text(json.dumps(L.checkpoint_identity(a.ckpt, ck), indent=2))
-    model, _, _, _ = L.build_baseline(a.ckpt, manifest, os.environ['SAM2_CKPT'], dev)
+    model, _, _, _ = build_baseline(a.ckpt, manifest, os.environ['SAM2_CKPT'], dev)
     if hasattr(model, 'uav_eval_off'):
         model.uav_eval_off = bool(a.off)
 

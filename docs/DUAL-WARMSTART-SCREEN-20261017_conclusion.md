@@ -41,10 +41,27 @@ WARM-R1B 上调为链内主判读臂）。
 
 ## 2. WARM-R1（冻结基座纯加性读出，30ep）
 
-- 启动 2026-10-17 01:11，契约行 `WARMSCREEN_CONTRACT arm=r1 commit=9f9e6df dirty=0 …`
-  （`launcher_logs/WARM-R1-ddp4.log`）；checkpoint 目录
-  `surfacebev_v2_512warm_r1_scr30_ddp4_s44_WARM-20261017`。
-- （收线后填写：last segm/bbox、on/off 逐场对比、判定）
+- 启动 2026-10-17 01:26（commit `cdc9e822`，冻结语义修复后），收线 02:56：
+  last segm 0.7603 / bbox 0.7375（全局口径）；checkpoint
+  `surfacebev_v2_512warm_r1_scr30_ddp4_s44_WARM-20261017/last_model_epoch30.pth`。
+- **parity（冻结等效性）**：`check_warm_parity.py` 3 场逐位一致 PARITY-PASS；
+  且 100 场 OFF 逐场均值 0.7764335616842939 与 EXP-0009 rows 逐位相同
+  （全规模 parity 成立——off ≡ single 按构造）。
+- 逐场配对 bootstrap（10k，seed 20261014，n=100）：
+
+| 对比 | segm Δ [CI95] | bbox Δ [CI95] |
+| --- | --- | --- |
+| on − single | **+0.124 [+0.033, +0.219]** | +0.092 [−0.009, +0.197] |
+| on − off（= net，parity 下同上） | +0.124 [+0.033, +0.219] | +0.092 [−0.009, +0.197] |
+
+- **谱系意义：全梯队首个 segm 对单流 CI 下界 >0 的双流臂**。代价项
+  （off−single）按构造归零后，0015 的"+0.38 收益被 −0.35 代价吃掉"结构
+  被打破；净差 = on−off 首次转正（segm 显著）。
+- 门遥测（末代）：gate_mean 3.95e-05、gate_absmax 0.0081、
+  **delta_p3_ratio 0.071**（0015 百 epoch 平衡态 0.489 的 ~15%——通路仍在
+  打开早期）。
+- **落判：SCREEN-EXT**（预注册条款：on−off ∈ (0,+0.3) 且任一 CI 含 0——
+  bbox CI 下界 −0.009 点。一次性延长至 60ep 再判；排队于 R1B 之后）。
 
 ## 3. WARM-R1G（gate_init 0.001 非零初始参与，30ep）
 

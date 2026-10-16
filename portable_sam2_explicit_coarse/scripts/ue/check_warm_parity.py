@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT / 'inference'))
 sys.path.insert(0, str(HERE))
 
 import probe_dual_ab_ladder as L
+from ue.features import build_baseline
 
 CKPT_SINGLE = '/data2/wangcheng/checkpoint/surfbev_b0/surfacebev_v2_512_sealed_ddp4_s44_EXP-0009/last_model_epoch100.pth'
 OUTDIR = Path('/data2/wangcheng/checkpoint/surfbev_b0/probes/WARM-SCREEN-20261017')
@@ -44,13 +45,13 @@ def main():
     dev = torch.device('cuda:0')
     OUTDIR.mkdir(parents=True, exist_ok=True)
 
-    ms, _, _, _ = L.build_baseline(CKPT_SINGLE, L.manifest_for('single'),
+    ms, _, _, _ = build_baseline(CKPT_SINGLE, L.manifest_for('single'),
                                    os.environ['SAM2_CKPT'], dev)
     mident = OUTDIR / f'identity_{a.warm_ckpt.split("/")[-2]}.json'
     if not mident.exists():
         ck = torch.load(a.warm_ckpt, map_location='cpu', weights_only=False)
         mident.write_text(json.dumps(L.checkpoint_identity(a.warm_ckpt, ck), indent=2))
-    mw, _, _, _ = L.build_baseline(a.warm_ckpt, mident, os.environ['SAM2_CKPT'], dev)
+    mw, _, _, _ = build_baseline(a.warm_ckpt, mident, os.environ['SAM2_CKPT'], dev)
     mw.uav_eval_off = True
 
     ds = L.UERawPairDataset(str(L.SNAP), 'val', True, 'surfbev_b0_split_v2.json',
