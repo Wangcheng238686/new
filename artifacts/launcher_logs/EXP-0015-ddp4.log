@@ -3922,3 +3922,1585 @@ DONE (t=0.03s).
 2026-10-16 15:36:10,429 - portable_sam_fusion - INFO - Epoch 70/100 | train=0.219481 val=disabled segm/mAP=0.7562 bbox/mAP=0.7319 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=1.06e-04 backbone=1.06e-04 mask_decoder=1.06e-04 shape_prior=1.06e-04 iou_head=1.06e-04 decoder_tail=1.06e-04 other=1.06e-04
 2026-10-16 15:36:25,729 - portable_sam_fusion - INFO - epoch 71 | mini-batch 20/174 | optimizer_step 6100/8700 | lr=1.049e-04
 2026-10-16 15:37:58,394 - portable_sam_fusion - INFO - epoch 71 | mini-batch 120/174 | optimizer_step 6150/8700 | lr=1.012e-04
+2026-10-16 15:38:49,977 - portable_sam_fusion - INFO - Epoch 71 detailed losses: loss_rpn_cls=0.0004, loss_rpn_bbox=0.0007, loss_cls=0.0420, loss_bbox=0.0104, loss_mask=0.0644, loss_decoder_tail=0.0901, loss_shape_prior=0.0097, DET/acc=98.4068, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.6739, debug_mask_logit_std=7.8754, debug_mask_prob_mean=0.6706, debug_mask_prob_ge05=0.6704, debug_mask_target_fill=0.6705, TAIL/selected_count=4096.0000, TAIL/selected_pos=1422.0460, TAIL/selected_bce=0.7039, TAIL/delta_abs=0.4206, TAIL/delta_max=1.2825, TAIL/selected_error_fraction=0.4774, TAIL/selected_error_coverage=0.0654, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6694, TAIL/correct_flip_fraction=0.3195, TAIL/destroy_fraction=0.1841, TAIL/boundary_margin_violation=0.0902, TAIL/boundary_logit=-0.4055
+2026-10-16 15:38:49,977 - portable_sam_fusion - INFO - Epoch 71 dense residual monitor: alpha=0.479511 source_delta_norm=10.0139 applied_delta_norm=4.8018 source_delta_ratio=0.857471 applied_delta_ratio=0.411167
+2026-10-16 15:38:49,977 - portable_sam_fusion - INFO - Epoch 71 primary loss shares: det=41.91% final_mask=50.47% shape=7.62%
+2026-10-16 15:38:49,977 - portable_sam_fusion - INFO - Epoch 71 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 15:38:49,977 - portable_sam_fusion - INFO - Epoch 71 learning rates: fusion=9.93e-05, backbone=9.93e-05, mask_decoder=9.93e-05, shape_prior=9.93e-05, iou_head=9.93e-05, decoder_tail=9.93e-05, other=9.93e-05
+2026-10-16 15:38:49,982 - portable_sam_fusion - INFO - Epoch 71 DUAL telemetry: gate_mean=-0.000334206 gate_std=0.00555512 gate_absmax=0.0112234 delta_p3_ratio=0.508907 bev_coverage=0.890916 gate_steps=174
+2026-10-16 15:39:12,205 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2809, avg_masks_per_image=28.09, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.97s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.737
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.820
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.389
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.764
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.880
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.032
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.327
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.791
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.445
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.840
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.909
+2026-10-16 15:39:13,229 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7371 bbox/mAP_75: 0.8200
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.98s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.757
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.844
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.418
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.787
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.894
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.032
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.330
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.810
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.481
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.857
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.922
+2026-10-16 15:39:14,233 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7574
+2026-10-16 15:39:14,713 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7574 smooth(5)=0.7584 best=0.7592 counter=4
+2026-10-16 15:39:29,122 - portable_sam_fusion - INFO - Epoch 71/100 | train=0.217758 val=disabled segm/mAP=0.7574 bbox/mAP=0.7371 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=9.93e-05 backbone=9.93e-05 mask_decoder=9.93e-05 shape_prior=9.93e-05 iou_head=9.93e-05 decoder_tail=9.93e-05 other=9.93e-05
+2026-10-16 15:40:11,987 - portable_sam_fusion - INFO - epoch 72 | mini-batch 46/174 | optimizer_step 6200/8700 | lr=9.761e-05
+2026-10-16 15:41:47,241 - portable_sam_fusion - INFO - epoch 72 | mini-batch 146/174 | optimizer_step 6250/8700 | lr=9.402e-05
+2026-10-16 15:42:13,409 - portable_sam_fusion - INFO - Epoch 72 detailed losses: loss_rpn_cls=0.0003, loss_rpn_bbox=0.0007, loss_cls=0.0454, loss_bbox=0.0102, loss_mask=0.0637, loss_decoder_tail=0.0900, loss_shape_prior=0.0098, DET/acc=98.3197, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.4331, debug_mask_logit_std=7.9976, debug_mask_prob_mean=0.6548, debug_mask_prob_ge05=0.6543, debug_mask_target_fill=0.6544, TAIL/selected_count=4096.0000, TAIL/selected_pos=1404.9770, TAIL/selected_bce=0.7040, TAIL/delta_abs=0.4174, TAIL/delta_max=1.2242, TAIL/selected_error_fraction=0.4782, TAIL/selected_error_coverage=0.0666, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6717, TAIL/correct_flip_fraction=0.3210, TAIL/destroy_fraction=0.1820, TAIL/boundary_margin_violation=0.0897, TAIL/boundary_logit=-0.4055
+2026-10-16 15:42:13,409 - portable_sam_fusion - INFO - Epoch 72 dense residual monitor: alpha=0.479777 source_delta_norm=10.0490 applied_delta_norm=4.8213 source_delta_ratio=0.860481 applied_delta_ratio=0.412838
+2026-10-16 15:42:13,409 - portable_sam_fusion - INFO - Epoch 72 primary loss shares: det=43.53% final_mask=48.97% shape=7.50%
+2026-10-16 15:42:13,409 - portable_sam_fusion - INFO - Epoch 72 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 15:42:13,409 - portable_sam_fusion - INFO - Epoch 72 learning rates: fusion=9.30e-05, backbone=9.30e-05, mask_decoder=9.30e-05, shape_prior=9.30e-05, iou_head=9.30e-05, decoder_tail=9.30e-05, other=9.30e-05
+2026-10-16 15:42:13,410 - portable_sam_fusion - INFO - Epoch 72 DUAL telemetry: gate_mean=-0.000346606 gate_std=0.00550868 gate_absmax=0.0113609 delta_p3_ratio=0.501682 bev_coverage=0.891663 gate_steps=174
+2026-10-16 15:42:36,444 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2783, avg_masks_per_image=27.83, avg_mask_fill=0.0179
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.94s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.732
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.892
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.820
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.385
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.761
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.873
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.326
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.785
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.434
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.835
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.906
+2026-10-16 15:42:37,442 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7316 bbox/mAP_75: 0.8198
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.98s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.755
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.904
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.843
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.412
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.790
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.889
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.329
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.805
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.466
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.854
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.919
+2026-10-16 15:42:38,457 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7554
+2026-10-16 15:42:38,912 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7554 smooth(5)=0.7572 best=0.7592 counter=5
+2026-10-16 15:42:58,018 - portable_sam_fusion - INFO - Epoch 72/100 | train=0.220111 val=disabled segm/mAP=0.7554 bbox/mAP=0.7316 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=9.30e-05 backbone=9.30e-05 mask_decoder=9.30e-05 shape_prior=9.30e-05 iou_head=9.30e-05 decoder_tail=9.30e-05 other=9.30e-05
+2026-10-16 15:44:04,893 - portable_sam_fusion - INFO - epoch 73 | mini-batch 72/174 | optimizer_step 6300/8700 | lr=9.049e-05
+2026-10-16 15:45:40,881 - portable_sam_fusion - INFO - epoch 73 | mini-batch 172/174 | optimizer_step 6350/8700 | lr=8.701e-05
+2026-10-16 15:45:43,169 - portable_sam_fusion - INFO - Epoch 73 detailed losses: loss_rpn_cls=0.0003, loss_rpn_bbox=0.0006, loss_cls=0.0451, loss_bbox=0.0104, loss_mask=0.0637, loss_decoder_tail=0.0899, loss_shape_prior=0.0097, DET/acc=98.2451, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.5670, debug_mask_logit_std=7.9200, debug_mask_prob_mean=0.6653, debug_mask_prob_ge05=0.6649, debug_mask_target_fill=0.6657, TAIL/selected_count=4096.0000, TAIL/selected_pos=1416.9598, TAIL/selected_bce=0.7044, TAIL/delta_abs=0.4190, TAIL/delta_max=1.1959, TAIL/selected_error_fraction=0.4776, TAIL/selected_error_coverage=0.0656, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6681, TAIL/correct_flip_fraction=0.3189, TAIL/destroy_fraction=0.1822, TAIL/boundary_margin_violation=0.0900, TAIL/boundary_logit=-0.4055
+2026-10-16 15:45:43,170 - portable_sam_fusion - INFO - Epoch 73 dense residual monitor: alpha=0.480019 source_delta_norm=10.0283 applied_delta_norm=4.8137 source_delta_ratio=0.858702 applied_delta_ratio=0.412193
+2026-10-16 15:45:43,170 - portable_sam_fusion - INFO - Epoch 73 primary loss shares: det=43.45% final_mask=49.08% shape=7.47%
+2026-10-16 15:45:43,170 - portable_sam_fusion - INFO - Epoch 73 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 15:45:43,170 - portable_sam_fusion - INFO - Epoch 73 learning rates: fusion=8.69e-05, backbone=8.69e-05, mask_decoder=8.69e-05, shape_prior=8.69e-05, iou_head=8.69e-05, decoder_tail=8.69e-05, other=8.69e-05
+2026-10-16 15:45:43,171 - portable_sam_fusion - INFO - Epoch 73 DUAL telemetry: gate_mean=-0.000357357 gate_std=0.00555648 gate_absmax=0.0115767 delta_p3_ratio=0.503267 bev_coverage=0.891389 gate_steps=174
+2026-10-16 15:46:05,806 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2790, avg_masks_per_image=27.90, avg_mask_fill=0.0180
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.93s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.734
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.892
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.819
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.385
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.765
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.877
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.326
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.787
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.432
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.839
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.907
+2026-10-16 15:46:06,788 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7341 bbox/mAP_75: 0.8191
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.95s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.752
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.904
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.844
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.406
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.787
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.886
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.329
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.803
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.463
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.854
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.915
+2026-10-16 15:46:07,771 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7519
+2026-10-16 15:46:08,199 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7519 smooth(5)=0.7566 best=0.7592 counter=6
+2026-10-16 15:46:22,884 - portable_sam_fusion - INFO - Epoch 73/100 | train=0.219794 val=disabled segm/mAP=0.7519 bbox/mAP=0.7341 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=8.69e-05 backbone=8.69e-05 mask_decoder=8.69e-05 shape_prior=8.69e-05 iou_head=8.69e-05 decoder_tail=8.69e-05 other=8.69e-05
+2026-10-16 15:47:51,012 - portable_sam_fusion - INFO - epoch 74 | mini-batch 98/174 | optimizer_step 6400/8700 | lr=8.359e-05
+2026-10-16 15:49:02,493 - portable_sam_fusion - INFO - Epoch 74 detailed losses: loss_rpn_cls=0.0004, loss_rpn_bbox=0.0007, loss_cls=0.0378, loss_bbox=0.0100, loss_mask=0.0636, loss_decoder_tail=0.0884, loss_shape_prior=0.0096, DET/acc=98.5734, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=4.0082, debug_mask_logit_std=7.7890, debug_mask_prob_mean=0.6864, debug_mask_prob_ge05=0.6861, debug_mask_target_fill=0.6863, TAIL/selected_count=4096.0000, TAIL/selected_pos=1391.1379, TAIL/selected_bce=0.7042, TAIL/delta_abs=0.4221, TAIL/delta_max=1.2524, TAIL/selected_error_fraction=0.4781, TAIL/selected_error_coverage=0.0638, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6764, TAIL/correct_flip_fraction=0.3233, TAIL/destroy_fraction=0.1804, TAIL/boundary_margin_violation=0.0893, TAIL/boundary_logit=-0.4055
+2026-10-16 15:49:02,493 - portable_sam_fusion - INFO - Epoch 74 dense residual monitor: alpha=0.480205 source_delta_norm=10.0488 applied_delta_norm=4.8255 source_delta_ratio=0.860459 applied_delta_ratio=0.413197
+2026-10-16 15:49:02,493 - portable_sam_fusion - INFO - Epoch 74 primary loss shares: det=40.05% final_mask=52.08% shape=7.87%
+2026-10-16 15:49:02,493 - portable_sam_fusion - INFO - Epoch 74 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 15:49:02,493 - portable_sam_fusion - INFO - Epoch 74 learning rates: fusion=8.10e-05, backbone=8.10e-05, mask_decoder=8.10e-05, shape_prior=8.10e-05, iou_head=8.10e-05, decoder_tail=8.10e-05, other=8.10e-05
+2026-10-16 15:49:02,499 - portable_sam_fusion - INFO - Epoch 74 DUAL telemetry: gate_mean=-0.000353869 gate_std=0.00555625 gate_absmax=0.0117023 delta_p3_ratio=0.490064 bev_coverage=0.896192 gate_steps=174
+2026-10-16 15:49:24,669 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2797, avg_masks_per_image=27.97, avg_mask_fill=0.0180
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.96s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.737
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.892
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.821
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.388
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.768
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.877
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.324
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.791
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.443
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.840
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.909
+2026-10-16 15:49:25,680 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7373 bbox/mAP_75: 0.8207
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.99s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.760
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.905
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.847
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.415
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.792
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.889
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.032
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.328
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.810
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.475
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.859
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.922
+2026-10-16 15:49:26,700 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7603
+2026-10-16 15:49:27,203 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7603 smooth(5)=0.7562 best=0.7592 counter=7
+2026-10-16 15:50:03,796 - portable_sam_fusion - INFO - Epoch 74/100 | train=0.210461 val=disabled segm/mAP=0.7603 bbox/mAP=0.7373 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=8.10e-05 backbone=8.10e-05 mask_decoder=8.10e-05 shape_prior=8.10e-05 iou_head=8.10e-05 decoder_tail=8.10e-05 other=8.10e-05
+2026-10-16 15:50:24,838 - portable_sam_fusion - INFO - epoch 75 | mini-batch 24/174 | optimizer_step 6450/8700 | lr=8.022e-05
+2026-10-16 15:51:57,714 - portable_sam_fusion - INFO - epoch 75 | mini-batch 124/174 | optimizer_step 6500/8700 | lr=7.690e-05
+2026-10-16 15:52:42,419 - portable_sam_fusion - INFO - Epoch 75 detailed losses: loss_rpn_cls=0.0002, loss_rpn_bbox=0.0006, loss_cls=0.0418, loss_bbox=0.0096, loss_mask=0.0592, loss_decoder_tail=0.0893, loss_shape_prior=0.0091, DET/acc=98.4297, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.6308, debug_mask_logit_std=8.1449, debug_mask_prob_mean=0.6643, debug_mask_prob_ge05=0.6642, debug_mask_target_fill=0.6644, TAIL/selected_count=4096.0000, TAIL/selected_pos=1401.8391, TAIL/selected_bce=0.7040, TAIL/delta_abs=0.4193, TAIL/delta_max=1.2398, TAIL/selected_error_fraction=0.4776, TAIL/selected_error_coverage=0.0697, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6737, TAIL/correct_flip_fraction=0.3215, TAIL/destroy_fraction=0.1813, TAIL/boundary_margin_violation=0.0891, TAIL/boundary_logit=-0.4055
+2026-10-16 15:52:42,419 - portable_sam_fusion - INFO - Epoch 75 dense residual monitor: alpha=0.480354 source_delta_norm=9.9927 applied_delta_norm=4.8000 source_delta_ratio=0.855655 applied_delta_ratio=0.411017
+2026-10-16 15:52:42,419 - portable_sam_fusion - INFO - Epoch 75 primary loss shares: det=43.26% final_mask=49.14% shape=7.59%
+2026-10-16 15:52:42,419 - portable_sam_fusion - INFO - Epoch 75 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 15:52:42,419 - portable_sam_fusion - INFO - Epoch 75 learning rates: fusion=7.53e-05, backbone=7.53e-05, mask_decoder=7.53e-05, shape_prior=7.53e-05, iou_head=7.53e-05, decoder_tail=7.53e-05, other=7.53e-05
+2026-10-16 15:52:42,423 - portable_sam_fusion - INFO - Epoch 75 DUAL telemetry: gate_mean=-0.000349228 gate_std=0.00556055 gate_absmax=0.0115369 delta_p3_ratio=0.517901 bev_coverage=0.889942 gate_steps=174
+2026-10-16 15:53:04,915 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2794, avg_masks_per_image=27.94, avg_mask_fill=0.0179
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.93s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.742
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.828
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.399
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.771
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.880
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.032
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.325
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.795
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.450
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.846
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.911
+2026-10-16 15:53:05,895 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7415 bbox/mAP_75: 0.8285
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.95s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.761
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.844
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.430
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.797
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.890
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.032
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.328
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.814
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.483
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.864
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.921
+2026-10-16 15:53:06,869 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7614
+2026-10-16 15:53:07,303 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7614 smooth(5)=0.7573 best=0.7592 counter=8
+2026-10-16 15:53:24,570 - portable_sam_fusion - INFO - Epoch 75/100 | train=0.209768 val=disabled segm/mAP=0.7614 bbox/mAP=0.7415 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=7.53e-05 backbone=7.53e-05 mask_decoder=7.53e-05 shape_prior=7.53e-05 iou_head=7.53e-05 decoder_tail=7.53e-05 other=7.53e-05
+2026-10-16 15:54:12,991 - portable_sam_fusion - INFO - epoch 76 | mini-batch 50/174 | optimizer_step 6550/8700 | lr=7.365e-05
+2026-10-16 15:55:47,059 - portable_sam_fusion - INFO - epoch 76 | mini-batch 150/174 | optimizer_step 6600/8700 | lr=7.045e-05
+2026-10-16 15:56:08,232 - portable_sam_fusion - INFO - Epoch 76 detailed losses: loss_rpn_cls=0.0004, loss_rpn_bbox=0.0006, loss_cls=0.0392, loss_bbox=0.0095, loss_mask=0.0584, loss_decoder_tail=0.0894, loss_shape_prior=0.0090, DET/acc=98.4705, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.6187, debug_mask_logit_std=8.1519, debug_mask_prob_mean=0.6624, debug_mask_prob_ge05=0.6620, debug_mask_target_fill=0.6622, TAIL/selected_count=4096.0000, TAIL/selected_pos=1401.6667, TAIL/selected_bce=0.7041, TAIL/delta_abs=0.4179, TAIL/delta_max=1.2756, TAIL/selected_error_fraction=0.4769, TAIL/selected_error_coverage=0.0713, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6744, TAIL/correct_flip_fraction=0.3216, TAIL/destroy_fraction=0.1822, TAIL/boundary_margin_violation=0.0892, TAIL/boundary_logit=-0.4055
+2026-10-16 15:56:08,233 - portable_sam_fusion - INFO - Epoch 76 dense residual monitor: alpha=0.480514 source_delta_norm=10.0074 applied_delta_norm=4.8087 source_delta_ratio=0.856920 applied_delta_ratio=0.411761
+2026-10-16 15:56:08,233 - portable_sam_fusion - INFO - Epoch 76 primary loss shares: det=42.42% final_mask=49.91% shape=7.67%
+2026-10-16 15:56:08,233 - portable_sam_fusion - INFO - Epoch 76 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 15:56:08,233 - portable_sam_fusion - INFO - Epoch 76 learning rates: fusion=6.97e-05, backbone=6.97e-05, mask_decoder=6.97e-05, shape_prior=6.97e-05, iou_head=6.97e-05, decoder_tail=6.97e-05, other=6.97e-05
+2026-10-16 15:56:08,242 - portable_sam_fusion - INFO - Epoch 76 DUAL telemetry: gate_mean=-0.000343261 gate_std=0.00556435 gate_absmax=0.0111934 delta_p3_ratio=0.515599 bev_coverage=0.889938 gate_steps=174
+2026-10-16 15:56:29,763 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2793, avg_masks_per_image=27.93, avg_mask_fill=0.0180
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.93s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.739
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.893
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.822
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.394
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.772
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.879
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.032
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.325
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.793
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.450
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.840
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.912
+2026-10-16 15:56:30,744 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7386 bbox/mAP_75: 0.8218
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.95s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.757
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.905
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.847
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.425
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.789
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.887
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.032
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.327
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.810
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.486
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.855
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.921
+2026-10-16 15:56:31,723 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7566
+2026-10-16 15:56:32,158 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7566 smooth(5)=0.7571 best=0.7592 counter=9
+2026-10-16 15:56:47,926 - portable_sam_fusion - INFO - Epoch 76/100 | train=0.206472 val=disabled segm/mAP=0.7566 bbox/mAP=0.7386 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=6.97e-05 backbone=6.97e-05 mask_decoder=6.97e-05 shape_prior=6.97e-05 iou_head=6.97e-05 decoder_tail=6.97e-05 other=6.97e-05
+2026-10-16 15:57:58,328 - portable_sam_fusion - INFO - epoch 77 | mini-batch 76/174 | optimizer_step 6650/8700 | lr=6.732e-05
+2026-10-16 15:59:27,098 - portable_sam_fusion - INFO - Epoch 77 detailed losses: loss_rpn_cls=0.0002, loss_rpn_bbox=0.0006, loss_cls=0.0415, loss_bbox=0.0091, loss_mask=0.0598, loss_decoder_tail=0.0889, loss_shape_prior=0.0093, DET/acc=98.4046, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.7623, debug_mask_logit_std=8.1939, debug_mask_prob_mean=0.6673, debug_mask_prob_ge05=0.6670, debug_mask_target_fill=0.6671, TAIL/selected_count=4096.0000, TAIL/selected_pos=1376.1609, TAIL/selected_bce=0.7036, TAIL/delta_abs=0.4198, TAIL/delta_max=1.2728, TAIL/selected_error_fraction=0.4753, TAIL/selected_error_coverage=0.0700, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6816, TAIL/correct_flip_fraction=0.3238, TAIL/destroy_fraction=0.1796, TAIL/boundary_margin_violation=0.0888, TAIL/boundary_logit=-0.4055
+2026-10-16 15:59:27,098 - portable_sam_fusion - INFO - Epoch 77 dense residual monitor: alpha=0.480644 source_delta_norm=10.0207 applied_delta_norm=4.8164 source_delta_ratio=0.858057 applied_delta_ratio=0.412420
+2026-10-16 15:59:27,098 - portable_sam_fusion - INFO - Epoch 77 primary loss shares: det=42.62% final_mask=49.67% shape=7.71%
+2026-10-16 15:59:27,098 - portable_sam_fusion - INFO - Epoch 77 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 15:59:27,098 - portable_sam_fusion - INFO - Epoch 77 learning rates: fusion=6.43e-05, backbone=6.43e-05, mask_decoder=6.43e-05, shape_prior=6.43e-05, iou_head=6.43e-05, decoder_tail=6.43e-05, other=6.43e-05
+2026-10-16 15:59:27,099 - portable_sam_fusion - INFO - Epoch 77 DUAL telemetry: gate_mean=-0.000338561 gate_std=0.00557927 gate_absmax=0.0112851 delta_p3_ratio=0.508928 bev_coverage=0.889868 gate_steps=174
+2026-10-16 15:59:47,880 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2813, avg_masks_per_image=28.13, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.98s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.739
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.901
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.829
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.399
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.769
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.881
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.794
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.449
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.842
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.913
+2026-10-16 15:59:48,918 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7386 bbox/mAP_75: 0.8286
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=1.00s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.760
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.904
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.844
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.432
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.791
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.895
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.326
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.813
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.486
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.861
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.924
+2026-10-16 15:59:49,948 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7603
+2026-10-16 15:59:50,406 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7603 smooth(5)=0.7581 best=0.7592 counter=10
+2026-10-16 16:00:06,624 - portable_sam_fusion - INFO - Epoch 77/100 | train=0.209339 val=disabled segm/mAP=0.7603 bbox/mAP=0.7386 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=6.43e-05 backbone=6.43e-05 mask_decoder=6.43e-05 shape_prior=6.43e-05 iou_head=6.43e-05 decoder_tail=6.43e-05 other=6.43e-05
+2026-10-16 16:00:09,091 - portable_sam_fusion - INFO - epoch 78 | mini-batch 2/174 | optimizer_step 6700/8700 | lr=6.424e-05
+2026-10-16 16:01:44,391 - portable_sam_fusion - INFO - epoch 78 | mini-batch 102/174 | optimizer_step 6750/8700 | lr=6.123e-05
+2026-10-16 16:02:44,636 - portable_sam_fusion - INFO - Epoch 78 detailed losses: loss_rpn_cls=0.0001, loss_rpn_bbox=0.0005, loss_cls=0.0388, loss_bbox=0.0089, loss_mask=0.0610, loss_decoder_tail=0.0879, loss_shape_prior=0.0092, DET/acc=98.4715, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.7903, debug_mask_logit_std=8.1069, debug_mask_prob_mean=0.6713, debug_mask_prob_ge05=0.6712, debug_mask_target_fill=0.6708, TAIL/selected_count=4096.0000, TAIL/selected_pos=1346.6207, TAIL/selected_bce=0.7036, TAIL/delta_abs=0.4217, TAIL/delta_max=1.2733, TAIL/selected_error_fraction=0.4767, TAIL/selected_error_coverage=0.0675, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6896, TAIL/correct_flip_fraction=0.3287, TAIL/destroy_fraction=0.1753, TAIL/boundary_margin_violation=0.0885, TAIL/boundary_logit=-0.4055
+2026-10-16 16:02:44,636 - portable_sam_fusion - INFO - Epoch 78 dense residual monitor: alpha=0.480780 source_delta_norm=9.9555 applied_delta_norm=4.7864 source_delta_ratio=0.852470 applied_delta_ratio=0.409851
+2026-10-16 16:02:44,636 - portable_sam_fusion - INFO - Epoch 78 primary loss shares: det=40.73% final_mask=51.47% shape=7.80%
+2026-10-16 16:02:44,636 - portable_sam_fusion - INFO - Epoch 78 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:02:44,636 - portable_sam_fusion - INFO - Epoch 78 learning rates: fusion=5.91e-05, backbone=5.91e-05, mask_decoder=5.91e-05, shape_prior=5.91e-05, iou_head=5.91e-05, decoder_tail=5.91e-05, other=5.91e-05
+2026-10-16 16:02:44,637 - portable_sam_fusion - INFO - Epoch 78 DUAL telemetry: gate_mean=-0.000336926 gate_std=0.00554683 gate_absmax=0.0112931 delta_p3_ratio=0.499071 bev_coverage=0.892692 gate_steps=174
+2026-10-16 16:03:04,573 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2817, avg_masks_per_image=28.17, avg_mask_fill=0.0177
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.99s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.737
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.890
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.826
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.407
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.765
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.878
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.032
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.323
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.796
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.460
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.843
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.911
+2026-10-16 16:03:05,627 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7373 bbox/mAP_75: 0.8258
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=1.02s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.762
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.902
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.852
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.435
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.791
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.895
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.032
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.328
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.490
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.863
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.926
+2026-10-16 16:03:06,680 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7622
+2026-10-16 16:03:07,142 - portable_sam_fusion - INFO - New best early-stop metric (segm/mAP): raw=0.7622 smooth(5)=0.7601
+2026-10-16 16:03:28,047 - portable_sam_fusion - INFO - Epoch 78/100 | train=0.206425 val=disabled segm/mAP=0.7622 bbox/mAP=0.7373 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=5.91e-05 backbone=5.91e-05 mask_decoder=5.91e-05 shape_prior=5.91e-05 iou_head=5.91e-05 decoder_tail=5.91e-05 other=5.91e-05
+2026-10-16 16:03:54,124 - portable_sam_fusion - INFO - epoch 79 | mini-batch 28/174 | optimizer_step 6800/8700 | lr=5.828e-05
+2026-10-16 16:05:23,268 - portable_sam_fusion - INFO - epoch 79 | mini-batch 128/174 | optimizer_step 6850/8700 | lr=5.539e-05
+2026-10-16 16:06:02,990 - portable_sam_fusion - INFO - Epoch 79 detailed losses: loss_rpn_cls=0.0002, loss_rpn_bbox=0.0005, loss_cls=0.0390, loss_bbox=0.0089, loss_mask=0.0601, loss_decoder_tail=0.0895, loss_shape_prior=0.0093, DET/acc=98.5209, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.7395, debug_mask_logit_std=8.0998, debug_mask_prob_mean=0.6677, debug_mask_prob_ge05=0.6672, debug_mask_target_fill=0.6683, TAIL/selected_count=4096.0000, TAIL/selected_pos=1401.2414, TAIL/selected_bce=0.7039, TAIL/delta_abs=0.4213, TAIL/delta_max=1.2918, TAIL/selected_error_fraction=0.4776, TAIL/selected_error_coverage=0.0677, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6764, TAIL/correct_flip_fraction=0.3229, TAIL/destroy_fraction=0.1823, TAIL/boundary_margin_violation=0.0892, TAIL/boundary_logit=-0.4055
+2026-10-16 16:06:02,991 - portable_sam_fusion - INFO - Epoch 79 dense residual monitor: alpha=0.480822 source_delta_norm=9.9722 applied_delta_norm=4.7949 source_delta_ratio=0.853903 applied_delta_ratio=0.410576
+2026-10-16 16:06:02,991 - portable_sam_fusion - INFO - Epoch 79 primary loss shares: det=41.24% final_mask=50.88% shape=7.88%
+2026-10-16 16:06:02,991 - portable_sam_fusion - INFO - Epoch 79 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:06:02,991 - portable_sam_fusion - INFO - Epoch 79 learning rates: fusion=5.41e-05, backbone=5.41e-05, mask_decoder=5.41e-05, shape_prior=5.41e-05, iou_head=5.41e-05, decoder_tail=5.41e-05, other=5.41e-05
+2026-10-16 16:06:02,992 - portable_sam_fusion - INFO - Epoch 79 DUAL telemetry: gate_mean=-0.000346366 gate_std=0.00558672 gate_absmax=0.0112138 delta_p3_ratio=0.492406 bev_coverage=0.894682 gate_steps=174
+2026-10-16 16:06:20,398 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2832, avg_masks_per_image=28.32, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=1.21s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.742
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.899
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.828
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.408
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.771
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.882
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.032
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.323
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.800
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.462
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.848
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.915
+2026-10-16 16:06:21,674 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7422 bbox/mAP_75: 0.8276
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=1.12s).
+Accumulating evaluation results...
+DONE (t=0.04s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.761
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.912
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.853
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.437
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.792
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.893
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.032
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.326
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.491
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.864
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.924
+2026-10-16 16:06:22,840 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7606
+2026-10-16 16:06:23,610 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7606 smooth(5)=0.7602 best=0.7601 counter=1
+2026-10-16 16:06:39,090 - portable_sam_fusion - INFO - Epoch 79/100 | train=0.207699 val=disabled segm/mAP=0.7606 bbox/mAP=0.7422 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=5.41e-05 backbone=5.41e-05 mask_decoder=5.41e-05 shape_prior=5.41e-05 iou_head=5.41e-05 decoder_tail=5.41e-05 other=5.41e-05
+2026-10-16 16:07:32,210 - portable_sam_fusion - INFO - epoch 80 | mini-batch 54/174 | optimizer_step 6900/8700 | lr=5.257e-05
+2026-10-16 16:09:23,472 - portable_sam_fusion - INFO - epoch 80 | mini-batch 154/174 | optimizer_step 6950/8700 | lr=4.982e-05
+2026-10-16 16:09:39,040 - portable_sam_fusion - INFO - Epoch 80 detailed losses: loss_rpn_cls=0.0001, loss_rpn_bbox=0.0005, loss_cls=0.0379, loss_bbox=0.0091, loss_mask=0.0594, loss_decoder_tail=0.0889, loss_shape_prior=0.0093, DET/acc=98.5648, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.6946, debug_mask_logit_std=8.2232, debug_mask_prob_mean=0.6662, debug_mask_prob_ge05=0.6659, debug_mask_target_fill=0.6654, TAIL/selected_count=4096.0000, TAIL/selected_pos=1353.8908, TAIL/selected_bce=0.7043, TAIL/delta_abs=0.4183, TAIL/delta_max=1.2505, TAIL/selected_error_fraction=0.4755, TAIL/selected_error_coverage=0.0685, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6864, TAIL/correct_flip_fraction=0.3261, TAIL/destroy_fraction=0.1768, TAIL/boundary_margin_violation=0.0889, TAIL/boundary_logit=-0.4055
+2026-10-16 16:09:39,041 - portable_sam_fusion - INFO - Epoch 80 dense residual monitor: alpha=0.480842 source_delta_norm=10.0019 applied_delta_norm=4.8093 source_delta_ratio=0.856445 applied_delta_ratio=0.411815
+2026-10-16 16:09:39,041 - portable_sam_fusion - INFO - Epoch 80 primary loss shares: det=40.97% final_mask=51.05% shape=7.98%
+2026-10-16 16:09:39,041 - portable_sam_fusion - INFO - Epoch 80 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:09:39,041 - portable_sam_fusion - INFO - Epoch 80 learning rates: fusion=4.93e-05, backbone=4.93e-05, mask_decoder=4.93e-05, shape_prior=4.93e-05, iou_head=4.93e-05, decoder_tail=4.93e-05, other=4.93e-05
+2026-10-16 16:09:39,049 - portable_sam_fusion - INFO - Epoch 80 DUAL telemetry: gate_mean=-0.000349737 gate_std=0.00555406 gate_absmax=0.011209 delta_p3_ratio=0.489002 bev_coverage=0.894002 gate_steps=174
+2026-10-16 16:09:59,049 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2820, avg_masks_per_image=28.20, avg_mask_fill=0.0177
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=1.29s).
+Accumulating evaluation results...
+DONE (t=0.04s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.737
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.826
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.399
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.768
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.880
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.319
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.796
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.450
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.846
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.912
+2026-10-16 16:10:00,776 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7366 bbox/mAP_75: 0.8261
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=1.30s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.757
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.902
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.844
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.428
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.791
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.894
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.323
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.814
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.482
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.864
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.924
+2026-10-16 16:10:02,109 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7574
+2026-10-16 16:10:02,566 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7574 smooth(5)=0.7594 best=0.7601 counter=2
+2026-10-16 16:10:23,952 - portable_sam_fusion - INFO - Epoch 80/100 | train=0.205233 val=disabled segm/mAP=0.7574 bbox/mAP=0.7366 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=4.93e-05 backbone=4.93e-05 mask_decoder=4.93e-05 shape_prior=4.93e-05 iou_head=4.93e-05 decoder_tail=4.93e-05 other=4.93e-05
+2026-10-16 16:11:43,829 - portable_sam_fusion - INFO - epoch 81 | mini-batch 80/174 | optimizer_step 7000/8700 | lr=4.713e-05
+2026-10-16 16:13:09,951 - portable_sam_fusion - INFO - Epoch 81 detailed losses: loss_rpn_cls=0.0002, loss_rpn_bbox=0.0005, loss_cls=0.0369, loss_bbox=0.0083, loss_mask=0.0574, loss_decoder_tail=0.0880, loss_shape_prior=0.0089, DET/acc=98.5627, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.9612, debug_mask_logit_std=8.1524, debug_mask_prob_mean=0.6769, debug_mask_prob_ge05=0.6766, debug_mask_target_fill=0.6772, TAIL/selected_count=4096.0000, TAIL/selected_pos=1373.1379, TAIL/selected_bce=0.7039, TAIL/delta_abs=0.4222, TAIL/delta_max=1.3035, TAIL/selected_error_fraction=0.4758, TAIL/selected_error_coverage=0.0711, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6831, TAIL/correct_flip_fraction=0.3249, TAIL/destroy_fraction=0.1791, TAIL/boundary_margin_violation=0.0886, TAIL/boundary_logit=-0.4055
+2026-10-16 16:13:09,952 - portable_sam_fusion - INFO - Epoch 81 dense residual monitor: alpha=0.480899 source_delta_norm=10.0357 applied_delta_norm=4.8262 source_delta_ratio=0.859343 applied_delta_ratio=0.413257
+2026-10-16 16:13:09,952 - portable_sam_fusion - INFO - Epoch 81 primary loss shares: det=40.95% final_mask=51.12% shape=7.93%
+2026-10-16 16:13:09,952 - portable_sam_fusion - INFO - Epoch 81 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:13:09,952 - portable_sam_fusion - INFO - Epoch 81 learning rates: fusion=4.47e-05, backbone=4.47e-05, mask_decoder=4.47e-05, shape_prior=4.47e-05, iou_head=4.47e-05, decoder_tail=4.47e-05, other=4.47e-05
+2026-10-16 16:13:09,953 - portable_sam_fusion - INFO - Epoch 81 DUAL telemetry: gate_mean=-0.000350603 gate_std=0.00555714 gate_absmax=0.0112111 delta_p3_ratio=0.496072 bev_coverage=0.893404 gate_steps=174
+2026-10-16 16:13:28,621 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2823, avg_masks_per_image=28.23, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.94s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.735
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.900
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.827
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.396
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.766
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.881
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.321
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.794
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.448
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.843
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.914
+2026-10-16 16:13:29,614 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7351 bbox/mAP_75: 0.8266
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.97s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.757
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.902
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.842
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.430
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.791
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.891
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.324
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.489
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.864
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.925
+2026-10-16 16:13:30,614 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7569
+2026-10-16 16:13:31,046 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7569 smooth(5)=0.7595 best=0.7601 counter=3
+2026-10-16 16:13:53,534 - portable_sam_fusion - INFO - Epoch 81/100 | train=0.200343 val=disabled segm/mAP=0.7569 bbox/mAP=0.7351 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=4.47e-05 backbone=4.47e-05 mask_decoder=4.47e-05 shape_prior=4.47e-05 iou_head=4.47e-05 decoder_tail=4.47e-05 other=4.47e-05
+2026-10-16 16:14:00,126 - portable_sam_fusion - INFO - epoch 82 | mini-batch 6/174 | optimizer_step 7050/8700 | lr=4.451e-05
+2026-10-16 16:15:40,775 - portable_sam_fusion - INFO - epoch 82 | mini-batch 106/174 | optimizer_step 7100/8700 | lr=4.196e-05
+2026-10-16 16:16:43,705 - portable_sam_fusion - INFO - Epoch 82 detailed losses: loss_rpn_cls=0.0003, loss_rpn_bbox=0.0005, loss_cls=0.0354, loss_bbox=0.0082, loss_mask=0.0590, loss_decoder_tail=0.0883, loss_shape_prior=0.0093, DET/acc=98.6219, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.8555, debug_mask_logit_std=8.3359, debug_mask_prob_mean=0.6679, debug_mask_prob_ge05=0.6674, debug_mask_target_fill=0.6675, TAIL/selected_count=4096.0000, TAIL/selected_pos=1339.9943, TAIL/selected_bce=0.7034, TAIL/delta_abs=0.4199, TAIL/delta_max=1.2489, TAIL/selected_error_fraction=0.4774, TAIL/selected_error_coverage=0.0695, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6894, TAIL/correct_flip_fraction=0.3289, TAIL/destroy_fraction=0.1742, TAIL/boundary_margin_violation=0.0882, TAIL/boundary_logit=-0.4055
+2026-10-16 16:16:43,705 - portable_sam_fusion - INFO - Epoch 82 dense residual monitor: alpha=0.480960 source_delta_norm=10.0530 applied_delta_norm=4.8351 source_delta_ratio=0.860824 applied_delta_ratio=0.414022
+2026-10-16 16:16:43,705 - portable_sam_fusion - INFO - Epoch 82 primary loss shares: det=39.39% final_mask=52.38% shape=8.23%
+2026-10-16 16:16:43,705 - portable_sam_fusion - INFO - Epoch 82 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:16:43,705 - portable_sam_fusion - INFO - Epoch 82 learning rates: fusion=4.03e-05, backbone=4.03e-05, mask_decoder=4.03e-05, shape_prior=4.03e-05, iou_head=4.03e-05, decoder_tail=4.03e-05, other=4.03e-05
+2026-10-16 16:16:43,706 - portable_sam_fusion - INFO - Epoch 82 DUAL telemetry: gate_mean=-0.000352922 gate_std=0.00556488 gate_absmax=0.0112926 delta_p3_ratio=0.501599 bev_coverage=0.889519 gate_steps=174
+2026-10-16 16:17:00,805 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2828, avg_masks_per_image=28.28, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.93s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.735
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.900
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.826
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.401
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.765
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.875
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.319
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.795
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.455
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.844
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.911
+2026-10-16 16:17:02,120 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7349 bbox/mAP_75: 0.8263
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.98s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.756
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.902
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.849
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.428
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.788
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.891
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.321
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.815
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.491
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.862
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.924
+2026-10-16 16:17:03,132 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7556
+2026-10-16 16:17:04,074 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7556 smooth(5)=0.7585 best=0.7601 counter=4
+2026-10-16 16:17:27,130 - portable_sam_fusion - INFO - Epoch 82/100 | train=0.201006 val=disabled segm/mAP=0.7556 bbox/mAP=0.7349 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=4.03e-05 backbone=4.03e-05 mask_decoder=4.03e-05 shape_prior=4.03e-05 iou_head=4.03e-05 decoder_tail=4.03e-05 other=4.03e-05
+2026-10-16 16:17:58,638 - portable_sam_fusion - INFO - epoch 83 | mini-batch 32/174 | optimizer_step 7150/8700 | lr=3.948e-05
+2026-10-16 16:19:34,147 - portable_sam_fusion - INFO - epoch 83 | mini-batch 132/174 | optimizer_step 7200/8700 | lr=3.707e-05
+2026-10-16 16:20:07,011 - portable_sam_fusion - INFO - Epoch 83 detailed losses: loss_rpn_cls=0.0001, loss_rpn_bbox=0.0005, loss_cls=0.0364, loss_bbox=0.0090, loss_mask=0.0605, loss_decoder_tail=0.0887, loss_shape_prior=0.0095, DET/acc=98.6486, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.7711, debug_mask_logit_std=8.1124, debug_mask_prob_mean=0.6701, debug_mask_prob_ge05=0.6694, debug_mask_target_fill=0.6703, TAIL/selected_count=4096.0000, TAIL/selected_pos=1362.7356, TAIL/selected_bce=0.7037, TAIL/delta_abs=0.4182, TAIL/delta_max=1.2283, TAIL/selected_error_fraction=0.4789, TAIL/selected_error_coverage=0.0682, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6846, TAIL/correct_flip_fraction=0.3275, TAIL/destroy_fraction=0.1774, TAIL/boundary_margin_violation=0.0881, TAIL/boundary_logit=-0.4055
+2026-10-16 16:20:07,011 - portable_sam_fusion - INFO - Epoch 83 dense residual monitor: alpha=0.481024 source_delta_norm=9.9762 applied_delta_norm=4.7988 source_delta_ratio=0.854242 applied_delta_ratio=0.410911
+2026-10-16 16:20:07,011 - portable_sam_fusion - INFO - Epoch 83 primary loss shares: det=39.69% final_mask=52.16% shape=8.15%
+2026-10-16 16:20:07,011 - portable_sam_fusion - INFO - Epoch 83 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:20:07,011 - portable_sam_fusion - INFO - Epoch 83 learning rates: fusion=3.61e-05, backbone=3.61e-05, mask_decoder=3.61e-05, shape_prior=3.61e-05, iou_head=3.61e-05, decoder_tail=3.61e-05, other=3.61e-05
+2026-10-16 16:20:07,012 - portable_sam_fusion - INFO - Epoch 83 DUAL telemetry: gate_mean=-0.000348928 gate_std=0.00556408 gate_absmax=0.011246 delta_p3_ratio=0.491388 bev_coverage=0.892847 gate_steps=174
+2026-10-16 16:20:26,497 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2810, avg_masks_per_image=28.10, avg_mask_fill=0.0177
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.97s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.737
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.828
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.398
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.768
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.882
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.321
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.797
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.450
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.846
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.915
+2026-10-16 16:20:27,524 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7372 bbox/mAP_75: 0.8276
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.98s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.759
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.844
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.427
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.792
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.896
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.325
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.483
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.865
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.927
+2026-10-16 16:20:28,533 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7594
+2026-10-16 16:20:29,358 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7594 smooth(5)=0.7580 best=0.7601 counter=5
+2026-10-16 16:20:46,345 - portable_sam_fusion - INFO - Epoch 83/100 | train=0.204767 val=disabled segm/mAP=0.7594 bbox/mAP=0.7372 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=3.61e-05 backbone=3.61e-05 mask_decoder=3.61e-05 shape_prior=3.61e-05 iou_head=3.61e-05 decoder_tail=3.61e-05 other=3.61e-05
+2026-10-16 16:21:39,735 - portable_sam_fusion - INFO - epoch 84 | mini-batch 58/174 | optimizer_step 7250/8700 | lr=3.472e-05
+2026-10-16 16:23:07,590 - portable_sam_fusion - INFO - epoch 84 | mini-batch 158/174 | optimizer_step 7300/8700 | lr=3.246e-05
+2026-10-16 16:23:19,355 - portable_sam_fusion - INFO - Epoch 84 detailed losses: loss_rpn_cls=0.0004, loss_rpn_bbox=0.0005, loss_cls=0.0372, loss_bbox=0.0080, loss_mask=0.0568, loss_decoder_tail=0.0885, loss_shape_prior=0.0088, DET/acc=98.5946, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.5699, debug_mask_logit_std=8.4151, debug_mask_prob_mean=0.6575, debug_mask_prob_ge05=0.6571, debug_mask_target_fill=0.6568, TAIL/selected_count=4096.0000, TAIL/selected_pos=1332.8908, TAIL/selected_bce=0.7032, TAIL/delta_abs=0.4179, TAIL/delta_max=1.2165, TAIL/selected_error_fraction=0.4769, TAIL/selected_error_coverage=0.0717, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6913, TAIL/correct_flip_fraction=0.3295, TAIL/destroy_fraction=0.1732, TAIL/boundary_margin_violation=0.0880, TAIL/boundary_logit=-0.4055
+2026-10-16 16:23:19,355 - portable_sam_fusion - INFO - Epoch 84 dense residual monitor: alpha=0.481077 source_delta_norm=9.9728 applied_delta_norm=4.7977 source_delta_ratio=0.853952 applied_delta_ratio=0.410817
+2026-10-16 16:23:19,355 - portable_sam_fusion - INFO - Epoch 84 primary loss shares: det=41.19% final_mask=50.89% shape=7.92%
+2026-10-16 16:23:19,355 - portable_sam_fusion - INFO - Epoch 84 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:23:19,355 - portable_sam_fusion - INFO - Epoch 84 learning rates: fusion=3.21e-05, backbone=3.21e-05, mask_decoder=3.21e-05, shape_prior=3.21e-05, iou_head=3.21e-05, decoder_tail=3.21e-05, other=3.21e-05
+2026-10-16 16:23:19,364 - portable_sam_fusion - INFO - Epoch 84 DUAL telemetry: gate_mean=-0.000344252 gate_std=0.00555921 gate_absmax=0.011225 delta_p3_ratio=0.499418 bev_coverage=0.893345 gate_steps=174
+2026-10-16 16:23:40,242 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2818, avg_masks_per_image=28.18, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.93s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.738
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.900
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.826
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.397
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.770
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.877
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.320
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.796
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.453
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.847
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.912
+2026-10-16 16:23:41,232 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7379 bbox/mAP_75: 0.8257
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.96s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.758
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.842
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.423
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.792
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.894
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.324
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.484
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.867
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.925
+2026-10-16 16:23:42,225 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7575
+2026-10-16 16:23:42,903 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7575 smooth(5)=0.7574 best=0.7601 counter=6
+2026-10-16 16:23:53,372 - portable_sam_fusion - INFO - Epoch 84/100 | train=0.200136 val=disabled segm/mAP=0.7575 bbox/mAP=0.7379 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=3.21e-05 backbone=3.21e-05 mask_decoder=3.21e-05 shape_prior=3.21e-05 iou_head=3.21e-05 decoder_tail=3.21e-05 other=3.21e-05
+2026-10-16 16:25:10,940 - portable_sam_fusion - INFO - epoch 85 | mini-batch 84/174 | optimizer_step 7350/8700 | lr=3.026e-05
+2026-10-16 16:26:21,484 - portable_sam_fusion - INFO - Epoch 85 detailed losses: loss_rpn_cls=0.0001, loss_rpn_bbox=0.0005, loss_cls=0.0323, loss_bbox=0.0086, loss_mask=0.0601, loss_decoder_tail=0.0873, loss_shape_prior=0.0094, DET/acc=98.8143, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.8383, debug_mask_logit_std=8.1306, debug_mask_prob_mean=0.6727, debug_mask_prob_ge05=0.6723, debug_mask_target_fill=0.6730, TAIL/selected_count=4096.0000, TAIL/selected_pos=1353.6552, TAIL/selected_bce=0.7026, TAIL/delta_abs=0.4215, TAIL/delta_max=1.2667, TAIL/selected_error_fraction=0.4775, TAIL/selected_error_coverage=0.0670, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6881, TAIL/correct_flip_fraction=0.3282, TAIL/destroy_fraction=0.1762, TAIL/boundary_margin_violation=0.0875, TAIL/boundary_logit=-0.4055
+2026-10-16 16:26:21,484 - portable_sam_fusion - INFO - Epoch 85 dense residual monitor: alpha=0.481098 source_delta_norm=10.0461 applied_delta_norm=4.8332 source_delta_ratio=0.860232 applied_delta_ratio=0.413856
+2026-10-16 16:26:21,484 - portable_sam_fusion - INFO - Epoch 85 primary loss shares: det=37.44% final_mask=54.11% shape=8.45%
+2026-10-16 16:26:21,484 - portable_sam_fusion - INFO - Epoch 85 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:26:21,484 - portable_sam_fusion - INFO - Epoch 85 learning rates: fusion=2.83e-05, backbone=2.83e-05, mask_decoder=2.83e-05, shape_prior=2.83e-05, iou_head=2.83e-05, decoder_tail=2.83e-05, other=2.83e-05
+2026-10-16 16:26:21,485 - portable_sam_fusion - INFO - Epoch 85 DUAL telemetry: gate_mean=-0.00034627 gate_std=0.00557096 gate_absmax=0.0112299 delta_p3_ratio=0.458045 bev_coverage=0.903168 gate_steps=174
+2026-10-16 16:26:41,585 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2794, avg_masks_per_image=27.94, avg_mask_fill=0.0179
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.94s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.737
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.890
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.826
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.394
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.770
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.879
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.321
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.796
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.447
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.846
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.915
+2026-10-16 16:26:42,581 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7368 bbox/mAP_75: 0.8263
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.97s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.759
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.902
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.851
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.425
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.792
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.896
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.324
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.817
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.482
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.865
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.929
+2026-10-16 16:26:43,579 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7588
+2026-10-16 16:26:44,019 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7588 smooth(5)=0.7576 best=0.7601 counter=7
+2026-10-16 16:26:54,772 - portable_sam_fusion - INFO - Epoch 85/100 | train=0.198255 val=disabled segm/mAP=0.7588 bbox/mAP=0.7368 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=2.83e-05 backbone=2.83e-05 mask_decoder=2.83e-05 shape_prior=2.83e-05 iou_head=2.83e-05 decoder_tail=2.83e-05 other=2.83e-05
+2026-10-16 16:27:04,328 - portable_sam_fusion - INFO - epoch 86 | mini-batch 10/174 | optimizer_step 7400/8700 | lr=2.814e-05
+2026-10-16 16:28:36,863 - portable_sam_fusion - INFO - epoch 86 | mini-batch 110/174 | optimizer_step 7450/8700 | lr=2.609e-05
+2026-10-16 16:29:29,762 - portable_sam_fusion - INFO - Epoch 86 detailed losses: loss_rpn_cls=0.0003, loss_rpn_bbox=0.0005, loss_cls=0.0350, loss_bbox=0.0084, loss_mask=0.0581, loss_decoder_tail=0.0876, loss_shape_prior=0.0090, DET/acc=98.6818, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.9487, debug_mask_logit_std=8.2392, debug_mask_prob_mean=0.6743, debug_mask_prob_ge05=0.6739, debug_mask_target_fill=0.6736, TAIL/selected_count=4096.0000, TAIL/selected_pos=1324.8563, TAIL/selected_bce=0.7035, TAIL/delta_abs=0.4207, TAIL/delta_max=1.3003, TAIL/selected_error_fraction=0.4756, TAIL/selected_error_coverage=0.0688, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6944, TAIL/correct_flip_fraction=0.3299, TAIL/destroy_fraction=0.1733, TAIL/boundary_margin_violation=0.0882, TAIL/boundary_logit=-0.4055
+2026-10-16 16:29:29,762 - portable_sam_fusion - INFO - Epoch 86 dense residual monitor: alpha=0.481158 source_delta_norm=10.0125 applied_delta_norm=4.8176 source_delta_ratio=0.857351 applied_delta_ratio=0.412521
+2026-10-16 16:29:29,762 - portable_sam_fusion - INFO - Epoch 86 primary loss shares: det=39.70% final_mask=52.18% shape=8.13%
+2026-10-16 16:29:29,762 - portable_sam_fusion - INFO - Epoch 86 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:29:29,762 - portable_sam_fusion - INFO - Epoch 86 learning rates: fusion=2.48e-05, backbone=2.48e-05, mask_decoder=2.48e-05, shape_prior=2.48e-05, iou_head=2.48e-05, decoder_tail=2.48e-05, other=2.48e-05
+2026-10-16 16:29:29,766 - portable_sam_fusion - INFO - Epoch 86 DUAL telemetry: gate_mean=-0.000340005 gate_std=0.00556592 gate_absmax=0.0112021 delta_p3_ratio=0.480008 bev_coverage=0.896264 gate_steps=174
+2026-10-16 16:29:49,906 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2777, avg_masks_per_image=27.77, avg_mask_fill=0.0180
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.92s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.737
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.892
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.819
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.388
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.770
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.884
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.324
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.795
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.441
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.844
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.917
+2026-10-16 16:29:50,888 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7366 bbox/mAP_75: 0.8195
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.96s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.760
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.904
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.845
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.416
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.793
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.898
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.032
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.327
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.814
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.473
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.864
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.929
+2026-10-16 16:29:51,875 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7601
+2026-10-16 16:29:52,320 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7601 smooth(5)=0.7583 best=0.7601 counter=8
+2026-10-16 16:30:04,402 - portable_sam_fusion - INFO - Epoch 86/100 | train=0.198983 val=disabled segm/mAP=0.7601 bbox/mAP=0.7366 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=2.48e-05 backbone=2.48e-05 mask_decoder=2.48e-05 shape_prior=2.48e-05 iou_head=2.48e-05 decoder_tail=2.48e-05 other=2.48e-05
+2026-10-16 16:30:37,025 - portable_sam_fusion - INFO - epoch 87 | mini-batch 36/174 | optimizer_step 7500/8700 | lr=2.411e-05
+2026-10-16 16:32:05,888 - portable_sam_fusion - INFO - epoch 87 | mini-batch 136/174 | optimizer_step 7550/8700 | lr=2.222e-05
+2026-10-16 16:32:39,757 - portable_sam_fusion - INFO - Epoch 87 detailed losses: loss_rpn_cls=0.0002, loss_rpn_bbox=0.0005, loss_cls=0.0325, loss_bbox=0.0081, loss_mask=0.0585, loss_decoder_tail=0.0876, loss_shape_prior=0.0093, DET/acc=98.7527, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.8606, debug_mask_logit_std=8.2070, debug_mask_prob_mean=0.6734, debug_mask_prob_ge05=0.6731, debug_mask_target_fill=0.6735, TAIL/selected_count=4096.0000, TAIL/selected_pos=1320.7931, TAIL/selected_bce=0.7030, TAIL/delta_abs=0.4193, TAIL/delta_max=1.2390, TAIL/selected_error_fraction=0.4766, TAIL/selected_error_coverage=0.0682, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6951, TAIL/correct_flip_fraction=0.3311, TAIL/destroy_fraction=0.1727, TAIL/boundary_margin_violation=0.0874, TAIL/boundary_logit=-0.4055
+2026-10-16 16:32:39,757 - portable_sam_fusion - INFO - Epoch 87 dense residual monitor: alpha=0.481193 source_delta_norm=10.0149 applied_delta_norm=4.8191 source_delta_ratio=0.857556 applied_delta_ratio=0.412650
+2026-10-16 16:32:39,757 - portable_sam_fusion - INFO - Epoch 87 primary loss shares: det=37.78% final_mask=53.68% shape=8.54%
+2026-10-16 16:32:39,757 - portable_sam_fusion - INFO - Epoch 87 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:32:39,757 - portable_sam_fusion - INFO - Epoch 87 learning rates: fusion=2.15e-05, backbone=2.15e-05, mask_decoder=2.15e-05, shape_prior=2.15e-05, iou_head=2.15e-05, decoder_tail=2.15e-05, other=2.15e-05
+2026-10-16 16:32:39,758 - portable_sam_fusion - INFO - Epoch 87 DUAL telemetry: gate_mean=-0.000343084 gate_std=0.00558459 gate_absmax=0.0113655 delta_p3_ratio=0.470485 bev_coverage=0.898369 gate_steps=174
+2026-10-16 16:33:00,181 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2801, avg_masks_per_image=28.01, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.95s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.735
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.892
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.818
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.396
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.768
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.883
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.324
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.795
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.449
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.842
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.917
+2026-10-16 16:33:01,192 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7351 bbox/mAP_75: 0.8182
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.99s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.760
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.853
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.430
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.794
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.897
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.328
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.485
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.863
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.929
+2026-10-16 16:33:02,211 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7604
+2026-10-16 16:33:02,660 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7604 smooth(5)=0.7593 best=0.7601 counter=9
+2026-10-16 16:33:13,530 - portable_sam_fusion - INFO - Epoch 87/100 | train=0.196676 val=disabled segm/mAP=0.7604 bbox/mAP=0.7351 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=2.15e-05 backbone=2.15e-05 mask_decoder=2.15e-05 shape_prior=2.15e-05 iou_head=2.15e-05 decoder_tail=2.15e-05 other=2.15e-05
+2026-10-16 16:34:12,752 - portable_sam_fusion - INFO - epoch 88 | mini-batch 62/174 | optimizer_step 7600/8700 | lr=2.039e-05
+2026-10-16 16:35:35,887 - portable_sam_fusion - INFO - epoch 88 | mini-batch 162/174 | optimizer_step 7650/8700 | lr=1.865e-05
+2026-10-16 16:35:46,826 - portable_sam_fusion - INFO - Epoch 88 detailed losses: loss_rpn_cls=0.0003, loss_rpn_bbox=0.0005, loss_cls=0.0338, loss_bbox=0.0087, loss_mask=0.0599, loss_decoder_tail=0.0874, loss_shape_prior=0.0095, DET/acc=98.7658, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.7627, debug_mask_logit_std=8.1590, debug_mask_prob_mean=0.6706, debug_mask_prob_ge05=0.6703, debug_mask_target_fill=0.6701, TAIL/selected_count=4096.0000, TAIL/selected_pos=1331.6322, TAIL/selected_bce=0.7026, TAIL/delta_abs=0.4183, TAIL/delta_max=1.2566, TAIL/selected_error_fraction=0.4760, TAIL/selected_error_coverage=0.0672, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6904, TAIL/correct_flip_fraction=0.3285, TAIL/destroy_fraction=0.1734, TAIL/boundary_margin_violation=0.0873, TAIL/boundary_logit=-0.4055
+2026-10-16 16:35:46,827 - portable_sam_fusion - INFO - Epoch 88 dense residual monitor: alpha=0.481197 source_delta_norm=10.0217 applied_delta_norm=4.8224 source_delta_ratio=0.858142 applied_delta_ratio=0.412935
+2026-10-16 16:35:46,827 - portable_sam_fusion - INFO - Epoch 88 primary loss shares: det=38.41% final_mask=53.15% shape=8.44%
+2026-10-16 16:35:46,827 - portable_sam_fusion - INFO - Epoch 88 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:35:46,827 - portable_sam_fusion - INFO - Epoch 88 learning rates: fusion=1.84e-05, backbone=1.84e-05, mask_decoder=1.84e-05, shape_prior=1.84e-05, iou_head=1.84e-05, decoder_tail=1.84e-05, other=1.84e-05
+2026-10-16 16:35:46,834 - portable_sam_fusion - INFO - Epoch 88 DUAL telemetry: gate_mean=-0.000345657 gate_std=0.00559107 gate_absmax=0.0115366 delta_p3_ratio=0.474572 bev_coverage=0.89806 gate_steps=174
+2026-10-16 16:36:06,320 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2797, avg_masks_per_image=27.97, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.93s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.736
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.826
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.396
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.767
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.882
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.323
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.796
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.449
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.845
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.917
+2026-10-16 16:36:07,309 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7360 bbox/mAP_75: 0.8258
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.96s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.760
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.851
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.430
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.793
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.897
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.326
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.817
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.487
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.865
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.930
+2026-10-16 16:36:08,303 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7597
+2026-10-16 16:36:09,042 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7597 smooth(5)=0.7593 best=0.7601 counter=10
+2026-10-16 16:36:25,372 - portable_sam_fusion - INFO - Epoch 88/100 | train=0.200174 val=disabled segm/mAP=0.7597 bbox/mAP=0.7360 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=1.84e-05 backbone=1.84e-05 mask_decoder=1.84e-05 shape_prior=1.84e-05 iou_head=1.84e-05 decoder_tail=1.84e-05 other=1.84e-05
+2026-10-16 16:37:49,283 - portable_sam_fusion - INFO - epoch 89 | mini-batch 88/174 | optimizer_step 7700/8700 | lr=1.698e-05
+2026-10-16 16:39:03,215 - portable_sam_fusion - INFO - Epoch 89 detailed losses: loss_rpn_cls=0.0003, loss_rpn_bbox=0.0005, loss_cls=0.0324, loss_bbox=0.0074, loss_mask=0.0538, loss_decoder_tail=0.0871, loss_shape_prior=0.0085, DET/acc=98.8081, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.8297, debug_mask_logit_std=8.5225, debug_mask_prob_mean=0.6660, debug_mask_prob_ge05=0.6655, debug_mask_target_fill=0.6659, TAIL/selected_count=4096.0000, TAIL/selected_pos=1338.0057, TAIL/selected_bce=0.7024, TAIL/delta_abs=0.4183, TAIL/delta_max=1.2698, TAIL/selected_error_fraction=0.4753, TAIL/selected_error_coverage=0.0755, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6906, TAIL/correct_flip_fraction=0.3280, TAIL/destroy_fraction=0.1752, TAIL/boundary_margin_violation=0.0870, TAIL/boundary_logit=-0.4055
+2026-10-16 16:39:03,215 - portable_sam_fusion - INFO - Epoch 89 dense residual monitor: alpha=0.481245 source_delta_norm=10.0235 applied_delta_norm=4.8238 source_delta_ratio=0.858297 applied_delta_ratio=0.413051
+2026-10-16 16:39:03,215 - portable_sam_fusion - INFO - Epoch 89 primary loss shares: det=39.38% final_mask=52.38% shape=8.24%
+2026-10-16 16:39:03,215 - portable_sam_fusion - INFO - Epoch 89 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:39:03,215 - portable_sam_fusion - INFO - Epoch 89 learning rates: fusion=1.56e-05, backbone=1.56e-05, mask_decoder=1.56e-05, shape_prior=1.56e-05, iou_head=1.56e-05, decoder_tail=1.56e-05, other=1.56e-05
+2026-10-16 16:39:03,216 - portable_sam_fusion - INFO - Epoch 89 DUAL telemetry: gate_mean=-0.000345337 gate_std=0.00558546 gate_absmax=0.0114716 delta_p3_ratio=0.498826 bev_coverage=0.892743 gate_steps=174
+2026-10-16 16:39:24,077 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2803, avg_masks_per_image=28.03, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.96s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.736
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.826
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.396
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.768
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.878
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.320
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.797
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.451
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.846
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.915
+2026-10-16 16:39:25,091 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7356 bbox/mAP_75: 0.8261
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.99s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.757
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.902
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.851
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.429
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.789
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.896
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.488
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.863
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.928
+2026-10-16 16:39:26,107 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7573
+2026-10-16 16:39:26,552 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7573 smooth(5)=0.7593 best=0.7601 counter=11
+2026-10-16 16:39:43,388 - portable_sam_fusion - INFO - Epoch 89/100 | train=0.189922 val=disabled segm/mAP=0.7573 bbox/mAP=0.7356 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=1.56e-05 backbone=1.56e-05 mask_decoder=1.56e-05 shape_prior=1.56e-05 iou_head=1.56e-05 decoder_tail=1.56e-05 other=1.56e-05
+2026-10-16 16:39:57,415 - portable_sam_fusion - INFO - epoch 90 | mini-batch 14/174 | optimizer_step 7750/8700 | lr=1.539e-05
+2026-10-16 16:41:23,855 - portable_sam_fusion - INFO - epoch 90 | mini-batch 114/174 | optimizer_step 7800/8700 | lr=1.388e-05
+2026-10-16 16:42:20,032 - portable_sam_fusion - INFO - Epoch 90 detailed losses: loss_rpn_cls=0.0003, loss_rpn_bbox=0.0005, loss_cls=0.0317, loss_bbox=0.0075, loss_mask=0.0573, loss_decoder_tail=0.0867, loss_shape_prior=0.0091, DET/acc=98.8431, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.9138, debug_mask_logit_std=8.3696, debug_mask_prob_mean=0.6710, debug_mask_prob_ge05=0.6705, debug_mask_target_fill=0.6708, TAIL/selected_count=4096.0000, TAIL/selected_pos=1355.0172, TAIL/selected_bce=0.7021, TAIL/delta_abs=0.4213, TAIL/delta_max=1.2974, TAIL/selected_error_fraction=0.4759, TAIL/selected_error_coverage=0.0713, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6868, TAIL/correct_flip_fraction=0.3266, TAIL/destroy_fraction=0.1754, TAIL/boundary_margin_violation=0.0872, TAIL/boundary_logit=-0.4055
+2026-10-16 16:42:20,032 - portable_sam_fusion - INFO - Epoch 90 dense residual monitor: alpha=0.481236 source_delta_norm=10.0223 applied_delta_norm=4.8231 source_delta_ratio=0.858189 applied_delta_ratio=0.412992
+2026-10-16 16:42:20,032 - portable_sam_fusion - INFO - Epoch 90 primary loss shares: det=37.62% final_mask=53.84% shape=8.54%
+2026-10-16 16:42:20,032 - portable_sam_fusion - INFO - Epoch 90 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:42:20,032 - portable_sam_fusion - INFO - Epoch 90 learning rates: fusion=1.30e-05, backbone=1.30e-05, mask_decoder=1.30e-05, shape_prior=1.30e-05, iou_head=1.30e-05, decoder_tail=1.30e-05, other=1.30e-05
+2026-10-16 16:42:20,033 - portable_sam_fusion - INFO - Epoch 90 DUAL telemetry: gate_mean=-0.000342669 gate_std=0.0055796 gate_absmax=0.0114405 delta_p3_ratio=0.504803 bev_coverage=0.889743 gate_steps=174
+2026-10-16 16:42:42,561 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2810, avg_masks_per_image=28.10, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=1.05s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.735
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.826
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.395
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.766
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.882
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.320
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.797
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.450
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.845
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.916
+2026-10-16 16:42:43,676 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7352 bbox/mAP_75: 0.8259
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=1.18s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.758
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.902
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.850
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.425
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.790
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.897
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.323
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.482
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.865
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.928
+2026-10-16 16:42:44,891 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7577
+2026-10-16 16:42:45,560 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7577 smooth(5)=0.7590 best=0.7601 counter=12
+2026-10-16 16:42:57,135 - portable_sam_fusion - INFO - Epoch 90/100 | train=0.193046 val=disabled segm/mAP=0.7577 bbox/mAP=0.7352 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=1.30e-05 backbone=1.30e-05 mask_decoder=1.30e-05 shape_prior=1.30e-05 iou_head=1.30e-05 decoder_tail=1.30e-05 other=1.30e-05
+2026-10-16 16:43:35,158 - portable_sam_fusion - INFO - epoch 91 | mini-batch 40/174 | optimizer_step 7850/8700 | lr=1.244e-05
+2026-10-16 16:45:12,351 - portable_sam_fusion - INFO - epoch 91 | mini-batch 140/174 | optimizer_step 7900/8700 | lr=1.109e-05
+2026-10-16 16:45:46,330 - portable_sam_fusion - INFO - Epoch 91 detailed losses: loss_rpn_cls=0.0003, loss_rpn_bbox=0.0005, loss_cls=0.0314, loss_bbox=0.0079, loss_mask=0.0557, loss_decoder_tail=0.0870, loss_shape_prior=0.0088, DET/acc=98.8195, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.9504, debug_mask_logit_std=8.3251, debug_mask_prob_mean=0.6749, debug_mask_prob_ge05=0.6743, debug_mask_target_fill=0.6747, TAIL/selected_count=4096.0000, TAIL/selected_pos=1349.9195, TAIL/selected_bce=0.7028, TAIL/delta_abs=0.4222, TAIL/delta_max=1.2886, TAIL/selected_error_fraction=0.4749, TAIL/selected_error_coverage=0.0720, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6912, TAIL/correct_flip_fraction=0.3278, TAIL/destroy_fraction=0.1762, TAIL/boundary_margin_violation=0.0874, TAIL/boundary_logit=-0.4055
+2026-10-16 16:45:46,330 - portable_sam_fusion - INFO - Epoch 91 dense residual monitor: alpha=0.481242 source_delta_norm=10.0518 applied_delta_norm=4.8373 source_delta_ratio=0.860717 applied_delta_ratio=0.414213
+2026-10-16 16:45:46,331 - portable_sam_fusion - INFO - Epoch 91 primary loss shares: det=38.37% final_mask=53.24% shape=8.39%
+2026-10-16 16:45:46,331 - portable_sam_fusion - INFO - Epoch 91 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:45:46,331 - portable_sam_fusion - INFO - Epoch 91 learning rates: fusion=1.06e-05, backbone=1.06e-05, mask_decoder=1.06e-05, shape_prior=1.06e-05, iou_head=1.06e-05, decoder_tail=1.06e-05, other=1.06e-05
+2026-10-16 16:45:46,332 - portable_sam_fusion - INFO - Epoch 91 DUAL telemetry: gate_mean=-0.000338891 gate_std=0.00556502 gate_absmax=0.0114624 delta_p3_ratio=0.505155 bev_coverage=0.891182 gate_steps=174
+2026-10-16 16:46:08,232 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2816, avg_masks_per_image=28.16, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.98s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.737
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.825
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.399
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.766
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.881
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.798
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.454
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.846
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.917
+2026-10-16 16:46:09,275 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7365 bbox/mAP_75: 0.8251
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.99s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.757
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.842
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.429
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.789
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.899
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.031
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.324
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.485
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.863
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.929
+2026-10-16 16:46:10,299 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7574
+2026-10-16 16:46:10,879 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7574 smooth(5)=0.7585 best=0.7601 counter=13
+2026-10-16 16:46:34,186 - portable_sam_fusion - INFO - Epoch 91/100 | train=0.191605 val=disabled segm/mAP=0.7574 bbox/mAP=0.7365 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=1.06e-05 backbone=1.06e-05 mask_decoder=1.06e-05 shape_prior=1.06e-05 iou_head=1.06e-05 decoder_tail=1.06e-05 other=1.06e-05
+2026-10-16 16:47:28,450 - portable_sam_fusion - INFO - epoch 92 | mini-batch 66/174 | optimizer_step 7950/8700 | lr=9.815e-06
+2026-10-16 16:49:00,851 - portable_sam_fusion - INFO - epoch 92 | mini-batch 166/174 | optimizer_step 8000/8700 | lr=8.621e-06
+2026-10-16 16:49:09,292 - portable_sam_fusion - INFO - Epoch 92 detailed losses: loss_rpn_cls=0.0001, loss_rpn_bbox=0.0005, loss_cls=0.0316, loss_bbox=0.0076, loss_mask=0.0552, loss_decoder_tail=0.0874, loss_shape_prior=0.0090, DET/acc=98.8261, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.8643, debug_mask_logit_std=8.4191, debug_mask_prob_mean=0.6682, debug_mask_prob_ge05=0.6675, debug_mask_target_fill=0.6681, TAIL/selected_count=4096.0000, TAIL/selected_pos=1329.5805, TAIL/selected_bce=0.7021, TAIL/delta_abs=0.4204, TAIL/delta_max=1.2988, TAIL/selected_error_fraction=0.4765, TAIL/selected_error_coverage=0.0728, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6938, TAIL/correct_flip_fraction=0.3304, TAIL/destroy_fraction=0.1733, TAIL/boundary_margin_violation=0.0869, TAIL/boundary_logit=-0.4055
+2026-10-16 16:49:09,292 - portable_sam_fusion - INFO - Epoch 92 dense residual monitor: alpha=0.481241 source_delta_norm=10.0579 applied_delta_norm=4.8403 source_delta_ratio=0.861244 applied_delta_ratio=0.414466
+2026-10-16 16:49:09,293 - portable_sam_fusion - INFO - Epoch 92 primary loss shares: det=38.21% final_mask=53.17% shape=8.62%
+2026-10-16 16:49:09,293 - portable_sam_fusion - INFO - Epoch 92 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:49:09,293 - portable_sam_fusion - INFO - Epoch 92 learning rates: fusion=8.53e-06, backbone=8.53e-06, mask_decoder=8.53e-06, shape_prior=8.53e-06, iou_head=8.53e-06, decoder_tail=8.53e-06, other=8.53e-06
+2026-10-16 16:49:09,296 - portable_sam_fusion - INFO - Epoch 92 DUAL telemetry: gate_mean=-0.000338478 gate_std=0.00555774 gate_absmax=0.0114203 delta_p3_ratio=0.47635 bev_coverage=0.897186 gate_steps=174
+2026-10-16 16:49:29,573 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2801, avg_masks_per_image=28.01, avg_mask_fill=0.0179
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.97s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.735
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.826
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.396
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.766
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.880
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.797
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.450
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.845
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.917
+2026-10-16 16:49:30,607 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7354 bbox/mAP_75: 0.8257
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=1.03s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.757
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.902
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.850
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.429
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.788
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.896
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.323
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.815
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.484
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.862
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.928
+2026-10-16 16:49:31,668 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7571
+2026-10-16 16:49:32,508 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7571 smooth(5)=0.7578 best=0.7601 counter=14
+2026-10-16 16:49:46,541 - portable_sam_fusion - INFO - Epoch 92/100 | train=0.191275 val=disabled segm/mAP=0.7571 bbox/mAP=0.7354 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=8.53e-06 backbone=8.53e-06 mask_decoder=8.53e-06 shape_prior=8.53e-06 iou_head=8.53e-06 decoder_tail=8.53e-06 other=8.53e-06
+2026-10-16 16:51:03,297 - portable_sam_fusion - INFO - epoch 93 | mini-batch 92/174 | optimizer_step 8050/8700 | lr=7.508e-06
+2026-10-16 16:52:20,376 - portable_sam_fusion - INFO - Epoch 93 detailed losses: loss_rpn_cls=0.0002, loss_rpn_bbox=0.0004, loss_cls=0.0321, loss_bbox=0.0077, loss_mask=0.0547, loss_decoder_tail=0.0865, loss_shape_prior=0.0088, DET/acc=98.7954, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.8803, debug_mask_logit_std=8.4752, debug_mask_prob_mean=0.6690, debug_mask_prob_ge05=0.6684, debug_mask_target_fill=0.6687, TAIL/selected_count=4096.0000, TAIL/selected_pos=1346.9828, TAIL/selected_bce=0.7021, TAIL/delta_abs=0.4185, TAIL/delta_max=1.3234, TAIL/selected_error_fraction=0.4747, TAIL/selected_error_coverage=0.0736, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6893, TAIL/correct_flip_fraction=0.3269, TAIL/destroy_fraction=0.1761, TAIL/boundary_margin_violation=0.0867, TAIL/boundary_logit=-0.4055
+2026-10-16 16:52:20,377 - portable_sam_fusion - INFO - Epoch 93 dense residual monitor: alpha=0.481240 source_delta_norm=10.0267 applied_delta_norm=4.8253 source_delta_ratio=0.858571 applied_delta_ratio=0.413179
+2026-10-16 16:52:20,377 - portable_sam_fusion - INFO - Epoch 93 primary loss shares: det=38.93% final_mask=52.61% shape=8.46%
+2026-10-16 16:52:20,377 - portable_sam_fusion - INFO - Epoch 93 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:52:20,377 - portable_sam_fusion - INFO - Epoch 93 learning rates: fusion=6.65e-06, backbone=6.65e-06, mask_decoder=6.65e-06, shape_prior=6.65e-06, iou_head=6.65e-06, decoder_tail=6.65e-06, other=6.65e-06
+2026-10-16 16:52:20,378 - portable_sam_fusion - INFO - Epoch 93 DUAL telemetry: gate_mean=-0.000339811 gate_std=0.00556038 gate_absmax=0.0114337 delta_p3_ratio=0.496683 bev_coverage=0.89171 gate_steps=174
+2026-10-16 16:52:40,885 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2807, avg_masks_per_image=28.07, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=1.26s).
+Accumulating evaluation results...
+DONE (t=0.04s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.735
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.824
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.391
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.766
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.880
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.797
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.450
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.845
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.917
+2026-10-16 16:52:42,220 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7348 bbox/mAP_75: 0.8244
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=1.29s).
+Accumulating evaluation results...
+DONE (t=0.04s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.758
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.851
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.425
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.792
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.898
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.324
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.817
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.483
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.865
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.930
+2026-10-16 16:52:43,545 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7583
+2026-10-16 16:52:44,165 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7583 smooth(5)=0.7576 best=0.7601 counter=15
+2026-10-16 16:52:55,000 - portable_sam_fusion - INFO - Epoch 93/100 | train=0.190393 val=disabled segm/mAP=0.7583 bbox/mAP=0.7348 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=6.65e-06 backbone=6.65e-06 mask_decoder=6.65e-06 shape_prior=6.65e-06 iou_head=6.65e-06 decoder_tail=6.65e-06 other=6.65e-06
+2026-10-16 16:53:09,877 - portable_sam_fusion - INFO - epoch 94 | mini-batch 18/174 | optimizer_step 8100/8700 | lr=6.475e-06
+2026-10-16 16:54:38,879 - portable_sam_fusion - INFO - epoch 94 | mini-batch 118/174 | optimizer_step 8150/8700 | lr=5.524e-06
+2026-10-16 16:55:34,485 - portable_sam_fusion - INFO - Epoch 94 detailed losses: loss_rpn_cls=0.0001, loss_rpn_bbox=0.0004, loss_cls=0.0300, loss_bbox=0.0070, loss_mask=0.0537, loss_decoder_tail=0.0870, loss_shape_prior=0.0086, DET/acc=98.8951, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.8991, debug_mask_logit_std=8.4857, debug_mask_prob_mean=0.6672, debug_mask_prob_ge05=0.6666, debug_mask_target_fill=0.6664, TAIL/selected_count=4096.0000, TAIL/selected_pos=1322.3161, TAIL/selected_bce=0.7021, TAIL/delta_abs=0.4202, TAIL/delta_max=1.2810, TAIL/selected_error_fraction=0.4759, TAIL/selected_error_coverage=0.0735, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6964, TAIL/correct_flip_fraction=0.3312, TAIL/destroy_fraction=0.1727, TAIL/boundary_margin_violation=0.0867, TAIL/boundary_logit=-0.4055
+2026-10-16 16:55:34,485 - portable_sam_fusion - INFO - Epoch 94 dense residual monitor: alpha=0.481243 source_delta_norm=10.0539 applied_delta_norm=4.8384 source_delta_ratio=0.860900 applied_delta_ratio=0.414302
+2026-10-16 16:55:34,485 - portable_sam_fusion - INFO - Epoch 94 primary loss shares: det=37.53% final_mask=53.86% shape=8.61%
+2026-10-16 16:55:34,485 - portable_sam_fusion - INFO - Epoch 94 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:55:34,485 - portable_sam_fusion - INFO - Epoch 94 learning rates: fusion=5.03e-06, backbone=5.03e-06, mask_decoder=5.03e-06, shape_prior=5.03e-06, iou_head=5.03e-06, decoder_tail=5.03e-06, other=5.03e-06
+2026-10-16 16:55:34,489 - portable_sam_fusion - INFO - Epoch 94 DUAL telemetry: gate_mean=-0.000337086 gate_std=0.00554812 gate_absmax=0.0113782 delta_p3_ratio=0.49648 bev_coverage=0.889883 gate_steps=174
+2026-10-16 16:55:55,189 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2802, avg_masks_per_image=28.02, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.01s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=1.26s).
+Accumulating evaluation results...
+DONE (t=0.05s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.735
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.892
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.826
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.396
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.768
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.880
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.797
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.451
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.845
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.916
+2026-10-16 16:55:56,542 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7350 bbox/mAP_75: 0.8259
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=1.31s).
+Accumulating evaluation results...
+DONE (t=0.04s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.757
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.843
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.425
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.790
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.896
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.325
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.482
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.863
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.929
+2026-10-16 16:55:57,896 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7566
+2026-10-16 16:55:58,625 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7566 smooth(5)=0.7574 best=0.7601 counter=16
+2026-10-16 16:56:09,419 - portable_sam_fusion - INFO - Epoch 94/100 | train=0.186795 val=disabled segm/mAP=0.7566 bbox/mAP=0.7350 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=5.03e-06 backbone=5.03e-06 mask_decoder=5.03e-06 shape_prior=5.03e-06 iou_head=5.03e-06 decoder_tail=5.03e-06 other=5.03e-06
+2026-10-16 16:56:42,423 - portable_sam_fusion - INFO - epoch 95 | mini-batch 44/174 | optimizer_step 8200/8700 | lr=4.654e-06
+2026-10-16 16:58:20,165 - portable_sam_fusion - INFO - epoch 95 | mini-batch 144/174 | optimizer_step 8250/8700 | lr=3.867e-06
+2026-10-16 16:58:48,033 - portable_sam_fusion - INFO - Epoch 95 detailed losses: loss_rpn_cls=0.0000, loss_rpn_bbox=0.0004, loss_cls=0.0307, loss_bbox=0.0068, loss_mask=0.0538, loss_decoder_tail=0.0868, loss_shape_prior=0.0086, DET/acc=98.8670, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=4.0779, debug_mask_logit_std=8.4024, debug_mask_prob_mean=0.6756, debug_mask_prob_ge05=0.6751, debug_mask_target_fill=0.6754, TAIL/selected_count=4096.0000, TAIL/selected_pos=1318.1264, TAIL/selected_bce=0.7020, TAIL/delta_abs=0.4201, TAIL/delta_max=1.3064, TAIL/selected_error_fraction=0.4755, TAIL/selected_error_coverage=0.0734, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6971, TAIL/correct_flip_fraction=0.3311, TAIL/destroy_fraction=0.1727, TAIL/boundary_margin_violation=0.0867, TAIL/boundary_logit=-0.4055
+2026-10-16 16:58:48,034 - portable_sam_fusion - INFO - Epoch 95 dense residual monitor: alpha=0.481240 source_delta_norm=10.0147 applied_delta_norm=4.8195 source_delta_ratio=0.857539 applied_delta_ratio=0.412682
+2026-10-16 16:58:48,034 - portable_sam_fusion - INFO - Epoch 95 primary loss shares: det=37.84% final_mask=53.55% shape=8.61%
+2026-10-16 16:58:48,034 - portable_sam_fusion - INFO - Epoch 95 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 16:58:48,034 - portable_sam_fusion - INFO - Epoch 95 learning rates: fusion=3.65e-06, backbone=3.65e-06, mask_decoder=3.65e-06, shape_prior=3.65e-06, iou_head=3.65e-06, decoder_tail=3.65e-06, other=3.65e-06
+2026-10-16 16:58:48,034 - portable_sam_fusion - INFO - Epoch 95 DUAL telemetry: gate_mean=-0.000335994 gate_std=0.00554452 gate_absmax=0.0113837 delta_p3_ratio=0.475662 bev_coverage=0.896537 gate_steps=174
+2026-10-16 16:59:08,316 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2803, avg_masks_per_image=28.03, avg_mask_fill=0.0179
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.93s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.736
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.825
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.392
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.768
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.881
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.321
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.797
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.451
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.845
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.917
+2026-10-16 16:59:09,312 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7355 bbox/mAP_75: 0.8254
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.97s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.757
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.842
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.425
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.791
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.897
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.324
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.482
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.864
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.930
+2026-10-16 16:59:10,308 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7568
+2026-10-16 16:59:10,923 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7568 smooth(5)=0.7572 best=0.7601 counter=17
+2026-10-16 16:59:21,793 - portable_sam_fusion - INFO - Epoch 95/100 | train=0.187145 val=disabled segm/mAP=0.7568 bbox/mAP=0.7355 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=3.65e-06 backbone=3.65e-06 mask_decoder=3.65e-06 shape_prior=3.65e-06 iou_head=3.65e-06 decoder_tail=3.65e-06 other=3.65e-06
+2026-10-16 17:00:18,849 - portable_sam_fusion - INFO - epoch 96 | mini-batch 70/174 | optimizer_step 8300/8700 | lr=3.161e-06
+2026-10-16 17:01:50,848 - portable_sam_fusion - INFO - epoch 96 | mini-batch 170/174 | optimizer_step 8350/8700 | lr=2.539e-06
+2026-10-16 17:01:54,361 - portable_sam_fusion - INFO - Epoch 96 detailed losses: loss_rpn_cls=0.0003, loss_rpn_bbox=0.0004, loss_cls=0.0308, loss_bbox=0.0071, loss_mask=0.0547, loss_decoder_tail=0.0862, loss_shape_prior=0.0086, DET/acc=98.7964, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.8461, debug_mask_logit_std=8.4910, debug_mask_prob_mean=0.6663, debug_mask_prob_ge05=0.6660, debug_mask_target_fill=0.6659, TAIL/selected_count=4096.0000, TAIL/selected_pos=1344.7586, TAIL/selected_bce=0.7018, TAIL/delta_abs=0.4210, TAIL/delta_max=1.3424, TAIL/selected_error_fraction=0.4730, TAIL/selected_error_coverage=0.0729, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6926, TAIL/correct_flip_fraction=0.3271, TAIL/destroy_fraction=0.1761, TAIL/boundary_margin_violation=0.0865, TAIL/boundary_logit=-0.4055
+2026-10-16 17:01:54,361 - portable_sam_fusion - INFO - Epoch 96 dense residual monitor: alpha=0.481238 source_delta_norm=10.0053 applied_delta_norm=4.8149 source_delta_ratio=0.856734 applied_delta_ratio=0.412293
+2026-10-16 17:01:54,361 - portable_sam_fusion - INFO - Epoch 96 primary loss shares: det=37.92% final_mask=53.63% shape=8.45%
+2026-10-16 17:01:54,361 - portable_sam_fusion - INFO - Epoch 96 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 17:01:54,361 - portable_sam_fusion - INFO - Epoch 96 learning rates: fusion=2.52e-06, backbone=2.52e-06, mask_decoder=2.52e-06, shape_prior=2.52e-06, iou_head=2.52e-06, decoder_tail=2.52e-06, other=2.52e-06
+2026-10-16 17:01:54,362 - portable_sam_fusion - INFO - Epoch 96 DUAL telemetry: gate_mean=-0.000334728 gate_std=0.00554138 gate_absmax=0.0113761 delta_p3_ratio=0.488446 bev_coverage=0.893288 gate_steps=174
+2026-10-16 17:02:14,586 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2807, avg_masks_per_image=28.07, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.95s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.734
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.824
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.394
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.767
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.880
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.797
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.452
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.844
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.918
+2026-10-16 17:02:15,595 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7344 bbox/mAP_75: 0.8239
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.97s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.759
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.852
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.429
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.791
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.898
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.325
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.817
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.486
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.864
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.929
+2026-10-16 17:02:16,589 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7589
+2026-10-16 17:02:17,036 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7589 smooth(5)=0.7575 best=0.7601 counter=18
+2026-10-16 17:02:26,042 - portable_sam_fusion - INFO - Epoch 96/100 | train=0.188226 val=disabled segm/mAP=0.7589 bbox/mAP=0.7344 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=2.52e-06 backbone=2.52e-06 mask_decoder=2.52e-06 shape_prior=2.52e-06 iou_head=2.52e-06 decoder_tail=2.52e-06 other=2.52e-06
+2026-10-16 17:03:43,524 - portable_sam_fusion - INFO - epoch 97 | mini-batch 96/174 | optimizer_step 8400/8700 | lr=1.998e-06
+2026-10-16 17:04:58,849 - portable_sam_fusion - INFO - Epoch 97 detailed losses: loss_rpn_cls=0.0000, loss_rpn_bbox=0.0004, loss_cls=0.0309, loss_bbox=0.0069, loss_mask=0.0540, loss_decoder_tail=0.0863, loss_shape_prior=0.0086, DET/acc=98.8257, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.8654, debug_mask_logit_std=8.4037, debug_mask_prob_mean=0.6692, debug_mask_prob_ge05=0.6689, debug_mask_target_fill=0.6688, TAIL/selected_count=4096.0000, TAIL/selected_pos=1324.7414, TAIL/selected_bce=0.7021, TAIL/delta_abs=0.4216, TAIL/delta_max=1.2825, TAIL/selected_error_fraction=0.4743, TAIL/selected_error_coverage=0.0729, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6965, TAIL/correct_flip_fraction=0.3300, TAIL/destroy_fraction=0.1735, TAIL/boundary_margin_violation=0.0865, TAIL/boundary_logit=-0.4055
+2026-10-16 17:04:58,849 - portable_sam_fusion - INFO - Epoch 97 dense residual monitor: alpha=0.481236 source_delta_norm=10.0322 applied_delta_norm=4.8279 source_delta_ratio=0.859042 applied_delta_ratio=0.413402
+2026-10-16 17:04:58,849 - portable_sam_fusion - INFO - Epoch 97 primary loss shares: det=37.92% final_mask=53.53% shape=8.54%
+2026-10-16 17:04:58,849 - portable_sam_fusion - INFO - Epoch 97 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 17:04:58,849 - portable_sam_fusion - INFO - Epoch 97 learning rates: fusion=1.63e-06, backbone=1.63e-06, mask_decoder=1.63e-06, shape_prior=1.63e-06, iou_head=1.63e-06, decoder_tail=1.63e-06, other=1.63e-06
+2026-10-16 17:04:58,850 - portable_sam_fusion - INFO - Epoch 97 DUAL telemetry: gate_mean=-0.000334564 gate_std=0.00554089 gate_absmax=0.0113838 delta_p3_ratio=0.48372 bev_coverage=0.895509 gate_steps=174
+2026-10-16 17:05:20,674 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2799, avg_masks_per_image=27.99, avg_mask_fill=0.0179
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=1.25s).
+Accumulating evaluation results...
+DONE (t=0.04s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.735
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.824
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.393
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.766
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.881
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.797
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.451
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.844
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.917
+2026-10-16 17:05:21,998 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7347 bbox/mAP_75: 0.8245
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=1.29s).
+Accumulating evaluation results...
+DONE (t=0.04s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.758
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.851
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.424
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.790
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.896
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.324
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.483
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.864
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.929
+2026-10-16 17:05:23,322 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7576
+2026-10-16 17:05:23,812 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7576 smooth(5)=0.7576 best=0.7601 counter=19
+2026-10-16 17:05:33,896 - portable_sam_fusion - INFO - Epoch 97/100 | train=0.187204 val=disabled segm/mAP=0.7576 bbox/mAP=0.7347 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=1.63e-06 backbone=1.63e-06 mask_decoder=1.63e-06 shape_prior=1.63e-06 iou_head=1.63e-06 decoder_tail=1.63e-06 other=1.63e-06
+2026-10-16 17:05:49,762 - portable_sam_fusion - INFO - epoch 98 | mini-batch 22/174 | optimizer_step 8450/8700 | lr=1.541e-06
+2026-10-16 17:07:26,019 - portable_sam_fusion - INFO - epoch 98 | mini-batch 122/174 | optimizer_step 8500/8700 | lr=1.166e-06
+2026-10-16 17:08:17,342 - portable_sam_fusion - INFO - Epoch 98 detailed losses: loss_rpn_cls=0.0002, loss_rpn_bbox=0.0004, loss_cls=0.0293, loss_bbox=0.0077, loss_mask=0.0552, loss_decoder_tail=0.0867, loss_shape_prior=0.0089, DET/acc=98.9351, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=3.8715, debug_mask_logit_std=8.4856, debug_mask_prob_mean=0.6671, debug_mask_prob_ge05=0.6666, debug_mask_target_fill=0.6664, TAIL/selected_count=4096.0000, TAIL/selected_pos=1308.3448, TAIL/selected_bce=0.7022, TAIL/delta_abs=0.4179, TAIL/delta_max=1.2696, TAIL/selected_error_fraction=0.4776, TAIL/selected_error_coverage=0.0730, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6975, TAIL/correct_flip_fraction=0.3329, TAIL/destroy_fraction=0.1698, TAIL/boundary_margin_violation=0.0867, TAIL/boundary_logit=-0.4055
+2026-10-16 17:08:17,343 - portable_sam_fusion - INFO - Epoch 98 dense residual monitor: alpha=0.481236 source_delta_norm=10.0396 applied_delta_norm=4.8314 source_delta_ratio=0.859676 applied_delta_ratio=0.413707
+2026-10-16 17:08:17,343 - portable_sam_fusion - INFO - Epoch 98 primary loss shares: det=36.98% final_mask=54.26% shape=8.77%
+2026-10-16 17:08:17,343 - portable_sam_fusion - INFO - Epoch 98 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 17:08:17,343 - portable_sam_fusion - INFO - Epoch 98 learning rates: fusion=1.00e-06, backbone=1.00e-06, mask_decoder=1.00e-06, shape_prior=1.00e-06, iou_head=1.00e-06, decoder_tail=1.00e-06, other=1.00e-06
+2026-10-16 17:08:17,343 - portable_sam_fusion - INFO - Epoch 98 DUAL telemetry: gate_mean=-0.000334018 gate_std=0.00554034 gate_absmax=0.0113702 delta_p3_ratio=0.483515 bev_coverage=0.895111 gate_steps=174
+2026-10-16 17:08:39,326 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2803, avg_masks_per_image=28.03, avg_mask_fill=0.0179
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.95s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.733
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.824
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.393
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.766
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.881
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.797
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.451
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.844
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.917
+2026-10-16 17:08:40,331 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7335 bbox/mAP_75: 0.8242
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.96s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.758
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.852
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.426
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.791
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.897
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.325
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.484
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.864
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.929
+2026-10-16 17:08:41,321 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7576
+2026-10-16 17:08:41,767 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7576 smooth(5)=0.7575 best=0.7601 counter=20
+2026-10-16 17:08:54,268 - portable_sam_fusion - INFO - Epoch 98/100 | train=0.188499 val=disabled segm/mAP=0.7576 bbox/mAP=0.7335 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=1.00e-06 backbone=1.00e-06 mask_decoder=1.00e-06 shape_prior=1.00e-06 iou_head=1.00e-06 decoder_tail=1.00e-06 other=1.00e-06
+2026-10-16 17:09:34,614 - portable_sam_fusion - INFO - epoch 99 | mini-batch 48/174 | optimizer_step 8550/8700 | lr=8.748e-07
+2026-10-16 17:11:11,514 - portable_sam_fusion - INFO - epoch 99 | mini-batch 148/174 | optimizer_step 8600/8700 | lr=6.666e-07
+2026-10-16 17:11:37,099 - portable_sam_fusion - INFO - Epoch 99 detailed losses: loss_rpn_cls=0.0001, loss_rpn_bbox=0.0004, loss_cls=0.0298, loss_bbox=0.0066, loss_mask=0.0540, loss_decoder_tail=0.0866, loss_shape_prior=0.0086, DET/acc=98.8324, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=4.0257, debug_mask_logit_std=8.4159, debug_mask_prob_mean=0.6752, debug_mask_prob_ge05=0.6747, debug_mask_target_fill=0.6745, TAIL/selected_count=4096.0000, TAIL/selected_pos=1301.4655, TAIL/selected_bce=0.7025, TAIL/delta_abs=0.4180, TAIL/delta_max=1.2874, TAIL/selected_error_fraction=0.4749, TAIL/selected_error_coverage=0.0726, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.7006, TAIL/correct_flip_fraction=0.3321, TAIL/destroy_fraction=0.1709, TAIL/boundary_margin_violation=0.0867, TAIL/boundary_logit=-0.4055
+2026-10-16 17:11:37,099 - portable_sam_fusion - INFO - Epoch 99 dense residual monitor: alpha=0.481233 source_delta_norm=10.0352 applied_delta_norm=4.8293 source_delta_ratio=0.859296 applied_delta_ratio=0.413522
+2026-10-16 17:11:37,099 - portable_sam_fusion - INFO - Epoch 99 primary loss shares: det=37.16% final_mask=54.21% shape=8.63%
+2026-10-16 17:11:37,099 - portable_sam_fusion - INFO - Epoch 99 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 17:11:37,099 - portable_sam_fusion - INFO - Epoch 99 learning rates: fusion=6.26e-07, backbone=6.26e-07, mask_decoder=6.26e-07, shape_prior=6.26e-07, iou_head=6.26e-07, decoder_tail=6.26e-07, other=6.26e-07
+2026-10-16 17:11:37,100 - portable_sam_fusion - INFO - Epoch 99 DUAL telemetry: gate_mean=-0.000333025 gate_std=0.00553926 gate_absmax=0.0113509 delta_p3_ratio=0.484978 bev_coverage=0.895134 gate_steps=174
+2026-10-16 17:11:59,965 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2803, avg_masks_per_image=28.03, avg_mask_fill=0.0179
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=1.26s).
+Accumulating evaluation results...
+DONE (t=0.04s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.734
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.825
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.392
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.766
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.881
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.796
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.450
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.844
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.917
+2026-10-16 17:12:01,300 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7337 bbox/mAP_75: 0.8251
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=1.05s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.758
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.843
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.426
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.792
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.898
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.325
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.817
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.483
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.865
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.929
+2026-10-16 17:12:02,380 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7581
+2026-10-16 17:12:03,281 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7581 smooth(5)=0.7578 best=0.7601 counter=21
+2026-10-16 17:12:15,272 - portable_sam_fusion - INFO - Epoch 99/100 | train=0.186175 val=disabled segm/mAP=0.7581 bbox/mAP=0.7337 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=6.26e-07 backbone=6.26e-07 mask_decoder=6.26e-07 shape_prior=6.26e-07 iou_head=6.26e-07 decoder_tail=6.26e-07 other=6.26e-07
+2026-10-16 17:13:06,146 - portable_sam_fusion - INFO - epoch 100 | mini-batch 74/174 | optimizer_step 8650/8700 | lr=5.417e-07
+2026-10-16 17:14:12,987 - portable_sam_fusion - INFO - epoch 100 | mini-batch 174/174 | optimizer_step 8700/8700 | lr=5.000e-07
+2026-10-16 17:14:12,992 - portable_sam_fusion - INFO - Epoch 100 detailed losses: loss_rpn_cls=0.0001, loss_rpn_bbox=0.0004, loss_cls=0.0308, loss_bbox=0.0070, loss_mask=0.0553, loss_decoder_tail=0.0864, loss_shape_prior=0.0089, DET/acc=98.8833, debug_mask_pos_rois=64.0000, debug_mask_logit_mean=4.0035, debug_mask_logit_std=8.4261, debug_mask_prob_mean=0.6743, debug_mask_prob_ge05=0.6739, debug_mask_target_fill=0.6738, TAIL/selected_count=4096.0000, TAIL/selected_pos=1315.3793, TAIL/selected_bce=0.7023, TAIL/delta_abs=0.4181, TAIL/delta_max=1.2709, TAIL/selected_error_fraction=0.4749, TAIL/selected_error_coverage=0.0716, TAIL/changed_fraction=1.0000, TAIL/error_direction_agreement=0.6963, TAIL/correct_flip_fraction=0.3304, TAIL/destroy_fraction=0.1720, TAIL/boundary_margin_violation=0.0865, TAIL/boundary_logit=-0.4055
+2026-10-16 17:14:12,992 - portable_sam_fusion - INFO - Epoch 100 dense residual monitor: alpha=0.481233 source_delta_norm=10.0163 applied_delta_norm=4.8202 source_delta_ratio=0.857675 applied_delta_ratio=0.412742
+2026-10-16 17:14:12,992 - portable_sam_fusion - INFO - Epoch 100 primary loss shares: det=37.43% final_mask=53.90% shape=8.67%
+2026-10-16 17:14:12,992 - portable_sam_fusion - INFO - Epoch 100 schedule: early_stop_start=20 min_delta=0.0005
+2026-10-16 17:14:12,992 - portable_sam_fusion - INFO - Epoch 100 learning rates: fusion=5.00e-07, backbone=5.00e-07, mask_decoder=5.00e-07, shape_prior=5.00e-07, iou_head=5.00e-07, decoder_tail=5.00e-07, other=5.00e-07
+2026-10-16 17:14:12,993 - portable_sam_fusion - INFO - Epoch 100 DUAL telemetry: gate_mean=-0.000333098 gate_std=0.00553824 gate_absmax=0.0113445 delta_p3_ratio=0.488765 bev_coverage=0.893526 gate_steps=174
+2026-10-16 17:14:30,429 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=2802, avg_masks_per_image=28.02, avg_mask_fill=0.0178
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.00s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=0.95s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.734
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.891
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.825
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.392
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.766
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.880
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.322
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.796
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.451
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.844
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.916
+2026-10-16 17:14:31,430 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.7335 bbox/mAP_75: 0.8248
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=0.98s).
+Accumulating evaluation results...
+DONE (t=0.03s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.758
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.903
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.851
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.426
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.792
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.897
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.030
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.325
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.816
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.485
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.864
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.929
+2026-10-16 17:14:32,439 - portable_sam_fusion - INFO - Validation segm/mAP: 0.7576
+2026-10-16 17:14:32,877 - portable_sam_fusion - INFO - Early-stop metric (segm/mAP): raw=0.7576 smooth(5)=0.7580 best=0.7601 counter=22
+2026-10-16 17:14:35,589 - portable_sam_fusion - INFO - Saved final checkpoint: /data2/wangcheng/checkpoint/surfbev_b0/surfacebev_v2_512dualv2l0lora_sealed_ddp4_s44_EXP-0015/last_model_epoch100.pth
+2026-10-16 17:14:35,589 - portable_sam_fusion - INFO - Epoch 100/100 | train=0.188955 val=disabled segm/mAP=0.7576 bbox/mAP=0.7335 | best_segm=0.7627 best_bbox=0.7437 best_comp=0.0000 | fusion=5.00e-07 backbone=5.00e-07 mask_decoder=5.00e-07 shape_prior=5.00e-07 iou_head=5.00e-07 decoder_tail=5.00e-07 other=5.00e-07

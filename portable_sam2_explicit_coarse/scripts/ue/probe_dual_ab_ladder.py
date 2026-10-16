@@ -53,6 +53,12 @@ ARMS = {
     # rescaled BEV, single variable vs dual_p3; rows_* produced by that run
     'dual_norm': dict(dual=True, ckpt=CKPT_DIR / 'surfacebev_v2_512dualnorm_sealed_ddp4_s44_EXP-0014/last_model_epoch100.pth',
                       log=LOG_DIR / 'EXP-0014-ddp4.log'),
+    # EXP-0015/0016 (docs/EXP-0015-0016_preregistration.md): fusion wd exemption
+    # + L0-LoRA / embed-only injection site
+    'dual_l0lora': dict(dual=True, ckpt=CKPT_DIR / 'surfacebev_v2_512dualv2l0lora_sealed_ddp4_s44_EXP-0015/last_model_epoch100.pth',
+                        log=LOG_DIR / 'EXP-0015-ddp4.log'),
+    'dual_embed': dict(dual=True, ckpt=CKPT_DIR / 'surfacebev_v2_512dualembed_sealed_ddp4_s44_EXP-0016/last_model_epoch100.pth',
+                       log=LOG_DIR / 'EXP-0016-ddp4.log'),
 }
 OUT = CKPT_DIR / 'probes' / 'DUAL-AB-LADDER-20261016'
 SEED = 20261014
@@ -172,17 +178,23 @@ def delta_operator(tag, dev):
     it = ds[0]
     uav = uav_payload(it, dev)
     single = len(model.target_levels) == 1
+    def site(name, proj_t, gate_t, hw):
+        bev, cov = model._uav_bev(uav, hw)
+        proj_out = proj_t(bev.unsqueeze(0).float())
+        delta = gate_t.view(1, -1, 1, 1) * proj_out
+        return {name: {'gate_mean_abs': float(gate_t.abs().mean()),
+                       'proj_bev_mean_abs': float(proj_out.abs().mean()),
+                       'delta_L': float(gate_t.abs().mean() / proj_out.abs().mean().clamp_min(1e-12)),
+                       # v2.3 effective opening (dimensionless; legacy delta_L is
+                       # scale-contaminated on unscaled-BEV arms)
+                       'open_eff': float(delta.abs().sum() / proj_out.abs().sum().clamp_min(1e-12)),
+                       'bev_coverage': cov}}
     out = {}
     for t in model.target_levels:
-        hw = LEVEL_HW[t]
-        bev, cov = model._uav_bev(uav, hw)
-        proj_t = model.proj if single else model.proj[str(t)]
-        gate_t = model.gate if single else model.gate[str(t)]
-        delta = proj_t(bev.unsqueeze(0).float())
-        out[f'L{t}'] = {'gate_mean_abs': float(gate_t.abs().mean()),
-                        'proj_bev_mean_abs': float(delta.abs().mean()),
-                        'delta_L': float(gate_t.abs().mean() / delta.abs().mean().clamp_min(1e-12)),
-                        'bev_coverage': cov}
+        out.update(site(f'L{t}', model.proj if single else model.proj[str(t)],
+                      model.gate if single else model.gate[str(t)], LEVEL_HW[t]))
+    if getattr(model, 'embed_fusion', False):
+        out.update(site('E', model.proj_e, model.gate_e, (32, 32)))
     del model
     torch.cuda.empty_cache()
     return out
@@ -242,13 +254,13 @@ def main():
                              for t in ARMS if (OUT / f'identity_{t}.json').is_file()}}
     for key in sorted(arm_rows):
         result.setdefault('means', {})[key] = {m: float(arr(key, m).mean()) for m in ('bbox', 'segm')}
-    dual_tags = [t for t in ('dual_p3', 'dual_p2p3', 'dual_p2p3_lora', 'dual_p2', 'dual_norm') if t in arm_rows]
+    dual_tags = [t for t in ('dual_p3', 'dual_p2p3', 'dual_p2p3_lora', 'dual_p2', 'dual_norm', 'dual_l0lora', 'dual_embed') if t in arm_rows]
     for t in dual_tags:
         for m in ('bbox', 'segm'):
             s, d, o = arr('single', m), arr(t, m), arr(t + '_off', m)
             result.setdefault('vs_single', {})[f'{t}_{m}'] = {'dual_minus_single': boot(d - s),
                                                               'dual_minus_off': boot(d - o)}
-    for x, y in (('dual_p2', 'dual_p2p3'), ('dual_p2p3', 'dual_p3'), ('dual_p2p3_lora', 'dual_p2p3'), ('dual_norm', 'dual_p3')):
+    for x, y in (('dual_p2', 'dual_p2p3'), ('dual_p2p3', 'dual_p3'), ('dual_p2p3_lora', 'dual_p2p3'), ('dual_norm', 'dual_p3'), ('dual_l0lora', 'dual_p2'), ('dual_embed', 'dual_p3')):
         if x in arm_rows and y in arm_rows:
             for m in ('bbox', 'segm'):
                 result.setdefault('dual_vs_dual', {})[f'{x}_minus_{y}_{m}'] = boot(arr(x, m) - arr(y, m))
@@ -279,7 +291,8 @@ def main():
         v = {}
         engaged_any = False
         if 'delta_operator' in result and t in result.get('delta_operator', {}):
-            engaged_any = any(lv['delta_L'] >= 0.20 for lv in result['delta_operator'][t].values())
+            engaged_any = any(lv.get('open_eff', 0) >= 0.20 or lv['delta_L'] >= 0.20
+                              for lv in result['delta_operator'][t].values())
         for m in ('bbox', 'segm'):
             c = result['vs_single'][f'{t}_{m}']['dual_minus_single']
             v[f'{m}_mean'] = c['mean']
