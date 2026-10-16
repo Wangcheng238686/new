@@ -1,0 +1,35 @@
+[
+  {
+    "index": 431,
+    "files": [
+      "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000431_pt_gx_-1_gy_-16_s_006_gx_-1_gy_-16_s_6_X_-6250_Y_-313750/satellite/satellite_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000431_pt_gx_-1_gy_-16_s_006_gx_-1_gy_-16_s_6_X_-6250_Y_-313750/oblique/view_yaw_000/oblique_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000431_pt_gx_-1_gy_-16_s_006_gx_-1_gy_-16_s_6_X_-6250_Y_-313750/oblique/view_yaw_072/oblique_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000431_pt_gx_-1_gy_-16_s_006_gx_-1_gy_-16_s_6_X_-6250_Y_-313750/oblique/view_yaw_144/oblique_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000431_pt_gx_-1_gy_-16_s_006_gx_-1_gy_-16_s_6_X_-6250_Y_-313750/oblique/view_yaw_216/oblique_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000431_pt_gx_-1_gy_-16_s_006_gx_-1_gy_-16_s_6_X_-6250_Y_-313750/oblique/view_yaw_288/oblique_rgb.0000.png"
+    ]
+  },
+  {
+    "index": 28,
+    "files": [
+      "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000028_pt_gx_-3_gy_-20_s_014_gx_-3_gy_-20_s_14_X_-42500_Y_-390000/satellite/satellite_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000028_pt_gx_-3_gy_-20_s_014_gx_-3_gy_-20_s_14_X_-42500_Y_-390000/oblique/view_yaw_000/oblique_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000028_pt_gx_-3_gy_-20_s_014_gx_-3_gy_-20_s_14_X_-42500_Y_-390000/oblique/view_yaw_072/oblique_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000028_pt_gx_-3_gy_-20_s_014_gx_-3_gy_-20_s_14_X_-42500_Y_-390000/oblique/view_yaw_144/oblique_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000028_pt_gx_-3_gy_-20_s_014_gx_-3_gy_-20_s_14_X_-42500_Y_-390000/oblique/view_yaw_216/oblique_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000028_pt_gx_-3_gy_-20_s_014_gx_-3_gy_-20_s_14_X_-42500_Y_-390000/oblique/view_yaw_288/oblique_rgb.0000.png"
+    ]
+  },
+  {
+    "index": 653,
+    "files": [
+      "/data/wangcheng/ue/CitySample/CitySample_5.5/data/Render/Satellite_StrictHeroCoverage_TwoPass_Production_v7_local_0000_1999/Coord_000653_pt_gx_0_gy_-15_s_018_gx_0_gy_-15_s_18_X_6250_Y_-286250/satellite/satellite_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000653_pt_gx_0_gy_-15_s_018_gx_0_gy_-15_s_18_X_6250_Y_-286250/oblique/view_yaw_000/oblique_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000653_pt_gx_0_gy_-15_s_018_gx_0_gy_-15_s_18_X_6250_Y_-286250/oblique/view_yaw_072/oblique_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000653_pt_gx_0_gy_-15_s_018_gx_0_gy_-15_s_18_X_6250_Y_-286250/oblique/view_yaw_144/oblique_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000653_pt_gx_0_gy_-15_s_018_gx_0_gy_-15_s_18_X_6250_Y_-286250/oblique/view_yaw_216/oblique_rgb.0000.png",
+      "/data/wangcheng/dataset/UAV_Balanced_RGBD_Production_v1_0000_3999/Coord_000653_pt_gx_0_gy_-15_s_018_gx_0_gy_-15_s_18_X_6250_Y_-286250/oblique/view_yaw_288/oblique_rgb.0000.png"
+    ]
+  }
+]
