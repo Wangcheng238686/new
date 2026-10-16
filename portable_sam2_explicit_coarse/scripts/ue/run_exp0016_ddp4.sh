@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# EXP-0016: frozen-snapshot dual-stream arm, L0-only fusion (A/B vs EXP-0009;
-# frozen UAV branch + zero-init gated fusion at neck level 0 = stride-4/P2 only,
-# data root = versioned snapshot). Protocol identical to EXP-0011 (and thus
-# EXP-0009); the only variable vs EXP-0011 is target_levels [0,1] -> [0]
-# (identity ue-whu-a3sgm-512-dualembed-v1). Telemetry per
-# docs/EXP-0008_preregistration.md v2/v2.1/v2.3 (single-level keys, no suffix).
+# EXP-0016: DUAL-WHY-NULL follow-up arm 1+4 (A/B vs EXP-0009; frozen-snapshot
+# protocol identical to EXP-0013): zero-init gated fusion (262->256) injected on the
+# SAM2 mask-decoder image_embeddings grid (stride-16, 32x32) instead of any PAFN
+# pyramid level (target_levels=[]); frozen UAV encoder; fusion weight-decay exemption
+# (--fusion-no-wd 1). Identity ue-whu-a3sgm-512-dualembed-v1. Telemetry keys carry the
+# _E suffix (gate_mean_E etc.) per docs/EXP-0015-0016_preregistration.md.
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
@@ -14,7 +14,7 @@ if [[ "${B0_EXP_ID:-}" != "EXP-0016" ]]; then
   echo "this wrapper only launches EXP-0016" >&2; exit 2
 fi
 export CUDA_VISIBLE_DEVICES=0,1,2,3
-RUN_TAG="surfacebev_v2_512dualv2l0_sealed_ddp4_s44_EXP-0016"
+RUN_TAG="surfacebev_v2_512dualembed_sealed_ddp4_s44_EXP-0016"
 WORK_DIR="/data2/wangcheng/checkpoint/surfbev_b0/${RUN_TAG}"
 export RUN_TAG WORK_DIR
 export SAVE_LAST_MODEL=1
