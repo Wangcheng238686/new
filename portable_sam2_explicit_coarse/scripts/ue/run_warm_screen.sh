@@ -8,7 +8,7 @@
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
-ARM="${1:?usage: run_warm_screen.sh {r1|r1g|r1b}}"
+ARM="${1:?usage: run_warm_screen.sh r1-or-r1g-or-r1b}"
 RESUME="${2:-}"
 export SAM2_CKPT="${SAM2_CKPT:-/data1/wangcheng/pretrained/sam2_hiera_base_plus.pt}"
 export UE_DATA_ROOT="${UE_DATA_ROOT:-/data2/wangcheng/dataset_frozen/ue_raw_hero_uav_pairset_20261014_frozen}"
