@@ -178,3 +178,5 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 - 2026-10-15：候选等权/CVT形状读出独立正式结果审核补齐PASS，完整cache/主CI及固定小头GPU重放48输出bitexact，原负门结论不变。
 
 - 2026-10-15：新增`scripts/analysis/ue_projection_scale_extract.py`、`ue_projection_scale_fit.py`、`ue_projection_scale_summary.py`，同CVT粗/细池化重建读出，旧公共cache逐值复用；仅6图smoke已运行并独立PASS，full/fit未运行，资源竞争证据与恢复步骤已归档，见`UE_PROJECTION_SCALE_20261015.md`。生产模型/配置/遥测无改动。
+
+- 2026-10-16：完成阶段性17项证据汇总和三名新子代理的独立量纲/对齐/消费审查，见 `docs/dual_stream/UE_STAGE_RETROSPECTIVE_20261016.md`。新增仅文档、固定CPU原始相机深度数值抽样脚本及轻量JSON；无训练、GPU、生产模型/缓存/遥测定义变更。
