@@ -65,7 +65,20 @@ WARM-R1B 上调为链内主判读臂）。
 
 ## 3. WARM-R1G（gate_init 0.001 非零初始参与，30ep）
 
-（收线后填写）
+- 启动 2026-10-17 03:00（commit `051a4e0`），收线 04:39：last segm 0.7600 /
+  bbox 0.7375；checkpoint `surfacebev_v2_512warm_r1g_scr30_ddp4_s44_WARM-20261017/`。
+- 门遥测（末代）：gate_mean 2.34e-04、delta_p3_ratio 0.085（略高于 R1 的
+  0.071——非零初始如预期提高了开度，但幅度温和）。
+- 逐场配对 bootstrap（n=100）：
+
+| 对比 | segm Δ [CI95] | bbox Δ [CI95] |
+| --- | --- | --- |
+| on − single | +0.089 [−0.015, +0.195] | **+0.123 [+0.044, +0.214]** |
+
+- **谱系意义：首个 bbox 对单流 CI 下界 >0 的双流臂**（R1 是首个 segm
+  CI>0 臂）。与 R1 互为镜像：两臂双指标点估计全正（+0.09~+0.12），各有
+  一指标显著。
+- **落判：SCREEN-EXT**（segm CI 含 0；同 R1 处理，排队续训 60ep）。
 
 ## 4. WARM-R1B（buildingness 空间门 + 辅助监督，30ep）
 
