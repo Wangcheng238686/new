@@ -117,17 +117,21 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--max-val', type=int, default=6)
     ap.add_argument('--device', default='cpu')
+    ap.add_argument('--ckpt', default=str(CKPT_DUAL))
+    ap.add_argument('--out', default=str(OUT))
     a = ap.parse_args()
+    ckpt_path = Path(a.ckpt)
+    out_dir = Path(a.out)
     dev = torch.device(a.device)
-    OUT.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     from ue.contract import checkpoint_identity
-    manifest = OUT / 'identity_dual.json'
-    ckpt = torch.load(CKPT_DUAL, map_location='cpu', weights_only=False)
+    manifest = out_dir / 'identity_dual.json'
+    ckpt = torch.load(ckpt_path, map_location='cpu', weights_only=False)
     if not manifest.exists():
-        manifest.write_text(json.dumps(checkpoint_identity(CKPT_DUAL, ckpt), indent=2))
+        manifest.write_text(json.dumps(checkpoint_identity(ckpt_path, ckpt), indent=2))
 
-    model, _, identity, _ = build_baseline(CKPT_DUAL, manifest, os.environ['SAM2_CKPT'], dev)
+    model, _, identity, _ = build_baseline(ckpt_path, manifest, os.environ['SAM2_CKPT'], dev)
     gate = model.gate.detach().float()
     gate_stats = {'mean': float(gate.mean()), 'mean_abs': float(gate.abs().mean()),
                   'absmax': float(gate.abs().max()), 'std': float(gate.std()),
@@ -162,10 +166,10 @@ def main():
             continue
         vals = [r[k] for r in rows]
         agg[k] = {'mean': float(np.mean(vals)), 'min': float(np.min(vals)), 'max': float(np.max(vals))}
-    result = {'identity': identity.get('baseline_id'), 'checkpoint': str(CKPT_DUAL),
+    result = {'identity': identity.get('baseline_id'), 'checkpoint': str(ckpt_path),
               'n_scenes': len(rows), 'gate_checkpoint': gate_stats,
               'per_scene': rows, 'aggregate': agg, 'cross_scene': cross}
-    json.dump(result, open(OUT / 'decomp.json', 'w'), indent=1)
+    json.dump(result, open(out_dir / 'decomp.json', 'w'), indent=1)
     print(json.dumps({'gate_checkpoint': gate_stats, 'aggregate': agg, 'cross_scene': cross}, indent=1))
 
 
