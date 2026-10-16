@@ -1,0 +1,77 @@
+B0_CONTRACT exp_id=EXP-0002 seed=45 commit=be19b5eae5eca5788fec222065a14564e0d59907 dirty=0 gpu=3 run_tag=surfacebev_b0_raw1024_s45_EXP-0002 checkpoint_dir=/data1/wangcheng/checkpoint/surfbev_b0/surfacebev_b0_raw1024_s45_EXP-0002
+B0_CONTRACT model_fingerprint=36549a00a8282b2b9903d8c07c7cc9ce6f6e8fba3e93d58212de1999b1aa3dab data_manifest=f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a split_sha256=894df4561b166d37d06d033a6fc326223062384b402f730591b4c76d41f926d5 image_size=1024x1024 epochs=100 batch=1 accum=8 lr=5e-4 wd=0.05 save_last=1 early_stop=0
+2026-10-11 15:32:51,706 - portable_sam_fusion - INFO - DDP process-group timeout: 1800 seconds
+2026-10-11 15:32:52,221 - portable_sam_fusion - INFO - Architecture contract: id=c5v2_pafpn_coarse_p2_boundary_refiner_emb64 schema=2 fingerprint=36549a00a8282b2b9903d8c07c7cc9ce6f6e8fba3e93d58212de1999b1aa3dab
+2026-10-11 15:32:57,225 - portable_sam_fusion - INFO - Evaluation score contract: bbox=scores segm=scores mode=detector
+2026-10-11 15:32:57,253 - data.loader - INFO - UE raw SurfaceBEV B0 split: train=949 val=100
+2026-10-11 15:32:57,253 - portable_sam_fusion - INFO - Validation policy: rank0_only=0 batch_size=1 every_n_epochs=1 compute_loss=0
+2026-10-11 15:32:57,253 - portable_sam_fusion - INFO - Dataset size: 949 | mini-batch/epoch=949 | grad_accum=8 | optimizer_steps/epoch=119 | total_optimizer_steps=11900
+2026-10-11 15:32:57,258 - portable_sam_fusion - INFO - Optimizer group sat_backbone    params=1492528 tensors=112 lr=5.000e-04 wd=5.000e-02 first=backbone.encoder.base_model.model.trunk.patch_embed.proj.lora_A.default.weight last=backbone.encoder.base_model.model.neck.modules_to_save.default.convs.3.conv.bias
+2026-10-11 15:32:57,258 - portable_sam_fusion - INFO - Optimizer group mask_decoder    params=4082497 tensors=125 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.mask_decoder.decoder.transformer.layers.0.self_attn.q_proj.weight last=roi_head.mask_head.mask_decoder.decoder.pred_obj_score_head.layers.2.bias
+2026-10-11 15:32:57,258 - portable_sam_fusion - INFO - Optimizer group shape_prior     params=960385 tensors=18 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.shape_injector.mask_decoder.net.0.weight last=roi_head.mask_head.shape_injector.mask_decoder.net.14.bias
+2026-10-11 15:32:57,258 - portable_sam_fusion - INFO - Optimizer group p2_boundary_refiner params=145729 tensors=14 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.p2_boundary_refiner.p2_projection.0.weight last=roi_head.mask_head.p2_boundary_refiner.residual_head.bias
+2026-10-11 15:32:57,258 - portable_sam_fusion - INFO - Optimizer group quality_head    params=132612 tensors=6 lr=5.000e-04 wd=5.000e-02 first=roi_head.mask_head.mask_decoder.decoder.iou_prediction_head.layers.0.weight last=roi_head.mask_head.mask_decoder.decoder.iou_prediction_head.layers.2.bias
+2026-10-11 15:32:57,258 - portable_sam_fusion - INFO - Optimizer group sat_other       params=37130794 tensors=79 lr=5.000e-04 wd=5.000e-02 first=neck.level_scales last=roi_head.mask_head.shape_dense_alpha_raw
+2026-10-11 15:32:57,261 - portable_sam_fusion - INFO - Trainable state backbone               1492528 / 70599344
+2026-10-11 15:32:57,261 - portable_sam_fusion - INFO - Trainable state shared_image_embedding absent
+2026-10-11 15:32:57,261 - portable_sam_fusion - INFO - Trainable state mask_decoder           4215109 / 4215109
+2026-10-11 15:32:57,261 - portable_sam_fusion - INFO - Trainable state no_mask_embed          0 / 256
+2026-10-11 15:32:57,261 - portable_sam_fusion - INFO - Trainable state prompt_encoder         0 / 6220
+2026-10-11 15:32:57,261 - portable_sam_fusion - INFO - Trainable state shape_injector         960385 / 960385
+2026-10-11 15:32:57,261 - portable_sam_fusion - INFO - Trainable state p2_boundary_refiner    145729 / 145729
+2026-10-11 15:32:57,261 - portable_sam_fusion - INFO - Trainable state quality_head           absent
+2026-10-11 15:32:57,261 - portable_sam_fusion - INFO - Trainable state uav_roi_retriever      absent
+2026-10-11 15:32:57,261 - portable_sam_fusion - INFO - Trainable state uav_roi_gate           absent
+2026-10-11 15:32:57,262 - portable_sam_fusion - INFO - Trainable state uav_roi_dense_prompt   absent
+2026-10-11 15:32:57,262 - portable_sam_fusion - INFO - Trainable state uav_roi_prompt_adapter absent
+2026-10-11 15:32:57,262 - portable_sam_fusion - INFO - Trainable state uav_prompt_adapter_sparse_scale absent
+2026-10-11 15:32:57,262 - portable_sam_fusion - INFO - Trainable state uav_prompt_adapter_dense_scale absent
+2026-10-11 15:32:57,262 - portable_sam_fusion - INFO - Using user-specified warmup: 100 optimizer steps
+[seed] Random seed fixed to 45 | cudnn.deterministic=True
+[RSSAM2VisionEncoder] Loading SAM2 base_plus model
+  - embed_dim: 112
+  - stages: (2, 3, 16, 3)
+  - backbone_channels: [896, 448, 224, 112]
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[ImageEncoder(base_plus)] Loaded 306 keys. missing=0, unexpected=0
+[RSSAM2VisionEncoder] Applied LoRA with config:
+  - r=16, alpha=32
+  - target_modules=['qkv', 'proj']
+  - dropout=0.05
+  - modules_to_save=['neck']
+trainable params: 1,492,528 || all params: 70,599,344 || trainable%: 2.114081966540652
+[RSSAM2VisionEncoder] LoRA audit: backbone total=70599344, trainable=1492528, lora_trainable=1061424, unexpected_trainable=0
+[SAM2] using package: /data1/wangcheng/project/sam2-main/sam2/__init__.py
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[MaskDecoder] Loaded 131 keys. missing=0, unexpected=0
+  use_high_res_features: True
+  Has conv_s0: True
+  Has conv_s1: True
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[MaskHead] Initialized no_mask_embed from SAM2 ckpt, frozen, abs_mean=0.01521041
+Loads checkpoint by local backend from path: /data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
+[PromptEncoder] Loaded 17 keys. missing=0, unexpected=0
+2026-10-11 15:40:57,414 - portable_sam_fusion - INFO - epoch 1 | mini-batch 400/949 | optimizer_step 50/11900 | lr=2.503e-04
+2026-10-11 15:48:41,984 - portable_sam_fusion - INFO - epoch 1 | mini-batch 800/949 | optimizer_step 100/11900 | lr=5.000e-04
+2026-10-11 15:51:29,069 - portable_sam_fusion - INFO - Epoch 1 detailed losses: loss_rpn_cls=0.1664, loss_rpn_bbox=0.0370, loss_cls=0.4306, acc=79.7941, loss_bbox=0.3252, loss_mask=0.5548, debug_mask_pos_rois=63.5606, debug_mask_logit_mean=0.7391, debug_mask_logit_std=1.3441, debug_mask_prob_mean=0.6261, debug_mask_prob_ge05=0.7138, debug_mask_target_fill=0.6544, loss_shape_prior=0.0649, loss_p2_boundary_refiner=0.0305, schedule/det_weight=1.0000
+2026-10-11 15:51:29,070 - portable_sam_fusion - INFO - Epoch 1 dense residual monitor: alpha=0.251308 source_delta_norm=21.7342 applied_delta_norm=5.4596 source_delta_ratio=0.930531 applied_delta_ratio=0.233747
+2026-10-11 15:51:29,070 - portable_sam_fusion - INFO - Epoch 1 P2 boundary refiner: raw_dice=0.7861 refined_dice=0.7859 raw_iou=0.6625 refined_iou=0.6622 raw_boundary_f1=0.6106 refined_boundary_f1=0.6106
+2026-10-11 15:51:29,070 - portable_sam_fusion - INFO - Epoch 1 P2 boundary support: valid=84.57% rejected=15.43% coverage=0.3580 delta_abs=0.009056 nonzero=35.80% saturated=0.00% p2_norm=162.7146 highpass_norm=14.5053 support_fg=53.75%
+2026-10-11 15:51:29,070 - portable_sam_fusion - INFO - Epoch 1 primary loss shares: det=59.60% final_mask=34.47% shape=4.03% p2_boundary=1.89%
+2026-10-11 15:51:29,070 - portable_sam_fusion - INFO - Epoch 1 schedule: det_loss_weight=1.000 early_stop_start=20 min_delta=0.0005
+2026-10-11 15:51:29,070 - portable_sam_fusion - INFO - Epoch 1 learning rates: sat_backbone=5.00e-04, mask_decoder=5.00e-04, shape_prior=5.00e-04, p2_boundary_refiner=5.00e-04, quality_head=5.00e-04, sat_other=5.00e-04
+[DEBUG] RSSAM2PAFPN inputs: 4 tensors
+  [0] shape=torch.Size([1, 256, 256, 256]), dtype=torch.float16
+  [1] shape=torch.Size([1, 256, 128, 128]), dtype=torch.float16
+  [2] shape=torch.Size([1, 256, 64, 64]), dtype=torch.float32
+  [3] shape=torch.Size([1, 256, 32, 32]), dtype=torch.float16
+2026-10-11 15:52:29,468 - portable_sam_fusion - INFO - Cached validation GT as RLE records: images=100
+2026-10-11 15:52:29,468 - portable_sam_fusion - INFO - Validation samples: GT=2792, DT=4784, avg_masks_per_image=47.84, avg_mask_fill=0.0148
+2026-10-11 15:52:30,878 - portable_sam_fusion - INFO - Validation bbox/mAP: 0.5438 bbox/mAP_75: 0.6269
+2026-10-11 15:52:32,599 - portable_sam_fusion - INFO - Validation segm/mAP: 0.4163
+2026-10-11 15:52:32,949 - portable_sam_fusion - INFO - New best segm/mAP: 0.4163
+2026-10-11 15:52:32,949 - portable_sam_fusion - INFO - New best bbox/mAP: 0.5438
+2026-10-11 15:52:32,949 - portable_sam_fusion - INFO - New best early-stop metric (segm/mAP): raw=0.4163 smooth(5)=0.4163
+2026-10-11 15:52:34,241 - portable_sam_fusion - INFO - Saved best_model with segm/mAP: 0.4163
+2026-10-11 15:52:35,483 - portable_sam_fusion - INFO - Saved best_bbox_model with bbox/mAP: 0.5438
+2026-10-11 15:52:36,422 - portable_sam_fusion - INFO - Epoch 1/100 | train=1.609290 val=disabled segm/mAP=0.4163 bbox/mAP=0.5438 | best_segm=0.4163 best_bbox=0.5438 best_comp=0.0000 | sat_backbone=5.00e-04 mask_decoder=5.00e-04 shape_prior=5.00e-04 p2_boundary_refiner=5.00e-04 quality_head=5.00e-04 sat_other=5.00e-04

@@ -1,0 +1,20 @@
+[2026-10-15 10:42:24] chain started; PI decision: freeze CURRENT state immediately (producer still writing; per-file consistent copy)
+[2026-10-15 10:42:24] snapshot manifest already present; reusing existing snapshot
+[2026-10-15 10:42:24] snapshot frozen: 905a10f5ce1aa908
+[2026-10-15 10:42:24] launching EXP-0009 (single-stream snapshot arm)
+[2026-10-15 14:14:56] EXP-0009 exited rc=0
+[2026-10-15 14:14:56] FATAL: EXP-0009 did not complete (rc=0); not launching EXP-0010
+[2026-10-15 14:18:45] chain started; PI decision: freeze CURRENT state immediately (producer still writing; per-file consistent copy)
+[2026-10-15 14:18:45] snapshot manifest already present; reusing existing snapshot
+[2026-10-15 14:18:45] snapshot frozen: 905a10f5ce1aa908
+[2026-10-15 14:18:45] launching EXP-0009 (single-stream snapshot arm)
+[2026-10-15 14:18:45] EXP-0009 exited rc=2
+[2026-10-15 14:18:45] FATAL: EXP-0009 did not complete (rc=2); not launching EXP-0010
+[2026-10-15 14:21:27] chain started; PI decision: freeze CURRENT state immediately (producer still writing; per-file consistent copy)
+[2026-10-15 14:21:27] snapshot manifest already present; reusing existing snapshot
+[2026-10-15 14:21:27] snapshot frozen: 905a10f5ce1aa908
+[2026-10-15 14:21:27] EXP-0009 last checkpoint already present; skipping to EXP-0010
+[2026-10-15 14:21:27] EXP-0009 exited rc=0
+[2026-10-15 14:21:27] launching EXP-0010 (dual-stream snapshot arm)
+[2026-10-15 21:54:32] EXP-0010 exited rc=0
+[2026-10-15 21:54:32] CHAIN COMPLETE: both snapshot arms trained; ready for A/B analysis
