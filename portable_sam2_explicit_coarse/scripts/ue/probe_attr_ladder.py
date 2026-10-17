@@ -8,6 +8,8 @@ spatially ordered, so reversed pairing = maximally distant scenes). The
 satellite grid/queries stay correct for scene i; only the content is wrong.
 C2 constant: the pathway's descriptor block is replaced by the train-split
 mean output map (30 scenes); the 6 stats channels stay per-scene live.
+C4 constant-full: the ENTIRE bev (descriptor + stats) replaced by the
+train-split mean - separates live-stats content from pure template.
 
 Usage: probe_attr_ladder.py --ckpt PATH --tag t --mode {c1,c2} [--attn|--raster]
   --attn   : R1C arm - replace/permute the attention descriptor block
@@ -54,10 +56,12 @@ def install_hooks(model, mode):
 
     def patched(uav, hw):
         bev, cov = orig_uav_bev(uav, hw)
-        if use_attn:      # R1C: descriptor block = channels [0:attn_dim]
+        if mode in ('full', 'c4'):    # C4: the whole BEV tensor
+            core._attr_block_cache = bev
+        elif use_attn:              # R1C: descriptor block = channels [0:attn_dim]
             d = int(core.bev_attn.v_proj.out_features)
             core._attr_block_cache = bev[:d]
-        else:             # R1G: rasterized descriptor block = [0:256]
+        else:                       # R1G: rasterized descriptor block = [0:256]
             core._attr_block_cache = bev[:256]
         return bev, cov
     core._uav_bev = patched
@@ -68,7 +72,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--ckpt', required=True)
     ap.add_argument('--tag', required=True)
-    ap.add_argument('--mode', choices=('c1', 'c2'), required=True)
+    ap.add_argument('--mode', choices=('c1', 'c2', 'c4'), required=True)
     ap.add_argument('--train-scenes', type=int, default=30)
     ap.add_argument('--max-val', type=int, default=0)
     ap.add_argument('--device', default='cuda:0')
@@ -88,6 +92,25 @@ def main():
     use_attn = bool(getattr(model, 'bev_desc_attention', False))
     dim = int(model.bev_attn.v_proj.out_features) if use_attn else 256
     install_hooks(model, a.mode)
+
+    if a.mode == 'c4':
+        # full-BEV constant: descriptor block AND stats block both replaced
+        # by the train-split mean - separates live-stats content from pure
+        # template (forced by the C2~=C0 outcome; amendment logged in prereg)
+        ds_tr = L.UERawPairDataset(str(L.SNAP), 'train', True,
+                                   'surfbev_b0_split_v2.json', image_size=(512, 512))
+        mean_full = harvest_mean_block(model, ds_tr, a.train_scenes, 'full', dev)
+        orig_uav_bev4 = model._uav_bev
+
+        def const_full(uav, hw, _orig=orig_uav_bev4, _m=mean_full):
+            bev, cov = _orig(uav, hw)
+            if tuple(bev.shape[-2:]) != tuple(_m.shape[-2:]):
+                _mb = torch.nn.functional.interpolate(_m[None], size=bev.shape[-2:],
+                                                      mode='bilinear', align_corners=False)[0]
+            else:
+                _mb = _m
+            return _mb.to(bev.device, bev.dtype), cov
+        model._uav_bev = const_full
 
     if a.mode == 'c2':
         ds_tr = L.UERawPairDataset(str(L.SNAP), 'train', True,
