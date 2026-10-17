@@ -348,7 +348,7 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                                       sk, swc, hw)
             stats_blk = bev[:, 256:262]          # must NOT shadow the raster
             if bev.shape[0] > 1:                 # stats dict used 3 lines below
-                stats_blk = stats_blk.reshape(-1, *stats_blk.shape[2:])
+                stats_blk = stats_blk.reshape(1, -1, *stats_blk.shape[-2:])
             bev = torch.cat((attn_desc[None], stats_blk), dim=1)
         if getattr(self, 'bev_scale', None) is not None:
             bev = bev * self.bev_scale.to(bev.device)
