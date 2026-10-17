@@ -103,7 +103,7 @@ def main():
         orig_uav_bev4 = model._uav_bev
 
         def const_full(uav, hw, sat_feat=None, _orig=orig_uav_bev4, _m=mean_full):
-            bev, cov = _orig(uav, hw)
+            bev, cov = _orig(uav, hw, sat_feat=sat_feat)
             if tuple(bev.shape[-2:]) != tuple(_m.shape[-2:]):
                 _mb = torch.nn.functional.interpolate(_m[None], size=bev.shape[-2:],
                                                       mode='bilinear', align_corners=False)[0]
@@ -120,7 +120,7 @@ def main():
         orig_uav_bev = model._uav_bev
 
         def const_block(uav, hw, sat_feat=None, _orig=orig_uav_bev, _m=mean_blk, _d=dim):
-            bev, cov = _orig(uav, hw)          # [C,H,W]
+            bev, cov = _orig(uav, hw, sat_feat=sat_feat)  # [C,H,W]
             if tuple(bev.shape[-2:]) != tuple(_m.shape[-2:]):
                 _mb = torch.nn.functional.interpolate(_m[None], size=bev.shape[-2:],
                                                       mode='bilinear', align_corners=False)[0]

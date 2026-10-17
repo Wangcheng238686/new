@@ -94,7 +94,10 @@ class BEVDescAttention(nn.Module):
         # the vs/us meshgrid; .float() for the fp16-under-AMP backbone out;
         # bilinear-downsampled only when the grid differs from 64x64).
         if self.sat_proj is not None and sat_feat is not None:
+            assert sat_feat.dim() in (3, 4) and sat_feat.shape[-3] == self.sat_dim
             sf = sat_feat.detach().float()
+            if sf.dim() == 4:            # batched neck output [1,C,H,W]
+                sf = sf[0]
             if tuple(sf.shape[-2:]) != (oh, ow):
                 sf = F.interpolate(sf[None], size=(oh, ow), mode='bilinear',
                                    align_corners=False)[0]
