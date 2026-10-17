@@ -66,7 +66,7 @@ if [[ "$RESUME" == "--resume" ]]; then
   RESUME_ARGS=(--resume-from "$WORK_DIR/last_checkpoint.pth")
 else
   INIT_FLAGS=(--init-from "$INIT_FROM" --allow-task-init --allow-cross-arch-init \
-              --init-allowed-missing-prefixes "uav_encoder.,proj,gate,bev_head,height_edges")
+              --init-allowed-missing-prefixes "uav_encoder.,proj,gate,bev_head,bev_attn,height_edges")
 fi
 
 echo "WARMSCREEN_CONTRACT arm=$ARM commit=$(git rev-parse HEAD) dirty=$(git status --porcelain | wc -l) gpu=$CUDA_VISIBLE_DEVICES epochs=$EPOCHS seed=44 run_tag=$RUN_TAG"

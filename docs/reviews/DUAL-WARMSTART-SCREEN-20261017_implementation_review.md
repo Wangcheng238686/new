@@ -38,3 +38,12 @@ eval/parity 脚本协议复用）均核验 OK。
 审计工件：子代理会话输出（sess_463660c0，agent_21f9245a）；
 冒烟日志 `/tmp/warm_smoke_r1b2.log`（修复后）、`/tmp/warm_smoke_r1b.log`
 （修复前，含 70.6M other 组证据行）。
+
+## 追加：WARM-R1C 模块审计（2026-10-17 17:05）
+
+首轮 VERDICT: **FAIL**（4 项阻断：锚点 denom clamp_min 符号翻转、旋转方向
+反用 R_w2c、查询/键网格未换算 512 内参帧、wrapper init 白名单漏 bev_attn）
+——全部当日修复：符号保持 denom、R_c2w 行形式、×512/N 网格换算、白名单
+补齐；数值自检（锚点跨度 35,438cm≈360m tile、z≡0）+ 训练路径重冒烟通过。
+增量复核 VERDICT: **PASS**（4/4 修复确认）。复核注记的 512 参数差异系
+proj Conv2d 的 bias（审计计数 164,608 漏加，实为 165,120）。

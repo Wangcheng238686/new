@@ -58,33 +58,44 @@ class BEVDescAttention(nn.Module):
         the aggregate is bilinearly upsampled to the injection resolution."""
         V, C, h, w = desc.shape
         dev = desc.device
+        # BEV cell world anchors: sat pixel grid -> camera ray -> z=0 ground
         oh, ow = 64, 64
         vs, us = torch.meshgrid(torch.arange(oh, device=dev, dtype=torch.float32),
                                 torch.arange(ow, device=dev, dtype=torch.float32),
                                 indexing='ij')
-        pix = torch.stack((us + .5, vs + .5, torch.ones_like(us)), -1).reshape(-1, 3)  # [HW,3]
+        # audit fixes 2026-10-17 (implementation review FAIL->fix):
+        # (i) rescale grid centres into the 512-px intrinsics frame;
+        # (ii) apply R_c2w (row form: d_cam @ R_w2c), NOT R_w2c;
+        # (iii) sign-preserving denominator - downward rays have denom<0,
+        #       clamp_min flipped them to +1e-9 and pushed s to -3e13.
+        pix = torch.stack(((us + .5) * 512.0 / ow, (vs + .5) * 512.0 / oh,
+                           torch.ones_like(us)), -1).reshape(-1, 3)      # [HW,3]
         sat_c2w = torch.linalg.inv(sat_w2c)
         dirs_cam = torch.linalg.solve(sat_k, pix.T).T                    # [HW,3] rays in cam
-        dirs_w = dirs_cam @ sat_w2c[:3, :3].T                            # world dirs
+        dirs_w = dirs_cam @ sat_w2c[:3, :3]                              # world dirs (R_c2w row form)
         org = sat_c2w[:3, 3]                                             # cam centre world
         denom = dirs_w[:, 2]
-        s = torch.where(denom.abs() > 1e-9, -org[2] / denom.clamp_min(1e-9), torch.zeros_like(denom))
+        denom_safe = torch.where(denom.abs() > 1e-9, denom,
+                                 torch.full_like(denom, -1e-9))
+        s = -org[2] / denom_safe
         gnd = org + s[:, None] * dirs_w                                  # [HW,3] on z=0
-        q_g = self.q_geom(gnd[:, :2] / 400.0)                            # ~±2 normalised
+        q_g = self.q_geom(gnd[:, :2] / 20000.0)                          # tile half-extent norm
         q = self.q_proj(q_g)                                             # [HW,d]
 
         # keys/values: per-view cells, world ray dirs + camera centres
+        # (cell centres rescaled into the 512-px intrinsics frame - audit fix)
         ys, xs = torch.meshgrid(torch.arange(h, device=dev, dtype=torch.float32),
                                 torch.arange(w, device=dev, dtype=torch.float32),
                                 indexing='ij')
-        cell = torch.stack((xs + .5, ys + .5, torch.ones_like(xs)), -1).reshape(-1, 3)  # [N,3]
+        cell = torch.stack(((xs + .5) * 512.0 / w, (ys + .5) * 512.0 / h,
+                            torch.ones_like(xs)), -1).reshape(-1, 3)     # [N,3]
         ks, vs_, centers = [], [], []
         for v in range(V):
             d_cam = torch.linalg.solve(uav_k[v], cell.T).T
             d_w = d_cam @ uav_c2w[v, :3, :3].T
             d_w = d_w / d_w.norm(dim=1, keepdim=True).clamp_min(1e-9)
             ks.append(self.k_dir(d_w) + self.k_center(
-                uav_c2w[v, :3, 3][None].expand(d_w.shape[0], 3) / 500.0))
+                uav_c2w[v, :3, 3][None].expand(d_w.shape[0], 3) / 40000.0))
             vs_.append(desc[v].flatten(1).T)                            # [N,C]
         k = self.k_proj(torch.cat([torch.cat([g, f], 1)
                                    for g, f in zip(ks, vs_)], 0))        # [V*N,d]
