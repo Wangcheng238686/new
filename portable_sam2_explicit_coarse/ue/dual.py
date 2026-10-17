@@ -61,7 +61,7 @@ class BEVDescAttention(nn.Module):
         self.out_norm = nn.GroupNorm(8, out_dim)
         self.scale = (out_dim // heads) ** -0.5
 
-    def forward(self, desc, uav_k, uav_c2w, sat_k, sat_w2c, out_hw, chunk=1024):
+    def forward(self, desc, uav_k, uav_c2w, sat_k, sat_w2c, out_hw, sat_feat=None):
         """desc [V,C,h,w]; uav_k [V,3,3]; uav_c2w [V,4,4]; sat on BEV grid.
         Attention runs on the 64x64 probe grid (PIXEL-CLS granularity) and
         the aggregate is bilinearly upsampled to the injection resolution."""
@@ -89,7 +89,19 @@ class BEVDescAttention(nn.Module):
         s = -org[2] / denom_safe
         gnd = org + s[:, None] * dirs_w                                  # [HW,3] on z=0
         q_g = self.q_geom(gnd[:, :2] / 20000.0)                          # tile half-extent norm
-        q = self.q_proj(q_g)                                             # [HW,d]
+        # WARM-R1Q query contentization: concatenate the frozen satellite
+        # feature at the same BEV cell (row-major [HW] order identical to
+        # the vs/us meshgrid; .float() for the fp16-under-AMP backbone out;
+        # bilinear-downsampled only when the grid differs from 64x64).
+        if self.sat_proj is not None and sat_feat is not None:
+            sf = sat_feat.detach().float()
+            if tuple(sf.shape[-2:]) != (oh, ow):
+                sf = F.interpolate(sf[None], size=(oh, ow), mode='bilinear',
+                                   align_corners=False)[0]
+            q_in = torch.cat((q_g, self.sat_proj(sf.flatten(1).T)), dim=1)
+        else:
+            q_in = q_g
+        q = self.q_proj(q_in)                                            # [HW,d]
 
         # keys/values: per-view cells, world ray dirs + camera centres
         # (cell centres rescaled into the 512-px intrinsics frame - audit fix)

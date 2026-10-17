@@ -54,8 +54,8 @@ def install_hooks(model, mode):
     use_attn = getattr(core, 'bev_desc_attention', False)
     orig_uav_bev = core._uav_bev
 
-    def patched(uav, hw):
-        bev, cov = orig_uav_bev(uav, hw)
+    def patched(uav, hw, sat_feat=None):
+        bev, cov = orig_uav_bev(uav, hw, sat_feat=sat_feat)
         if mode in ('full', 'c4'):    # C4: the whole BEV tensor
             core._attr_block_cache = bev
         elif use_attn:              # R1C: descriptor block = channels [0:attn_dim]
@@ -102,7 +102,7 @@ def main():
         mean_full = harvest_mean_block(model, ds_tr, a.train_scenes, 'full', dev)
         orig_uav_bev4 = model._uav_bev
 
-        def const_full(uav, hw, _orig=orig_uav_bev4, _m=mean_full):
+        def const_full(uav, hw, sat_feat=None, _orig=orig_uav_bev4, _m=mean_full):
             bev, cov = _orig(uav, hw)
             if tuple(bev.shape[-2:]) != tuple(_m.shape[-2:]):
                 _mb = torch.nn.functional.interpolate(_m[None], size=bev.shape[-2:],
@@ -119,7 +119,7 @@ def main():
         # freeze the block: patch _uav_bev to splice the mean back in
         orig_uav_bev = model._uav_bev
 
-        def const_block(uav, hw, _orig=orig_uav_bev, _m=mean_blk, _d=dim):
+        def const_block(uav, hw, sat_feat=None, _orig=orig_uav_bev, _m=mean_blk, _d=dim):
             bev, cov = _orig(uav, hw)          # [C,H,W]
             if tuple(bev.shape[-2:]) != tuple(_m.shape[-2:]):
                 _mb = torch.nn.functional.interpolate(_m[None], size=bev.shape[-2:],

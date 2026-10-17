@@ -31,8 +31,8 @@ R1C 配方 + 两处同改（缺一都有失败证据：纯几何查询=模板解
 2. **逐场景辅助监督**：复用 R1B bev_head 机器（hidden 64，weight 0.05），
    **输入锁定为注意力输出图**（128ch@64×64 上采样至注入分辨率；配置
    bev_head_source='attn'，默认 'bev' 保持 R1B 位不变），目标为本场景
-   GT 建筑并集足迹，损失 BCE + Dice（各 0.5 权重；R1B 纯 BCE 保留为
-   历史臂行为）。不加任何附加件（方差正则/温度/对比项禁用）。
+   GT 建筑并集足迹，损失 BCE + Dice（等权求和后乘 bev_aux_weight 0.05；R1B 纯 BCE
+   保留为历史臂行为）。不加任何附加件（方差正则/温度/对比项禁用）。
 
 - 配置 `configs/ue_whu_a3sgm_512_warm_r1q.py` = R1C + 上两键；
   身份 `ue-whu-a3sgm-512-warm-r1q-v1`。
