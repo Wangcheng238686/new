@@ -28,6 +28,8 @@ case "$ARM" in
        EXPECT_ID=ue-whu-a3sgm-512-warm-r1c-v1 ;;
   r1ch) CONFIG=configs/ue_whu_a3sgm_512_warm_r1ch.py
        EXPECT_ID=ue-whu-a3sgm-512-warm-r1ch-v1 ;;
+  r1q) CONFIG=configs/ue_whu_a3sgm_512_warm_r1q.py
+       EXPECT_ID=ue-whu-a3sgm-512-warm-r1q-v1 ;;
   *) echo "unknown arm $ARM" >&2; exit 2 ;;
 esac
 

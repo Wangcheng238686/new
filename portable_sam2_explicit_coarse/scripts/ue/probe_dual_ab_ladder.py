@@ -131,6 +131,11 @@ def per_scene_ap(model, ds, dev, dual):
                 e.params.imgIds = [1]
                 e.evaluate(); e.accumulate(); e.summarize()
                 row[iou_type] = float(e.stats[0])
+                # per-size AP fields (stats[3]/[4]/[5] = s/m/l) for the
+                # preregistered mAP_s protection gate; extra keys are
+                # backward compatible with existing consumers
+                for si, suffix in ((3, '_s'), (4, '_m'), (5, '_l')):
+                    row[iou_type + suffix] = float(e.stats[si])
             else:
                 row[iou_type] = 0.0
         rows.append(row)

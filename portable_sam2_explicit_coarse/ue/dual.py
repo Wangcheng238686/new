@@ -36,9 +36,11 @@ class BEVDescAttention(nn.Module):
     geometry anchors WHICH cells can talk; the softmax routes the content.
     """
 
-    def __init__(self, desc_dim=256, out_dim=128, geom_dim=64, heads=4):
+    def __init__(self, desc_dim=256, out_dim=128, geom_dim=64, heads=4,
+                 sat_dim=0):
         super().__init__()
         self.heads = heads
+        self.sat_dim = int(sat_dim)
         self.q_geom = nn.Sequential(nn.Linear(2, geom_dim), nn.ReLU(),
                                     nn.Linear(geom_dim, geom_dim))
         self.k_dir = nn.Sequential(nn.Linear(3, geom_dim), nn.ReLU(),
@@ -46,7 +48,14 @@ class BEVDescAttention(nn.Module):
         self.k_center = nn.Sequential(nn.Linear(3, geom_dim), nn.ReLU(),
                                       nn.Linear(geom_dim, geom_dim))
         d = geom_dim + desc_dim
-        self.q_proj = nn.Linear(geom_dim, out_dim)
+        # WARM-R1Q: query contentization - the query concatenates the frozen
+        # satellite P2 feature at the same BEV cell (projected, no gradient
+        # backflow into the frozen base) so keys can be retrieved by CONTENT
+        # match, not only by geometry. sat_dim=0 keeps the R1C query verbatim.
+        self.sat_proj = (nn.Linear(int(sat_dim), geom_dim)
+                         if int(sat_dim) > 0 else None)
+        self.q_proj = nn.Linear(geom_dim * (2 if int(sat_dim) > 0 else 1),
+                                out_dim)
         self.k_proj = nn.Linear(d, out_dim, bias=False)
         self.v_proj = nn.Linear(desc_dim, out_dim, bias=False)
         self.out_norm = nn.GroupNorm(8, out_dim)
@@ -181,7 +190,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                  gate_init=0.0, bev_head_hidden=0, bev_head_stats=None,
                  bev_aux_weight=0.05, bev_desc_attention=False,
                  bev_attn_dim=128, bev_attn_geom_dim=64, bev_attn_heads=4,
-                 height_edges_cfg=None,
+                 height_edges_cfg=None, bev_attn_sat_query=False,
+                 bev_head_source='bev',
                  **kwargs):
         super().__init__(**kwargs)
         if uav_encoder is None:
@@ -230,18 +240,33 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         # stays untouched so the EXP-0015 recipe remains the single base.
         # Default bev_head_hidden=0 creates no attribute and no state_dict
         # key - every earlier arm is bit-identical (same pattern as bev_stats).
+        self.bev_head_source = str(bev_head_source)
         if bev_head_hidden > 0:
-            if bev_head_stats is None:
-                raise ValueError("bev_head requires bev_head_stats (0014-lineage harvest JSON)")
             if len(levels) != 1 or self.embed_fusion:
                 raise ValueError("bev_head arm is single-level pyramid fusion only (prereg)")
-            payload = json.loads(Path(bev_head_stats).read_text())
-            scale = torch.tensor(payload['scale'], dtype=torch.float32)
-            if tuple(scale.shape) != (bev_channels,):
-                raise ValueError(f"bev_head_stats scale has {scale.numel()} channels, expected {bev_channels}")
-            self.register_buffer('bev_head_scale', scale.view(1, -1, 1, 1))
+            if self.bev_head_source == 'bev':
+                # R1B lineage: head consumes the raw BEV through the frozen
+                # 0014-lineage per-channel rescale (behaviour unchanged)
+                if bev_head_stats is None:
+                    raise ValueError("bev_head_source='bev' requires bev_head_stats (0014 harvest JSON)")
+                payload = json.loads(Path(bev_head_stats).read_text())
+                scale = torch.tensor(payload['scale'], dtype=torch.float32)
+                if tuple(scale.shape) != (bev_channels,):
+                    raise ValueError(f"bev_head_stats scale has {scale.numel()} channels, expected {bev_channels}")
+                self.register_buffer('bev_head_scale', scale.view(1, -1, 1, 1))
+                head_in = bev_channels
+            elif self.bev_head_source == 'attn':
+                # WARM-R1Q: head input LOCKED to the attention output map -
+                # supervision cannot leak through the stats channels, so the
+                # aux objective forces scene-specific content into the
+                # attention aggregate (GroupNorm'd, no rescale needed)
+                if not bev_desc_attention:
+                    raise ValueError("bev_head_source='attn' requires bev_desc_attention")
+                head_in = int(bev_attn_dim)
+            else:
+                raise ValueError(f"unknown bev_head_source {bev_head_source}")
             self.bev_head = nn.Sequential(
-                nn.Conv2d(bev_channels, int(bev_head_hidden), 3, padding=1, bias=False),
+                nn.Conv2d(head_in, int(bev_head_hidden), 3, padding=1, bias=False),
                 nn.GroupNorm(8, int(bev_head_hidden)),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(int(bev_head_hidden), int(bev_head_hidden), 3, padding=1, bias=False),
@@ -266,7 +291,10 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         if self.bev_desc_attention:
             self.bev_attn = BEVDescAttention(
                 desc_dim=256, out_dim=int(bev_attn_dim),
-                geom_dim=int(bev_attn_geom_dim), heads=int(bev_attn_heads))
+                geom_dim=int(bev_attn_geom_dim), heads=int(bev_attn_heads),
+                sat_dim=512 if bev_attn_sat_query else 0)
+            self.bev_attn_sat_query = bool(bev_attn_sat_query)
+            self._last_attn_out = None
             expected = int(bev_attn_dim) + 6 * self._n_height_bins
             if bev_channels != expected:
                 raise ValueError(
@@ -315,7 +343,7 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             self._uav_pending = dp._last_uav
             dp._last_uav = None
 
-    def _uav_bev(self, uav, hw):
+    def _uav_bev(self, uav, hw, sat_feat=None):
         rgb = uav['drone_images']
         if rgb.dim() != 5 or rgb.shape[0] != 1:
             raise RuntimeError(f"dual arm expects per-GPU batch 1, got {tuple(rgb.shape)}")
@@ -345,7 +373,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             # WARM-R1CH: with K height bins the per-bin stats blocks are
             # flattened bin-major into 6K channels.
             attn_desc = self.bev_attn(desc, torch.stack(uk), torch.stack(uc),
-                                      sk, swc, hw)
+                                      sk, swc, hw, sat_feat=sat_feat)
+            self._last_attn_out = attn_desc
             stats_blk = bev[:, 256:262]          # must NOT shadow the raster
             if bev.shape[0] > 1:                 # stats dict used 3 lines below
                 stats_blk = stats_blk.reshape(1, -1, *stats_blk.shape[-2:])
@@ -368,15 +397,19 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                     single = len(self.target_levels) == 1
                     proj_t = self.proj if single else self.proj[str(t)]
                     gate_t = self.gate if single else self.gate[str(t)]
-                    bev, coverage = self._uav_bev(uav, tuple(base.shape[-2:]))
+                    _sat = base.detach() if getattr(self, 'bev_attn_sat_query', False) else None
+                    bev, coverage = self._uav_bev(uav, tuple(base.shape[-2:]), sat_feat=_sat)
                     delta = proj_t(bev.unsqueeze(0).float())
                     delta = (gate_t.view(1, -1, 1, 1) * delta)
                     if getattr(self, 'bev_head', None) is not None:
-                        b_in = bev.unsqueeze(0).float() * self.bev_head_scale.to(bev.device)
+                        if self.bev_head_source == 'attn':
+                            b_in = self._last_attn_out.unsqueeze(0).float()
+                        else:
+                            b_in = bev.unsqueeze(0).float() * self.bev_head_scale.to(bev.device)
                         b_logits = self.bev_head(b_in)
                         delta = delta * (1.0 + torch.sigmoid(b_logits))
                         if self.training:
-                            # kept graph-attached: the aux BCE (loss()) trains
+                            # kept graph-attached: the aux loss (loss()) trains
                             # bev_head AND feeds the UAV LoRA supply-side
                             self._bev_aux_logits = b_logits
                     delta = delta.to(base.dtype)
@@ -430,8 +463,14 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                     target,
                     torch.nn.functional.interpolate(union, size=logits.shape[-2:], mode='area')[0, 0],
                 )
-            losses['loss_bev_aux'] = self.bev_aux_weight * F.binary_cross_entropy_with_logits(
-                logits[0, 0], target)
+            bce = F.binary_cross_entropy_with_logits(logits[0, 0], target)
+            if self.bev_head_source == 'attn':
+                p = torch.sigmoid(logits[0, 0])
+                inter = (p * target).sum()
+                dice = 1.0 - (2.0 * inter + 1.0) / (p.sum() + target.sum() + 1.0)
+                losses['loss_bev_aux'] = self.bev_aux_weight * (bce + dice)
+            else:
+                losses['loss_bev_aux'] = self.bev_aux_weight * bce
         return losses
 
     def predict(self, batch_inputs, batch_data_samples, rescale=True, **kwargs):
