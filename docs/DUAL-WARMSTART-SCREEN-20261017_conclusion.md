@@ -202,3 +202,23 @@ segm 丢失显著、bbox 增强——延长反应介于 R1（双降）与 R1G（
 SCREEN-PASS：on−off 双指标 CI95 下界均 >0 且 on−single segm 点估计 >0；
 SCREEN-EXT（一次性）：on−off ∈ (0,+0.3) 且任一 CI 含 0 → 续训至 60ep 再判；
 SCREEN-FAIL：on−off 双指标 CI 均含 0；护栏：on−single < −0.5 且 CI 上界 < 0。
+
+## 7. WARM-R1C（CVT 注意力描述子通路，30ep，2026-10-17 18:20 收线）
+
+PIXEL-CLS A-PASS（`docs/PIXEL-CLS-PROBE-20261017_conclusion.md`）的直接推论臂：
+WARM-R1G 唯一变量 = 描述子通路替换（栅格化平均 → BEVDescAttention：世界
+锚定查询 × 精确度量几何键，分块 SDPA，64×64 网格聚合后上采样；统计组 6
+通道保留精确反投影）。实现审计 FAIL→修复→增量复核 PASS（见 reviews 文档
+追加节，4 项阻断全闭环）；commit `896b07c`。
+
+| 臂（30ep） | segm Δ [CI95] | bbox Δ [CI95] |
+| --- | --- | --- |
+| WARM-R1G（栅格化描述子） | +0.089 [−0.015, +0.195] | **+0.123 [+0.044, +0.214]** |
+| **WARM-R1C（注意力描述子）** | **+0.135 [+0.019, +0.254]** | +0.088 [−0.003, +0.190] |
+
+- **R1C segm 为全谱系最强**（超过 R1@30 的 +0.124），且相对 R1G 提升
+  +0.046——注意力聚合把逐像素可分性变现为净增益的方向性证据。
+- 落判：**SCREEN-EXT**（bbox CI 下界 −0.003，差 0.003 过线）；末代
+  delta_p3_ratio 0.079、step-0 即 0.278（GroupNorm 量纲健康）。
+- 升级建议（供 PI）：R1C 配方全量双 seed（对照 EXP-0018/0019 协议），
+  预期位 = segm 主导的双指标过线。
