@@ -47,3 +47,12 @@ eval/parity 脚本协议复用）均核验 OK。
 补齐；数值自检（锚点跨度 35,438cm≈360m tile、z≡0）+ 训练路径重冒烟通过。
 增量复核 VERDICT: **PASS**（4/4 修复确认）。复核注记的 512 参数差异系
 proj Conv2d 的 bias（审计计数 164,608 漏加，实为 165,120）。
+
+## 追加 2：WARM-R1Q 模块审计（2026-10-18 01:00，三轮闭环）
+
+首轮 **FAIL**（B1 sat_feat 前向实现整体缺失——并发编辑使两处 replace 静默
+未命中；B2 sat_feat 关键字回归 R1C/R1CH；B3 阶梯 wrapper 签名不兼容）。
+修复后复核 **FAIL**（残留：调用点传 4D 批维 neck 输出而前向只支持 3D；
+const_* 仍吞 sat_feat）。二轮修复（4D squeeze + 显式 assert + 双透传，
+经真实调用点形状验证）后 **VERDICT: PASS**。修复链提交：
+548d84e → c1cd545。教训登记：对并发编辑过的文件，replace 必须带 assert。
