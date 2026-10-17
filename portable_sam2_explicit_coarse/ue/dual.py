@@ -346,10 +346,10 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             # flattened bin-major into 6K channels.
             attn_desc = self.bev_attn(desc, torch.stack(uk), torch.stack(uc),
                                       sk, swc, hw)
-            stats = bev[:, 256:262]
-            if bev.shape[0] > 1:
-                stats = stats.reshape(-1, *stats.shape[2:])
-            bev = torch.cat((attn_desc[None], stats), dim=1)
+            stats_blk = bev[:, 256:262]          # must NOT shadow the raster
+            if bev.shape[0] > 1:                 # stats dict used 3 lines below
+                stats_blk = stats_blk.reshape(-1, *stats_blk.shape[2:])
+            bev = torch.cat((attn_desc[None], stats_blk), dim=1)
         if getattr(self, 'bev_scale', None) is not None:
             bev = bev * self.bev_scale.to(bev.device)
         coverage = float(stats.get('covered_cells', 0)) / float(hw[0] * hw[1])
