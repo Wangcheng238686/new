@@ -24,6 +24,91 @@ _UAV_MEAN = (0.485, 0.456, 0.406)
 _UAV_STD = (0.229, 0.224, 0.225)
 
 
+class BEVDescAttention(nn.Module):
+    """CVT-style attention aggregation of per-view descriptor cells into the
+    BEV (PIXEL-CLS probe 2026-10-17: the building signal EXISTS per-pixel and
+    is washed out by the rasterizer's cross-view averaging).
+
+    Queries: BEV cells anchored in world coordinates (satellite-camera
+    ray/ground-plane intersection, z=0). Keys: per-view descriptor cells with
+    geometric embedding from the exact metric cameras (world ray direction +
+    camera centre). Values: projected per-view descriptors. The metric
+    geometry anchors WHICH cells can talk; the softmax routes the content.
+    """
+
+    def __init__(self, desc_dim=256, out_dim=128, geom_dim=64, heads=4):
+        super().__init__()
+        self.heads = heads
+        self.q_geom = nn.Sequential(nn.Linear(2, geom_dim), nn.ReLU(),
+                                    nn.Linear(geom_dim, geom_dim))
+        self.k_dir = nn.Sequential(nn.Linear(3, geom_dim), nn.ReLU(),
+                                   nn.Linear(geom_dim, geom_dim))
+        self.k_center = nn.Sequential(nn.Linear(3, geom_dim), nn.ReLU(),
+                                      nn.Linear(geom_dim, geom_dim))
+        d = geom_dim + desc_dim
+        self.q_proj = nn.Linear(geom_dim, out_dim)
+        self.k_proj = nn.Linear(d, out_dim, bias=False)
+        self.v_proj = nn.Linear(desc_dim, out_dim, bias=False)
+        self.out_norm = nn.GroupNorm(8, out_dim)
+        self.scale = (out_dim // heads) ** -0.5
+
+    def forward(self, desc, uav_k, uav_c2w, sat_k, sat_w2c, out_hw, chunk=1024):
+        """desc [V,C,h,w]; uav_k [V,3,3]; uav_c2w [V,4,4]; sat on BEV grid.
+        Attention runs on the 64x64 probe grid (PIXEL-CLS granularity) and
+        the aggregate is bilinearly upsampled to the injection resolution."""
+        V, C, h, w = desc.shape
+        dev = desc.device
+        oh, ow = 64, 64
+        vs, us = torch.meshgrid(torch.arange(oh, device=dev, dtype=torch.float32),
+                                torch.arange(ow, device=dev, dtype=torch.float32),
+                                indexing='ij')
+        pix = torch.stack((us + .5, vs + .5, torch.ones_like(us)), -1).reshape(-1, 3)  # [HW,3]
+        sat_c2w = torch.linalg.inv(sat_w2c)
+        dirs_cam = torch.linalg.solve(sat_k, pix.T).T                    # [HW,3] rays in cam
+        dirs_w = dirs_cam @ sat_w2c[:3, :3].T                            # world dirs
+        org = sat_c2w[:3, 3]                                             # cam centre world
+        denom = dirs_w[:, 2]
+        s = torch.where(denom.abs() > 1e-9, -org[2] / denom.clamp_min(1e-9), torch.zeros_like(denom))
+        gnd = org + s[:, None] * dirs_w                                  # [HW,3] on z=0
+        q_g = self.q_geom(gnd[:, :2] / 400.0)                            # ~±2 normalised
+        q = self.q_proj(q_g)                                             # [HW,d]
+
+        # keys/values: per-view cells, world ray dirs + camera centres
+        ys, xs = torch.meshgrid(torch.arange(h, device=dev, dtype=torch.float32),
+                                torch.arange(w, device=dev, dtype=torch.float32),
+                                indexing='ij')
+        cell = torch.stack((xs + .5, ys + .5, torch.ones_like(xs)), -1).reshape(-1, 3)  # [N,3]
+        ks, vs_, centers = [], [], []
+        for v in range(V):
+            d_cam = torch.linalg.solve(uav_k[v], cell.T).T
+            d_w = d_cam @ uav_c2w[v, :3, :3].T
+            d_w = d_w / d_w.norm(dim=1, keepdim=True).clamp_min(1e-9)
+            ks.append(self.k_dir(d_w) + self.k_center(
+                uav_c2w[v, :3, 3][None].expand(d_w.shape[0], 3) / 500.0))
+            vs_.append(desc[v].flatten(1).T)                            # [N,C]
+        k = self.k_proj(torch.cat([torch.cat([g, f], 1)
+                                   for g, f in zip(ks, vs_)], 0))        # [V*N,d]
+        vfeat = self.v_proj(torch.cat(vs_, 0))                          # [V*N,d]
+        d = q.shape[-1]
+        Hh = self.heads
+        kc = k.reshape(-1, Hh, d // Hh).transpose(0, 1).contiguous()     # [Hh,VN,dh]
+        vc = vfeat.reshape(-1, Hh, d // Hh).transpose(0, 1).contiguous()
+        outs = []
+        CH = 1024  # chunked SDPA: caps the materialised attn per chunk even
+        # when the math backend is selected (autocast off in the dual path)
+        for i in range(0, q.shape[0], CH):
+            qc = q[i:i + CH].reshape(-1, Hh, d // Hh).transpose(0, 1).contiguous()
+            o = F.scaled_dot_product_attention(qc, kc, vc, scale=self.scale)
+            outs.append(o.transpose(0, 1).reshape(-1, d))
+        out = torch.cat(outs, 0).T.reshape(-1, oh, ow)                  # [d,64,64]
+        if (oh, ow) != tuple(out_hw):
+            out = F.interpolate(out[None], size=tuple(out_hw), mode='bilinear',
+                                align_corners=False)[0]
+        # normalise across channels (BN-free, batch=1 safe)
+        out = self.out_norm(out[None])[0]
+        return out                                                      # [d,oh,ow]
+
+
 @MODELS.register_module()
 class UEDualPreprocessor(DetDataPreprocessor):
     """DetDataPreprocessor with a UAV side-channel.
@@ -83,7 +168,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                  target_level=1, target_levels=None, uav_eval_off=False,
                  bev_stats=None, embed_fusion=False, embed_channels=256,
                  gate_init=0.0, bev_head_hidden=0, bev_head_stats=None,
-                 bev_aux_weight=0.05,
+                 bev_aux_weight=0.05, bev_desc_attention=False,
+                 bev_attn_dim=128, bev_attn_geom_dim=64, bev_attn_heads=4,
                  **kwargs):
         super().__init__(**kwargs)
         if uav_encoder is None:
@@ -153,6 +239,22 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             )
             self.bev_aux_weight = float(bev_aux_weight)
             self._bev_aux_logits = None
+        # WARM-R1C (PIXEL-CLS 2026-10-17 A-PASS): descriptors travel through a
+        # CVT-style attention pathway instead of the rasterizer's cross-view
+        # averaging; the 6 stats channels keep the exact backprojection. The
+        # constructor bev_channels then counts attn_dim + 6 (proj input); the
+        # rasterizer still runs at its native 262 for the stats slice. Default
+        # False creates no attribute - earlier arms bit-identical.
+        self.bev_desc_attention = bool(bev_desc_attention)
+        if self.bev_desc_attention:
+            self.bev_attn = BEVDescAttention(
+                desc_dim=256, out_dim=int(bev_attn_dim),
+                geom_dim=int(bev_attn_geom_dim), heads=int(bev_attn_heads))
+            expected = int(bev_attn_dim) + 6
+            if bev_channels != expected:
+                raise ValueError(
+                    f"bev_desc_attention expects bev_channels={expected} "
+                    f"(attn_dim + 6 stats), got {bev_channels}")
         self.uav_eval_off = bool(uav_eval_off) or os.environ.get('UE_UAV_EVAL_OFF') == '1'
         # EXP-0014: optional frozen per-channel rescaling of the BEV before the
         # projection (identity: ue-whu-a3sgm-512-dualnorm-v1). DUAL-DELTA-DECOMP
@@ -211,6 +313,13 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             desc, uav['devicez_rgb'][0], torch.stack(uk), torch.stack(uc),
             sk, swc, self.height_edges.to(desc.device), hw,
             with_grad=self.uav_encoder_lora)
+        if self.bev_desc_attention:
+            # PIXEL-CLS A-PASS: replace the rasterizer's averaged descriptor
+            # block with attention-aggregated descriptors; keep the exact
+            # backprojected stats channels (slice [256:262] of the raster).
+            attn_desc = self.bev_attn(desc, torch.stack(uk), torch.stack(uc),
+                                      sk, swc, hw)
+            bev = torch.cat((attn_desc[None], bev[:, 256:262]), dim=1)
         if getattr(self, 'bev_scale', None) is not None:
             bev = bev * self.bev_scale.to(bev.device)
         coverage = float(stats.get('covered_cells', 0)) / float(hw[0] * hw[1])

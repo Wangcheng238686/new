@@ -24,6 +24,8 @@ case "$ARM" in
        EXPECT_ID=ue-whu-a3sgm-512-warm-r1g-v1 ;;
   r1b) CONFIG=configs/ue_whu_a3sgm_512_warm_r1b.py
        EXPECT_ID=ue-whu-a3sgm-512-warm-r1b-v1 ;;
+  r1c) CONFIG=configs/ue_whu_a3sgm_512_warm_r1c.py
+       EXPECT_ID=ue-whu-a3sgm-512-warm-r1c-v1 ;;
   *) echo "unknown arm $ARM" >&2; exit 2 ;;
 esac
 
@@ -68,7 +70,7 @@ else
 fi
 
 echo "WARMSCREEN_CONTRACT arm=$ARM commit=$(git rev-parse HEAD) dirty=$(git status --porcelain | wc -l) gpu=$CUDA_VISIBLE_DEVICES epochs=$EPOCHS seed=44 run_tag=$RUN_TAG"
-echo "WARMSCREEN_CONTRACT baseline_id=$BASELINE_ID init_from=${INIT_FLAGS[1]:-none(resume)} freeze_prefixes=uav_encoder.,proj,gate,bev_head data_manifest=f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a split=17f49430b15037c8da25c63a1bf7fe4d510cf5ff153263d2feba62c4393441d5 prereg=docs/DUAL-WARMSTART-SCREEN-20261017_preregistration.md"
+echo "WARMSCREEN_CONTRACT baseline_id=$BASELINE_ID init_from=${INIT_FLAGS[1]:-none(resume)} freeze_prefixes=uav_encoder.,proj,gate,bev_head,bev_attn data_manifest=f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a split=17f49430b15037c8da25c63a1bf7fe4d510cf5ff153263d2feba62c4393441d5 prereg=docs/DUAL-WARMSTART-SCREEN-20261017_preregistration.md"
 
 exec /data2/wangcheng/envs/cvt2/bin/python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=4 train/train_rsprompter_fusion.py \
   --config "$CONFIG" --run-tag "$RUN_TAG" --data-root "$UE_DATA_ROOT" \
@@ -78,5 +80,5 @@ exec /data2/wangcheng/envs/cvt2/bin/python -m torch.distributed.run --standalone
   --val-batch-size 1 --val-every-n-epochs 1 --compute-val-loss 0 --amp 1 \
   --fusion-no-wd 1 \
   "${INIT_FLAGS[@]}" \
-  --freeze-base --freeze-allow-prefixes "uav_encoder.,proj,gate,bev_head" \
+  --freeze-base --freeze-allow-prefixes "uav_encoder.,proj,gate,bev_head,bev_attn" \
   --ema-enabled 0 --ema-eval 0 --checkpoint-dir "$WORK_DIR" "${RESUME_ARGS[@]}"

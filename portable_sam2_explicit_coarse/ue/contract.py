@@ -28,6 +28,8 @@ BASELINE_CONFIGS = {
     # (see docs/DUAL-WARMSTART-SCREEN-20261017_preregistration.md)
     "ue-whu-a3sgm-512-warm-r1g-v1": "configs/ue_whu_a3sgm_512_warm_r1g.py",
     "ue-whu-a3sgm-512-warm-r1b-v1": "configs/ue_whu_a3sgm_512_warm_r1b.py",
+    # PIXEL-CLS A-PASS follow-up: descriptors via CVT attention, stats kept
+    "ue-whu-a3sgm-512-warm-r1c-v1": "configs/ue_whu_a3sgm_512_warm_r1c.py",
 }
 ROOT = Path(__file__).resolve().parents[1]
 

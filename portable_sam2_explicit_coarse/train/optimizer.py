@@ -53,8 +53,9 @@ def _build_optimizer(
     # RSPrompterAnchorDual fusion modules only (top-level gate/proj/gate_e/
     # proj_e, incl. ModuleDict children); nested backbone blocks never start
     # with these tokens after prefix stripping. WARM-R1B adds the bev_head
-    # buildingness gate under the same exemption (same fusion-side family).
-    FUSION_ROOTS = ("gate", "proj", "gate_e", "proj_e", "bev_head")
+    # buildingness gate; WARM-R1C adds the bev_attn descriptor pathway (same
+    # fusion-side family).
+    FUSION_ROOTS = ("gate", "proj", "gate_e", "proj_e", "bev_head", "bev_attn")
 
     for name, param in model.named_parameters():
         if not param.requires_grad:
