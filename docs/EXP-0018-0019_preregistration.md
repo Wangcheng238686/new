@@ -24,13 +24,13 @@ R1G 配方（EXP-0015 基座 + gate_init 0.001 + warm 冻结）是现有证据�
 - 数据：冻结快照（pair `f15cd8f5…`、split `17f49430…`、train 694 / val 100）；
   **test 至两 seed last 产生前不开封**
 
-## DDP2 协议注记（登记为与阶梯的已知偏差）
+## 并行布局注记（2026-10-17 11:40 修订：DDP4 共租）
 
-双 seed 并行受四卡限制，每 seed 取 2 卡（batch 1×累积 4×2 卡 = global 8，
-与 DDP4 臂的 4×1×2=8 逐值一致；每 epoch optimizer steps 同为 87）。差异仅
-在 shard 组成（2 分片 vs 4 分片）与 rank0 验证不变。选择理由：用户要求双
-seed 并行；两 seed 同用 DDP2，臂间完全可比；对锚点（EXP-0009，DDP4）的
-配对比较口径不变。
+PI 决议：两 seed **各自全量 DDP4（0–3 四卡）、双 run 共租并行**。协议与
+阶梯臂（EXP-0009…0017）逐值一致：世界 4、每卡 batch 1、累积 2、global 8、
+174 minibatch/rank/epoch（696 padding）、87 优化步/epoch、rank0-only 验证。
+唯一共享效应是每卡两个 rank 的算力分摊（wall-clock），无任何数学口径差异。
+初版 DDP2 布局（每 seed 两卡）在 ~4ep 内终止作废，未产生被引用的工件。
 
 ## 四要素
 
