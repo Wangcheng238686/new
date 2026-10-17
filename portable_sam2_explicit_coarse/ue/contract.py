@@ -30,6 +30,8 @@ BASELINE_CONFIGS = {
     "ue-whu-a3sgm-512-warm-r1b-v1": "configs/ue_whu_a3sgm_512_warm_r1b.py",
     # PIXEL-CLS A-PASS follow-up: descriptors via CVT attention, stats kept
     "ue-whu-a3sgm-512-warm-r1c-v1": "configs/ue_whu_a3sgm_512_warm_r1c.py",
+    # WARM-R1CH: + multi-height-bin stats widening (orthogonal to R1C)
+    "ue-whu-a3sgm-512-warm-r1ch-v1": "configs/ue_whu_a3sgm_512_warm_r1ch.py",
 }
 ROOT = Path(__file__).resolve().parents[1]
 

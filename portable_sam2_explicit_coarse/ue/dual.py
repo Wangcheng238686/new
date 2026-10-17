@@ -181,6 +181,7 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                  gate_init=0.0, bev_head_hidden=0, bev_head_stats=None,
                  bev_aux_weight=0.05, bev_desc_attention=False,
                  bev_attn_dim=128, bev_attn_geom_dim=64, bev_attn_heads=4,
+                 height_edges_cfg=None,
                  **kwargs):
         super().__init__(**kwargs)
         if uav_encoder is None:
@@ -256,16 +257,22 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         # constructor bev_channels then counts attn_dim + 6 (proj input); the
         # rasterizer still runs at its native 262 for the stats slice. Default
         # False creates no attribute - earlier arms bit-identical.
+        # bin count derived early (the attention channel check needs it)
+        _edges = list(height_edges_cfg) if height_edges_cfg is not None else [-1e9, 1e9]
+        self._n_height_bins = len(_edges) - 1
+        if self._n_height_bins < 1:
+            raise ValueError("height_edges_cfg needs >= 2 ascending edges")
         self.bev_desc_attention = bool(bev_desc_attention)
         if self.bev_desc_attention:
             self.bev_attn = BEVDescAttention(
                 desc_dim=256, out_dim=int(bev_attn_dim),
                 geom_dim=int(bev_attn_geom_dim), heads=int(bev_attn_heads))
-            expected = int(bev_attn_dim) + 6
+            expected = int(bev_attn_dim) + 6 * self._n_height_bins
             if bev_channels != expected:
                 raise ValueError(
                     f"bev_desc_attention expects bev_channels={expected} "
-                    f"(attn_dim + 6 stats), got {bev_channels}")
+                    f"(attn_dim + 6 stats x {self._n_height_bins} bins), "
+                    f"got {bev_channels}")
         self.uav_eval_off = bool(uav_eval_off) or os.environ.get('UE_UAV_EVAL_OFF') == '1'
         # EXP-0014: optional frozen per-channel rescaling of the BEV before the
         # projection (identity: ue-whu-a3sgm-512-dualnorm-v1). DUAL-DELTA-DECOMP
@@ -282,7 +289,14 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             if tuple(scale.shape) != (bev_channels,):
                 raise ValueError(f"bev_stats scale has {scale.numel()} channels, expected {bev_channels}")
             self.register_buffer('bev_scale', scale.view(1, -1, 1, 1))
-        self.register_buffer('height_edges', torch.tensor([-1e9, 1e9]))
+        # WARM-R1CH: multi-height-bin stats widening. Default None keeps the
+        # legacy single-surface bin [-1e9, 1e9] bit-identically; a config list
+        # (cm, ascending) yields K = len-1 bins whose 6 stats channels each are
+        # flattened (bin-major) into the BEV channels (requires the attention
+        # descriptor pathway - single-variable stack on the leading recipe).
+        if self._n_height_bins > 1 and not self.bev_desc_attention:
+            raise ValueError("multi-bin stats requires bev_desc_attention (R1CH arm scope)")
+        self.register_buffer('height_edges', torch.tensor(_edges, dtype=torch.float32))
         self.telemetry = {'gate_mean': [], 'gate_std': [], 'gate_absmax': [],
                           'delta_p3_ratio': [], 'bev_coverage': []}
         self._uav_pending = None
@@ -328,9 +342,14 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             # PIXEL-CLS A-PASS: replace the rasterizer's averaged descriptor
             # block with attention-aggregated descriptors; keep the exact
             # backprojected stats channels (slice [256:262] of the raster).
+            # WARM-R1CH: with K height bins the per-bin stats blocks are
+            # flattened bin-major into 6K channels.
             attn_desc = self.bev_attn(desc, torch.stack(uk), torch.stack(uc),
                                       sk, swc, hw)
-            bev = torch.cat((attn_desc[None], bev[:, 256:262]), dim=1)
+            stats = bev[:, 256:262]
+            if bev.shape[0] > 1:
+                stats = stats.reshape(-1, *stats.shape[2:])
+            bev = torch.cat((attn_desc[None], stats), dim=1)
         if getattr(self, 'bev_scale', None) is not None:
             bev = bev * self.bev_scale.to(bev.device)
         coverage = float(stats.get('covered_cells', 0)) / float(hw[0] * hw[1])
