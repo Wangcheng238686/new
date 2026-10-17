@@ -14,6 +14,7 @@ if [[ "${B0_EXP_ID:-}" != "EXP-0020" && "${B0_EXP_ID:-}" != "EXP-0021" ]]; then
   echo "this wrapper only launches EXP-0020 (seed 44) or EXP-0021 (seed 45)" >&2; exit 2
 fi
 EXP_ID="${B0_EXP_ID}"
+RESUME="${1:-}"
 SEED="$([[ "$EXP_ID" == "EXP-0020" ]] && echo 44 || echo 45)"
 # PI decision 2026-10-17: both seeds run FULL DDP4 (ladder protocol verbatim)
 # and co-rent all four GPUs in parallel - world/batch/accum identical to the
@@ -31,8 +32,8 @@ export RUN_TAG WORK_DIR SAVE_LAST_MODEL=1 UE_LOAD_UAV=1
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "full training requires a clean Git worktree" >&2; exit 2
 fi
-if [[ -e "$WORK_DIR" ]]; then
-  echo "output directory already exists: $WORK_DIR" >&2; exit 2
+if [[ "$RESUME" != "--resume" && -e "$WORK_DIR" ]]; then
+  echo "output directory already exists (use --resume to continue): $WORK_DIR" >&2; exit 2
 fi
 if [[ "$(sha256sum "$UE_DATA_ROOT/accepted_pairs.jsonl" | cut -d ' ' -f 1)" != "f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a" ]]; then
   echo "accepted manifest hash mismatch" >&2; exit 2
@@ -48,6 +49,16 @@ if [[ ! -f "$INIT_FROM" ]]; then
   echo "EXP-0009 init checkpoint missing" >&2; exit 2
 fi
 
+RESUME_ARGS=()
+INIT_FLAGS=(--init-from "$INIT_FROM" --allow-task-init --allow-cross-arch-init \
+            --init-allowed-missing-prefixes "uav_encoder.,proj,gate,bev_head,bev_attn,height_edges")
+if [[ "$RESUME" == "--resume" ]]; then
+  # crash recovery 2026-10-17: checkpoint carries the warm dual state +
+  # optimizer groups; init flags are mutually exclusive with resume and the
+  # workdir-existence guard is lifted for the resume path only
+  INIT_FLAGS=()
+  RESUME_ARGS=(--resume-from "$WORK_DIR/last_checkpoint.pth")
+fi
 echo "EXP0020_21_CONTRACT exp_id=$EXP_ID seed=$SEED commit=$(git rev-parse HEAD) dirty=0 gpu=$CUDA_VISIBLE_DEVICES world_size=4 epochs=$EPOCHS run_tag=$RUN_TAG"
 echo "EXP0020_21_CONTRACT baseline_id=$BASELINE_ID init_from=$INIT_FROM freeze_prefixes=uav_encoder.,proj,gate,bev_head batch=1x4ranks accum=2 global_batch=8 opt_steps_per_epoch=87 cotenant=paired-seed data_manifest=f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a split=17f49430b15037c8da25c63a1bf7fe4d510cf5ff153263d2feba62c4393441d5 prereg=docs/EXP-0020-0021_preregistration.md"
 
@@ -58,7 +69,6 @@ exec /data2/wangcheng/envs/cvt2/bin/python -m torch.distributed.run --standalone
   --lr 5e-4 --weight-decay 0.05 --warmup-iters 100 --seed "$SEED" \
   --val-batch-size 1 --val-every-n-epochs 1 --compute-val-loss 0 --amp 1 \
   --fusion-no-wd 1 \
-  --init-from "$INIT_FROM" --allow-task-init --allow-cross-arch-init \
-  --init-allowed-missing-prefixes "uav_encoder.,proj,gate,bev_head,bev_attn,height_edges" \
+  "${INIT_FLAGS[@]}" \
   --freeze-base --freeze-allow-prefixes "uav_encoder.,proj,gate,bev_head,bev_attn" \
-  --ema-enabled 0 --ema-eval 0 --checkpoint-dir "$WORK_DIR"
+  --ema-enabled 0 --ema-eval 0 --checkpoint-dir "$WORK_DIR" "${RESUME_ARGS[@]}"
