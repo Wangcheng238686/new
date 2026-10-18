@@ -26,6 +26,8 @@
 
 | EXP-0022 | SURFBEV-warm-r1c-plateau60-full-DDP4-v2-noaug | 44 | R1C 配方 + 调度假设（`--lr-plateau-epoch 60 --lr-plateau-mult 0.1`：余弦至 60ep 衰减到 5e-5，41–100ep 恒定平台；身份同 `ue-whu-a3sgm-512-warm-r1c-v1` 配置复用）；warm 冻结/单调度无重启/DDP4 global 8/免 wd 同 0020/21；A/B 对 EXP-0009，机制对照 0020（调度单变量） | 预注册见 `docs/DUAL-AXIS-SCREEN-20261018_preregistration.md` 决策树落点节；2026-10-18 11:35 启动；**ep59 平台期入口被 R1F 筛查共租挤爆（rank3 OOM，调度假设主体未跑）**——修复计划：R1F 收线后以"即时平台"配方续训（--warmup-iters 1 --lr-plateau-epoch 1：余弦已自然完成于 ep59，续训即 5e-5 平台至 ep100），假设语义保留；**第二次共租 OOM（ep74，R1FB 筛查共租，rank3 差 320MB）**——教训登记：全量与筛查不再共租；R1FB 独跑收线后 0022 再独续至 100ep |
 
+| EXP-0023 | SURFBEV-warm-r1s-full-DDP4-v2-noaug | 44 | 终局条款（决策树全分支证伪后硬砍描述子）：BEV=6 统计通道独占（`bev_stats_only`，身份 `ue-whu-a3sgm-512-warm-r1s-v1`，gate 0.0002 可学）；warm 冻结/单余弦/DDP4 global 8/免 wd 同 0020/21；A/B 对 EXP-0009 | 预注册见 `docs/DUAL-AXIS-SCREEN-20261018_preregistration.md` 终局条款节；2026-10-19 01:35 启动 |
+
 
 EXP-0001 至 EXP-0005 的 pair manifest SHA256：`f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a`；v1 split SHA256：`894df4561b166d37d06d033a6fc326223062384b402f730591b4c76d41f926d5`。EXP-0006 使用同一 pair manifest、v2 split。测试集只在协议冻结与 last checkpoint 产生后运行标准推理。
 

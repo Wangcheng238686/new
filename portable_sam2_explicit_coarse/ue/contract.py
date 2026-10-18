@@ -37,6 +37,8 @@ BASELINE_CONFIGS = {
     # WARM-R1F: two-link fix (consumer unfreeze + fixed gate + values-only aux)
     "ue-whu-a3sgm-512-warm-r1f-v1": "configs/ue_whu_a3sgm_512_warm_r1f.py",
     "ue-whu-a3sgm-512-warm-r1fb-v1": "configs/ue_whu_a3sgm_512_warm_r1fb.py",
+    # EXP-0023 terminal: stats-only BEV (descriptors hard-cut)
+    "ue-whu-a3sgm-512-warm-r1s-v1": "configs/ue_whu_a3sgm_512_warm_r1s.py",
 }
 ROOT = Path(__file__).resolve().parents[1]
 

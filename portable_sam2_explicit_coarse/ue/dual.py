@@ -207,6 +207,7 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                  bev_attn_dim=128, bev_attn_geom_dim=64, bev_attn_heads=4,
                  height_edges_cfg=None, bev_attn_sat_query=False,
                  bev_head_source='bev', gate_trainable=True,
+                 bev_stats_only=False,
                  **kwargs):
         super().__init__(**kwargs)
         if uav_encoder is None:
@@ -302,6 +303,9 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         self._n_height_bins = len(_edges) - 1
         if self._n_height_bins < 1:
             raise ValueError("height_edges_cfg needs >= 2 ascending edges")
+        self.bev_stats_only = bool(bev_stats_only)
+        if self.bev_stats_only and bev_desc_attention:
+            raise ValueError('bev_stats_only excludes bev_desc_attention (terminal clause)')
         self.bev_desc_attention = bool(bev_desc_attention)
         if self.bev_desc_attention:
             self.bev_attn = BEVDescAttention(
@@ -384,6 +388,17 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         sk, swc, _ = _k_and_w2c(uav['satellite_camera'][0])
         uk = tuple(k.to(dev) for k in uk); uc = tuple(c.to(dev) for c in uc)
         sk, swc = sk.to(dev), swc.to(dev)
+        # EXP-0023 terminal clause (handoff 2026-10-18): hard-cut the descriptor
+        # pathway - the BEV carries ONLY the 6 exact-backprojection stats
+        # channels (zmean/zstd/vcount/zres/flags). Every content-rescue of the
+        # descriptors failed its gate; the method converges to "UAV depth
+        # geometry prior injection".
+        if self.bev_stats_only:
+            bev, stats = rasterize_surfacebev(
+                desc.detach(), uav['devicez_rgb'][0], torch.stack(uk), torch.stack(uc),
+                sk, swc, self.height_edges.to(desc.device), hw, with_grad=False)
+            coverage = float(stats.get('covered_cells', 0)) / float(hw[0] * hw[1])
+            return bev[0, 256:262], coverage
         bev, stats = rasterize_surfacebev(
             desc, uav['devicez_rgb'][0], torch.stack(uk), torch.stack(uc),
             sk, swc, self.height_edges.to(desc.device), hw,
