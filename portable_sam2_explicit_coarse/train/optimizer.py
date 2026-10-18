@@ -27,6 +27,7 @@ def _build_optimizer(
     decoder_tail_lr_mult: float = 1.0,
     weight_decay: float = 0.05,
     fusion_no_wd: bool = False,
+    consumer_lr_mult: float = 0.0,
 ) -> optim.Optimizer:
     params_backbone = []
     names_backbone = []
@@ -46,6 +47,8 @@ def _build_optimizer(
     names_bbox_head = []
     params_other = []
     names_other = []
+    params_consumers = []
+    names_consumers = []
     params_fusion = []
     names_fusion = []
     # EXP-0015/0016: the DUAL-WHY-NULL diagnosis names wd 0.05 as one of the
@@ -64,6 +67,13 @@ def _build_optimizer(
         if fusion_no_wd and match_name.split(".")[0] in FUSION_ROOTS:
             params_fusion.append(param)
             names_fusion.append(name)
+            continue
+        # WARM-R1F: the P2-injection consumers (rpn + roi heads) get their own
+        # low-LR group when unfrozen (consumer_lr_mult>0 enables the branch)
+        if consumer_lr_mult > 0 and (match_name.startswith("rpn_head.")
+                                     or match_name.startswith("roi_head.")):
+            params_consumers.append(param)
+            names_consumers.append(name)
             continue
         if "roi_head.mask_head.decoder_tail_refiner" in match_name:
             params_decoder_tail.append(param)
@@ -182,6 +192,12 @@ def _build_optimizer(
             }
         )
         audit_groups.append(("bbox_head", params_bbox_head, names_bbox_head, lr * bbox_head_lr_mult, weight_decay))
+    if params_consumers:
+        param_groups.append(
+            {"params": params_consumers, "lr": lr * consumer_lr_mult,
+             "weight_decay": weight_decay, "name": "consumers"})
+        audit_groups.append(("consumers", params_consumers, names_consumers,
+                             lr * consumer_lr_mult, weight_decay))
     if params_other:
         param_groups.append(
             {

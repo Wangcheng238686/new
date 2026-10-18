@@ -30,8 +30,16 @@ case "$ARM" in
        EXPECT_ID=ue-whu-a3sgm-512-warm-r1ch-v1 ;;
   r1q) CONFIG=configs/ue_whu_a3sgm_512_warm_r1q.py
        EXPECT_ID=ue-whu-a3sgm-512-warm-r1q-v1 ;;
+  r1f) CONFIG=configs/ue_whu_a3sgm_512_warm_r1f.py
+       EXPECT_ID=ue-whu-a3sgm-512-warm-r1f-v1 ;;
   *) echo "unknown arm $ARM" >&2; exit 2 ;;
 esac
+# WARM-R1F extras (two-link fix): consumers unfrozen at 1e-4 + 30ep-scaled
+# plateau schedule; other arms keep the plain 30ep single cosine
+ARM_EXTRA=()
+if [[ "$ARM" == "r1f" ]]; then
+  ARM_EXTRA=(--unfreeze-consumers --consumer-lr-mult 0.2 --lr-plateau-epoch 18 --lr-plateau-mult 0.1)
+fi
 
 RUN_TAG="surfacebev_v2_512warm_${ARM}_scr30_ddp4_s44_WARM-20261017"
 WORK_DIR="/data2/wangcheng/checkpoint/surfbev_b0/${RUN_TAG}"
@@ -82,7 +90,7 @@ exec /data2/wangcheng/envs/cvt2/bin/python -m torch.distributed.run --standalone
   --batch-size 1 --grad-accum-steps 2 --epochs "$EPOCHS" --early-stopping-patience 0 \
   --lr 5e-4 --weight-decay 0.05 --warmup-iters 100 --seed 44 \
   --val-batch-size 1 --val-every-n-epochs 1 --compute-val-loss 0 --amp 1 \
-  --fusion-no-wd 1 \
+  --fusion-no-wd 1 "${ARM_EXTRA[@]}" \
   "${INIT_FLAGS[@]}" \
   --freeze-base --freeze-allow-prefixes "uav_encoder.,proj,gate,bev_head,bev_attn" \
   --ema-enabled 0 --ema-eval 0 --checkpoint-dir "$WORK_DIR" "${RESUME_ARGS[@]}"

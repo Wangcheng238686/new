@@ -34,6 +34,8 @@ BASELINE_CONFIGS = {
     "ue-whu-a3sgm-512-warm-r1ch-v1": "configs/ue_whu_a3sgm_512_warm_r1ch.py",
     # WARM-R1Q: attention repair (sat-content queries + footprint aux on attn output)
     "ue-whu-a3sgm-512-warm-r1q-v1": "configs/ue_whu_a3sgm_512_warm_r1q.py",
+    # WARM-R1F: two-link fix (consumer unfreeze + fixed gate + values-only aux)
+    "ue-whu-a3sgm-512-warm-r1f-v1": "configs/ue_whu_a3sgm_512_warm_r1f.py",
 }
 ROOT = Path(__file__).resolve().parents[1]
 

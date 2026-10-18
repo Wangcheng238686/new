@@ -206,7 +206,7 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                  bev_aux_weight=0.05, bev_desc_attention=False,
                  bev_attn_dim=128, bev_attn_geom_dim=64, bev_attn_heads=4,
                  height_edges_cfg=None, bev_attn_sat_query=False,
-                 bev_head_source='bev',
+                 bev_head_source='bev', gate_trainable=True,
                  **kwargs):
         super().__init__(**kwargs)
         if uav_encoder is None:
@@ -316,6 +316,13 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                     f"bev_desc_attention expects bev_channels={expected} "
                     f"(attn_dim + 6 stats x {self._n_height_bins} bins), "
                     f"got {bev_channels}")
+        # WARM-R1F: fixed (non-learnable) transport gate - the gate is pinned
+        # at gate_init and the optimizer never sees it (proj still
+        # self-calibrates its output norm). Default True keeps learnability.
+        if not gate_trainable:
+            self.gate.requires_grad_(False)
+            if getattr(self, 'gate_e', None) is not None:
+                self.gate_e.requires_grad_(False)
         self.uav_eval_off = bool(uav_eval_off) or os.environ.get('UE_UAV_EVAL_OFF') == '1'
         # EXP-0014: optional frozen per-channel rescaling of the BEV before the
         # projection (identity: ue-whu-a3sgm-512-dualnorm-v1). DUAL-DELTA-DECOMP

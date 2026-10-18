@@ -153,6 +153,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--warmup-epochs", type=int, default=0, help="Number of warmup epochs for learning rate scheduling")
     parser.add_argument("--warmup-iters", type=int, default=100, help="Number of warmup optimizer steps (overrides warmup-epochs if > 0)")
     parser.add_argument(
+        "--unfreeze-consumers", action="store_true",
+        help="WARM-R1F: also unfreeze rpn_head./roi_head. under --freeze-base "
+             "(the P2-injection consumers fine-tune from the warm init).",
+    )
+    parser.add_argument(
+        "--consumer-lr-mult", type=float, default=0.2,
+        help="LR multiplier for the consumers group (default 0.2 -> 1e-4 at lr 5e-4).",
+    )
+    parser.add_argument(
         "--lr-plateau-epoch", type=int, default=0,
         help="If >0: cosine anneals only to this epoch, then LR holds at "
              "lr*--lr-plateau-mult for the remaining epochs (schedule-"

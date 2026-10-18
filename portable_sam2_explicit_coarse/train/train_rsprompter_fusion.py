@@ -218,6 +218,8 @@ def main():
             raise SystemExit("--freeze-base requires --init-from (fresh warm-start) "
                              "or --resume-from (SCREEN-EXT extension)")
         prefixes = tuple(p for p in args.freeze_allow_prefixes.split(",") if p)
+        if getattr(args, "unfreeze_consumers", False):
+            prefixes = prefixes + ("rpn_head.", "roi_head.")
         if not prefixes:
             raise SystemExit("--freeze-base requires a non-empty --freeze-allow-prefixes")
         # Audit finding (DUAL-WARMSTART-SCREEN implementation review): a
@@ -453,6 +455,7 @@ def main():
         decoder_tail_lr_mult=args.decoder_tail_lr_mult,
         weight_decay=args.weight_decay,
         fusion_no_wd=bool(getattr(args, "fusion_no_wd", 0)),
+        consumer_lr_mult=float(getattr(args, "consumer_lr_mult", 0.0) or 0.0),
     )
     if is_main:
         _log_trainable_state(model)
