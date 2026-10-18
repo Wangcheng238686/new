@@ -180,9 +180,10 @@ class RoIUAVSampler(nn.Module):
         v = y1[:, None] + gy[None] * (y2 - y1)[:, None]
         # z from the zmean surface (bilinear, normalised coords)
         H, W = zmean_map.shape[-2:]
-        zg = F.grid_sample(zmean_map[None, None], torch.stack(
-            (u / W * 2 - 1, v / H * 2 - 1), -1)[..., None, :],
-            mode='bilinear', align_corners=False)[0, 0, :, 0]          # [N,49]
+        zgrid = torch.stack((u / W * 2 - 1, v / H * 2 - 1), -1)[..., None, :] \
+            .reshape(1, -1, 1, 2)                                     # [1,N*49,1,2]
+        zg = F.grid_sample(zmean_map[None, None].float(), zgrid,
+                           mode='bilinear', align_corners=False)[0, 0, :, 0]  # [N*49]
         # sat pixel -> world ray -> height-plane intersection
         pix = torch.stack((u.reshape(-1) + .5, v.reshape(-1) + .5,
                            torch.ones_like(u.reshape(-1))), -1)        # [N*49,3]
@@ -197,24 +198,45 @@ class RoIUAVSampler(nn.Module):
         world = org + sc[:, None] * d_w                                # [N*49,3]
         # project into each view, masked descriptor sampling
         V, C, h, w = desc.shape
+        uv_scale = torch.tensor([w / 512.0, h / 512.0],
+                                device=desc.device, dtype=desc.dtype)
         acc = desc.new_zeros(N * g * g, C)
         cnt = desc.new_zeros(N * g * g)
         for vi in range(V):
             cam = world @ uav_c2w[vi, :3, :3].T + uav_c2w[vi, :3, 3]
             zc = cam[:, 2]
+            # project with the 512-frame intrinsics, then rescale into the
+            # descriptor grid frame (fpn h x w) - the frame mismatch had
+            # invalidated every point in the first smoke (cnt0_frac=1)
             uv = torch.stack((uav_k[vi, 0, 0] * cam[:, 0] / zc.clamp_min(1e-6)
                               + uav_k[vi, 0, 2],
                               uav_k[vi, 1, 1] * cam[:, 1] / zc.clamp_min(1e-6)
-                              + uav_k[vi, 1, 2]), -1)
-            valid = (zc > 0) & (uv[:, 0] >= 0) & (uv[:, 0] <= w - 1)                     & (uv[:, 1] >= 0) & (uv[:, 1] <= h - 1)
-            gnm = (uv[:, 0] / (w - 1) * 2 - 1, uv[:, 1] / (h - 1) * 2 - 1)
-            sampled = F.grid_sample(desc[vi][None], torch.stack(gnm, -1)[..., None, :],
+                              + uav_k[vi, 1, 2]), -1) * uv_scale
+            inb = (uv[:, 0] >= 0) & (uv[:, 0] <= w - 1) \
+                  & (uv[:, 1] >= 0) & (uv[:, 1] <= h - 1)
+            valid = (zc > 0) & inb
+            gnm = (torch.where(inb, uv[:, 0] / (w - 1) * 2 - 1,
+                               torch.zeros_like(uv[:, 0])),
+                   torch.where(inb, uv[:, 1] / (h - 1) * 2 - 1,
+                               torch.zeros_like(uv[:, 1])))
+            vgrid = torch.stack(gnm, -1)[..., None, :].reshape(1, -1, 1, 2)
+            sampled = F.grid_sample(desc[vi][None], vgrid,
                                     mode='bilinear', align_corners=True,
                                     padding_mode='zeros')[0, :, :, 0].T  # [N*49,C]
+            if os.environ.get('R1R_DEBUG'):
+                print(f'[r1r-view{vi}] zc_pos_frac={float((zc > 0).float().mean()):.3g} '
+                      f'inb_frac={float(inb.float().mean()):.3g}', flush=True)
             acc = acc + sampled * valid[:, None].float()
             cnt = cnt + valid.float()
         per_point = acc / cnt.clamp_min(1.0)[:, None]                   # [N*49,C]
         per_box = per_point.reshape(N, g * g, C).mean(1)                # [N,C]
+        if os.environ.get('R1R_DEBUG'):
+            def _f(t):
+                return bool(torch.isfinite(t).all()) if torch.isfinite(t).numel() else True
+            print(f'[r1r-smp] rois_f={_f(rois)} u_f={_f(u)} v_f={_f(v)} zg_f={_f(zg)} '
+                  f'zg_absmax={float(zg.abs().max()):.3g} world_f={_f(world)} '
+                  f'cnt0_frac={float((cnt==0).float().mean()):.3g} acc_f={_f(acc)} '
+                  f'per_box_f={_f(per_box)} per_box_absmax={float(per_box.abs().max()):.3g}', flush=True)
         return self.proj(per_box)
 
 
@@ -277,18 +299,25 @@ class RSPrompterAnchorRoIUAVHead(RSPrompterAnchorRoIPromptHead):
     def _bbox_forward(self, x, rois):
         results = super()._bbox_forward(x, rois)
         owner = getattr(self, "uav_owner", None)
+        if os.environ.get('R1R_BYPASS') == '1':
+            owner = None
         ctx = getattr(owner, "_uav_roi_ctx", None) if owner is not None else None
         if ctx is not None and rois.shape[0] > 0:
             feats = owner.roi_uav_sampler(rois, ctx["desc"], ctx["uav_k"],
                                           ctx["uav_c2w"], ctx["sat_k"],
                                           ctx["sat_w2c"], ctx["zmean"])
             delta = owner.roi_bbox_adapter(feats)
+            if os.environ.get('R1R_DEBUG'):
+                print(f'[r1r-dbg] bbox rois={tuple(rois.shape)} feats finite={bool(torch.isfinite(feats).all())} '
+                      f'feats_absmax={float(feats.abs().max())}', flush=True)
             results["bbox_feats"] = results["bbox_feats"] + delta[:, :, None, None]
         return results
 
     def _mask_forward(self, x, rois, image_embeddings=None,
                       image_positional_embeddings=None, high_res_features=None):
         owner = getattr(self, "uav_owner", None)
+        if os.environ.get('R1R_BYPASS') == '1':
+            owner = None
         ctx = getattr(owner, "_uav_roi_ctx", None) if owner is not None else None
         if ctx is not None and rois.shape[0] > 0:
             feats = owner.roi_uav_sampler(rois, ctx["desc"], ctx["uav_k"],
@@ -297,6 +326,10 @@ class RSPrompterAnchorRoIUAVHead(RSPrompterAnchorRoIPromptHead):
             delta = owner.roi_mask_adapter(feats)
             mask_roi_feats = self.mask_roi_extractor(
                 x[: self.mask_roi_extractor.num_inputs], rois)
+            if os.environ.get('R1R_DEBUG'):
+                print(f'[r1r-dbg] mask feats={tuple(feats.shape)} finite={bool(torch.isfinite(feats).all())} '
+                      f'delta_absmax={float(delta.abs().max()) if delta.numel() else 0.0} '
+                      f'mrf_finite={bool(torch.isfinite(mask_roi_feats).all())}', flush=True)
             mask_roi_feats = mask_roi_feats + delta[:, :, None, None]
             head_out = self.mask_head(
                 mask_roi_feats,
@@ -307,7 +340,7 @@ class RSPrompterAnchorRoIUAVHead(RSPrompterAnchorRoIPromptHead):
                 boxes=rois[:, 1:],
                 p2_feature=x[0],
                 prompt_rois=rois,
-                renderer_features=(mask_roi_feats,) + tuple(x[1:]),
+                renderer_features=x,
             )
             return dict(mask_preds=head_out.mask_logits,
                         coarse_outputs=head_out.coarse_outputs,
@@ -496,7 +529,9 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             raise ValueError("multi-bin stats requires bev_desc_attention (R1CH arm scope)")
         self.register_buffer('height_edges', torch.tensor(_edges, dtype=torch.float32))
         if self.roi_uav_only:
-            self.roi_head.uav_owner = self
+            # object.__setattr__ bypasses nn.Module child registration - a
+            # registered back-reference would recurse infinitely in .to()/.cuda()
+            object.__setattr__(self.roi_head, 'uav_owner', self)
             real_mask_ch = self.mask_roi_extractor.out_channels \
                 if hasattr(self, 'mask_roi_extractor') else None
             # the detector-level mask extractor lives on the roi head
@@ -547,6 +582,14 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             self.height_edges.to(dev), hw, with_grad=False)
         # zmean is stats channel 256 on the single surface bin; heights in cm
         zmean = bev[0, 256]
+        if os.environ.get('R1R_DEBUG'):
+            print(f'[r1r-dbg] ctx desc_finite={bool(torch.isfinite(desc).all())} '
+                  f'zmean_finite={bool(torch.isfinite(zmean).all())} '
+                  f'zmean_absmax={float(zmean.abs().max())} '
+                  f'uk_finite={bool(torch.isfinite(uk).all())} '
+                  f'uc_finite={bool(torch.isfinite(uc).all())} '
+                  f'sk_finite={bool(torch.isfinite(sk).all())} '
+                  f'swc_finite={bool(torch.isfinite(swc).all())}', flush=True)
         self._uav_roi_ctx = dict(desc=desc, uav_k=uk, uav_c2w=uc,
                                  sat_k=sk, sat_w2c=swc, zmean=zmean)
 
