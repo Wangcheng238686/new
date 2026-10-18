@@ -32,12 +32,14 @@ case "$ARM" in
        EXPECT_ID=ue-whu-a3sgm-512-warm-r1q-v1 ;;
   r1f) CONFIG=configs/ue_whu_a3sgm_512_warm_r1f.py
        EXPECT_ID=ue-whu-a3sgm-512-warm-r1f-v1 ;;
+  r1fb) CONFIG=configs/ue_whu_a3sgm_512_warm_r1fb.py
+       EXPECT_ID=ue-whu-a3sgm-512-warm-r1fb-v1 ;;
   *) echo "unknown arm $ARM" >&2; exit 2 ;;
 esac
 # WARM-R1F extras (two-link fix): consumers unfrozen at 1e-4 + 30ep-scaled
 # plateau schedule; other arms keep the plain 30ep single cosine
 ARM_EXTRA=()
-if [[ "$ARM" == "r1f" ]]; then
+if [[ "$ARM" == "r1f" || "$ARM" == "r1fb" ]]; then
   ARM_EXTRA=(--unfreeze-consumers --consumer-lr-mult 0.2 --lr-plateau-epoch 18 --lr-plateau-mult 0.1)
 fi
 
