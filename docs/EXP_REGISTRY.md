@@ -24,6 +24,8 @@
 | EXP-0020 | SURFBEV-warm-r1c-full-DDP4-v2-noaug-cotenant | 44 | WARM-R1C 全量（R1C 筛查结论建议）：R1G 配方 + 描述子通路替换（CVT 注意力 + 统计组反投影，身份 `ue-whu-a3sgm-512-warm-r1c-v1`，模块审计 FAIL→修复→PASS @896b07c）+ warm 冻结 + 100ep 单余弦；DDP4 共租与 EXP-0021 并行；A/B 对 EXP-0009，臂间对照 EXP-0018/0019；test 已有 single 锚、双 last 齐后再开封本臂 | 预注册 `docs/EXP-0020-0021_preregistration.md`；2026-10-17 19:05 启动、22:33 宕机（ep54）后 23:08 续训（调度重启伪影登记）、2026-10-18 02:27 完成 100ep；落判见 `docs/EXP-0020-0021_conclusion.md`：中间态（合并池 bbox +0.079 CI>0、segm +0.055 含 0；臂间 vs 0018 不显著 R1C≈R1G；全量阶梯：模板结论成立且 s44 全恒定≈真实——通路塌缩为静态偏置） |
 | EXP-0021 | SURFBEV-warm-r1c-full-DDP4-v2-noaug-cotenant | 45 | 同 EXP-0020 唯一变量=seed 45；DDP4 共租并行 | 同 EXP-0020 文档；22:33 宕机（ep53）后 00:03 续训、2026-10-18 03:30 完成 100ep；落判同文档（segm +0.077 [−0.008,+0.165] 边缘） |
 
+| EXP-0022 | SURFBEV-warm-r1c-plateau60-full-DDP4-v2-noaug | 44 | R1C 配方 + 调度假设（`--lr-plateau-epoch 60 --lr-plateau-mult 0.1`：余弦至 60ep 衰减到 5e-5，41–100ep 恒定平台；身份同 `ue-whu-a3sgm-512-warm-r1c-v1` 配置复用）；warm 冻结/单调度无重启/DDP4 global 8/免 wd 同 0020/21；A/B 对 EXP-0009，机制对照 0020（调度单变量） | 预注册见 `docs/DUAL-AXIS-SCREEN-20261018_preregistration.md` 决策树落点节；2026-10-18 中午启动 |
+
 
 EXP-0001 至 EXP-0005 的 pair manifest SHA256：`f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a`；v1 split SHA256：`894df4561b166d37d06d033a6fc326223062384b402f730591b4c76d41f926d5`。EXP-0006 使用同一 pair manifest、v2 split。测试集只在协议冻结与 last checkpoint 产生后运行标准推理。
 

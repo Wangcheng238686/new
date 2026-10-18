@@ -152,6 +152,17 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--grad-accum-steps", type=int, default=2)
     parser.add_argument("--warmup-epochs", type=int, default=0, help="Number of warmup epochs for learning rate scheduling")
     parser.add_argument("--warmup-iters", type=int, default=100, help="Number of warmup optimizer steps (overrides warmup-epochs if > 0)")
+    parser.add_argument(
+        "--lr-plateau-epoch", type=int, default=0,
+        help="If >0: cosine anneals only to this epoch, then LR holds at "
+             "lr*--lr-plateau-mult for the remaining epochs (schedule-"
+             "hypothesis arm: gate-opening telemetry saturating only at LR "
+             "exhaustion). 0 keeps the single full cosine.",
+    )
+    parser.add_argument(
+        "--lr-plateau-mult", type=float, default=0.1,
+        help="Plateau LR multiplier (0.1 -> 5e-5 at the default lr 5e-4).",
+    )
     parser.add_argument("--weight-decay", type=float, default=0.05, help="Weight decay for optimizer")
     parser.add_argument("--fusion-no-wd", type=int, default=0,
                         help="Exempt the dual fusion modules (gate/proj[_e]) from weight decay (EXP-0015/0016)")

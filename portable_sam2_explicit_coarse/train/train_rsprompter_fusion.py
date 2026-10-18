@@ -474,18 +474,44 @@ def main():
         if is_main:
             logger.info(f"Using default warmup: {warmup_optimizer_steps} optimizer steps")
 
-    cosine_t_max = max(1, total_optimizer_steps - warmup_optimizer_steps)
+    # EXP-0022 schedule hypothesis (2026-10-18): optionally anneal the cosine
+    # only through --lr-plateau-epoch epochs, then hold LR at
+    # lr*--lr-plateau-mult for the remainder - the warm-ladder telemetry shows
+    # delta_p3_ratio still climbing when the single cosine exhausts LR.
+    plateau_epoch = int(getattr(args, "lr_plateau_epoch", 0) or 0)
+    plateau_end = warmup_optimizer_steps + plateau_epoch * optimizer_steps_per_epoch
+    if plateau_epoch > 0 and plateau_end >= total_optimizer_steps:
+        raise SystemExit("--lr-plateau-epoch must leave remaining epochs for the plateau")
+    cosine_t_max = max(1, (plateau_end if plateau_epoch > 0 else total_optimizer_steps)
+                       - warmup_optimizer_steps)
     cosine_scheduler = optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=cosine_t_max, eta_min=args.lr * 0.001
+        optimizer, T_max=cosine_t_max,
+        # under the plateau plan the cosine decays straight TO the plateau
+        # value, so the epoch-60 handover is seamless (no dip-then-jump)
+        eta_min=args.lr * (float(args.lr_plateau_mult) if plateau_epoch > 0 else 0.001),
     )
     warmup_scheduler = optim.lr_scheduler.LinearLR(
         optimizer, start_factor=0.001, total_iters=warmup_optimizer_steps
     )
-    scheduler = optim.lr_scheduler.SequentialLR(
-        optimizer,
-        schedulers=[warmup_scheduler, cosine_scheduler],
-        milestones=[warmup_optimizer_steps],
-    )
+    if plateau_epoch > 0:
+        plateau_scheduler = optim.lr_scheduler.ConstantLR(
+            optimizer, factor=float(args.lr_plateau_mult),
+            total_iters=total_optimizer_steps)
+        scheduler = optim.lr_scheduler.SequentialLR(
+            optimizer,
+            schedulers=[warmup_scheduler, cosine_scheduler, plateau_scheduler],
+            milestones=[warmup_optimizer_steps, plateau_end],
+        )
+        if is_main:
+            logger.info(
+                "Schedule: warmup %d -> cosine to epoch %d -> plateau lr=%.2e for the remainder",
+                warmup_optimizer_steps, plateau_epoch, args.lr * args.lr_plateau_mult)
+    else:
+        scheduler = optim.lr_scheduler.SequentialLR(
+            optimizer,
+            schedulers=[warmup_scheduler, cosine_scheduler],
+            milestones=[warmup_optimizer_steps],
+        )
     # 保留旧变量名供 config_snapshot 引用（向后兼容）
     warmup_iters = warmup_optimizer_steps
 
