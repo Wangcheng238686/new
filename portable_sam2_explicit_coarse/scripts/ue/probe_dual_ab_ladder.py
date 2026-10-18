@@ -134,7 +134,7 @@ def per_scene_ap(model, ds, dev, dual):
                 # per-size AP fields (stats[3]/[4]/[5] = s/m/l) for the
                 # preregistered mAP_s protection gate; extra keys are
                 # backward compatible with existing consumers
-                for si, suffix in ((3, '_s'), (4, '_m'), (5, '_l')):
+                for si, suffix in ((2, '_75'), (3, '_s'), (4, '_m'), (5, '_l')):
                     row[iou_type + suffix] = float(e.stats[si])
             else:
                 row[iou_type] = 0.0

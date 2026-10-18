@@ -17,6 +17,7 @@ from mmdet.registry import MODELS
 from mmengine.registry import MODELS as MMENGINE_MODELS
 from mmengine.config import ConfigDict
 from rsprompter.detection.anchor_detector import RSPrompterAnchor
+from rsprompter.detection.anchor_roi_head import RSPrompterAnchorRoIPromptHead
 from rsprompter.surfacebev import rasterize_surfacebev
 from mmdet.models.data_preprocessors import DetDataPreprocessor
 
@@ -145,6 +146,78 @@ class BEVDescAttention(nn.Module):
 
 
 @MODELS.register_module()
+class RoIUAVSampler(nn.Module):
+    """WARM-R1R: per-box UAV descriptor sampling (PI spec 2026-10-19).
+
+    For each RoI box: a 7x7 grid of points in the box -> satellite pixels ->
+    height z bilinearly read from the zmean surface -> world points via the
+    satellite ray/height-plane intersection -> projected into the 5 UAV views
+    -> per-pixel descriptors bilinearly sampled with a validity mask (depth>0,
+    in-bounds) -> masked-mean pooled to a 256-d per-box feature. Exact metric
+    cameras; the zmean surface comes from the rasterizer's stats channel.
+    """
+
+    def __init__(self, desc_dim=256, out_dim=256, grid=7):
+        super().__init__()
+        self.grid = int(grid)
+        self.proj = nn.Linear(desc_dim, out_dim)
+
+    def forward(self, rois, desc, uav_k, uav_c2w, sat_k, sat_w2c, zmean_map):
+        """rois [N,5] (batch_idx + x1y1x2y2 in sat pixels); desc [V,C,h,w];
+        uav_k [V,3,3]; uav_c2w [V,4,4]; sat_k [3,3]; sat_w2c [4,4];
+        zmean_map [H,W] heights in the sat-pixel frame."""
+        N = rois.shape[0]
+        dev = rois.device
+        if N == 0:
+            return rois.new_zeros(0, self.proj.out_features)
+        g = self.grid
+        # 7x7 grid in normalised box coords -> sat pixels [N, 49, 2]
+        t = torch.linspace(0.0, 1.0, g, device=dev)
+        gy, gx = torch.meshgrid(t, t, indexing="ij")
+        gx = gx.reshape(-1); gy = gy.reshape(-1)
+        x1, y1, x2, y2 = rois[:, 1], rois[:, 2], rois[:, 3], rois[:, 4]
+        u = x1[:, None] + gx[None] * (x2 - x1)[:, None]
+        v = y1[:, None] + gy[None] * (y2 - y1)[:, None]
+        # z from the zmean surface (bilinear, normalised coords)
+        H, W = zmean_map.shape[-2:]
+        zg = F.grid_sample(zmean_map[None, None], torch.stack(
+            (u / W * 2 - 1, v / H * 2 - 1), -1)[..., None, :],
+            mode='bilinear', align_corners=False)[0, 0, :, 0]          # [N,49]
+        # sat pixel -> world ray -> height-plane intersection
+        pix = torch.stack((u.reshape(-1) + .5, v.reshape(-1) + .5,
+                           torch.ones_like(u.reshape(-1))), -1)        # [N*49,3]
+        sat_c2w = torch.linalg.inv(sat_w2c)
+        d_cam = torch.linalg.solve(sat_k, pix.T).T
+        d_w = d_cam @ sat_w2c[:3, :3]
+        org = sat_c2w[:3, 3]
+        denom = d_w[:, 2]
+        dsafe = torch.where(denom.abs() > 1e-9, denom,
+                            torch.full_like(denom, -1e-9))
+        sc = (zg.reshape(-1) - org[2]) / dsafe
+        world = org + sc[:, None] * d_w                                # [N*49,3]
+        # project into each view, masked descriptor sampling
+        V, C, h, w = desc.shape
+        acc = desc.new_zeros(N * g * g, C)
+        cnt = desc.new_zeros(N * g * g)
+        for vi in range(V):
+            cam = world @ uav_c2w[vi, :3, :3].T + uav_c2w[vi, :3, 3]
+            zc = cam[:, 2]
+            uv = torch.stack((uav_k[vi, 0, 0] * cam[:, 0] / zc.clamp_min(1e-6)
+                              + uav_k[vi, 0, 2],
+                              uav_k[vi, 1, 1] * cam[:, 1] / zc.clamp_min(1e-6)
+                              + uav_k[vi, 1, 2]), -1)
+            valid = (zc > 0) & (uv[:, 0] >= 0) & (uv[:, 0] <= w - 1)                     & (uv[:, 1] >= 0) & (uv[:, 1] <= h - 1)
+            gnm = (uv[:, 0] / (w - 1) * 2 - 1, uv[:, 1] / (h - 1) * 2 - 1)
+            sampled = F.grid_sample(desc[vi][None], torch.stack(gnm, -1)[..., None, :],
+                                    mode='bilinear', align_corners=True,
+                                    padding_mode='zeros')[0, :, :, 0].T  # [N*49,C]
+            acc = acc + sampled * valid[:, None].float()
+            cnt = cnt + valid.float()
+        per_point = acc / cnt.clamp_min(1.0)[:, None]                   # [N*49,C]
+        per_box = per_point.reshape(N, g * g, C).mean(1)                # [N,C]
+        return self.proj(per_box)
+
+
 class UEDualPreprocessor(DetDataPreprocessor):
     """DetDataPreprocessor with a UAV side-channel.
 
@@ -191,6 +264,62 @@ def _k_and_w2c(pair):
 
 
 @MODELS.register_module()
+class RSPrompterAnchorRoIUAVHead(RSPrompterAnchorRoIPromptHead):
+    """WARM-R1R: RoI head that adds zero-init per-box UAV descriptor deltas.
+
+    The detector stashes a per-scene context (desc/views/cameras/zmean) on
+    `.uav_owner_ctx` before loss/predict; _bbox_forward/_mask_forward sample
+    per-box features via the detector's roi_uav_sampler and broadcast-add the
+    zero-initialised adapter outputs to the RoI features. No ctx -> the
+    standard forward, bit-identically (UAV-off parity).
+    """
+
+    def _bbox_forward(self, x, rois):
+        results = super()._bbox_forward(x, rois)
+        owner = getattr(self, "uav_owner", None)
+        ctx = getattr(owner, "_uav_roi_ctx", None) if owner is not None else None
+        if ctx is not None and rois.shape[0] > 0:
+            feats = owner.roi_uav_sampler(rois, ctx["desc"], ctx["uav_k"],
+                                          ctx["uav_c2w"], ctx["sat_k"],
+                                          ctx["sat_w2c"], ctx["zmean"])
+            delta = owner.roi_bbox_adapter(feats)
+            results["bbox_feats"] = results["bbox_feats"] + delta[:, :, None, None]
+        return results
+
+    def _mask_forward(self, x, rois, image_embeddings=None,
+                      image_positional_embeddings=None, high_res_features=None):
+        owner = getattr(self, "uav_owner", None)
+        ctx = getattr(owner, "_uav_roi_ctx", None) if owner is not None else None
+        if ctx is not None and rois.shape[0] > 0:
+            feats = owner.roi_uav_sampler(rois, ctx["desc"], ctx["uav_k"],
+                                          ctx["uav_c2w"], ctx["sat_k"],
+                                          ctx["sat_w2c"], ctx["zmean"])
+            delta = owner.roi_mask_adapter(feats)
+            mask_roi_feats = self.mask_roi_extractor(
+                x[: self.mask_roi_extractor.num_inputs], rois)
+            mask_roi_feats = mask_roi_feats + delta[:, :, None, None]
+            head_out = self.mask_head(
+                mask_roi_feats,
+                image_embeddings=image_embeddings,
+                image_positional_embeddings=image_positional_embeddings,
+                roi_img_ids=rois[:, 0],
+                high_res_features=high_res_features,
+                boxes=rois[:, 1:],
+                p2_feature=x[0],
+                prompt_rois=rois,
+                renderer_features=(mask_roi_feats,) + tuple(x[1:]),
+            )
+            return dict(mask_preds=head_out.mask_logits,
+                        coarse_outputs=head_out.coarse_outputs,
+                        tail_outputs=head_out.tail_outputs)
+        return super()._mask_forward(
+            x, rois,
+            image_embeddings=image_embeddings,
+            image_positional_embeddings=image_positional_embeddings,
+            high_res_features=high_res_features)
+
+
+@MODELS.register_module()
 class RSPrompterAnchorDual(RSPrompterAnchor):
     """Sealed a3sgm + frozen UAV branch + zero-init gated P3 fusion.
 
@@ -207,7 +336,7 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                  bev_attn_dim=128, bev_attn_geom_dim=64, bev_attn_heads=4,
                  height_edges_cfg=None, bev_attn_sat_query=False,
                  bev_head_source='bev', gate_trainable=True,
-                 bev_stats_only=False,
+                 bev_stats_only=False, roi_uav_only=False,
                  **kwargs):
         super().__init__(**kwargs)
         if uav_encoder is None:
@@ -327,6 +456,21 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             self.gate.requires_grad_(False)
             if getattr(self, 'gate_e', None) is not None:
                 self.gate_e.requires_grad_(False)
+        # WARM-R1R: RoI-level conditioning only - the pyramid injection is off,
+        # the BEV pipeline merely supplies the zmean surface; per-box features
+        # enter through zero-init adapters in RSPrompterAnchorRoIUAVHead.
+        self.roi_uav_only = bool(roi_uav_only)
+        if self.roi_uav_only:
+            self.roi_uav_sampler = RoIUAVSampler(desc_dim=256, out_dim=256, grid=7)
+            self.roi_bbox_adapter = nn.Linear(256, sat_channels)
+            nn.init.zeros_(self.roi_bbox_adapter.weight)
+            nn.init.zeros_(self.roi_bbox_adapter.bias)
+            # mask extractor channels resolved lazily at first wiring below
+            mask_ch = 256
+            self.roi_mask_adapter = nn.Linear(256, mask_ch)
+            nn.init.zeros_(self.roi_mask_adapter.weight)
+            nn.init.zeros_(self.roi_mask_adapter.bias)
+            self._uav_roi_ctx = None
         self.uav_eval_off = bool(uav_eval_off) or os.environ.get('UE_UAV_EVAL_OFF') == '1'
         # EXP-0014: optional frozen per-channel rescaling of the BEV before the
         # projection (identity: ue-whu-a3sgm-512-dualnorm-v1). DUAL-DELTA-DECOMP
@@ -351,6 +495,17 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         if self._n_height_bins > 1 and not self.bev_desc_attention:
             raise ValueError("multi-bin stats requires bev_desc_attention (R1CH arm scope)")
         self.register_buffer('height_edges', torch.tensor(_edges, dtype=torch.float32))
+        if self.roi_uav_only:
+            self.roi_head.uav_owner = self
+            real_mask_ch = self.mask_roi_extractor.out_channels \
+                if hasattr(self, 'mask_roi_extractor') else None
+            # the detector-level mask extractor lives on the roi head
+            real_mask_ch = self.roi_head.mask_roi_extractor.out_channels
+            if real_mask_ch != self.roi_mask_adapter.out_features:
+                del self.roi_mask_adapter
+                self.roi_mask_adapter = nn.Linear(256, real_mask_ch)
+                nn.init.zeros_(self.roi_mask_adapter.weight)
+                nn.init.zeros_(self.roi_mask_adapter.bias)
         self.telemetry = {'gate_mean': [], 'gate_std': [], 'gate_absmax': [],
                           'delta_p3_ratio': [], 'bev_coverage': []}
         self._uav_pending = None
@@ -368,6 +523,32 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         if hasattr(dp, '_last_uav') and getattr(dp, '_last_uav', None) is not None:
             self._uav_pending = dp._last_uav
             dp._last_uav = None
+
+    def _stash_roi_ctx(self, uav, hw):
+        rgb = uav['drone_images']
+        mean = rgb.new_tensor(_UAV_MEAN)[:, None, None]
+        std = rgb.new_tensor(_UAV_STD)[:, None, None]
+        if self.uav_encoder_lora:
+            _, fpn = self.uav_encoder((rgb[0] - mean) / std)
+            desc = max(tuple(fpn[-4:]), key=lambda f: f.shape[-2] * f.shape[-1]).float()
+        else:
+            with torch.no_grad():
+                _, fpn = self.uav_encoder((rgb[0] - mean) / std)
+                desc = max(tuple(fpn[-4:]), key=lambda f: f.shape[-2] * f.shape[-1]).float()
+        cams = uav['uav_cameras'][0]
+        dev = desc.device
+        uk, _, uc = zip(*(_k_and_w2c(p) for p in cams))
+        sk, swc, _ = _k_and_w2c(uav['satellite_camera'][0])
+        uk = torch.stack([k.to(dev) for k in uk])
+        uc = torch.stack([c.to(dev) for c in uc])
+        sk, swc = sk.to(dev), swc.to(dev)
+        bev, _ = rasterize_surfacebev(
+            desc.detach(), uav['devicez_rgb'][0], uk, uc, sk, swc,
+            self.height_edges.to(dev), hw, with_grad=False)
+        # zmean is stats channel 256 on the single surface bin; heights in cm
+        zmean = bev[0, 256]
+        self._uav_roi_ctx = dict(desc=desc, uav_k=uk, uav_c2w=uc,
+                                 sat_k=sk, sat_w2c=swc, zmean=zmean)
 
     def _uav_bev(self, uav, hw, sat_feat=None):
         rgb = uav['drone_images']
@@ -427,6 +608,13 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         image_embeddings = out[1]
         uav = self._uav_pending
         self._uav_pending = None
+        if uav is not None and not (not self.training and self.uav_eval_off) \
+                and self.roi_uav_only:
+            # WARM-R1R: no pyramid injection; build the per-scene RoI context
+            # (descriptors + exact cameras + the zmean surface at 128x128)
+            with torch.autocast('cuda', enabled=False):
+                self._stash_roi_ctx(uav, tuple(x[0].shape[-2:]))
+            return tuple(x), image_embeddings, *out[2:]
         if uav is not None and not (not self.training and self.uav_eval_off):
             with torch.autocast('cuda', enabled=False):
                 for t in self.target_levels:
@@ -480,6 +668,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
 
     def loss(self, batch_inputs, batch_data_samples, **kwargs):
         self._fetch_uav()
+        if self.roi_uav_only:
+            self._uav_roi_ctx = None
         if getattr(self, 'bev_head', None) is not None:
             self._bev_aux_logits = None
         losses = super().loss(batch_inputs, batch_data_samples, **kwargs)
@@ -512,6 +702,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
 
     def predict(self, batch_inputs, batch_data_samples, rescale=True, **kwargs):
         self._fetch_uav()
+        if self.roi_uav_only:
+            self._uav_roi_ctx = None
         if getattr(self, 'bev_head', None) is not None:
             self._bev_aux_logits = None
         return super().predict(batch_inputs, batch_data_samples, rescale=rescale, **kwargs)

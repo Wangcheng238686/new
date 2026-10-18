@@ -34,6 +34,8 @@ case "$ARM" in
        EXPECT_ID=ue-whu-a3sgm-512-warm-r1f-v1 ;;
   r1fb) CONFIG=configs/ue_whu_a3sgm_512_warm_r1fb.py
        EXPECT_ID=ue-whu-a3sgm-512-warm-r1fb-v1 ;;
+  r1r) CONFIG=configs/ue_whu_a3sgm_512_warm_r1r.py
+       EXPECT_ID=ue-whu-a3sgm-512-warm-r1r-v1 ;;
   *) echo "unknown arm $ARM" >&2; exit 2 ;;
 esac
 # WARM-R1F extras (two-link fix): consumers unfrozen at 1e-4 + 30ep-scaled
@@ -80,7 +82,7 @@ if [[ "$RESUME" == "--resume" ]]; then
   RESUME_ARGS=(--resume-from "$WORK_DIR/last_checkpoint.pth")
 else
   INIT_FLAGS=(--init-from "$INIT_FROM" --allow-task-init --allow-cross-arch-init \
-              --init-allowed-missing-prefixes "uav_encoder.,proj,gate,bev_head,bev_attn,height_edges")
+              --init-allowed-missing-prefixes "uav_encoder.,proj,gate,bev_head,bev_attn,height_edges,roi_uav_sampler.,roi_bbox_adapter,roi_mask_adapter")
 fi
 
 echo "WARMSCREEN_CONTRACT arm=$ARM commit=$(git rev-parse HEAD) dirty=$(git status --porcelain | wc -l) gpu=$CUDA_VISIBLE_DEVICES epochs=$EPOCHS seed=44 run_tag=$RUN_TAG"
@@ -94,5 +96,5 @@ exec /data2/wangcheng/envs/cvt2/bin/python -m torch.distributed.run --standalone
   --val-batch-size 1 --val-every-n-epochs 1 --compute-val-loss 0 --amp 1 \
   --fusion-no-wd 1 "${ARM_EXTRA[@]}" \
   "${INIT_FLAGS[@]}" \
-  --freeze-base --freeze-allow-prefixes "uav_encoder.,proj,gate,bev_head,bev_attn" \
+  --freeze-base --freeze-allow-prefixes "uav_encoder.,roi_uav_sampler.,roi_bbox_adapter,roi_mask_adapter" \
   --ema-enabled 0 --ema-eval 0 --checkpoint-dir "$WORK_DIR" "${RESUME_ARGS[@]}"
