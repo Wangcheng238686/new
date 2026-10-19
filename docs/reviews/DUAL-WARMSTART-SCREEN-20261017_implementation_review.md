@@ -56,3 +56,13 @@ proj Conv2d 的 bias（审计计数 164,608 漏加，实为 165,120）。
 const_* 仍吞 sat_feat）。二轮修复（4D squeeze + 显式 assert + 双透传，
 经真实调用点形状验证）后 **VERDICT: PASS**。修复链提交：
 548d84e → c1cd545。教训登记：对并发编辑过的文件，replace 必须带 assert。
+
+## 追加 3：WARM-R1R 审计（2026-10-19 10:20，首轮 FAIL→修复→重启）
+
+首轮 **FAIL** 两阻断：(1) zmean 查表帧 bug——512 帧 sat 像素按 128 宽度
+归一（u/W*2-1），≥15/16 图幅 z 读数落 OOB→0 或错位 4×；(2) bbox 适配器
+结构性死路——delta 加在 bbox_head 已消费的 bbox_feats 上，无下游读者，
+bbox 指标恒等于基线。ep11 的带 bug 筛查已终止删除（无工件引用）。
+修复（当前 commit）：z 查表按 512 帧归一；_bbox_forward 复刻父类并在
+bbox_head 之前注入 delta。复冒烟绿（loss 有限、train 0.154）。
+次要登记未改（半像素约定差 ~1-2px，量级可忽略）。
