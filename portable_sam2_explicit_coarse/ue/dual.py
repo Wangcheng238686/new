@@ -394,12 +394,12 @@ class RSPrompterAnchorRoIUAVHead(RSPrompterAnchorRoIPromptHead):
             delta = owner.roi_bbox_adapter(feats)
             bbox_feats = self.bbox_roi_extractor(
                 x[: self.bbox_roi_extractor.num_inputs], rois)
+            base_norm = bbox_feats.detach().float().norm().clamp_min(1e-6)
             bbox_feats = bbox_feats + delta[:, :, None, None]
             cls_score, bbox_pred = self.bbox_head(bbox_feats)
             if owner.training:
                 owner.telemetry.setdefault('roi_bbox_delta_ratio', []).append(
-                    float(delta.detach().norm()
-                          / bbox_feats.detach().float().norm().clamp_min(1e-6)))
+                    float(delta.detach().norm() / base_norm))
             if os.environ.get('R1R_DEBUG'):
                 print(f'[r1r-dbg] bbox rois={tuple(rois.shape)} feats finite={bool(torch.isfinite(feats).all())} '
                       f'feats_absmax={float(feats.abs().max())}', flush=True)
@@ -424,11 +424,11 @@ class RSPrompterAnchorRoIUAVHead(RSPrompterAnchorRoIPromptHead):
                 print(f'[r1r-dbg] mask feats={tuple(feats.shape)} finite={bool(torch.isfinite(feats).all())} '
                       f'delta_absmax={float(delta.abs().max()) if delta.numel() else 0.0} '
                       f'mrf_finite={bool(torch.isfinite(mask_roi_feats).all())}', flush=True)
+            mask_base_norm = mask_roi_feats.detach().float().norm().clamp_min(1e-6)
             mask_roi_feats = mask_roi_feats + delta[:, :, None, None]
             if owner.training:
                 owner.telemetry.setdefault('roi_mask_delta_ratio', []).append(
-                    float(delta.detach().norm()
-                          / mask_roi_feats.detach().float().norm().clamp_min(1e-6)))
+                    float(delta.detach().norm() / mask_base_norm))
             head_out = self.mask_head(
                 mask_roi_feats,
                 image_embeddings=image_embeddings,
