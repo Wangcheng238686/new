@@ -41,6 +41,8 @@ BASELINE_CONFIGS = {
     "ue-whu-a3sgm-512-warm-r1s-v1": "configs/ue_whu_a3sgm_512_warm_r1s.py",
     # WARM-R1R: RoI-level conditioning (sampler + zero-init adapters)
     "ue-whu-a3sgm-512-warm-r1r-v1": "configs/ue_whu_a3sgm_512_warm_r1r.py",
+    # WARM-R1V: supervised bridge (frozen decoded evidence/boundary payload)
+    "ue-whu-a3sgm-512-warm-r1v-v1": "configs/ue_whu_a3sgm_512_warm_r1v.py",
 }
 ROOT = Path(__file__).resolve().parents[1]
 

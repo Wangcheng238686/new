@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -157,19 +158,27 @@ class RoIUAVSampler(nn.Module):
     cameras; the zmean surface comes from the rasterizer's stats channel.
     """
 
-    def __init__(self, desc_dim=256, out_dim=256, grid=7):
+    def __init__(self, desc_dim=256, out_dim=256, grid=7, mode='desc'):
         super().__init__()
         self.grid = int(grid)
-        self.proj = nn.Linear(desc_dim, out_dim)
+        self.mode = str(mode)
+        if self.mode == 'desc':
+            self.proj = nn.Linear(desc_dim, out_dim)
+        elif self.mode != 'evi':
+            raise ValueError(f"unknown RoIUAVSampler mode {mode}")
 
     def forward(self, rois, desc, uav_k, uav_c2w, sat_k, sat_w2c, zmean_map):
-        """rois [N,5] (batch_idx + x1y1x2y2 in sat pixels); desc [V,C,h,w];
+        """rois [N,5] (batch_idx + x1y1x2y2 in sat pixels); desc [V,C,h,w]
+        (mode='desc': 256-d descriptors through the proj; mode='evi': the 2-ch
+        decoded sigmoid maps, flattened 7x7x2 per box, no proj);
         uav_k [V,3,3]; uav_c2w [V,4,4]; sat_k [3,3]; sat_w2c [4,4];
         zmean_map [H,W] heights in the sat-pixel frame."""
         N = rois.shape[0]
         dev = rois.device
         if N == 0:
-            return rois.new_zeros(0, self.proj.out_features)
+            if self.mode == 'desc':
+                return rois.new_zeros(0, self.proj.out_features)
+            return rois.new_zeros(0, self.grid * self.grid * 2)
         g = self.grid
         # 7x7 grid in normalised box coords -> sat pixels [N, 49, 2]
         t = torch.linspace(0.0, 1.0, g, device=dev)
@@ -229,6 +238,9 @@ class RoIUAVSampler(nn.Module):
             acc = acc + sampled * valid[:, None].float()
             cnt = cnt + valid.float()
         per_point = acc / cnt.clamp_min(1.0)[:, None]                   # [N*49,C]
+        if self.mode == 'evi':
+            # decoded [evidence, boundary] values: keep the 7x7 spatial layout
+            return per_point.reshape(N, g * g * C)
         per_box = per_point.reshape(N, g * g, C).mean(1)                # [N,C]
         if os.environ.get('R1R_DEBUG'):
             def _f(t):
@@ -237,7 +249,74 @@ class RoIUAVSampler(nn.Module):
                   f'zg_absmax={float(zg.abs().max()):.3g} world_f={_f(world)} '
                   f'cnt0_frac={float((cnt==0).float().mean()):.3g} acc_f={_f(acc)} '
                   f'per_box_f={_f(per_box)} per_box_absmax={float(per_box.abs().max()):.3g}', flush=True)
-        return self.proj(per_box)
+            return self.proj(per_box)
+
+
+class EviDecoder(nn.Module):
+    """WARM-R1V supply side (arm E prereg 2026-10-19): per-view conv decoder
+    mapping the frozen-encoder descriptor grid to [building-evidence,
+    footprint-boundary] logits. Pretrained offline by probe_evi_decoder.py
+    (BCE+Dice on PIXEL-CLS geometry labels) and loaded FROZEN at runtime -
+    the arm consumes the decoded answers, never the raw descriptors. The
+    architecture must match scripts/ue/probe_evi_decoder.py::EviDecoder
+    verbatim (state_dict load is strict)."""
+
+    def __init__(self, in_ch=256, hidden=(128, 64), out_ch=2):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(in_ch, hidden[0], 3, padding=1, bias=False),
+            nn.GroupNorm(8, hidden[0]),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(hidden[0], hidden[1], 3, padding=1, bias=False),
+            nn.GroupNorm(8, hidden[1]),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(hidden[1], out_ch, 1),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
+def _view_label_grid(uav, hw, dev):
+    """Per-view satellite-pixel lookup grid at descriptor-cell resolution
+    (PIXEL-CLS geometry): returns su, sv [V,h,w] long indices into the 512
+    sat frame and valid [V,h,w] (depth>0, in front of the sat camera, sane
+    height). Consumed by the WARM-R1V decode-consistency aux at loss time
+    (GT union is only reachable there)."""
+    from rsprompter.surfacebev import devicez_to_camera_z
+    depth = uav['devicez_rgb'][0]
+    if not torch.is_tensor(depth):
+        depth = torch.as_tensor(np.asarray(depth))
+    depth = depth.to(dev)
+    fh, fw = hw
+    V = depth.shape[0]
+    yy, xx = torch.meshgrid(torch.arange(fh, device=dev),
+                            torch.arange(fw, device=dev), indexing='ij')
+    px = ((xx.reshape(-1).float() + .5) * 512.0 / fw).long().clamp(max=511)
+    py = ((yy.reshape(-1).float() + .5) * 512.0 / fh).long().clamp(max=511)
+    z = devicez_to_camera_z(depth)[:, py, px]                          # [V,hw]
+    u = ((xx.reshape(-1).float() + .5) * 512.0 / fw)[None].expand(V, -1)
+    w = ((yy.reshape(-1).float() + .5) * 512.0 / fh)[None].expand(V, -1)
+    sk, s_w2c, _ = _k_and_w2c(uav['satellite_camera'][0])
+    sk, s_w2c = sk.to(dev), s_w2c.to(dev)
+    su = torch.zeros(V, fh * fw, dtype=torch.long, device=dev)
+    sv = torch.zeros(V, fh * fw, dtype=torch.long, device=dev)
+    valid = torch.zeros(V, fh * fw, dtype=torch.bool, device=dev)
+    for vi in range(V):
+        k, _, c2w = _k_and_w2c(uav['uav_cameras'][0][vi])
+        k, c2w = k.to(dev), c2w.to(dev)
+        zv = z[vi]
+        pc = torch.stack(((u[vi] - k[0, 2]) * zv / k[0, 0],
+                          (w[vi] - k[1, 2]) * zv / k[1, 1], zv), -1)
+        world = pc @ c2w[:3, :3].T + c2w[:3, 3]
+        cam = world @ s_w2c[:3, :3].T + s_w2c[:3, 3]
+        su[vi] = (sk[0, 0] * cam[:, 0] / cam[:, 2].clamp_min(1e-6)
+                  + sk[0, 2]).long().clamp(0, 511)
+        sv[vi] = (sk[1, 1] * cam[:, 1] / cam[:, 2].clamp_min(1e-6)
+                  + sk[1, 2]).long().clamp(0, 511)
+        valid[vi] = (zv > 0) & (cam[:, 2] > 0) & (world[:, 2] < 50000)
+    m = (fh, fw)
+    return su.reshape(V, *m), sv.reshape(V, *m), valid.reshape(V, *m)
 
 
 class UEDualPreprocessor(DetDataPreprocessor):
@@ -297,7 +376,13 @@ class RSPrompterAnchorRoIUAVHead(RSPrompterAnchorRoIPromptHead):
     """
 
     def _bbox_forward(self, x, rois):
-        results = super()._bbox_forward(x, rois)
+        # ERRATUM (arm E prereg 2026-10-19): R1R added the delta to the
+        # informational bbox_feats dict entry AFTER super() had already
+        # computed cls_score/bbox_pred from unmodified features - the bbox
+        # adapter gradient was structurally zero (R1R verdict's bbox side
+        # void; checkpoint evidence: sampler proj + mask adapter trained,
+        # bbox adapter bitwise zero). The delta must land on the extractor
+        # output BEFORE the head call.
         owner = getattr(self, "uav_owner", None)
         if os.environ.get('R1R_BYPASS') == '1':
             owner = None
@@ -307,11 +392,16 @@ class RSPrompterAnchorRoIUAVHead(RSPrompterAnchorRoIPromptHead):
                                           ctx["uav_c2w"], ctx["sat_k"],
                                           ctx["sat_w2c"], ctx["zmean"])
             delta = owner.roi_bbox_adapter(feats)
+            bbox_feats = self.bbox_roi_extractor(
+                x[: self.bbox_roi_extractor.num_inputs], rois)
+            bbox_feats = bbox_feats + delta[:, :, None, None]
+            cls_score, bbox_pred = self.bbox_head(bbox_feats)
             if os.environ.get('R1R_DEBUG'):
                 print(f'[r1r-dbg] bbox rois={tuple(rois.shape)} feats finite={bool(torch.isfinite(feats).all())} '
                       f'feats_absmax={float(feats.abs().max())}', flush=True)
-            results["bbox_feats"] = results["bbox_feats"] + delta[:, :, None, None]
-        return results
+            return dict(cls_score=cls_score, bbox_pred=bbox_pred,
+                        bbox_feats=bbox_feats)
+        return super()._bbox_forward(x, rois)
 
     def _mask_forward(self, x, rois, image_embeddings=None,
                       image_positional_embeddings=None, high_res_features=None):
@@ -370,6 +460,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                  height_edges_cfg=None, bev_attn_sat_query=False,
                  bev_head_source='bev', gate_trainable=True,
                  bev_stats_only=False, roi_uav_only=False,
+                 roi_uav_bridge=False, bridge_decoder_ckpt=None,
+                 bridge_aux_weight=0.05,
                  **kwargs):
         super().__init__(**kwargs)
         if uav_encoder is None:
@@ -493,16 +585,43 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         # the BEV pipeline merely supplies the zmean surface; per-box features
         # enter through zero-init adapters in RSPrompterAnchorRoIUAVHead.
         self.roi_uav_only = bool(roi_uav_only)
+        # WARM-R1V (arm E, D-v2 supervised bridge): payload = the offline
+        # pretrained decoder's sigmoid maps, sampled by the same geometry
+        # and consumed through zero-init adapters. The decoder is FROZEN -
+        # trainable set = adapters + UAV LoRA; a decode-consistency aux
+        # (same objective as pretraining, weight bridge_aux_weight) pins the
+        # LoRA supply against drift away from the verified decode quality.
+        self.roi_uav_bridge = bool(roi_uav_bridge)
+        self.bridge_aux_weight = float(bridge_aux_weight)
         if self.roi_uav_only:
-            self.roi_uav_sampler = RoIUAVSampler(desc_dim=256, out_dim=256, grid=7)
-            self.roi_bbox_adapter = nn.Linear(256, sat_channels)
-            nn.init.zeros_(self.roi_bbox_adapter.weight)
-            nn.init.zeros_(self.roi_bbox_adapter.bias)
-            # mask extractor channels resolved lazily at first wiring below
-            mask_ch = 256
-            self.roi_mask_adapter = nn.Linear(256, mask_ch)
-            nn.init.zeros_(self.roi_mask_adapter.weight)
-            nn.init.zeros_(self.roi_mask_adapter.bias)
+            if self.roi_uav_bridge:
+                if not bridge_decoder_ckpt:
+                    raise ValueError("roi_uav_bridge requires bridge_decoder_ckpt")
+                self.roi_bridge_decoder = EviDecoder()
+                _dec = torch.load(bridge_decoder_ckpt, map_location='cpu',
+                                  weights_only=False)
+                self.roi_bridge_decoder.load_state_dict(_dec['state_dict'])
+                self.roi_bridge_decoder.requires_grad_(False)
+                self.roi_bridge_decoder.eval()
+                self._bridge_aux = None
+                self.roi_uav_sampler = RoIUAVSampler(mode='evi')
+                self.roi_bbox_adapter = nn.Linear(7 * 7 * 2, sat_channels)
+                nn.init.zeros_(self.roi_bbox_adapter.weight)
+                nn.init.zeros_(self.roi_bbox_adapter.bias)
+                mask_ch = 256
+                self.roi_mask_adapter = nn.Linear(7 * 7 * 2, mask_ch)
+                nn.init.zeros_(self.roi_mask_adapter.weight)
+                nn.init.zeros_(self.roi_mask_adapter.bias)
+            else:
+                self.roi_uav_sampler = RoIUAVSampler(desc_dim=256, out_dim=256, grid=7)
+                self.roi_bbox_adapter = nn.Linear(256, sat_channels)
+                nn.init.zeros_(self.roi_bbox_adapter.weight)
+                nn.init.zeros_(self.roi_bbox_adapter.bias)
+                # mask extractor channels resolved lazily at first wiring below
+                mask_ch = 256
+                self.roi_mask_adapter = nn.Linear(256, mask_ch)
+                nn.init.zeros_(self.roi_mask_adapter.weight)
+                nn.init.zeros_(self.roi_mask_adapter.bias)
             self._uav_roi_ctx = None
         self.uav_eval_off = bool(uav_eval_off) or os.environ.get('UE_UAV_EVAL_OFF') == '1'
         # EXP-0014: optional frozen per-channel rescaling of the BEV before the
@@ -537,8 +656,9 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             # the detector-level mask extractor lives on the roi head
             real_mask_ch = self.roi_head.mask_roi_extractor.out_channels
             if real_mask_ch != self.roi_mask_adapter.out_features:
+                in_feat = 7 * 7 * 2 if self.roi_uav_bridge else 256
                 del self.roi_mask_adapter
-                self.roi_mask_adapter = nn.Linear(256, real_mask_ch)
+                self.roi_mask_adapter = nn.Linear(in_feat, real_mask_ch)
                 nn.init.zeros_(self.roi_mask_adapter.weight)
                 nn.init.zeros_(self.roi_mask_adapter.bias)
         self.telemetry = {'gate_mean': [], 'gate_std': [], 'gate_absmax': [],
@@ -551,6 +671,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             self.uav_encoder.train(mode)  # LoRA dropout active in training
         else:
             self.uav_encoder.eval()
+        if getattr(self, 'roi_bridge_decoder', None) is not None:
+            self.roi_bridge_decoder.eval()   # frozen supply: no dropout/BN drift
         return self
 
     def _fetch_uav(self):
@@ -582,6 +704,19 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             self.height_edges.to(dev), hw, with_grad=False)
         # zmean is stats channel 256 on the single surface bin; heights in cm
         zmean = bev[0, 256]
+        if self.roi_uav_bridge:
+            # supply = decoded answers, never raw descriptors. Grad flows
+            # through the FROZEN decoder into the LoRA supply (pinned by the
+            # decode-consistency aux); no-grad encoder keeps it detached.
+            evi_logits = self.roi_bridge_decoder(desc)
+            payload = torch.sigmoid(evi_logits)
+            if self.training:
+                su, sv, vvalid = _view_label_grid(uav, tuple(desc.shape[-2:]), dev)
+                self._bridge_aux = dict(logits=evi_logits, su=su, sv=sv,
+                                        valid=vvalid)
+            self._uav_roi_ctx = dict(desc=payload, uav_k=uk, uav_c2w=uc,
+                                     sat_k=sk, sat_w2c=swc, zmean=zmean)
+            return
         if os.environ.get('R1R_DEBUG'):
             print(f'[r1r-dbg] ctx desc_finite={bool(torch.isfinite(desc).all())} '
                   f'zmean_finite={bool(torch.isfinite(zmean).all())} '
@@ -713,6 +848,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         self._fetch_uav()
         if self.roi_uav_only:
             self._uav_roi_ctx = None
+        if self.roi_uav_bridge:
+            self._bridge_aux = None
         if getattr(self, 'bev_head', None) is not None:
             self._bev_aux_logits = None
         losses = super().loss(batch_inputs, batch_data_samples, **kwargs)
@@ -741,12 +878,51 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
                 losses['loss_bev_aux'] = self.bev_aux_weight * (bce + dice)
             else:
                 losses['loss_bev_aux'] = self.bev_aux_weight * bce
+        # WARM-R1V decode-consistency aux (arm E prereg): pin the LoRA supply
+        # to the verified decode quality - SAME objective as the offline
+        # pretraining (per-view BCE+Dice on both channels, valid cells only),
+        # labels from the stashed PIXEL-CLS geometry grid + this batch's GT.
+        aux = getattr(self, '_bridge_aux', None)
+        if self.roi_uav_bridge and aux is not None:
+            self._bridge_aux = None
+            dev_aux = aux['logits'].device
+            gt_union = torch.zeros((512, 512), dtype=torch.bool, device=dev_aux)
+            for sample in batch_data_samples:
+                masks = getattr(getattr(sample, 'gt_instances', None), 'masks', None)
+                if masks is None or len(masks) == 0:
+                    continue
+                gt_union |= torch.from_numpy(
+                    masks.to_ndarray().astype(bool).any(0)).to(dev_aux)
+            evi_lab = gt_union[aux['sv'], aux['su']] & aux['valid']     # [V,h,w]
+            e = evi_lab[:, None].float()
+            dil = F.max_pool2d(e, 3, stride=1, padding=1)[:, 0] > 0.5
+            ero = -F.max_pool2d(-e, 3, stride=1, padding=1)[:, 0] > -0.5
+            bnd_lab = dil & ~ero & aux['valid']
+            total = 0.0
+            for ch, lab in ((0, evi_lab), (1, bnd_lab)):
+                m = aux['valid']
+                lg = aux['logits'][:, ch][m]
+                yy = lab[m].float()
+                bce = F.binary_cross_entropy_with_logits(lg, yy)
+                p = torch.sigmoid(lg)
+                dice = 1.0 - (2.0 * (p * yy).sum() + 1.0) / (p.sum() + yy.sum() + 1.0)
+                total = total + bce + dice
+            losses['loss_bridge_aux'] = self.bridge_aux_weight * total
+        # adapter-liveness telemetry (arm E erratum clause): a bitwise-zero
+        # bbox adapter at screen end is INERT-WIRING-CHECK, not a verdict
+        if self.roi_uav_only and self.training:
+            self.telemetry.setdefault('roi_bbox_adapter_absmax', []).append(
+                float(self.roi_bbox_adapter.weight.abs().max()))
+            self.telemetry.setdefault('roi_mask_adapter_absmax', []).append(
+                float(self.roi_mask_adapter.weight.abs().max()))
         return losses
 
     def predict(self, batch_inputs, batch_data_samples, rescale=True, **kwargs):
         self._fetch_uav()
         if self.roi_uav_only:
             self._uav_roi_ctx = None
+        if self.roi_uav_bridge:
+            self._bridge_aux = None
         if getattr(self, 'bev_head', None) is not None:
             self._bev_aux_logits = None
         return super().predict(batch_inputs, batch_data_samples, rescale=rescale, **kwargs)
@@ -757,6 +933,8 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
         # count steps from whatever per-level gate key actually recorded
         out['gate_steps'] = sum(len(v) for k, v in self.telemetry.items()
                                 if k.startswith('gate_absmax'))
+        out['roi_steps'] = sum(len(v) for k, v in self.telemetry.items()
+                               if k.startswith('roi_'))
         for k in self.telemetry:
             self.telemetry[k] = []
         return out

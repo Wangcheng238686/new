@@ -705,7 +705,7 @@ def main():
             _model_raw = model.module if hasattr(model, "module") else model
             if hasattr(_model_raw, "drain_telemetry"):
                 _tel = _model_raw.drain_telemetry()
-                if _tel.get("gate_steps"):
+                if _tel.get("gate_steps") or _tel.get("roi_steps"):
                     logger.info("Epoch %d DUAL telemetry: %s", epoch_number,
                                 " ".join(f"{k}={v:.6g}" for k, v in _tel.items()))
 

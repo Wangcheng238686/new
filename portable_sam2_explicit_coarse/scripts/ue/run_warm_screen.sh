@@ -36,6 +36,8 @@ case "$ARM" in
        EXPECT_ID=ue-whu-a3sgm-512-warm-r1fb-v1 ;;
   r1r) CONFIG=configs/ue_whu_a3sgm_512_warm_r1r.py
        EXPECT_ID=ue-whu-a3sgm-512-warm-r1r-v1 ;;
+  r1v) CONFIG=configs/ue_whu_a3sgm_512_warm_r1v.py
+       EXPECT_ID=ue-whu-a3sgm-512-warm-r1v-v1 ;;
   *) echo "unknown arm $ARM" >&2; exit 2 ;;
 esac
 # WARM-R1F extras (two-link fix): consumers unfrozen at 1e-4 + 30ep-scaled
@@ -82,7 +84,7 @@ if [[ "$RESUME" == "--resume" ]]; then
   RESUME_ARGS=(--resume-from "$WORK_DIR/last_checkpoint.pth")
 else
   INIT_FLAGS=(--init-from "$INIT_FROM" --allow-task-init --allow-cross-arch-init \
-              --init-allowed-missing-prefixes "uav_encoder.,proj,gate,bev_head,bev_attn,height_edges,roi_uav_sampler.,roi_bbox_adapter,roi_mask_adapter")
+              --init-allowed-missing-prefixes "uav_encoder.,proj,gate,bev_head,bev_attn,height_edges,roi_uav_sampler.,roi_bbox_adapter,roi_mask_adapter,roi_bridge_decoder.")
 fi
 
 echo "WARMSCREEN_CONTRACT arm=$ARM commit=$(git rev-parse HEAD) dirty=$(git status --porcelain | wc -l) gpu=$CUDA_VISIBLE_DEVICES epochs=$EPOCHS seed=44 run_tag=$RUN_TAG"
