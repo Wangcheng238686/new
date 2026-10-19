@@ -79,9 +79,10 @@ if [[ "$ARM" == "r1v" ]]; then
   if [[ ! -f "$DEC_DIR/decoder.pt" || ! -f "$DEC_DIR/readout.json" ]]; then
     echo "r1v requires the pretrained bridge decoder artifacts in $DEC_DIR" >&2; exit 2
   fi
+  # n_val counts per-view rows: 100 held-out scenes x 5 views = 500
   GATE_JSON="$(/data2/wangcheng/envs/cvt2/bin/python -c "import json;g=json.load(open('$DEC_DIR/readout.json'))['gate'];print(g['verdict'], g['n_val'])")"
-  if [[ "$GATE_JSON" != "PASS 100" ]]; then
-    echo "EVI-DECODER probe gate not PASS at preregistered scale (want 'PASS 100', got '$GATE_JSON') - arm E must not launch" >&2; exit 2
+  if [[ "$GATE_JSON" != "PASS 500" ]]; then
+    echo "EVI-DECODER probe gate not PASS at preregistered scale (want 'PASS 500', got '$GATE_JSON') - arm E must not launch" >&2; exit 2
   fi
 fi
 
