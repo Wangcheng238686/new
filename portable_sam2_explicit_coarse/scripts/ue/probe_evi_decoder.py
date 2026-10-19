@@ -100,7 +100,7 @@ def harvest_scene(enc, it, dev):
     valid = valid.reshape(V, fh, fw)
     e = evi[:, None].float()
     dil = F.max_pool2d(e, 3, stride=1, padding=1)[:, 0] > 0.5
-    ero = -F.max_pool2d(-e, 3, stride=1, padding=1)[:, 0] > -0.5
+    ero = -F.max_pool2d(-e, 3, stride=1, padding=1)[:, 0] > 0.5
     bnd = dil & ~ero & valid
     return desc, evi, bnd, valid
 

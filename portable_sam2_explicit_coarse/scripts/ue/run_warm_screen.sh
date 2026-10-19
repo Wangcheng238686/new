@@ -74,6 +74,16 @@ if [[ ! -f "$INIT_FROM" ]]; then
   echo "EXP-0009 init checkpoint missing: $INIT_FROM" >&2; exit 2
 fi
 
+if [[ "$ARM" == "r1v" ]]; then
+  DEC_DIR=/data2/wangcheng/checkpoint/surfbev_b0/probes/EVI-DECODER-20261019
+  if [[ ! -f "$DEC_DIR/decoder.pt" || ! -f "$DEC_DIR/readout.json" ]]; then
+    echo "r1v requires the pretrained bridge decoder artifacts in $DEC_DIR" >&2; exit 2
+  fi
+  if [[ "$(/data2/wangcheng/envs/cvt2/bin/python -c "import json;print(json.load(open('$DEC_DIR/readout.json'))['gate']['verdict'])")" != "PASS" ]]; then
+    echo "EVI-DECODER probe gate not PASS - arm E must not launch (prereg)" >&2; exit 2
+  fi
+fi
+
 RESUME_ARGS=()
 if [[ "$RESUME" == "--resume" ]]; then
   # SCREEN-EXT: the checkpoint already carries the warm-initialised dual
@@ -88,7 +98,7 @@ else
 fi
 
 echo "WARMSCREEN_CONTRACT arm=$ARM commit=$(git rev-parse HEAD) dirty=$(git status --porcelain | wc -l) gpu=$CUDA_VISIBLE_DEVICES epochs=$EPOCHS seed=44 run_tag=$RUN_TAG"
-echo "WARMSCREEN_CONTRACT baseline_id=$BASELINE_ID init_from=${INIT_FLAGS[1]:-none(resume)} freeze_prefixes=uav_encoder.,proj,gate,bev_head,bev_attn data_manifest=f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a split=17f49430b15037c8da25c63a1bf7fe4d510cf5ff153263d2feba62c4393441d5 prereg=docs/DUAL-WARMSTART-SCREEN-20261017_preregistration.md"
+echo "WARMSCREEN_CONTRACT baseline_id=$BASELINE_ID init_from=${INIT_FLAGS[1]:-none(resume)} freeze_allow=uav_encoder.,roi_uav_sampler.,roi_bbox_adapter,roi_mask_adapter data_manifest=f15cd8f5b8d10a69d721546d6cfa1f2cce58af2861d57b1357c5e9ff1e1fe62a split=17f49430b15037c8da25c63a1bf7fe4d510cf5ff153263d2feba62c4393441d5 prereg=docs/DUAL-WARMSTART-SCREEN-20261017_preregistration.md"
 
 exec /data2/wangcheng/envs/cvt2/bin/python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=4 train/train_rsprompter_fusion.py \
   --config "$CONFIG" --run-tag "$RUN_TAG" --data-root "$UE_DATA_ROOT" \

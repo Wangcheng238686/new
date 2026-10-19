@@ -249,7 +249,7 @@ class RoIUAVSampler(nn.Module):
                   f'zg_absmax={float(zg.abs().max()):.3g} world_f={_f(world)} '
                   f'cnt0_frac={float((cnt==0).float().mean()):.3g} acc_f={_f(acc)} '
                   f'per_box_f={_f(per_box)} per_box_absmax={float(per_box.abs().max()):.3g}', flush=True)
-            return self.proj(per_box)
+        return self.proj(per_box)
 
 
 class EviDecoder(nn.Module):
@@ -396,6 +396,10 @@ class RSPrompterAnchorRoIUAVHead(RSPrompterAnchorRoIPromptHead):
                 x[: self.bbox_roi_extractor.num_inputs], rois)
             bbox_feats = bbox_feats + delta[:, :, None, None]
             cls_score, bbox_pred = self.bbox_head(bbox_feats)
+            if owner.training:
+                owner.telemetry.setdefault('roi_bbox_delta_ratio', []).append(
+                    float(delta.detach().norm()
+                          / bbox_feats.detach().float().norm().clamp_min(1e-6)))
             if os.environ.get('R1R_DEBUG'):
                 print(f'[r1r-dbg] bbox rois={tuple(rois.shape)} feats finite={bool(torch.isfinite(feats).all())} '
                       f'feats_absmax={float(feats.abs().max())}', flush=True)
@@ -421,6 +425,10 @@ class RSPrompterAnchorRoIUAVHead(RSPrompterAnchorRoIPromptHead):
                       f'delta_absmax={float(delta.abs().max()) if delta.numel() else 0.0} '
                       f'mrf_finite={bool(torch.isfinite(mask_roi_feats).all())}', flush=True)
             mask_roi_feats = mask_roi_feats + delta[:, :, None, None]
+            if owner.training:
+                owner.telemetry.setdefault('roi_mask_delta_ratio', []).append(
+                    float(delta.detach().norm()
+                          / mask_roi_feats.detach().float().norm().clamp_min(1e-6)))
             head_out = self.mask_head(
                 mask_roi_feats,
                 image_embeddings=image_embeddings,
@@ -896,7 +904,7 @@ class RSPrompterAnchorDual(RSPrompterAnchor):
             evi_lab = gt_union[aux['sv'], aux['su']] & aux['valid']     # [V,h,w]
             e = evi_lab[:, None].float()
             dil = F.max_pool2d(e, 3, stride=1, padding=1)[:, 0] > 0.5
-            ero = -F.max_pool2d(-e, 3, stride=1, padding=1)[:, 0] > -0.5
+            ero = -F.max_pool2d(-e, 3, stride=1, padding=1)[:, 0] > 0.5
             bnd_lab = dil & ~ero & aux['valid']
             total = 0.0
             for ch, lab in ((0, evi_lab), (1, bnd_lab)):
