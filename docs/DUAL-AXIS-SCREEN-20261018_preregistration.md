@@ -325,3 +325,16 @@ super 内已从未修改特征算出，`bbox_feats` 仅是信息性字段：**bb
 - **活性遥测（勘误条款）**：逐 epoch 记录两适配器权重 absmax 与
   delta 范数比；若 30ep 末 bbox 适配器仍逐位零 → 判
   **INERT-WIRING-CHECK**，先诊断接线再落判（不许直接记"惰性"）。
+
+### 供给端探针落判（2026-10-19 15:0x）：EVI-DECODER **PASS**——臂 E 启动
+
+- 审计史：首轮实现审计 FAIL（两阻断：边界腐蚀谓词恒真→边界标签
+  全空；bbox 勘误修复未落地）→ 修复 → 复核 PASS（dbb0d2f/2cb6577）。
+- 全量预训（300 train / 100 held-out val / 40ep 早停，best ep32）：
+  **AP 0.954 ≥ 0.90 ✓；dice_evi 0.931 ≥ 0.55 ✓；dice_bnd 0.426 ≥
+  0.25 ✓；Dice−基率图逐场配对 CI95 [0.0651, 0.0771] 下界 > 0 ✓**。
+  首版探针的边界标签 bug（dice_bnd 恒空）已修复并全量重跑。
+- 产物：`probes/EVI-DECODER-20261019/{decoder.pt, readout.json,
+  train.log}`；启动护栏（readout 门 PASS + 规模 100 场×5 视图）已入
+  `run_warm_screen.sh`。冒烟：bbox 适配器梯度 29.7 非零（勘误修复
+  生效）、解码器冻结、LoRA 流动、初始位平等 ON==BYPASS 逐位。
