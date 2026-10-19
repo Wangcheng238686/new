@@ -258,3 +258,69 @@ R0 的 +11.9 边界带 oracle 在 RoI 级才可达）。
   ——先用监督训出描述子→边界/证据图解码器（PIXEL-CLS 已证可行：
   acc 0.86/AP 0.96），RoI 级直接消费解码产物。供给端从潜在特征换成
   已解码答案，绕过"优化器学消费"这一被八次证伪的环节。
+
+---
+
+## 臂 E（D-v2，2026-10-19 预注册）：WARM-R1V——监督式桥接
+
+### 前置勘误（实现考古，2026-10-19 午）：R1R 的 bbox 侧证据无效
+
+R1R 重启跑（78e54fb）的 `_bbox_forward` 覆写仍在 `super()._bbox_forward`
+**之后**把 delta 加进返回字典的 `bbox_feats`——而 cls_score/bbox_pred 在
+super 内已从未修改特征算出，`bbox_feats` 仅是信息性字段：**bbox 适配器
+梯度结构性恒零**。检查点实证：`roi_uav_sampler.proj`（两适配器共同上游）
+30ep 后非零（absmax 0.062，已训练），mask 适配器非零（absmax 0.041），
+唯独 bbox 适配器逐位零——同一输入下仅 bbox 路径死，只能是接线死而非
+优化死。结论修正：R1R 的"bbox 适配器逐位零 = 消费者拒绝学习"归因
+**无效**；其有效内核是 mask 侧（适配器确实训练了、但 on−C1≈0 无内容
+消费、AP75 签名反向）。臂 E 必须携带修正接线（delta 在 bbox_head 消费
+之前加），因此 vs R1R 有两处变更：payload 换解码产物 + bbox 接线修复
+（后者是 bug 修复，非设计变量，特此声明）。
+
+### 供给端：离线监督解码器（预训探针，先于臂实现）
+
+- **输入**：冻结 SAM2 base_plus（无 LoRA）FPN 最大面层级描述子
+  [5,256,64,64]——与 PIXEL-CLS 探针同一来源与提取路径。
+- **解码器**：逐视角共享 conv 256→128→64→2（3×3，GN8，ReLU，末层
+  1×1 出 logits），通道 = [建筑证据, 足迹边界]，~0.4M 参数。
+- **标签**（逐视角描述子格）：证据 = PIXEL-CLS 标签（DeviceZ 反投影
+  世界 (x,y) 落 GT union 足迹，有效 = 深度>0 且高度合理）；边界 =
+  证据标签图 dilate₃ ∧ ¬erode₃（视角内带状）。
+- **损失**：双通道 BCE+Dice，仅有效格。
+- **训练/验证**：train 分箱 300 场训练，val 分箱 100 场held-out；
+  AdamW lr 1e-3 wd 1e-4，早停于 val Dice。
+- **探针门（不过则臂不启动——逃生舱没有产物可喂）**：held-out 证据
+  通道 AP ≥ 0.90 且 Dice ≥ 0.55；边界通道 Dice ≥ 0.25；逐场配对
+  bootstrap（10k/seed 20261014）Dice−基率图 CI95 下界 > 0。
+  产物：解码器 ckpt + 评估 JSON 归档 `probes/EVI-DECODER-20261019/`。
+
+### 运行时臂（配置 `configs/ue_whu_a3sgm_512_warm_r1v.py`）
+
+- **几何与 R1R 逐字相同**：每框 7×7 网格 → sat 像素 → z=zmean 面插值 →
+  世界点 → 5 视图投影 + 有效性掩码 + 双线性采样；zmean 仍取 rasterizer
+  统计通道（128×128）。
+- **payload 替换**：采样对象从 256 维原始描述子换成解码器 sigmoid 概率
+  图（2 通道）；每点 [证据,边界] ∈ [0,1]² → 每框 7×7×2=**98 维展平**
+  （无采样投影层——值本身即语义）。解码器**冻结**。
+- **消费端**：零初始 FC 适配层 Linear₀(98→512) delta 广播加到
+  bbox_roi_extractor 输出**之后、bbox_head 调用之前**（修正接线）；
+  Linear₀(98→mask_ch) 加到 mask_roi_feats（同 R1R）。
+- **可训集**：适配层 + UAV LoRA，其余全冻（解码器亦冻）。LoRA 保持
+  供给可适配；**钉住条款**：训练期逐视角解码一致性辅助损失
+  （与预训同目标 BCE+Dice，权重 0.05，标签由 stashed 投影成分 +
+  GT union 现算）——防 LoRA 漂移破坏已验证的解码质量。
+- **协议**：`run_warm_screen.sh r1v`，30ep，warm 冻结/EXP-0009 init/
+  seed 44/DDP4 共租 batch1×累积2、fusion 免 wd、序列化共租策略；
+  身份 `ue-whu-a3sgm-512-warm-r1v-v1`。
+
+### 判据（30ep 双检查点 + 机制门 + 签名 + 活性遥测）
+
+- **筛查门**：on−single 双指标 CI95 下界 >0 且 segm 点估计 >0
+  （30ep last；双检查点 = on/off 双遍，off 报告不作门）。
+- **机制门**：C1 错配 payload（倒序场景配对）必须使 RoI 预测显著劣化
+  （on−C1 segm CI95 下界 >0）——两条路径（bbox/mask）均须活。
+- **预期签名**：d75 > d50（segm AP75 增量大于 AP50）。
+- **mAP_s 防护**：on−single segm_s 回退 ≤1 点。
+- **活性遥测（勘误条款）**：逐 epoch 记录两适配器权重 absmax 与
+  delta 范数比；若 30ep 末 bbox 适配器仍逐位零 → 判
+  **INERT-WIRING-CHECK**，先诊断接线再落判（不许直接记"惰性"）。
