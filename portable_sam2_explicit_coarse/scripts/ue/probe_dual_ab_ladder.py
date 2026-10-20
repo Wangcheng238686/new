@@ -59,6 +59,8 @@ ARMS = {
                         log=LOG_DIR / 'EXP-0015-ddp4.log'),
     'dual_embed': dict(dual=True, ckpt=CKPT_DIR / 'surfacebev_v2_512dualembed_sealed_ddp4_s44_EXP-0016/last_model_epoch100.pth',
                        log=LOG_DIR / 'EXP-0016-ddp4.log'),
+    'dual_fk50': dict(dual=True, ckpt=CKPT_DIR / 'surfacebev_v2_512dualv2l0lora_fk50_sealed_ddp4_s44_EXP-0017/last_model_epoch100.pth',
+                      log=LOG_DIR / 'EXP-0017-ddp4.log'),
 }
 OUT = CKPT_DIR / 'probes' / 'DUAL-AB-LADDER-20261016'
 SEED = 20261014
@@ -259,7 +261,7 @@ def main():
                              for t in ARMS if (OUT / f'identity_{t}.json').is_file()}}
     for key in sorted(arm_rows):
         result.setdefault('means', {})[key] = {m: float(arr(key, m).mean()) for m in ('bbox', 'segm')}
-    dual_tags = [t for t in ('dual_p3', 'dual_p2p3', 'dual_p2p3_lora', 'dual_p2', 'dual_norm', 'dual_l0lora', 'dual_embed') if t in arm_rows]
+    dual_tags = [t for t in ('dual_p3', 'dual_p2p3', 'dual_p2p3_lora', 'dual_p2', 'dual_norm', 'dual_l0lora', 'dual_embed', 'dual_fk50') if t in arm_rows]
     for t in dual_tags:
         for m in ('bbox', 'segm'):
             s, d, o = arr('single', m), arr(t, m), arr(t + '_off', m)
