@@ -56,3 +56,5 @@ v2 split、无增强和超参。2026-10-11 23:22 用户要求直接启动，GPU0
 需持续关注。日志：`/data1/wangcheng/checkpoint/surfbev_b0/launcher_logs/EXP-0006-seed44-ddp4.log`；
 checkpoint 目录：`/data1/wangcheng/checkpoint/surfbev_b0/surfacebev_b0_v2_raw1024_noaug_ddp4_s44_EXP-0006`。
 启动时 torchrun PID 349998，四 rank PID 350073–350076；test 仅在 last 完成后按协议推理。
+| EXP-0024 | CitySampleV1-512single-noaug-DDP4 | 44 | **新纪元首批**：清洗后全量数据集 `CitySample_SatUAV_TrainMinimal_v1_20261021`（3060 点 2142/459/459，标签修订 review99_v3_user_approved_20261021，COCO RLE 权威）；封版单流 a3sgm @512 原生（身份 `ue-whu-a3sgm-512-v1` 不变）；`--dataset whu` 路径 + 未压缩 RLE 兼容（frPyObjects，与官方 reader 逐位一致）；**全增强关闭**（flip/vflip/ms/noise/erasing 全 0）；test 全程不读 | 预注册 `docs/EXP-0024-0025_preregistration.md`；对照臂 EXP-0025；A/B 判定 AUG_WINS/NULL/HARM，卫星基线=两臂 last 更优者；2026-10-21 待审计放行 |
+| EXP-0025 | CitySampleV1-512single-defaug-DDP4 | 44 | 同 EXP-0024 唯一变量=**默认增强**（hflip 0.5，其余全 0——trainer 历史默认协议）；其余逐项一致 | 同上预注册；2026-10-21 待审计放行 |

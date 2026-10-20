@@ -166,6 +166,12 @@ class WHUCocoInstanceDataset(Dataset):
                 raise RuntimeError(
                     "RLE segmentation found but pycocotools is not available"
                 ) from exc
+            counts = segmentation["counts"]
+            if isinstance(counts, list):
+                # Uncompressed COCO RLE (plain run-length list, e.g. the
+                # CitySample archive): decode() expects the compressed form,
+                # so convert via frPyObjects first (archive README contract).
+                segmentation = mask_utils.frPyObjects(segmentation, h, w)
             decoded = mask_utils.decode(segmentation)
             if decoded.ndim == 3:
                 decoded = decoded[..., 0]
