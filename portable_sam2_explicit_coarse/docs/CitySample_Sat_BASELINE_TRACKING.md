@@ -69,7 +69,7 @@
 
 | 方法 | 状态 | WHU 版 config 起点（移植派生源） | 移植改动点 |
 |---|---|---|---|
-| **YOLO11s-seg — v3 无增强版** | 🔄 **v3 全量在训**（GPU1，2026-10-22 00:0x 起，100ep bs16 imgsz512 全增强关；转换零损耗 123788/18066/24754；run 名 `yolo11s_seg_citysample_v3_512noaug`，v1 产物未覆盖） | v1 版脚本重定向 v3 | 同 v1 协议：max_det=250、maxDets=[1,10,250]（eval 脚本已带 s[0] 陷阱修复） |
+| **YOLO11s-seg — v3 无增强版** | ✅ **完成**（100ep exit=0，best.pt 终评 test 413 已收，maxDets=250）：**bbox mAP 0.7612 / segm mAP 0.6595**（AP50 0.968/0.957，AP75 0.890/0.753；APs 0.691/0.528；AR@250 0.803/0.701）。末段 val box 0.753/mask 0.687 与 test 高度一致——v3 分布修复的直接证据（v1 时 val→test 崩落 0.75→0.50）。segm AP75 0.753 vs AP50 0.957：原型掩码边界精度仍为该系短板。指标文件 `yolo11seg/yolo11s_seg_citysample_v3_512noaug/.../test_out/test_metrics.json` + pred_coco.json 落盘 | v1 版脚本重定向 v3 | 同 v1 协议：max_det=250、maxDets=[1,10,250]（eval 脚本已带 s[0] 陷阱修复） |
 | **Mask R-CNN — v3 无增强版** | 🔄 **v3 全量在训**（GPU2，23:5x 起，12ep bs8×ai2 SGD 同构 WHU；冒烟通过，显存 allocated 6.4G） | `mmdetection/configs/whu1024/mask-rcnn_r50_fpn_1x_whu1024.py` | 新 config `configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v3_noaug.py`：无增强 identity Resize512、max_per_img 250、test_cfg.rcnn 覆盖 |
 | **MS R-CNN — v3 无增强版** | 🔄 **v3 全量在训**（GPU0，23:5x 起，12ep bs4×ai4；冒烟通过，显存 3.7G；caffe R50=msra 权重） | `mmdetection/configs/whu1024/ms-rcnn_r50-caffe_fpn_1x_whu1024.py` | 同上（`ms-rcnn_r50-caffe_fpn_1x_citysample_v3_noaug.py`，含 mask_iou_head 单类适配） |
 | **RTMDet-Ins-S — v3 无增强版** | 🔄 **v3 全量在训**（GPU3，23:5x 起，300ep bs4×ai64 AdamW+EMA 同构 WHU；冒烟 1ep 完整通过 exit=0，显存 2.5G） | `mmdetection/configs/whu1024/rtmdet-ins_s_300e_whu1024.py` | `rtmdet-ins_s_300e_citysample_v3_noaug.py`：去 mosaic/mixup/HSV/多尺度/flip，**摘除 PipelineSwitchHook**（无增强后 stage1/2 无差异，EMA 保留 momentum 3.125e-6）、bbox_head.test_cfg.max_per_img 250（num_queries 默认 300 合规） |
