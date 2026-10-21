@@ -86,7 +86,9 @@ def evaluate_maxdets(preds, gt_json):
     for p in preds:
         p['category_id'] = cat_id
     metrics = {}
-    coco_dt = coco_gt.loadRes(json.loads(json.dumps(preds)))
+    # mmdet encode_mask_results 的 RLE counts 为 bytes, dumps 需用 _Enc
+    # (否则默认编码器抛 bytes not serializable)
+    coco_dt = coco_gt.loadRes(json.loads(json.dumps(preds, cls=_Enc)))
     for task in ('bbox', 'segm'):
         E = COCOeval(coco_gt, coco_dt, task)
         E.params.maxDets = [1, 10, MAX_DET_EVAL]
