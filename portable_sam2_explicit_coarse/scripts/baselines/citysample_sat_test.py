@@ -94,7 +94,12 @@ def evaluate_maxdets(preds, gt_json):
         E.accumulate()
         E.summarize()
         s = E.stats
-        metrics[f'{task}_mAP'] = round(float(s[0]), 4)
+        # pycocotools 陷阱: summarize() 的 s[0](AP@[.50:.95]) 硬编码 maxDets=100,
+        # 我们的 maxDets 无 100 条目会得 -1; 从 eval 数组显式按 maxDets=250 计算
+        prec = E.eval['precision'][:, :, :, 0, -1]
+        prec = prec[prec > -1]
+        ap_all = float(prec.mean()) if prec.size else float('nan')
+        metrics[f'{task}_mAP'] = round(ap_all, 4)
         metrics[f'{task}_mAP50'] = round(float(s[1]), 4)
         metrics[f'{task}_mAP75'] = round(float(s[2]), 4)
         metrics[f'{task}_mAPs'] = round(float(s[3]), 4)
