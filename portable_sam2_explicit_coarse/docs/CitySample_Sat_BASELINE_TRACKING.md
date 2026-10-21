@@ -8,7 +8,23 @@
 > 环境：cvt2（mmengine 系）、dt2（detectron2/AdelaiDet 系）、mdino（MaskDINO）、mm2（RSIISN, mmdet2 栈）
 > 日志根：`portable_sam2_explicit_coarse/logs/baselines_citysample/`；ckpt 根：`/data1/wangcheng/checkpoint/citysample_sat_baselines/`
 >
-> **状态：协议已拍板（2026-10-21，见下）；首发 RSPrompter(anchor) 与 YOLO11s-seg 无增强版已立项。最后更新：2026-10-21**
+> **状态：v1 数据集已作废（val/test 分布严重偏移），全部基线切换 v3 重跑（2026-10-21 夜）；v3 首批四方法在训：YOLO11s-seg(GPU1) + Mask R-CNN(GPU2) + MS R-CNN(GPU0) + RTMDet-Ins-S(GPU3)，四卡与用户任务共租。RSPrompter(15.5G 高占用)缓发待用户指令。最后更新：2026-10-22 00:10**
+
+> ⚠️ **v1 作废声明（2026-10-21）**：`CitySample_SatUAV_TrainMinimal_v1_20261021` 的 val(稀疏大目标, med 28 inst/图) 与 test(密集小目标, med 89 inst/图) 分布严重偏移，val/test 指标差距过大，用户重新调整分布后发布 v3。**v1 上的所有结果（YOLO test bbox 0.6865/segm 0.5035、RSPrompter E9 val segm 0.5080 等）仅作过程史迹，不得入论文表**；v1 的 RSPrompter ckpt 全部弃用，v3 需从头重训。
+
+## v3 数据集画像（2026-10-21 实测）
+
+| 项 | train | val | test |
+|---|---|---|---|
+| 图片数（512×512 卫星 RGB） | 1931 | 285 | 413 |
+| 实例数（单类 building） | 123,788 | 18,066 | 24,754 |
+| 实例/图中位 / 最大 | 57 / 238 | 57 / 169 | 47 / 208 |
+| ≥100 实例图数 | 313 | 58 | 65 |
+| 目标 sqrt(area) 中位 | 28.6px | 27.8px | 31.1px |
+
+- v3 分布修正确认：val/test 密度与尺寸已对齐（v1 时中位 28 vs 89 的偏斜消除），val 选模与 test 终评同域。
+- **maxDets=250 协议不变**（全 split 单图最大 238 < 250）。
+- ⚠️ **v3 新注意**：val 有 58/285 图 >100 实例（最大 169），训练期 mmengine CocoMetric 硬编码 maxDets=100 对**选模信号**轻度截断（epoch 间一致，不影响 test 报告数——test 走 citysample_sat_test.py 的 maxDets=[1,10,250]）。v1 时 val max 87 无此问题。
 
 ---
 
@@ -53,7 +69,11 @@
 
 | 方法 | 状态 | WHU 版 config 起点（移植派生源） | 移植改动点 |
 |---|---|---|---|
-| **RSPrompter (anchor) — 无增强版** | 🔄 **训练中（E4 起，16:23 resume）**：300ep bf16 bs1×ai2 显存 15.5G，0.67s/iter，eta ~5.3 天。**E3 事故已修**：val 崩于 SAM patch_embed 的 1024 硬校验——根因是 base config 的 BatchFixedSizePad(1024) 仅训练期生效（训练时 512 图零填充进 1024 画布，故 3ep 正常），我覆盖 test 管线时误删了作者的 Pad 步骤；修复=test 管线补 `Pad(1024, 零填充)`（与训练一致，补边非上采样，P4 不破，训练路径零改动 E3 ckpt 直接续）。20 图探针全链路通过（E3 segm mAP 0.009，对照 NWPU 早期轨迹 ep3-12 从 0 爬起，正常）。首个全量 val 在 E6（val_interval=3，与 WHU 版一致）。
+| **YOLO11s-seg — v3 无增强版** | 🔄 **v3 全量在训**（GPU1，2026-10-22 00:0x 起，100ep bs16 imgsz512 全增强关；转换零损耗 123788/18066/24754；run 名 `yolo11s_seg_citysample_v3_512noaug`，v1 产物未覆盖） | v1 版脚本重定向 v3 | 同 v1 协议：max_det=250、maxDets=[1,10,250]（eval 脚本已带 s[0] 陷阱修复） |
+| **Mask R-CNN — v3 无增强版** | 🔄 **v3 全量在训**（GPU2，23:5x 起，12ep bs8×ai2 SGD 同构 WHU；冒烟通过，显存 allocated 6.4G） | `mmdetection/configs/whu1024/mask-rcnn_r50_fpn_1x_whu1024.py` | 新 config `configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v3_noaug.py`：无增强 identity Resize512、max_per_img 250、test_cfg.rcnn 覆盖 |
+| **MS R-CNN — v3 无增强版** | 🔄 **v3 全量在训**（GPU0，23:5x 起，12ep bs4×ai4；冒烟通过，显存 3.7G；caffe R50=msra 权重） | `mmdetection/configs/whu1024/ms-rcnn_r50-caffe_fpn_1x_whu1024.py` | 同上（`ms-rcnn_r50-caffe_fpn_1x_citysample_v3_noaug.py`，含 mask_iou_head 单类适配） |
+| **RTMDet-Ins-S — v3 无增强版** | 🔄 **v3 全量在训**（GPU3，23:5x 起，300ep bs4×ai64 AdamW+EMA 同构 WHU；冒烟 1ep 完整通过 exit=0，显存 2.5G） | `mmdetection/configs/whu1024/rtmdet-ins_s_300e_whu1024.py` | `rtmdet-ins_s_300e_citysample_v3_noaug.py`：去 mosaic/mixup/HSV/多尺度/flip，**摘除 PipelineSwitchHook**（无增强后 stage1/2 无差异，EMA 保留 momentum 3.125e-6）、bbox_head.test_cfg.max_per_img 250（num_queries 默认 300 合规） |
+| **RSPrompter (anchor) — v1 版（已作废）** | 🔄 **训练中（E4 起，16:23 resume）**：300ep bf16 bs1×ai2 显存 15.5G，0.67s/iter，eta ~5.3 天。**E3 事故已修**：val 崩于 SAM patch_embed 的 1024 硬校验——根因是 base config 的 BatchFixedSizePad(1024) 仅训练期生效（训练时 512 图零填充进 1024 画布，故 3ep 正常），我覆盖 test 管线时误删了作者的 Pad 步骤；修复=test 管线补 `Pad(1024, 零填充)`（与训练一致，补边非上采样，P4 不破，训练路径零改动 E3 ckpt 直接续）。20 图探针全链路通过（E3 segm mAP 0.009，对照 NWPU 早期轨迹 ep3-12 从 0 爬起，正常）。首个全量 val 在 E6（val_interval=3，与 WHU 版一致）。
 
 **E11 中断（21:35）＝用户手动终止**：此前"挂起死锁"推测作废——用户确认是手动杀的（21:05 起停止推进为其暂停过程），我误判为异常挂起并自动续训，经用户指出后已再次停止（22:00 前）。**当前状态：⏸ 暂停待命**，ckpt 无损（best_coco_segm_mAP_epoch_9.pth=segm 0.5080 + epoch_10.pth），恢复命令 `bash scripts/baselines/run_rsprompter_citysample.sh resume <gpu>` 从 E11 接续，等用户指令 | `RSPrompter-release/.../configs/rsprompter/rsprompter_anchor-whu-1024.py` | 新 config `rsprompter_anchor-citysample-512-noaug.py`：无增强管线（去 RandomFlip+LSJ，identity Resize 512 守卫）、max_per_img=250、bf16、300ep bs1×ai2、AdamW 2e-4+clip0.1 不变；启动 `run_rsprompter_citysample.sh`（smoke/train/resume/test，test 走 `citysample_sat_test.py` maxDets=250） |
 | **YOLO11s-seg — 无增强版** | ✅ **完成**（100ep 跑满 exit=0，best.pt 终评 test 459 已收：**bbox mAP 0.6865** / **segm mAP 0.5035**（maxDets=250）；val(mAP50-95 box 0.746/mask 0.675)→test 落差反映 val稀疏大目标 vs test密集小目标的分布漂移；segm AP75 0.522 vs AP50 0.859=原型掩码边界精度短板；指标文件 `yolo11seg/.../test_out/test_metrics.json` + pred_coco.json 已落盘） | 脚本制（`coco2yolo_seg.py` 转换 + ultralytics 默认配方） | `coco2yolo_seg_citysample.py`（唯一 stem=采样点号，全图同名 rgb.png；未压缩 RLE 先 frPyObjects；转换零损耗 126214/14980/44988 与 GT 一致）+ `run_yolo11_citysample.sh`（imgsz=512、mosaic/HSV/flip 等全关、100ep bs16 seed0 auto 优化器）+ `eval_yolo_citysample.py`（max_det=250、maxDets=[1,10,250]） |

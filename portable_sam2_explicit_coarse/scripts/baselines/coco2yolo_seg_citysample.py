@@ -25,7 +25,7 @@ from pycocotools import mask as mask_utils
 from pycocotools.coco import COCO
 from ultralytics.data.converter import merge_multi_segment
 
-DS_ROOT = Path('/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v1_20261021')
+DS_ROOT = Path('/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v3_20261021')
 OUT_ROOT = DS_ROOT / 'yolo_seg'
 
 SPLITS = {

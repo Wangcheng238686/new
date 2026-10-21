@@ -25,13 +25,13 @@ GPU="${2:-2}"
 
 PROJ_ROOT="/home/wangcheng/project/new/portable_sam2_explicit_coarse"
 SCRIPTS="${PROJ_ROOT}/scripts/baselines"
-DATA_YAML="/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v1_20261021/yolo_seg/data.yaml"
-RUNDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/yolo11seg/yolo11s_seg_citysample512_noaug"
+DATA_YAML="/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v3_20261021/yolo_seg/data.yaml"
+RUNDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/yolo11seg/yolo11s_seg_citysample_v3_512noaug"
 LOGDIR="${PROJ_ROOT}/logs/baselines_citysample"
 mkdir -p "${LOGDIR}" "${RUNDIR}"
 
-RUNTAG="yolo11s_seg_citysample512_noaug"
-RUNNAME="yolo11s_seg_citysample512_noaug"
+RUNTAG="yolo11s_seg_citysample_v3_512noaug"
+RUNNAME="yolo11s_seg_citysample_v3_512noaug"
 export CUDA_VISIBLE_DEVICES="${GPU}"
 
 TS=$(date +%Y%m%d_%H%M%S)
