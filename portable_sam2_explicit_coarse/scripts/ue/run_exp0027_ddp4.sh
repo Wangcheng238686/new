@@ -15,8 +15,8 @@ if [[ "${B0_EXP_ID:-}" != "EXP-0027" ]]; then
   echo "this wrapper only launches EXP-0027" >&2; exit 2
 fi
 export CUDA_VISIBLE_DEVICES=0,1,2,3
-RUN_TAG="citysample_v1_512single_noaug_ddp4_s44_EXP-0027"
-WORK_DIR="/data2/wangcheng/checkpoint/citysample_v1/${RUN_TAG}"
+RUN_TAG="citysample_v3_512single_defaug_ddp4_s44_EXP-0027"
+WORK_DIR="/data2/wangcheng/checkpoint/citysample_v3/${RUN_TAG}"
 export RUN_TAG WORK_DIR
 export SAVE_LAST_MODEL=1
 # EXP-0027 data plumbing: whu_coco format pointed at the CitySample annotations
@@ -24,7 +24,7 @@ export WHU_TRAIN_ANN_FILE=annotations/train.json
 export WHU_VAL_ANN_FILE=annotations/val.json
 export WHU_TRAIN_IMG_SUBDIR=
 export WHU_VAL_IMG_SUBDIR=
-# augmentation contract: flip/vflip/multi-scale/noise/erasing ALL pinned to 0
+# augmentation contract: trainer default = hflip 0.5 only; everything else pinned 0
 export TRAIN_FLIP_PROB=0.5
 export TRAIN_VFLIP_PROB=0
 export TRAIN_MULTI_SCALE_RESIZE_PROB=0
@@ -42,7 +42,7 @@ if [[ "$(sha256sum "$DS_ROOT/splits/train.json" | cut -d ' ' -f 1)" != "b186c873
 if [[ "$(sha256sum "$DS_ROOT/splits/val.json" | cut -d ' ' -f 1)" != "617b7429ae31a5503253e0d0b63896f51e24ad334580acf6b497c54f31a78dde" ]]; then echo "pin mismatch: splits/val.json" >&2; exit 2; fi
 if [[ "$(sha256sum "$DS_ROOT/splits/test.json" | cut -d ' ' -f 1)" != "9822e4a417c24cf6bc146925c3168ca0ac96dbd499d1698ebc52e81494b47964" ]]; then echo "pin mismatch: splits/test.json" >&2; exit 2; fi
 if [[ "$(sha256sum "$DS_ROOT/annotations/train.json" | cut -d ' ' -f 1)" != "97630d70788e652254cfd4d9e8c7443aa9635a09cad5fd64bfb29a1d59eaa4bd" ]]; then echo "pin mismatch: annotations/train.json" >&2; exit 2; fi
-if [[ "$(sha256sum "$DS_ROOT/annotations/val.json" | cut -d ' ' -f 1)" != "d59ac33f400c1d91fb77deddbcec1104c78333b45af890e7bc215199d8f2443de" ]]; then echo "pin mismatch: annotations/val.json" >&2; exit 2; fi
+if [[ "$(sha256sum "$DS_ROOT/annotations/val.json" | cut -d ' ' -f 1)" != "d59ac33f400c1d91fb77deddbcec1104c7833b45af890e7bc215199d8f2443de" ]]; then echo "pin mismatch: annotations/val.json" >&2; exit 2; fi
 if [[ "$(sha256sum "$DS_ROOT/annotations/test.json" | cut -d ' ' -f 1)" != "2ea872f0cbe4976906bb3780e012b352c597a1157f5598d1c73beb1dc6e6914a" ]]; then echo "pin mismatch: annotations/test.json" >&2; exit 2; fi
 /data2/wangcheng/envs/cvt2/bin/python - "$DS_ROOT" <<'PYV'
 import json, sys
