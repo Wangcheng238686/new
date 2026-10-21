@@ -1,0 +1,31 @@
+{
+  "old": {
+    "single_best": {
+      "segm": 0.5830004380708173,
+      "bbox": 0.6199674631919084
+    },
+    "dual_correct": {
+      "segm": 0.5849579676428078,
+      "bbox": 0.6184538725985026
+    },
+    "dual_minus_single": {
+      "segm": 0.0019575295719905794,
+      "bbox": -0.0015135905934058336
+    }
+  },
+  "new": {
+    "single_best": {
+      "segm": 0.589200345408673,
+      "bbox": 0.633988313285588
+    },
+    "dual_correct": {
+      "segm": 0.5905856413486976,
+      "bbox": 0.6322506655387258
+    },
+    "dual_minus_single": {
+      "segm": 0.0013852959400245668,
+      "bbox": -0.0017376477468622475
+    }
+  },
+  "protocol": "Replay same immutable old E66single/E72dual EMA predictions on same153 validation RGB; old labels exactly reproduce official archived AP100; new manual labels only changed; GT area=bbox area as historical evaluator; no refit/checkpoint selection/test labels/images."
+}

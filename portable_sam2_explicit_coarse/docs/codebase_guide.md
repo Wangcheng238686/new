@@ -204,3 +204,8 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 旧UE四臂、冻结architecture_contract与inference/model_rebuild.py不变。
 训练100epoch、4×2×1、全组LR5e-4、globalclip.5、EMA关；val选segm AP250最佳。
 详见 [训练协议](dual_stream/UE_MINIMAL_SINGLE_20261021.md)。
+
+2026-10-21 数据再审计：新增[旧双流数据问题与方向](dual_stream/UE_DATASET_REAUDIT_AND_DIRECTION_20261021.md)，
+`docs/dual_stream/probes/dataset_reaudit_20261021/`归档两份CPU分析脚本及逐图证据，不接训练入口。
+包含新旧153图独立mask对比、固定32图深度观测支持和旧train→新test454图身份风险。
+EXP-0017生产实现与数据保持不变，后续UAV仍待新单流固化。

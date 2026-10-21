@@ -1,0 +1,55 @@
+{
+  "protocol": "CPU same-RGB old vs manual RLE; no test labels decoded; diagnostic graph thresholds not physical identity proof",
+  "split_transition": {
+    "train": {
+      "train": 19,
+      "val": 0,
+      "test": 454
+    },
+    "validation": {
+      "train": 0,
+      "val": 153,
+      "test": 0
+    }
+  },
+  "train": {
+    "old_count": 2186,
+    "new_count": 2156,
+    "old_fg": 2866614,
+    "new_fg": 2871517,
+    "fg_intersection": 2855264,
+    "fg_union": 2882867,
+    "fg_added": 16253,
+    "fg_removed": 11350,
+    "matched_count": 2154,
+    "sum_matched_iou": 2125.722494344836,
+    "matched_iou_lt05": 5,
+    "matched_iou_lt09": 14,
+    "old_with_multiple_new": 4,
+    "new_with_multiple_old": 9,
+    "images": 19,
+    "same_rgb_images": 19,
+    "foreground_iou": 0.9904251566235973,
+    "matched_iou_mean": 0.986872095796117
+  },
+  "val": {
+    "old_count": 4496,
+    "new_count": 4496,
+    "old_fg": 18166185,
+    "new_fg": 18434162,
+    "fg_intersection": 18131088,
+    "fg_union": 18469259,
+    "fg_added": 303074,
+    "fg_removed": 35097,
+    "matched_count": 4421,
+    "sum_matched_iou": 4333.025737603265,
+    "matched_iou_lt05": 61,
+    "matched_iou_lt09": 104,
+    "old_with_multiple_new": 35,
+    "new_with_multiple_old": 25,
+    "images": 153,
+    "same_rgb_images": 153,
+    "foreground_iou": 0.9816900613067367,
+    "matched_iou_mean": 0.98010082280101
+  }
+}

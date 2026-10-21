@@ -1,0 +1,45 @@
+{
+  "protocol": "hash-fixed16train+16val; no test labels/images read; raw full-resolution point projections; nearest UAV-observed surface only; 1px dilation is optimistic tolerance, not a calibration score; depth-step2m is geometric and not a semantic edge",
+  "train": {
+    "instances": 1132,
+    "fg_pixels": 2032950,
+    "fg_supported": 1850570,
+    "fg_supported_1px": 1941074,
+    "boundary_pixels": 198449,
+    "boundary_supported": 176640,
+    "boundary_supported_1px": 188670,
+    "boundary_near_2m_depth_step": 124287,
+    "supported_fg_views2": 1385894,
+    "instance_cover50": 1100,
+    "images": 16,
+    "fg_coverage": 0.9102880051157185,
+    "fg_coverage_1px": 0.9548065618928159,
+    "boundary_coverage": 0.8901027468014452,
+    "boundary_coverage_1px": 0.9507228557463127,
+    "supported_boundary_near_2m_step": 0.6587533789155668
+  },
+  "val": {
+    "instances": 485,
+    "fg_pixels": 1987420,
+    "fg_supported": 1700036,
+    "fg_supported_1px": 1798387,
+    "boundary_pixels": 132951,
+    "boundary_supported": 105643,
+    "boundary_supported_1px": 117157,
+    "boundary_near_2m_depth_step": 80914,
+    "supported_fg_views2": 1149408,
+    "instance_cover50": 442,
+    "images": 16,
+    "fg_coverage": 0.8553984562900645,
+    "fg_coverage_1px": 0.9048852280846524,
+    "boundary_coverage": 0.7946010184203203,
+    "boundary_coverage_1px": 0.8812043534836143,
+    "supported_boundary_near_2m_step": 0.6906458854357828
+  },
+  "same_source_check": {
+    "views": 40,
+    "rgb_same": 40,
+    "depth_same": 40,
+    "camera_max_abs": 0
+  }
+}

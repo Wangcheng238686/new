@@ -1,0 +1,773 @@
+{
+  "images": 153,
+  "instances": 4496,
+  "exact_images": 153,
+  "source": "/tmp/ue_uav_experiments/20261014_ad_seed42/final_analysis/single_best/gt_records.json",
+  "checks": [
+    {
+      "image_id": 287,
+      "exact_mask_multiset": true,
+      "instances": 13
+    },
+    {
+      "image_id": 288,
+      "exact_mask_multiset": true,
+      "instances": 14
+    },
+    {
+      "image_id": 295,
+      "exact_mask_multiset": true,
+      "instances": 18
+    },
+    {
+      "image_id": 302,
+      "exact_mask_multiset": true,
+      "instances": 11
+    },
+    {
+      "image_id": 303,
+      "exact_mask_multiset": true,
+      "instances": 9
+    },
+    {
+      "image_id": 304,
+      "exact_mask_multiset": true,
+      "instances": 6
+    },
+    {
+      "image_id": 305,
+      "exact_mask_multiset": true,
+      "instances": 5
+    },
+    {
+      "image_id": 306,
+      "exact_mask_multiset": true,
+      "instances": 9
+    },
+    {
+      "image_id": 307,
+      "exact_mask_multiset": true,
+      "instances": 11
+    },
+    {
+      "image_id": 308,
+      "exact_mask_multiset": true,
+      "instances": 11
+    },
+    {
+      "image_id": 309,
+      "exact_mask_multiset": true,
+      "instances": 14
+    },
+    {
+      "image_id": 310,
+      "exact_mask_multiset": true,
+      "instances": 12
+    },
+    {
+      "image_id": 311,
+      "exact_mask_multiset": true,
+      "instances": 11
+    },
+    {
+      "image_id": 312,
+      "exact_mask_multiset": true,
+      "instances": 9
+    },
+    {
+      "image_id": 313,
+      "exact_mask_multiset": true,
+      "instances": 11
+    },
+    {
+      "image_id": 314,
+      "exact_mask_multiset": true,
+      "instances": 12
+    },
+    {
+      "image_id": 315,
+      "exact_mask_multiset": true,
+      "instances": 13
+    },
+    {
+      "image_id": 316,
+      "exact_mask_multiset": true,
+      "instances": 14
+    },
+    {
+      "image_id": 317,
+      "exact_mask_multiset": true,
+      "instances": 15
+    },
+    {
+      "image_id": 318,
+      "exact_mask_multiset": true,
+      "instances": 15
+    },
+    {
+      "image_id": 319,
+      "exact_mask_multiset": true,
+      "instances": 13
+    },
+    {
+      "image_id": 483,
+      "exact_mask_multiset": true,
+      "instances": 17
+    },
+    {
+      "image_id": 490,
+      "exact_mask_multiset": true,
+      "instances": 20
+    },
+    {
+      "image_id": 497,
+      "exact_mask_multiset": true,
+      "instances": 19
+    },
+    {
+      "image_id": 498,
+      "exact_mask_multiset": true,
+      "instances": 19
+    },
+    {
+      "image_id": 499,
+      "exact_mask_multiset": true,
+      "instances": 18
+    },
+    {
+      "image_id": 500,
+      "exact_mask_multiset": true,
+      "instances": 16
+    },
+    {
+      "image_id": 501,
+      "exact_mask_multiset": true,
+      "instances": 21
+    },
+    {
+      "image_id": 502,
+      "exact_mask_multiset": true,
+      "instances": 22
+    },
+    {
+      "image_id": 503,
+      "exact_mask_multiset": true,
+      "instances": 23
+    },
+    {
+      "image_id": 504,
+      "exact_mask_multiset": true,
+      "instances": 25
+    },
+    {
+      "image_id": 505,
+      "exact_mask_multiset": true,
+      "instances": 29
+    },
+    {
+      "image_id": 506,
+      "exact_mask_multiset": true,
+      "instances": 28
+    },
+    {
+      "image_id": 507,
+      "exact_mask_multiset": true,
+      "instances": 26
+    },
+    {
+      "image_id": 508,
+      "exact_mask_multiset": true,
+      "instances": 24
+    },
+    {
+      "image_id": 509,
+      "exact_mask_multiset": true,
+      "instances": 28
+    },
+    {
+      "image_id": 510,
+      "exact_mask_multiset": true,
+      "instances": 30
+    },
+    {
+      "image_id": 696,
+      "exact_mask_multiset": true,
+      "instances": 17
+    },
+    {
+      "image_id": 697,
+      "exact_mask_multiset": true,
+      "instances": 19
+    },
+    {
+      "image_id": 703,
+      "exact_mask_multiset": true,
+      "instances": 18
+    },
+    {
+      "image_id": 704,
+      "exact_mask_multiset": true,
+      "instances": 17
+    },
+    {
+      "image_id": 710,
+      "exact_mask_multiset": true,
+      "instances": 18
+    },
+    {
+      "image_id": 711,
+      "exact_mask_multiset": true,
+      "instances": 29
+    },
+    {
+      "image_id": 712,
+      "exact_mask_multiset": true,
+      "instances": 25
+    },
+    {
+      "image_id": 713,
+      "exact_mask_multiset": true,
+      "instances": 16
+    },
+    {
+      "image_id": 714,
+      "exact_mask_multiset": true,
+      "instances": 9
+    },
+    {
+      "image_id": 715,
+      "exact_mask_multiset": true,
+      "instances": 18
+    },
+    {
+      "image_id": 716,
+      "exact_mask_multiset": true,
+      "instances": 23
+    },
+    {
+      "image_id": 717,
+      "exact_mask_multiset": true,
+      "instances": 27
+    },
+    {
+      "image_id": 718,
+      "exact_mask_multiset": true,
+      "instances": 31
+    },
+    {
+      "image_id": 719,
+      "exact_mask_multiset": true,
+      "instances": 29
+    },
+    {
+      "image_id": 720,
+      "exact_mask_multiset": true,
+      "instances": 19
+    },
+    {
+      "image_id": 721,
+      "exact_mask_multiset": true,
+      "instances": 13
+    },
+    {
+      "image_id": 722,
+      "exact_mask_multiset": true,
+      "instances": 14
+    },
+    {
+      "image_id": 723,
+      "exact_mask_multiset": true,
+      "instances": 26
+    },
+    {
+      "image_id": 724,
+      "exact_mask_multiset": true,
+      "instances": 29
+    },
+    {
+      "image_id": 725,
+      "exact_mask_multiset": true,
+      "instances": 32
+    },
+    {
+      "image_id": 726,
+      "exact_mask_multiset": true,
+      "instances": 29
+    },
+    {
+      "image_id": 727,
+      "exact_mask_multiset": true,
+      "instances": 25
+    },
+    {
+      "image_id": 728,
+      "exact_mask_multiset": true,
+      "instances": 16
+    },
+    {
+      "image_id": 910,
+      "exact_mask_multiset": true,
+      "instances": 22
+    },
+    {
+      "image_id": 917,
+      "exact_mask_multiset": true,
+      "instances": 21
+    },
+    {
+      "image_id": 925,
+      "exact_mask_multiset": true,
+      "instances": 28
+    },
+    {
+      "image_id": 926,
+      "exact_mask_multiset": true,
+      "instances": 29
+    },
+    {
+      "image_id": 927,
+      "exact_mask_multiset": true,
+      "instances": 28
+    },
+    {
+      "image_id": 928,
+      "exact_mask_multiset": true,
+      "instances": 25
+    },
+    {
+      "image_id": 929,
+      "exact_mask_multiset": true,
+      "instances": 25
+    },
+    {
+      "image_id": 930,
+      "exact_mask_multiset": true,
+      "instances": 23
+    },
+    {
+      "image_id": 931,
+      "exact_mask_multiset": true,
+      "instances": 22
+    },
+    {
+      "image_id": 932,
+      "exact_mask_multiset": true,
+      "instances": 23
+    },
+    {
+      "image_id": 933,
+      "exact_mask_multiset": true,
+      "instances": 23
+    },
+    {
+      "image_id": 934,
+      "exact_mask_multiset": true,
+      "instances": 26
+    },
+    {
+      "image_id": 935,
+      "exact_mask_multiset": true,
+      "instances": 27
+    },
+    {
+      "image_id": 936,
+      "exact_mask_multiset": true,
+      "instances": 25
+    },
+    {
+      "image_id": 937,
+      "exact_mask_multiset": true,
+      "instances": 25
+    },
+    {
+      "image_id": 938,
+      "exact_mask_multiset": true,
+      "instances": 23
+    },
+    {
+      "image_id": 939,
+      "exact_mask_multiset": true,
+      "instances": 25
+    },
+    {
+      "image_id": 940,
+      "exact_mask_multiset": true,
+      "instances": 24
+    },
+    {
+      "image_id": 941,
+      "exact_mask_multiset": true,
+      "instances": 26
+    },
+    {
+      "image_id": 942,
+      "exact_mask_multiset": true,
+      "instances": 29
+    },
+    {
+      "image_id": 943,
+      "exact_mask_multiset": true,
+      "instances": 26
+    },
+    {
+      "image_id": 944,
+      "exact_mask_multiset": true,
+      "instances": 22
+    },
+    {
+      "image_id": 945,
+      "exact_mask_multiset": true,
+      "instances": 18
+    },
+    {
+      "image_id": 946,
+      "exact_mask_multiset": true,
+      "instances": 17
+    },
+    {
+      "image_id": 947,
+      "exact_mask_multiset": true,
+      "instances": 22
+    },
+    {
+      "image_id": 948,
+      "exact_mask_multiset": true,
+      "instances": 24
+    },
+    {
+      "image_id": 949,
+      "exact_mask_multiset": true,
+      "instances": 27
+    },
+    {
+      "image_id": 950,
+      "exact_mask_multiset": true,
+      "instances": 27
+    },
+    {
+      "image_id": 951,
+      "exact_mask_multiset": true,
+      "instances": 25
+    },
+    {
+      "image_id": 952,
+      "exact_mask_multiset": true,
+      "instances": 21
+    },
+    {
+      "image_id": 953,
+      "exact_mask_multiset": true,
+      "instances": 24
+    },
+    {
+      "image_id": 954,
+      "exact_mask_multiset": true,
+      "instances": 27
+    },
+    {
+      "image_id": 955,
+      "exact_mask_multiset": true,
+      "instances": 31
+    },
+    {
+      "image_id": 956,
+      "exact_mask_multiset": true,
+      "instances": 31
+    },
+    {
+      "image_id": 957,
+      "exact_mask_multiset": true,
+      "instances": 31
+    },
+    {
+      "image_id": 958,
+      "exact_mask_multiset": true,
+      "instances": 28
+    },
+    {
+      "image_id": 959,
+      "exact_mask_multiset": true,
+      "instances": 24
+    },
+    {
+      "image_id": 1158,
+      "exact_mask_multiset": true,
+      "instances": 28
+    },
+    {
+      "image_id": 1159,
+      "exact_mask_multiset": true,
+      "instances": 32
+    },
+    {
+      "image_id": 1166,
+      "exact_mask_multiset": true,
+      "instances": 40
+    },
+    {
+      "image_id": 1173,
+      "exact_mask_multiset": true,
+      "instances": 31
+    },
+    {
+      "image_id": 1174,
+      "exact_mask_multiset": true,
+      "instances": 33
+    },
+    {
+      "image_id": 1175,
+      "exact_mask_multiset": true,
+      "instances": 35
+    },
+    {
+      "image_id": 1176,
+      "exact_mask_multiset": true,
+      "instances": 36
+    },
+    {
+      "image_id": 1177,
+      "exact_mask_multiset": true,
+      "instances": 47
+    },
+    {
+      "image_id": 1178,
+      "exact_mask_multiset": true,
+      "instances": 43
+    },
+    {
+      "image_id": 1179,
+      "exact_mask_multiset": true,
+      "instances": 40
+    },
+    {
+      "image_id": 1181,
+      "exact_mask_multiset": true,
+      "instances": 40
+    },
+    {
+      "image_id": 1182,
+      "exact_mask_multiset": true,
+      "instances": 44
+    },
+    {
+      "image_id": 1183,
+      "exact_mask_multiset": true,
+      "instances": 53
+    },
+    {
+      "image_id": 1184,
+      "exact_mask_multiset": true,
+      "instances": 57
+    },
+    {
+      "image_id": 1185,
+      "exact_mask_multiset": true,
+      "instances": 50
+    },
+    {
+      "image_id": 1186,
+      "exact_mask_multiset": true,
+      "instances": 50
+    },
+    {
+      "image_id": 1187,
+      "exact_mask_multiset": true,
+      "instances": 48
+    },
+    {
+      "image_id": 1188,
+      "exact_mask_multiset": true,
+      "instances": 60
+    },
+    {
+      "image_id": 1189,
+      "exact_mask_multiset": true,
+      "instances": 55
+    },
+    {
+      "image_id": 1190,
+      "exact_mask_multiset": true,
+      "instances": 56
+    },
+    {
+      "image_id": 1191,
+      "exact_mask_multiset": true,
+      "instances": 41
+    },
+    {
+      "image_id": 1192,
+      "exact_mask_multiset": true,
+      "instances": 40
+    },
+    {
+      "image_id": 1193,
+      "exact_mask_multiset": true,
+      "instances": 39
+    },
+    {
+      "image_id": 1194,
+      "exact_mask_multiset": true,
+      "instances": 34
+    },
+    {
+      "image_id": 1195,
+      "exact_mask_multiset": true,
+      "instances": 50
+    },
+    {
+      "image_id": 1196,
+      "exact_mask_multiset": true,
+      "instances": 50
+    },
+    {
+      "image_id": 1197,
+      "exact_mask_multiset": true,
+      "instances": 53
+    },
+    {
+      "image_id": 1198,
+      "exact_mask_multiset": true,
+      "instances": 61
+    },
+    {
+      "image_id": 1199,
+      "exact_mask_multiset": true,
+      "instances": 62
+    },
+    {
+      "image_id": 1200,
+      "exact_mask_multiset": true,
+      "instances": 59
+    },
+    {
+      "image_id": 1201,
+      "exact_mask_multiset": true,
+      "instances": 54
+    },
+    {
+      "image_id": 1202,
+      "exact_mask_multiset": true,
+      "instances": 58
+    },
+    {
+      "image_id": 1203,
+      "exact_mask_multiset": true,
+      "instances": 62
+    },
+    {
+      "image_id": 1204,
+      "exact_mask_multiset": true,
+      "instances": 66
+    },
+    {
+      "image_id": 1205,
+      "exact_mask_multiset": true,
+      "instances": 64
+    },
+    {
+      "image_id": 1206,
+      "exact_mask_multiset": true,
+      "instances": 65
+    },
+    {
+      "image_id": 1207,
+      "exact_mask_multiset": true,
+      "instances": 64
+    },
+    {
+      "image_id": 1208,
+      "exact_mask_multiset": true,
+      "instances": 62
+    },
+    {
+      "image_id": 1209,
+      "exact_mask_multiset": true,
+      "instances": 31
+    },
+    {
+      "image_id": 1210,
+      "exact_mask_multiset": true,
+      "instances": 26
+    },
+    {
+      "image_id": 1211,
+      "exact_mask_multiset": true,
+      "instances": 22
+    },
+    {
+      "image_id": 1212,
+      "exact_mask_multiset": true,
+      "instances": 16
+    },
+    {
+      "image_id": 1213,
+      "exact_mask_multiset": true,
+      "instances": 24
+    },
+    {
+      "image_id": 1214,
+      "exact_mask_multiset": true,
+      "instances": 32
+    },
+    {
+      "image_id": 1215,
+      "exact_mask_multiset": true,
+      "instances": 42
+    },
+    {
+      "image_id": 1216,
+      "exact_mask_multiset": true,
+      "instances": 49
+    },
+    {
+      "image_id": 1217,
+      "exact_mask_multiset": true,
+      "instances": 35
+    },
+    {
+      "image_id": 1218,
+      "exact_mask_multiset": true,
+      "instances": 26
+    },
+    {
+      "image_id": 1219,
+      "exact_mask_multiset": true,
+      "instances": 17
+    },
+    {
+      "image_id": 1220,
+      "exact_mask_multiset": true,
+      "instances": 28
+    },
+    {
+      "image_id": 1221,
+      "exact_mask_multiset": true,
+      "instances": 38
+    },
+    {
+      "image_id": 1222,
+      "exact_mask_multiset": true,
+      "instances": 54
+    },
+    {
+      "image_id": 1223,
+      "exact_mask_multiset": true,
+      "instances": 57
+    },
+    {
+      "image_id": 1224,
+      "exact_mask_multiset": true,
+      "instances": 52
+    },
+    {
+      "image_id": 1225,
+      "exact_mask_multiset": true,
+      "instances": 30
+    },
+    {
+      "image_id": 1226,
+      "exact_mask_multiset": true,
+      "instances": 21
+    }
+  ]
+}
