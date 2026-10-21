@@ -8,7 +8,7 @@
 > 环境：cvt2（mmengine 系）、dt2（detectron2/AdelaiDet 系）、mdino（MaskDINO）、mm2（RSIISN, mmdet2 栈）
 > 日志根：`portable_sam2_explicit_coarse/logs/baselines_citysample/`；ckpt 根：`/data1/wangcheng/checkpoint/citysample_sat_baselines/`
 >
-> **状态：立项调查完成，协议 PENDING 项待拍板（见"协议决定"节），未启动任何实验。最后更新：2026-10-21**
+> **状态：协议已拍板（2026-10-21，见下）；首发 RSPrompter(anchor) 与 YOLO11s-seg 无增强版已立项。最后更新：2026-10-21**
 
 ---
 
@@ -33,44 +33,39 @@
 
 ## 协议决定
 
-### 已定（沿用先例）
+### 已拍板（2026-10-21 用户决定）
 
 | 项 | 决定 | 依据 |
 |---|---|---|
 | 选模 | val 459 上 segm mAP 峰值 ckpt（save_best=coco/segm_mAP），test 仅终评 | WHU/NWPU 先例 |
-| 训练配方 | 与 WHU-1024 版同构（同 epoch/iter、同增强、同优化器），仅换数据/类别数/协议参数 | NWPU 先例（同方法跨数据集配方不变） |
+| 训练配方 | 与 WHU-1024 版同构（同 epoch/iter、同优化器），仅换数据/管线/协议参数 | NWPU 先例 |
 | 无 TTA、单 ckpt | 是 | WHU/NWPU 先例 |
 | SCNet | 跳过（WHU 三次复现失败史） | WHU tracking 记录 |
 | val 选模 maxDets | **保持 100 即无损**（val 单图最大 87 实例 < 100） | 实测上表 |
-
-### PENDING（待拍板，见 grill 清单）
-
-| # | 项 | 我的建议 | 备选 |
-|---|---|---|---|
-| P1 | **test maxDets** | **300**（≥test 最大 238；与 MaskDINO 300 queries、YOLO 默认 300 对齐）；test 42% 图 ≥100 实例，保持 100 会把召回物理封顶 | 250 / 500 |
-| P2 | **推理输出上限** | 全方法统一抬到 300（mmdet `max_per_img`、d2 `DETECTIONS_PER_IMAGE`、YOLO `max_det`、SOLOv2 NMS post），否则 maxDets 300 无意义 | — |
-| P3 | **M2F num_queries** | 100→300 重训（否则输出硬顶 100 实例，test 上结构性吃亏）；偏离官方默认需在论文注明 | 保持 100 并如实报告容量上限 |
-| P4 | **分辨率口径** | 维持"各方法按其原配方"：512 原图被各方法上采样（Resize(1333,800)→800²、LSJ/CATNet→1024²、YOLO→640），全上采样无下采样，对小目标有利 | 全体统一 512 原生（同分辨率公平但偏离先例） |
-| P5 | **方法清单** | WHU 有效 12 个全上 + RS4D-box；RSPrompter(anchor) 可选补（WHU fp16 NaN / bf16 被 kill，两边均无终版数） | 13 个（含 RSPrompter）或 12 个 |
-| P6 | GPU 与排队 | 按用户指定卡数跑串行队列（恢复当年 queue 的产物校验机制，避免假完成标记） | — |
+| **P1/P2 test maxDets** | **250**（test 单图实例最大 238 < 250；推理输出上限全方法同步抬 250） | 用户拍板 2026-10-21 |
+| **P3 M2F num_queries** | **250**（届时重训） | 用户拍板 2026-10-21 |
+| **P4 分辨率** | **512 原生，不允许上采样**（各方法 resize 一律 identity 512；"Ours 可上采样但暂未上采样"——**后续可能调整**，届时基线同步修订重跑） | 用户拍板 2026-10-21 |
+| **P5 方法清单** | 按本表执行（后续可能变更） | 用户拍板 2026-10-21 |
+| **P6 GPU** | **四卡预算、可共租**（只要不 OOM，与用户其他任务共存） | 用户拍板 2026-10-21 |
+| **无增强对比层** | **首发实验（RSPrompter/YOLO11s-seg）为无数据增强版**：与 Ours 单流卫星无增强版公平对比。无增强=去翻转/尺度抖动/裁剪/mosaic/HSV 等全部训练期几何与色彩增强；COCO 预训练初始化保留（初始化≠增强，WHU 协议一致） | 用户指令 2026-10-21 |
 
 ## 方法清单与状态
 
 | 方法 | 状态 | WHU 版 config 起点（移植派生源） | 移植改动点 |
 |---|---|---|---|
-| Mask R-CNN | ⏸ 待命令 | `mmdetection/configs/whu1024/mask-rcnn_r50_fpn_1x_whu1024.py` | 数据路径、max_per_img→300 |
+| **RSPrompter (anchor) — 无增强版** | 🔄 **全量训练中**（GPU1，2026-10-21 14:35 起；300ep bf16 bs1×ai2 显存 15.5G；冒烟 715it loss 1.58→0.70 无 NaN；速度 0.66-1.1s/iter 随共租波动，ETA 5.5-7.3 天） | `RSPrompter-release/.../configs/rsprompter/rsprompter_anchor-whu-1024.py` | 新 config `rsprompter_anchor-citysample-512-noaug.py`：无增强管线（去 RandomFlip+LSJ，identity Resize 512 守卫）、max_per_img=250、bf16、300ep bs1×ai2、AdamW 2e-4+clip0.1 不变；启动 `run_rsprompter_citysample.sh`（smoke/train/resume/test，test 走 `citysample_sat_test.py` maxDets=250） |
+| **YOLO11s-seg — 无增强版** | 🔄 **全量训练中**（GPU2，2026-10-21 14:26 起；100ep bs16 显存 ~2.7G；冒烟 1ep+全 val 已通：Mask mAP50 0.347 / mAP50-95 0.154，ETA ~2h） | 脚本制（`coco2yolo_seg.py` 转换 + ultralytics 默认配方） | `coco2yolo_seg_citysample.py`（唯一 stem=采样点号，全图同名 rgb.png；未压缩 RLE 先 frPyObjects；转换零损耗 126214/14980/44988 与 GT 一致）+ `run_yolo11_citysample.sh`（imgsz=512、mosaic/HSV/flip 等全关、100ep bs16 seed0 auto 优化器）+ `eval_yolo_citysample.py`（max_det=250、maxDets=[1,10,250]） |
+| Mask R-CNN | ⏸ 待命令（后续方法默认沿用无增强+512 原生口径，除非另行指令） | `mmdetection/configs/whu1024/mask-rcnn_r50_fpn_1x_whu1024.py` | 数据路径、max_per_img→250、无增强管线 |
 | MS R-CNN | ⏸ 待命令 | `mmdetection/configs/whu1024/ms-rcnn_r50-caffe_fpn_1x_whu1024.py` | 同上 |
 | HTC (w/o sem) | ⏸ 待命令 | `mmdetection/configs/whu1024/htc-without-semantic_r50_fpn_1x_whu1024.py` | 同上 |
 | Mask2Former | ⏸ 待命令 | `mmdetection/configs/whu1024/mask2former_r50_whu1024.py` | 数据、num_queries(P3)、**补 save_best**（WHU 两次踩坑：checkpoint hook 疏漏无 best，只能日志解析） |
-| RTMDet-Ins-S | ⏸ 待命令 | `mmdetection/configs/whu1024/rtmdet-ins_s_300e_whu1024.py` | 数据、确认 num_queries=300、max_per_img |
+| RTMDet-Ins-S | ⏸ 待命令 | `mmdetection/configs/whu1024/rtmdet-ins_s_300e_whu1024.py` | 数据、确认 num_queries≥250（默认 300 合规）、max_per_img |
 | CATNet | ⏸ 待命令 | `CATNet/configs/whu/cat_mask_rcnn_r50_3x_whu1024.py` | 数据、max_per_img |
-| CondInst | ⏸ 待命令 | `AdelaiDet/configs/WHU/condinst_MS_R_50_1x_whu1024.yaml` | 数据、DETECTIONS_PER_IMAGE→300 |
-| SOLOv2 | ⏸ 待命令 | `AdelaiDet/configs/WHU/solov2_R50_1x_whu1024.yaml` | 数据、NMS post→300（无框输出为方法属性） |
-| MaskDINO | ⏸ 待命令 | `MaskDINO/configs/whu/maskdino_R50_whu1024.yaml` + `train_whu.py` | 数据（queries 默认 300 已合规） |
+| CondInst | ⏸ 待命令 | `AdelaiDet/configs/WHU/condinst_MS_R_50_1x_whu1024.yaml` | 数据、DETECTIONS_PER_IMAGE→250 |
+| SOLOv2 | ⏸ 待命令 | `AdelaiDet/configs/WHU/solov2_R50_1x_whu1024.yaml` | 数据、NMS post→250（无框输出为方法属性） |
+| MaskDINO | ⏸ 待命令 | `MaskDINO/configs/whu/maskdino_R50_whu1024.yaml` + `train_whu.py` | 数据（queries 默认 300 ≥250 合规） |
 | RS4D-box | ⏸ 待命令 | `RS4D/configs/rsprompter/`（WHU 用作者 config 原样） | 数据 |
 | RSIISN | ⏸ 待命令 | `RSIISN/configs/whu1024/rsiisn_cascade_swinT_whu1024.py` | 数据、max_per_img |
-| YOLO11s-seg | ⏸ 待命令 | 脚本制（`coco2yolo_seg.py` 转换 + ultralytics 默认配方） | 数据转换（512 图/子目录路径）、max_det→300 |
-| RSPrompter (anchor) | ❓PENDING P5 | `RS4D/configs/rsprompter/rsprompter_anchor-whu.py`（bf16 修复版口径） | 数据；上次 300ep 在 E27/E229 被 kill，本次需完整预算 |
 | SCNet | ❌ 跳过 | — | WHU 三次复现失败 |
 
 ## 启动脚本与评测设施（已从 git 历史恢复）
