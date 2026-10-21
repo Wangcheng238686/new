@@ -50,12 +50,17 @@ def main():
     ap.add_argument('--tag', required=True)
     ap.add_argument('--split', default='test')
     ap.add_argument('--device', default='cuda:0')
+    ap.add_argument('--max-per-img', type=int, default=0,
+                    help='override test_cfg.rcnn.max_per_img (0 = config default 100); '
+                         'test has 41% scenes >100 GT (max 238) - the default cap binds')
     a = ap.parse_args()
     dev = torch.device(a.device)
     OUTDIR.mkdir(parents=True, exist_ok=True)
 
     cfg = Config.fromfile(str(ROOT / 'configs/ue_whu_a3sgm_512.py'))
     model = MODELS.build(cfg.model).to(dev).eval()
+    if a.max_per_img:
+        model.test_cfg['rcnn']['max_per_img'] = int(a.max_per_img)
     ck = torch.load(a.ckpt, map_location='cpu', weights_only=False)
     sd = ck['model'] if 'model' in ck else ck['state_dict']
     missing, unexpected = model.load_state_dict(sd, strict=False)
@@ -65,7 +70,9 @@ def main():
 
     coco = COCO(str(D / f'annotations/{a.split}.json'))
     img_ids = coco.getImgIds()
+    ann_count = {iid: len(coco.getAnnIds(imgIds=[iid])) for iid in img_ids}
     results = []
+    per_scene_pred = {}
     for n, iid in enumerate(img_ids):
         e = coco.loadImgs([iid])[0]
         img = np.asarray(Image.open(D / e['file_name']).convert('RGB'))
@@ -89,17 +96,41 @@ def main():
             results.append({'image_id': iid, 'category_id': 1, 'score': float(s),
                             'bbox': [float(x1), float(y1), float(x2 - x1), float(y2 - y1)],
                             'segmentation': rle(m)})
+        per_scene_pred[int(iid)] = int(len(boxes))
         if (n + 1) % 50 == 0:
             print(f'{n+1}/{len(img_ids)} scenes, preds={len(results)}', flush=True)
 
     out = {'tag': a.tag, 'ckpt': a.ckpt, 'epoch': ck.get('epoch'), 'split': a.split,
-           'n_scenes': len(img_ids), 'n_pred': len(results)}
+           'n_scenes': len(img_ids), 'n_pred': len(results),
+           'max_per_img': int(a.max_per_img) if a.max_per_img else 100,
+           'scenes_at_cap': int(sum(1 for v in per_scene_pred.values() if v >= (a.max_per_img or 100))),
+           'gt_gt_cap': int(sum(1 for v in ann_count.values() if v > (a.max_per_img or 100)))}
     for t in ('segm', 'bbox'):
         dt = coco.loadRes([dict(r) for r in results])
         ev = COCOeval(coco, dt, t)
-        ev.evaluate(); ev.accumulate(); ev.summarize()
-        out[t] = {lab: float(ev.stats[i]) for i, lab in enumerate(
-            ('AP', 'AP50', 'AP75', 'AP_s', 'AP_m', 'AP_l'))}
+        # COCOeval's own maxDets=100 default silently discards outputs beyond
+        # rank 100 - align it with the model cap or the override is unmeasured
+        md = int(a.max_per_img) if a.max_per_img else 100
+        ev.params.maxDets = [1, 10, md]
+        ev.evaluate(); ev.accumulate()
+        # non-default maxDets makes summarize() stats[0] return -1 (pycocotools
+        # quirk) - compute the COCO stats directly from the precision array
+        p = ev.params
+        prec = ev.eval['precision']                      # [T,R,K,A,M]
+        stats = {}
+        def ap_at(iou_idx=None, area_idx=0):
+            sl = prec[:, :, 0, area_idx, 2]
+            sl = sl if iou_idx is None else sl[iou_idx:iou_idx + 1]
+            v = sl[sl > -1]
+            return float(v.mean()) if v.size else float('nan')
+        ar = {name: i for i, name in enumerate(p.areaRngLbl)}
+        stats['AP'] = ap_at(None, ar['all'])
+        stats['AP50'] = ap_at(0, ar['all'])
+        stats['AP75'] = ap_at(5, ar['all'])
+        for s_, n_ in (('AP_s', 'small'), ('AP_m', 'medium'), ('AP_l', 'large')):
+            stats[s_] = ap_at(None, ar[n_])
+        out[t] = stats
+        print(t, json.dumps({k: round(v, 4) for k, v in stats.items()}))
     (OUTDIR / f'{a.tag}_{a.split}.json').write_text(json.dumps(out, indent=2))
     print(json.dumps(out, indent=2))
 
