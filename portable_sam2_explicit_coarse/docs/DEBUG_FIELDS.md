@@ -142,3 +142,13 @@ AMP+checkpoint 校验启停诊断的输出及梯度相同，避免共享权重�
 本轮628训练样本、4rank各157个mini-batch、累积2：每epoch79次更新尝试，末次全局batch4（常规8）。覆盖区新增均值使用FP32归约，避免AMP半精度求和误差。
 
 标签审计后627训练样本的重启：训练DistributedSampler(drop_last=True)每epoch丢3个、4rank各156mini-batch、78次尝试、全部累积组2；validation不drop。前述628→157→79仅适用于旧清单。
+
+
+## 2026-10-21 citysample_minimal评估身份
+
+仅新minimal路线：主AP上限250，`bbox/AR@250`、`segm/AR@250`替代本路线旧命名AR@100，
+由同一次COCOeval maxDets=[1,10,250]得到；mAP等主键仍保留便于验证选模，快照与推理manifest
+均携带evaluation_contract明确AP250。不可与历史AP100直接比较。
+checkpoint推理现在按快照primary_max_dets评估（旧无合同的checkpoint仍默认100）。
+新增train_augmentation配置身份记录噪声概率/标准差与ColorJitter参数、顺序，非随机触发次数遥测。
+原loss/UDPR字段的聚合范围不变；本路线禁用EMA，所有val均model权重。

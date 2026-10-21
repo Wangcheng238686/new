@@ -1,0 +1,42 @@
+{
+  "contract": {
+    "schema_version": 3,
+    "architecture_id": "r1_c4_rd_pafpn_coarse_points_box_raw_detach_emb64_udprk64",
+    "model_fingerprint": "3ff1179dbc3957dae8e93fdcd85207e14cb7ce06a7511d74c3ff9887d42ddace"
+  },
+  "coarse": 64,
+  "max_per_img": 250,
+  "max_dets": [
+    1,
+    10,
+    250
+  ],
+  "archive_hashes": {
+    "dataset.json": "b42a11edae080f4a31b07a25128bbb8322db84f85769093d8327ba1a45164379",
+    "SHA256SUMS.txt": "9771a6fbec9dbfa0d34be94d17286cd611aa68240b4ff17d304179795e2a84c1",
+    "splits/train.json": "965b17041b669ded9a9ddf6d32e5820c2333133543c81902f0611fd0f854fa5e",
+    "splits/val.json": "2cb80f5206baefd8b2220a61a5dd75ebc3b3873349f272c5530771ed8cee3c37",
+    "splits/test.json": "f388cf35703252c33d8a40d769b79452f6ca7c71c594c3cc8bfd217517d856da",
+    "annotations/train.json": "ce262bf0303ed0ee02355142802f22301f782b2b61e66dd363f6bb74e58e656d",
+    "annotations/val.json": "9f9ead36f8c35dda8ff054c510c9da3bb32ffe2e39aed64f70b0c5174402f7f1",
+    "annotations/test.json": "6d8f29a148d1a023930a0052e47fa906939a72dc6f9b094ef424ab4c23e619b3"
+  },
+  "train_count": 2142,
+  "max_train_instances": 208,
+  "smoke_image_ids": [
+    2464,
+    1234
+  ],
+  "augmentation_preserves_targets": true,
+  "batch_size": 2,
+  "loss": 3.9685728549957275,
+  "grad_norm": 53.35204315185547,
+  "peak_train_MiB": 6741.60498046875,
+  "finite_update": true,
+  "pred_counts": [
+    0,
+    0
+  ],
+  "peak_total_MiB": 6741.60498046875,
+  "AP250_calibration": 1.0
+}

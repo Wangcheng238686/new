@@ -36,7 +36,7 @@ def _parse_args() -> argparse.Namespace:
 
     parser.add_argument(
         "--dataset",
-        choices=("whu", "vhr10", "ue"),
+        choices=("whu", "vhr10", "ue", "ue_minimal"),
         default="whu",
         help="Dataset protocol: WHU-1024, NWPU VHR-10, or paired UE satellite/UAV RGB-D.",
     )

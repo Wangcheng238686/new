@@ -25,6 +25,9 @@ def _resolve_dataset_contract(
     snapshot: Mapping[str, Any],
 ) -> Dict[str, Any]:
     data_config = snapshot.get("data_config", {})
+    if isinstance(data_config, Mapping) and data_config.get("dataset_format") == "citysample_minimal":
+        from data.ue_minimal_dataset import resolve_minimal_data
+        return resolve_minimal_data(args,snapshot)
     if isinstance(data_config, Mapping) and data_config.get("dataset_format") == "ue_rgbd":
         from ue_rebuild import resolve_ue_data
         return resolve_ue_data(args, snapshot)
@@ -83,6 +86,9 @@ def _resolve_dataset_contract(
 
 
 def _build_loader(contract: Mapping[str, Any], num_workers: int) -> DataLoader:
+    if contract.get("dataset_format") == "citysample_minimal":
+        from data.ue_minimal_dataset import build_minimal_eval_loader
+        return build_minimal_eval_loader(contract,num_workers)
     if contract.get("dataset_format") == "ue_rgbd":
         from ue_rebuild import build_ue_loader
         return build_ue_loader(contract, num_workers)

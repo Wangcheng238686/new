@@ -1,0 +1,14 @@
+{
+  "implementation_review": "PASS",
+  "single_gpu_batch2": "PASS",
+  "ddp_train_val": "exit0",
+  "ddp_sync_max_deviation": 0,
+  "strict_infer": "PASS",
+  "strict_same_topology_resume": "exit0",
+  "cross_topology_resume": "rejected",
+  "archive_all_file_checksums": "exit0",
+  "old_four_arms_static_contract": "unchanged",
+  "env_pollution": "clean_equals_polluted",
+  "fixed_protocol_override": "rejected",
+  "test_evaluated": false
+}

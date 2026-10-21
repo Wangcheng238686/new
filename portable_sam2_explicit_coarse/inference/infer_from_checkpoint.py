@@ -160,7 +160,7 @@ from eval_records import (  # noqa: E402
 
 
 def _resolve_model_config(args, snapshot):
-    if snapshot.get("data_config", {}).get("dataset_format") == "ue_rgbd":
+    if snapshot.get("data_config", {}).get("dataset_format") in ("ue_rgbd", "citysample_minimal"):
         from ue_rebuild import resolve_ue_model
         return resolve_ue_model(args, snapshot)
     return _resolve_legacy_model_config(args, snapshot)
@@ -175,7 +175,7 @@ def main() -> None:
     checkpoint_path = Path(args.checkpoint).expanduser().resolve()
     checkpoint = _load_checkpoint(checkpoint_path)
     snapshot = _snapshot(checkpoint)
-    is_ue = snapshot.get('data_config', {}).get('dataset_format') == 'ue_rgbd'
+    is_ue = snapshot.get('data_config', {}).get('dataset_format') in ('ue_rgbd','citysample_minimal')
     if is_ue and args.allow_nonstrict:
         raise ValueError('UE checkpoints require strict inference loading')
     if args.weights == 'auto':
@@ -376,7 +376,7 @@ def main() -> None:
             score_key=segm_score_key,
             categories=_eval_categories,
         )
-        metrics.update(run_coco_eval(coco_gt, coco_segm_dt, iou_type="segm"))
+        metrics.update(run_coco_eval(coco_gt, coco_segm_dt, iou_type="segm", max_dets=snapshot.get("evaluation_contract", {}).get("primary_max_dets")))
         _, coco_bbox_dt = build_coco_gt_and_dt(
             all_gt,
             all_dt,
@@ -384,17 +384,20 @@ def main() -> None:
             score_key="scores",
             categories=_eval_categories,
         )
-        metrics.update(run_coco_eval(coco_gt, coco_bbox_dt, iou_type="bbox"))
+        metrics.update(run_coco_eval(coco_gt, coco_bbox_dt, iou_type="bbox", max_dets=snapshot.get("evaluation_contract", {}).get("primary_max_dets")))
         if contract.get("dataset_format") == "ue_rgbd":
             from utils.ue_evaluation import dense_diagnostics
             for kind,records in (("bbox",coco_bbox_dt),("segm",coco_segm_dt)):
                 metrics.update(dense_diagnostics(coco_gt,records,kind))
     elif not args.no_eval:
         logger.warning("The selected split has no valid GT; metrics were skipped")
+    if contract.get("dataset_format") == "citysample_minimal":
+        metrics = {k.replace("AR@100", "AR@250"): v for k,v in metrics.items()}
     _write_json(output_dir / "metrics.json", metrics)
 
     manifest = {
         **report,
+        "evaluation_contract": snapshot.get("evaluation_contract", {}),
         "config_source": config_source,
         "sam2_repo": str(sam2_repo),
         "weights": args.weights,

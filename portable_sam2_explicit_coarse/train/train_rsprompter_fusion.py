@@ -160,7 +160,7 @@ def main():
     from rsprompter.uav.contract import model_contract as architecture_contract
 
     sam2_checkpoint_path = os.environ.get("SAM2_CKPT", "")
-    if args.dataset == "ue":
+    if args.dataset in ("ue", "ue_minimal"):
         from inference.ue_rebuild import override_pretrained_paths
         sam2_checkpoint_path = sam2_checkpoint_path or cfg.model.backbone.checkpoint_path
         os.environ["SAM2_CKPT"] = sam2_checkpoint_path
@@ -232,6 +232,12 @@ def main():
         if args.init_from:
             raise ValueError("UE controls and dual models start from generic SAM2, not INIT_FROM")
 
+    if args.dataset == "ue_minimal":
+        from data.ue_minimal_dataset import create_minimal_train_loader
+        create_train_loader = create_minimal_train_loader
+        if args.init_from:
+            raise ValueError("Minimal single starts from generic SAM2")
+
     train_subset_ratio = float(args.train_subset_ratio)
     val_subset_ratio = float(args.val_subset_ratio)
     for name, value in (
@@ -271,7 +277,7 @@ def main():
             f"TRAIN_MULTI_SCALE_MODE must be value or range, got {train_ms_mode}"
         )
 
-    if args.dataset == "ue":
+    if args.dataset in ("ue", "ue_minimal"):
         train_flip_prob = train_vflip_prob = train_ms_resize_prob = 0.0
     train_loader, val_loader, train_dataset = (
         create_train_loader(
@@ -465,6 +471,10 @@ def main():
     if args.dataset == "ue":
         config_snapshot["data_config"] = train_dataset.data_config
         config_snapshot["evaluation_contract"] = dict(primary_max_dets=[1,10,100], diagnostic_max_dets=[1,10,300])
+    if args.dataset == "ue_minimal":
+        config_snapshot["data_config"] = train_dataset.data_config
+        config_snapshot["evaluation_contract"] = dict(primary_max_dets=[1,10,250], selection="best_validation_segm_AP250", weights="model")
+        config_snapshot["train_augmentation"].update(gaussian_noise_prob=.5, gaussian_noise_std=.02, color_jitter=dict(p=.5,brightness=.15,contrast=.15,saturation=.10,hue=.02),order="noise_then_color_RGB_uint8")
     start_epoch = 0
     best_val_loss = float("inf")
     best_train_loss = float("inf")
@@ -527,6 +537,9 @@ def main():
                 )
     if args.resume_from:
         snapshot_validator = None
+        if args.dataset == "ue_minimal":
+            from data.ue_minimal_dataset import validate_minimal_resume
+            snapshot_validator = functools.partial(validate_minimal_resume, current=config_snapshot)
         if args.dataset == "ue":
             from ue_support import validate_resume_snapshot
             snapshot_validator = functools.partial(validate_resume_snapshot, current=config_snapshot)

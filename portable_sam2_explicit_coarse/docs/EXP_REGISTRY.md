@@ -18,3 +18,14 @@
 - EXP-0007：80轮/Adam6240产物完成，best-segm E66 .583000，最终E80 .5808；TCPStore监视告警及queue状态过期，正常进程退出码未确认，不伪造returncode0。
 - EXP-0004：失败于1016坏标签；EXP-0005未启动，被新清单配对替代。历史登记保留。
 - 结论：主分割+0.196个百分点，伴随bbox−0.151；探索性区间跨0，暂无可靠净收益。见 [完整分析](dual_stream/UE_AD_RESULTS_20261015.md)。
+
+
+## 2026-10-21 新固定归档基座
+
+| EXP-ID | 臂/内容 | commit+tag | 启动时间 | 状态 |
+|---|---|---|---|---|
+| EXP-0017 | CitySample TrainMinimal v1 单卫星封版，2142/459/459，coarse64，AP250，4×2×1，100ep，EMA关，Gaussian+ColorJitter | 见 tag exp/EXP-0017 | 2026-10-21 | registered：smoke通过后启动；状态/日志见 /data/wangcheng/checkpoint/ue_minimal_single_20261021_EXP-0017/run_state.json |
+
+EXP-0008至0016为另一台4090谱系所用编号，未在本地重复发放；0017已查询远端tag为空后发放。
+本次先全量单卫星，完成后按val segm AP250选择并封存权重再test一次。详见
+[预登记协议](dual_stream/UE_MINIMAL_SINGLE_20261021.md)。

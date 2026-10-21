@@ -190,3 +190,17 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 
 
 - 2026-10-16：完成两个子代理的RoI-UAV冻结可行性探针及第三代理独立复算/审图。仅CPU已有真实候选与原RGB-D，无forward/fit/训练/标签清洗或生产遥测变更；候选存在空间，但缺关键消费证据，不准入训练。见[综合报告](dual_stream/UE_ROI_UAV_FEASIBILITY_20261016.md)。精确脚本归档在`docs/dual_stream/probes/results_20261016/roi_feasibility/`：`candidates/probe.py`为有限真实候选去重/一对一/NMS兼容；`uav_evidence/freeze_cases.py`为固定六例选择；`uav_evidence/run_probe.py`为camera-Z投影/位置阴性/12图；`review_recompute.py`与`review_uav_recompute.py`为独立数值复算。它们固定历史/tmp路径，不是通用运行入口；大逐对JSON/图留/tmp。完整复核PASS。
+
+
+## 2026-10-21 最小归档单卫星基座
+
+统一入口新增 `scripts/ue_rgbd.sh minimal train|infer|run`；`run` 调用
+`scripts/run_ue_minimal_experiment.py`，以单进程顺序完成全字节checksum预检、train/val训练、
+封存val最佳segm权重、最后一次test推理。`data/ue_minimal_dataset.py`提供独立COCO RLE读取、
+固定split和train-only噪声/ColorJitter；`configs/ablations/ue_minimal_single.py`保持封版coarse64、
+仅覆盖max_per_img250；`scripts/smoke/check_ue_minimal.py`负责真实batch2与AP250校准。
+新dataset CLI名为`ue_minimal`，新快照dataset_format为`citysample_minimal`，推理通过现有
+`ue_rebuild.resolve_ue_model`严格按嵌入model_config重建，数据按归档SHA核定。
+旧UE四臂、冻结architecture_contract与inference/model_rebuild.py不变。
+训练100epoch、4×2×1、全组LR5e-4、globalclip.5、EMA关；val选segm AP250最佳。
+详见 [训练协议](dual_stream/UE_MINIMAL_SINGLE_20261021.md)。

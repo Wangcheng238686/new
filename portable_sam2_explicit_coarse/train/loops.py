@@ -384,6 +384,9 @@ def validate_one_epoch(
         if args.dataset == "ue":
             _val_max_dets = [1,10,100]
             _val_md_env = 0
+        if args.dataset == "ue_minimal":
+            _val_max_dets = [1,10,250]
+            _val_md_env = 250
         if _val_md_env > 0:
             _val_max_dets = [1, 10, _val_md_env]
             _val_model_for_eval = (
@@ -659,6 +662,8 @@ def validate_one_epoch(
                 max_dets=_val_max_dets,
             )
             val_metrics.update(segm_metrics)
+            if args.dataset == "ue_minimal":
+                val_metrics = {k.replace("AR@100", "AR@250"): v for k,v in val_metrics.items()}
             if args.dataset == "ue":
                 from utils.ue_evaluation import dense_diagnostics
                 for kind,records in (("bbox",coco_bbox_dt),("segm",coco_segm_dt)):
