@@ -8,7 +8,7 @@
 > 环境：cvt2（mmengine 系）、dt2（detectron2/AdelaiDet 系）、mdino（MaskDINO）、mm2（RSIISN, mmdet2 栈）
 > 日志根：`portable_sam2_explicit_coarse/logs/baselines_citysample/`；ckpt 根：`/data1/wangcheng/checkpoint/citysample_sat_baselines/`
 >
-> **状态：v1 数据集已作废（val/test 分布严重偏移），全部基线切换 v3 重跑（2026-10-21 夜）；第二批 HTC(GPU0)/M2F(GPU3,46G 近满卡)在训；v3 已收三：Mask R-CNN segm 0.6974/bbox 0.7002、YOLO segm 0.6595/bbox 0.7612、MS R-CNN segm 0.6736/bbox 0.6678；RTMDet-Ins-S ✅(0.6464/0.6423, 边界 0.596/0.431)。v3 四方法全部收官。RSPrompter(15.5G 高占用)缓发待用户指令。最后更新：2026-10-22 00:10**
+> **状态：v1 数据集已作废（val/test 分布严重偏移），全部基线切换 v3 重跑（2026-10-21 夜）；第二批 HTC(GPU0) 在训，M2F 已停止让位 GPU3；v3 已收三：Mask R-CNN segm 0.6974/bbox 0.7002、YOLO segm 0.6595/bbox 0.7612、MS R-CNN segm 0.6736/bbox 0.6678；RTMDet-Ins-S ✅(0.6464/0.6423, 边界 0.596/0.431)。v3 四方法全部收官。RSPrompter(15.5G 高占用)缓发待用户指令。最后更新：2026-10-22 00:10**
 
 > ⚠️ **v1 作废声明（2026-10-21）**：`CitySample_SatUAV_TrainMinimal_v1_20261021` 的 val(稀疏大目标, med 28 inst/图) 与 test(密集小目标, med 89 inst/图) 分布严重偏移，val/test 指标差距过大，用户重新调整分布后发布 v3。**v1 上的所有结果（YOLO test bbox 0.6865/segm 0.5035、RSPrompter E9 val segm 0.5080 等）仅作过程史迹，不得入论文表**；v1 的 RSPrompter ckpt 全部弃用，v3 需从头重训。
 
@@ -112,7 +112,7 @@
 | RS4D-box | ⏸ 待命令 | `RS4D/configs/rsprompter/`（WHU 用作者 config 原样） | 数据 |
 | RSIISN | ⏸ 待命令 | `RSIISN/configs/whu1024/rsiisn_cascade_swinT_whu1024.py` | 数据、max_per_img |
 | **HTC (w/o sem) — v3 无增强版** | 🔄 **v3 全量在训**（GPU0，20:00 起，12ep bs4×ai4；冒烟通过显存 6.9G；直接继承 WHU 版 config 含三级 cascade 单类适配） | WHU 版 `htc-without-semantic_r50_fpn_1x_whu1024.py` | `configs/citysample/htc-wosem_r50_fpn_1x_citysample_v3_noaug.py`：数据/无增强管线/max_per_img 250 |
-| **Mask2Former — v3 无增强版** | 🔄 **v3 全量在训**（GPU3，19:53 起，144825 iter=300ep 同构，**显存 ~46G 近满卡**；冒烟 60iter 通过；eta ~2.7 天） | WHU v2 `mask2former_r50_whu1024.py` | `mask2former_r50_citysample_v3_noaug.py`：**num_queries 100→250（P3 拍板）**、**补 save_best（修 WHU 疏漏）**、去 LSJ/hflip、test 管线废弃 Resize(1333,800) 升采样改 identity 512、里程碑按 0.656 折算 |
+| **Mask2Former — v3 无增强版** | ⏸ **用户指令停止让位 GPU3**（20:1x 停；仅跑到 ~700 iter < 首个 3000-iter 存档点，**无 ckpt，续跑=从头**；恢复命令 `run_mmdet_citysample.sh mask2former train <gpu>`，显存 ~46G 需近独占卡） | WHU v2 `mask2former_r50_whu1024.py` | `mask2former_r50_citysample_v3_noaug.py`：**num_queries 100→250（P3 拍板）**、**补 save_best（修 WHU 疏漏）**、去 LSJ/hflip、test 管线废弃 Resize(1333,800) 升采样改 identity 512、里程碑按 0.656 折算 |
 | SCNet | ❌ 跳过 | — | WHU 三次复现失败 |
 
 ## 启动脚本与评测设施（已从 git 历史恢复）
