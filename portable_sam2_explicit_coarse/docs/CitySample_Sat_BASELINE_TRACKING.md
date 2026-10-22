@@ -111,7 +111,7 @@
 | MaskDINO | ⏸ 待命令 | `MaskDINO/configs/whu/maskdino_R50_whu1024.yaml` + `train_whu.py` | 数据（queries 默认 300 ≥250 合规） |
 | RS4D-box | ⏸ 待命令 | `RS4D/configs/rsprompter/`（WHU 用作者 config 原样） | 数据 |
 | RSIISN | ⏸ 待命令 | `RSIISN/configs/whu1024/rsiisn_cascade_swinT_whu1024.py` | 数据、max_per_img |
-| **HTC (w/o sem) — v3 无增强版** | ⏸ **用户指令停止让位 GPU0**（20:1x 停；E1 未完成无 ckpt，续跑=从头；恢复命令 `run_mmdet_citysample.sh htc train <gpu>`，显存 ~7-8G 可共租）。背景：发现 GPU0 共租方为他人(liubowen)任务，按"不影响别人任务"原则主动停止 | WHU 版 `htc-without-semantic_r50_fpn_1x_whu1024.py` | `configs/citysample/htc-wosem_r50_fpn_1x_citysample_v3_noaug.py`：数据/无增强管线/max_per_img 250 |
+| **HTC (w/o sem) — v3 无增强版** | ⏸ **用户指令停止让位 GPU0**（20:2x 停；**E1 已完成有 ckpt**（epoch_1.pth + best E1），恢复命令 `run_mmdet_citysample.sh htc resume <gpu>` 从 E2 续，显存 ~7-8G 可共租）。背景：发现 GPU0 共租方为他人(liubowen)任务，按"不影响别人任务"原则主动停止 | WHU 版 `htc-without-semantic_r50_fpn_1x_whu1024.py` | `configs/citysample/htc-wosem_r50_fpn_1x_citysample_v3_noaug.py`：数据/无增强管线/max_per_img 250 |
 | **Mask2Former — v3 无增强版** | ⏸ **用户指令停止让位 GPU3**（20:1x 停；仅跑到 ~700 iter < 首个 3000-iter 存档点，**无 ckpt，续跑=从头**；恢复命令 `run_mmdet_citysample.sh mask2former train <gpu>`，显存 ~46G 需近独占卡） | WHU v2 `mask2former_r50_whu1024.py` | `mask2former_r50_citysample_v3_noaug.py`：**num_queries 100→250（P3 拍板）**、**补 save_best（修 WHU 疏漏）**、去 LSJ/hflip、test 管线废弃 Resize(1333,800) 升采样改 identity 512、里程碑按 0.656 折算 |
 | SCNet | ❌ 跳过 | — | WHU 三次复现失败 |
 
