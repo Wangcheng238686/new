@@ -8,7 +8,7 @@
 > 环境：cvt2（mmengine 系）、dt2（detectron2/AdelaiDet 系）、mdino（MaskDINO）、mm2（RSIISN, mmdet2 栈）
 > 日志根：`portable_sam2_explicit_coarse/logs/baselines_citysample/`；ckpt 根：`/data1/wangcheng/checkpoint/citysample_sat_baselines/`
 >
-> **状态：v1 数据集已作废（val/test 分布严重偏移），全部基线切换 v3 重跑（2026-10-21 夜）；v3 已收三：Mask R-CNN segm 0.6974/bbox 0.7002、YOLO segm 0.6595/bbox 0.7612、MS R-CNN segm 0.6736/bbox 0.6678；RTMDet-Ins-S(GPU3) 在训(~1 天)。RSPrompter(15.5G 高占用)缓发待用户指令。最后更新：2026-10-22 00:10**
+> **状态：v1 数据集已作废（val/test 分布严重偏移），全部基线切换 v3 重跑（2026-10-21 夜）；v3 已收三：Mask R-CNN segm 0.6974/bbox 0.7002、YOLO segm 0.6595/bbox 0.7612、MS R-CNN segm 0.6736/bbox 0.6678；RTMDet-Ins-S ✅(0.6464/0.6423, 边界 0.596/0.431)。v3 四方法全部收官。RSPrompter(15.5G 高占用)缓发待用户指令。最后更新：2026-10-22 00:10**
 
 > ⚠️ **v1 作废声明（2026-10-21）**：`CitySample_SatUAV_TrainMinimal_v1_20261021` 的 val(稀疏大目标, med 28 inst/图) 与 test(密集小目标, med 89 inst/图) 分布严重偏移，val/test 指标差距过大，用户重新调整分布后发布 v3。**v1 上的所有结果（YOLO test bbox 0.6865/segm 0.5035、RSPrompter E9 val segm 0.5080 等）仅作过程史迹，不得入论文表**；v1 的 RSPrompter ckpt 全部弃用，v3 需从头重训。
 
@@ -82,6 +82,7 @@
 |---|---|---|---|---|
 | Mask R-CNN | v3 | 0.6974 | **0.6349** | **0.4693** |
 | MS R-CNN | v3 | 0.6736 | 0.6092 | 0.4347 |
+| RTMDet-Ins-S | v3 | 0.6423 | 0.5963 | 0.4312 |
 | YOLO11s-seg | v3 | 0.6595 | 0.5877 | 0.3942 |
 | YOLO11s-seg | v1(已作废,史迹) | 0.5035 | 0.4738 | 0.3523 |
 
@@ -94,7 +95,7 @@
 | **YOLO11s-seg — v3 无增强版** | ✅ **完成**（100ep exit=0，best.pt 终评 test 413 已收，maxDets=250）：**bbox mAP 0.7612 / segm mAP 0.6595**（AP50 0.968/0.957，AP75 0.890/0.753；APs 0.691/0.528；AR@250 0.803/0.701）。末段 val box 0.753/mask 0.687 与 test 高度一致——v3 分布修复的直接证据（v1 时 val→test 崩落 0.75→0.50）。segm AP75 0.753 vs AP50 0.957：原型掩码边界精度仍为该系短板。指标文件 `yolo11seg/yolo11s_seg_citysample_v3_512noaug/.../test_out/test_metrics.json` + pred_coco.json 落盘 | v1 版脚本重定向 v3 | 同 v1 协议：max_det=250、maxDets=[1,10,250]（eval 脚本已带 s[0] 陷阱修复） |
 | **Mask R-CNN — v3 无增强版** | ✅ **完成**（12ep exit=0，best=E9，test 413 已收 maxDets=250）：**bbox 0.7002 / segm 0.6974**（AP50 0.926/0.914，AP75 0.819/**0.812**；AR@250 0.739/0.735）。segm 反超 YOLO(+0.038) 且 AP75 领先 0.059——RoI 掩码边界精度优势；bbox 弱于 YOLO(-0.061)。val(best E9, maxDets=100 截断) 0.586x → test 0.697 的上差= val 选模截断的量化体现 | `mmdetection/configs/whu1024/mask-rcnn_r50_fpn_1x_whu1024.py` | 新 config `configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v3_noaug.py`：无增强 identity Resize512、max_per_img 250、test_cfg.rcnn 覆盖 |
 | **MS R-CNN — v3 无增强版** | ✅ **完成**（12ep exit=0，best=E8，test 413 已收 maxDets=250）：**bbox 0.6678 / segm 0.6736**（AP50 0.921/0.910，AP75 0.798/0.791；AR@250 0.713/0.713）。略低于 Mask R-CNN（-0.032/-0.024），mask-iou 校准在单类建筑上无增益 | `mmdetection/configs/whu1024/ms-rcnn_r50-caffe_fpn_1x_whu1024.py` | 同上（`ms-rcnn_r50-caffe_fpn_1x_citysample_v3_noaug.py`，含 mask_iou_head 单类适配） |
-| **RTMDet-Ins-S — v3 无增强版** | 🔄 **v3 全量在训**（GPU3，23:5x 起，300ep bs4×ai64 AdamW+EMA 同构 WHU；冒烟 1ep 完整通过 exit=0，显存 2.5G） | `mmdetection/configs/whu1024/rtmdet-ins_s_300e_whu1024.py` | `rtmdet-ins_s_300e_citysample_v3_noaug.py`：去 mosaic/mixup/HSV/多尺度/flip，**摘除 PipelineSwitchHook**（无增强后 stage1/2 无差异，EMA 保留 momentum 3.125e-6）、bbox_head.test_cfg.max_per_img 250（num_queries 默认 300 合规） |
+| **RTMDet-Ins-S — v3 无增强版** | ✅ **完成**（300ep exit=0，best=E250 val segm 0.5830，test 413 已收 maxDets=250）：**bbox 0.6464 / segm 0.6423**（AP50 0.895/0.894；APs 0.574/0.528）；**BoundaryAP 2%=0.5963 / 1%=0.4312**（边界指标已自动输出，集成生效）。四个方法中整体最弱——无增强 300ep 下 one-stage 原型掩码两项皆垫底 | `mmdetection/configs/whu1024/rtmdet-ins_s_300e_whu1024.py` | `rtmdet-ins_s_300e_citysample_v3_noaug.py`：去 mosaic/mixup/HSV/多尺度/flip，**摘除 PipelineSwitchHook**（无增强后 stage1/2 无差异，EMA 保留 momentum 3.125e-6）、bbox_head.test_cfg.max_per_img 250（num_queries 默认 300 合规） |
 | **RSPrompter (anchor) — v1 版（已作废）** | 🔄 **训练中（E4 起，16:23 resume）**：300ep bf16 bs1×ai2 显存 15.5G，0.67s/iter，eta ~5.3 天。**E3 事故已修**：val 崩于 SAM patch_embed 的 1024 硬校验——根因是 base config 的 BatchFixedSizePad(1024) 仅训练期生效（训练时 512 图零填充进 1024 画布，故 3ep 正常），我覆盖 test 管线时误删了作者的 Pad 步骤；修复=test 管线补 `Pad(1024, 零填充)`（与训练一致，补边非上采样，P4 不破，训练路径零改动 E3 ckpt 直接续）。20 图探针全链路通过（E3 segm mAP 0.009，对照 NWPU 早期轨迹 ep3-12 从 0 爬起，正常）。首个全量 val 在 E6（val_interval=3，与 WHU 版一致）。
 
 **E11 中断（21:35）＝用户手动终止**：此前"挂起死锁"推测作废——用户确认是手动杀的（21:05 起停止推进为其暂停过程），我误判为异常挂起并自动续训，经用户指出后已再次停止（22:00 前）。**当前状态：⏸ 暂停待命**，ckpt 无损（best_coco_segm_mAP_epoch_9.pth=segm 0.5080 + epoch_10.pth），恢复命令 `bash scripts/baselines/run_rsprompter_citysample.sh resume <gpu>` 从 E11 接续，等用户指令 | `RSPrompter-release/.../configs/rsprompter/rsprompter_anchor-whu-1024.py` | 新 config `rsprompter_anchor-citysample-512-noaug.py`：无增强管线（去 RandomFlip+LSJ，identity Resize 512 守卫）、max_per_img=250、bf16、300ep bs1×ai2、AdamW 2e-4+clip0.1 不变；启动 `run_rsprompter_citysample.sh`（smoke/train/resume/test，test 走 `citysample_sat_test.py` maxDets=250） |
