@@ -36,7 +36,6 @@ from pycocotools import mask as maskUtils
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
-D = Path('/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v1_20261021')
 OUTDIR = Path('/data2/wangcheng/checkpoint/surfbev_b0/probes/CITYSAMPLE-TEST-PEEK-20261021')
 
 
@@ -47,6 +46,7 @@ def rle(m):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--ckpt', required=True)
+    ap.add_argument('--data-root', default='/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v1_20261021')
     ap.add_argument('--tag', required=True)
     ap.add_argument('--split', default='test')
     ap.add_argument('--device', default='cuda:0')
@@ -54,6 +54,7 @@ def main():
                     help='override test_cfg.rcnn.max_per_img (0 = config default 100); '
                          'test has 41% scenes >100 GT (max 238) - the default cap binds')
     a = ap.parse_args()
+    D = Path(a.data_root)
     dev = torch.device(a.device)
     OUTDIR.mkdir(parents=True, exist_ok=True)
 
