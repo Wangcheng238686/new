@@ -41,7 +41,7 @@ try:
 except Exception:
     pass
 
-D = Path('/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v1_20261021')
+D = None  # set from --data-root in main()
 OUTDIR = Path('/data2/wangcheng/checkpoint/surfbev_b0/probes/CITYSAMPLE-BOUNDARY-AP-20261021')
 KERNEL = np.ones((3, 3), np.uint8)
 
@@ -88,7 +88,10 @@ def main():
     ap_.add_argument('--max-per-img', type=int, default=250)
     ap_.add_argument('--ratios', default='0.02,0.01')
     ap_.add_argument('--device', default='cuda:0')
+    ap_.add_argument('--data-root', default='/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v1_20261021')
     a = ap_.parse_args()
+    global D
+    D = Path(a.data_root)
     dev = torch.device(a.device)
     OUTDIR.mkdir(parents=True, exist_ok=True)
     ratios = [float(r) for r in a.ratios.split(',')]
@@ -117,7 +120,12 @@ def main():
 
     det_std, det_bnd = [], {r: [] for r in ratios}
     for n, e in enumerate(coco_raw['images']):
-        img = np.asarray(Image.open(D / e['file_name']).convert('RGB'))
+        # channel-order fix (2026-10-22, mirrors 645aa40): cv2 BGR read
+        # matches the training/val loader; the preprocessor's bgr_to_rgb
+        # then yields RGB for the model (the old PIL-RGB read fed it BGR)
+        img = cv2.imread(str(D / e['file_name']))
+        if img is None:
+            raise RuntimeError('unreadable image ' + str(e['file_name']))
         sample = DetDataSample()
         sample.set_metainfo(dict(ori_shape=(512, 512), img_shape=(512, 512),
                                  scale_factor=(1.0, 1.0)))
