@@ -12,7 +12,7 @@ import argparse, json, os, sys
 from pathlib import Path
 import numpy as np
 import torch
-from PIL import Image
+import cv2
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -75,7 +75,13 @@ def main():
     per_scene_pred = {}
     for n, iid in enumerate(img_ids):
         e = coco.loadImgs([iid])[0]
-        img = np.asarray(Image.open(D / e['file_name']).convert('RGB'))
+        # channel-order fix (2026-10-22): read with OpenCV => BGR, exactly
+        # like the training/val loader; the preprocessor's bgr_to_rgb then
+        # yields RGB for the model. The previous PIL-RGB read was flipped
+        # twice and fed the model BGR (all prior test reads under-report).
+        img = cv2.imread(str(D / e['file_name']))
+        if img is None:
+            raise RuntimeError(f'unreadable image {e["file_name"]}')
         sample = DetDataSample()
         sample.set_metainfo(dict(ori_shape=(512, 512), img_shape=(512, 512),
                                  scale_factor=(1.0, 1.0), scene_id=str(iid)))
