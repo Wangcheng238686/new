@@ -31,6 +31,8 @@ case "${MODEL}" in
   maskrcnn)  CFG="configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v3_noaug.py";      RUNTAG="maskrcnn_r50_fpn_1x_citysample_v3_noaug_bs8ai2";    EXTRA_OPTS="";;
   msrcnn)    CFG="configs/citysample/ms-rcnn_r50-caffe_fpn_1x_citysample_v3_noaug.py";  RUNTAG="msrcnn_r50_caffe_fpn_1x_citysample_v3_noaug_bs4ai4"; EXTRA_OPTS="model.backbone.init_cfg.checkpoint=/home/wangcheng/.cache/torch/hub/checkpoints/resnet50_msra-5891d200.pth";;
   rtmdet)    CFG="configs/citysample/rtmdet-ins_s_300e_citysample_v3_noaug.py";         RUNTAG="rtmdet_ins_s_citysample_v3_noaug_bs4ai64_300ep";     EXTRA_OPTS="model.backbone.init_cfg.checkpoint=/home/wangcheng/.cache/torch/hub/checkpoints/cspnext-s_imagenet_600e.pth";;
+  htc)       CFG="configs/citysample/htc-wosem_r50_fpn_1x_citysample_v3_noaug.py";      RUNTAG="htc_wosem_r50_fpn_1x_citysample_v3_noaug_bs4ai4";   EXTRA_OPTS="";;
+  mask2former) CFG="configs/citysample/mask2former_r50_citysample_v3_noaug.py";         RUNTAG="mask2former_r50_citysample_v3_noaug_bs4ai4_300ep";  EXTRA_OPTS="";;
   *) echo "未知 model: ${MODEL}"; exit 1;;
 esac
 
@@ -69,7 +71,12 @@ cd "${REPO}"
   echo "conda env: cvt2  python: $(which python)"
 } | tee "${LOG}"
 
-SMOKE_OPTS="train_cfg.max_epochs=1 train_cfg.val_interval=999 default_hooks.checkpoint.interval=999 default_hooks.logger.interval=5"
+if [ "${MODEL}" = "mask2former" ]; then
+  # M2F 为 IterBasedTrainLoop, 冒烟用 iter 计数
+  SMOKE_OPTS="train_cfg.max_iters=60 train_cfg.val_interval=999999 default_hooks.checkpoint.interval=999999 default_hooks.logger.interval=5"
+else
+  SMOKE_OPTS="train_cfg.max_epochs=1 train_cfg.val_interval=999 default_hooks.checkpoint.interval=999 default_hooks.logger.interval=5"
+fi
 
 case "${MODE}" in
   smoke)
