@@ -163,6 +163,19 @@ def main():
     suffix = '.subset' if args.max_images else ''
     (Path(out_dir) / f'pred_coco{suffix}.json').write_text(json.dumps(preds))
     evaluate(preds, GT_JSON, out_dir)
+    # 边界指标(用户口径 2026-10-22): 内部边界带 1%/2% 两尺度, min(MaskIoU,BoundaryIoU)
+    if not suffix:
+        try:
+            import sys as _sys
+            _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            from boundary_ap import evaluate_boundary
+            bm = evaluate_boundary(json.loads(json.dumps(preds)), GT_JSON)
+            base = json.load(open(Path(out_dir) / 'test_metrics.json'))
+            base.update(bm)
+            (Path(out_dir) / 'test_metrics.json').write_text(json.dumps(base, indent=2))
+            print('boundary metrics:', bm)
+        except Exception as e:
+            print(f'[warn] boundary metrics failed: {e}')
     if args.vis:
         visualize(model, str(Path(out_dir) / 'vis'), args.vis_limit,
                   args.score_thr)

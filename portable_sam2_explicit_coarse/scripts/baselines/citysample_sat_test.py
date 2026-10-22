@@ -191,8 +191,25 @@ def main():
 
     print(f'\n===== CitySample-Sat test metrics (maxDets={MAX_DET_EVAL}) =====')
     metrics = evaluate_maxdets(preds, args.gt_json)
+    # 边界指标(用户口径 2026-10-22): 内部边界带 1%/2% 两尺度, min(MaskIoU,BoundaryIoU)
+    try:
+        import sys as _sys
+        _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from boundary_ap import evaluate_boundary
+
+        def _dec(o):
+            if isinstance(o, (bytes, bytearray)):
+                return o.decode('utf-8', 'replace')
+            if isinstance(o, (np.ndarray, np.generic)):
+                return o.item() if o.ndim == 0 else o.tolist()
+            return o
+        bmetrics = evaluate_boundary(
+            json.loads(json.dumps(preds, default=_dec)), args.gt_json)
+        metrics.update(bmetrics)
+    except Exception as e:
+        print(f'[warn] boundary metrics failed: {e}')
     for k in sorted(metrics):
-        print(f'{k}: {metrics[k]:.4f}')
+        print(f'{k}: {metrics[k]:.4f}' if isinstance(metrics[k], float) else f'{k}: {metrics[k]}')
     out_json = os.path.join(args.out_dir, 'test_metrics.json')
     with open(out_json, 'w') as f:
         json.dump(metrics, f, indent=2)
