@@ -1,0 +1,13 @@
+# Incremental-only lint config: run `ruff check` on NEW or MODIFIED files
+# only. Never reformat the backfilled archive wholesale -- probe sources are
+# SHA-locked by checkpoint protocol contracts (see AGENTS.md, git rules).
+line-length = 100
+target-version = "py39"
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes (unused vars/imports, real bug classes)
+    "N",   # pep8-naming
+]
