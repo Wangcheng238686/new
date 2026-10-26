@@ -1,6 +1,6 @@
 # 双流架构设计文档：从发现到联合训练最终形态（2026-10-24）
 
-本文件汇总：边界弱点量化 → 十四次消费失败根因 → 唯一可行方向（几何候选）→ BRR 边界精修设计 → 从头联合训练的完整架构与损失精简。提交主代理审核。
+本文件汇总：边界弱点量化 → 十四次消费失败根因 → 唯一可行方向（几何候选）→ UBR 统一边界精修设计（BRR 与 UDPR 的统一）→ 从头联合训练的完整架构与损失精简。提交主代理审核。
 
 ---
 
@@ -86,51 +86,113 @@
 
 ---
 
-## 四、BRR 边界精修设计（对抗讨论产出，待探针验证）
+## 四、UBR 统一边界精修设计（替代 UDPR 和 BRR，单流/双流共用）
 
-### 4.1 为什么特征层注入修不了已有边界
+### 4.1 设计动机
 
-四个根因叠加：stride-4 天花板 + 梯度饥饿 + 配准损耗 + 信息冗余。13 个变体证据覆盖了全部算子自由度。
+单流和双流模型不能在最后挂不同的边界精修模块——否则代码、接口、训练管线全部分裂。
+正确做法是**一个统一模块，UAV 几何作为可选输入端口**：
+- 单流 = UBR(UAV=off)
+- 双流 = UBR(UAV=on) + 几何头
 
-### 4.2 BRR（Boundary Re-classification Refiner）
+### 4.2 与 UDPR 的功能对比
 
-**核心思想**：不做 offset 回归（拓扑病态 + 均值回归），做**边界带内逐像素重分类**。
+| 维度 | UDPR（被替代） | UBR（统一替代者） |
+|---|---|---|
+| 选择方式 | \|logit\| 最小的 64 个点（解码器"最不确定"位置） | \|SDT\| ≤ k 空间带（掩码二值化边界的几何邻域） |
+| 输入 | 每点：上采样特征 32ch + mask token 256d + 位置 4d = 292d 向量 | 每像素：解码器特征 32ch + 掩码 1ch + SDT 1ch + 邻居 1ch + UAV几何 5ch = 40ch 图像块 |
+| 网络 | LayerNorm → Linear(292→128) → GELU → Linear(128→1)——**逐点 MLP** | 6-8 个 conv block, 32-64ch——**稠密全卷积 CNN** |
+| 输出 | 每点一个**有界残差 ±2.0**，加回原 logit | 带内每像素**全新二分类 logit**，替换原掩码 |
+| 写入方式 | `logit[i] += Δ_i`（只能推高/推低） | `mask[band] = UBR[band]`（可完全重定义边界，含拓扑变化） |
+| 分辨率 | stride-4 网格上的 64 点（上采样后每点覆盖 4×4 块） | **native 512²** 逐像素 |
+| 信息源 | **仅卫星**（解码器内部的上采样特征 + mask token） | **卫星解码器特征 + 掩码状态 + 邻居 + UAV 几何（可选）** |
+| 空间连贯性 | 64 个独立点，无邻域信息 | CNN 稠密预测，天然连贯 |
+| 覆盖范围 | 只选解码器不确定的位置（自信但错误的位置看不到） | 处理边界带内**全部**像素，不管确不确定 |
+| 损失 | margin-anchored 单侧 BCE | 带内 focal BCE + Dice，逐实例等权 |
 
-- **输入**（逐实例，box 外扩 32px，native 512²，全卷积）：
-  1. frozen soft mask logits（1ch）
-  2. UAV 几何图 5ch（height/dx/dy/view-count/support）
-  3. signed distance transform（1ch，编码当前边界位置）
-  4. 邻居实例 mask 之和（1ch，处理粘连）
-  5. 卫星 RGB（3ch，消融项，默认关——阴影是原始误差来源之一）
-- **输出**：1ch 逐像素 logit，只在 |SDT| ≤ k 带内生效（k 消融自 {6,8,12,16}）
-- **带内硬约束**解决两个经典死法：
-  - 拓扑病态：重分类天然能挖凹槽、删突起（warp 做不到）
-  - 均值回归："带内保持原判"是平凡可学的 copy 策略，58% 已对的实例学会不动
-- **网络**：6-8 个 conv block，32-64ch，~200K 参数
-- **损失**：带内 focal BCE + Dice，逐实例等权
-- **训练数据纪律**：输入必须用冻结模型在 train 集**真实推理输出**（不是 GT 加噪）
-- **content delta 在输出层测量**——13 个 adapter 的核心教训
-- **采纳线**：B-AP_l(7px) ≥ +1.0pp 且 AP_l 回退 ≤0.1pp 且输出层 content delta ≥0.5pp
+### 4.3 UDPR 修不了但 UBR 能修的四类错误
 
-### 4.3 第 0 步（零训练风险泄压阀）
+1. **自信但错误**：解码器 logit 已饱和（很确定），但边界位置偏了 7-20px。UDPR 不选这些位置（\|logit\| 大）；UBR 处理整条边界带。
+2. **拓扑变化**：挖凹槽、删假突起——需要边界形态改变而非微扰。UDPR 的残差 `logit += Δ` 做不到；UBR 的重分类天然支持。
+3. **亚步长精度**：stride-4 网格上的 64 点覆盖不了 1-2px 的精确边界定位。UBR 在 native 512² 上操作。
+4. **需要外部证据**：UDPR 只能用卫星特征；UBR 可引入 UAV 几何（高度不连续 = 真实建筑边界的物理信号）。
+
+### 4.4 UBR 架构
+
+```
+                    单流模型                    双流模型
+                 ┌─────────────┐            ┌─────────────┐
+                 │ 卫星 backbone │            │ 卫星 backbone │
+                 └──────┬──────┘            └──────┬──────┘
+                        │                          │
+                 ┌──────┴──────┐            ┌──────┴──────┐    ┌────────────┐
+                 │ 检测+掩码解码│            │ 检测+掩码解码│    │ 几何头 🎯   │←─ UAV深度/相机
+                 └──────┬──────┘            └──────┬──────┘    │ (实例发现)  │
+                        │                          │           └─────┬──────┘
+                        │                          │                 │ 新增候选
+                        ▼                          ▼                 │
+                 ┌─────────────────────────────────────────┐        │
+                 │        UBR 统一边界精修器 🎯              │◄───────┘
+                 │                                         │
+                 │  输入:                                   │
+                 │  ① 解码器特征 32ch (stride-4→上采样512²) │ ← 始终有
+                 │  ② 当前掩码 logits 1ch (上采样后)        │ ← 始终有
+                 │  ③ SDT 1ch                              │ ← 始终有
+                 │  ④ 邻居掩码之和 1ch                      │ ← 始终有
+                 │  ⑤ UAV几何 5ch                           │ ← 双流时有,单流时置零
+                 │                                         │
+                 │  网络: 稠密CNN ~200K, native 512²       │
+                 │  输出: 边界带内逐像素二分类               │
+                 │  损失: 带内focal BCE + Dice              │
+                 └─────────────────────────────────────────┘
+```
+
+### 4.5 可选端口实现
+
+```python
+class UnifiedBoundaryRefiner(nn.Module):
+    """Single architecture for both single-stream and dual-stream models.
+    UAV geometry is an optional input port: zero-filled when absent."""
+
+    def __init__(self, base_ch=35, uav_ch=5, hidden=48):
+        # base_ch = 32(decoder features) + 1(logits) + 1(SDT) + 1(neighbor)
+        # uav_ch  = 5 (height, dx, dy, view_count, support)
+        self.input_proj = nn.Conv2d(base_ch + uav_ch, hidden, 3, padding=1)
+        self.blocks = ...  # 6-8 conv blocks, GroupNorm + SiLU
+
+    def forward(self, decoder_feat, mask_logits, sdt, neighbors, uav_geom=None):
+        if uav_geom is None:
+            uav_geom = torch.zeros(B, 5, 512, 512, device=decoder_feat.device)
+        x = torch.cat([decoder_feat, mask_logits, sdt, neighbors, uav_geom], dim=1)
+        return self.blocks(self.input_proj(x))  # band-limited binary logit
+```
+
+### 4.6 端口行为矩阵
+
+| 场景 | ⑤号端口状态 | UBR 行为 |
+|---|---|---|
+| 单流训练/推理 | 全零填充 | CNN 学会用 ①–④ 做卫星-only 边界精修 |
+| 双流训练（real 臂） | 真实几何图 | CNN 学会联合使用 ①–⑤ |
+| 双流训练（constant 对照臂） | 常量均值填充 | 内容差实验的对照条件 |
+| 双流推理（UAV 不可用） | 全零填充 | 优雅降级为单流行为 |
+
+### 4.7 Modality dropout（训练策略）
+
+从头联合训练时，对 ⑤ 号端口以概率 p 随机置零 UAV 通道。同时实现：
+1. 模型学会在 UAV 不可用时优雅降级
+2. constant 对照实验天然就是 dropout 的极端情况
+3. 防止模型过度依赖 UAV 通道而丢失卫星能力
+
+### 4.8 第 0 步（零训练风险泄压阀，先于任何 UBR 训练）
 
 - **误差分类学**：对过不了 7px 的大实例，统计误差幅度直方图 + 拓扑类型占比（圆角/缺凹槽/偏移/阴影/粘连）+ 与密度相关
 - **零训练 snap 探针**：frozen mask 边界沿法向 ±5px 搜索高度梯度极大值做贪心吸附。如果 +1pp B-AP_l → headroom 存在；如果 0 → 几何图本身是瓶颈，先修 z-buffer
 
-### 4.4 与 UDPR 的关系
+### 4.9 探针阶段验收线（预注册）
 
-| 维度 | UDPR | BRR |
-|---|---|---|
-| 位置 | 解码器内（梯度耦合主干） | 解码器外→训练内（从头联合时梯度可回流） |
-| 信息 | 仅卫星 stride-4 特征 | 卫星输出 + **UAV 几何** |
-| 分辨率 | stride-4 (128²) | **native 512²** |
-| 密度 | 64 稀疏点 | 带内逐像素 |
-| 当前效果 | 边界仍 42% 塌落 | 待验证 |
-
-**探针阶段共存不冲突**（串行管线，BRR 输入已含 UDPR 修正）。
-**从头联合训练时 BRR 替代 UDPR**（同功能、更好信息、更高分辨率）。
-
----
+- B-AP_l(7px) ≥ +1.0pp
+- AP_l 回退 ≤ 0.1pp
+- 输出层 content delta（UBR(真实几何) − UBR(常量几何)）≥ +0.5pp
 
 ## 五、从头联合训练最终形态
 
@@ -138,7 +200,7 @@
 
 ```
 SAM2 backbone (Hiera+FPN)  ← 加载 sam2_hiera_base_plus.pt 预训练
-RPN / RoI bbox / 几何头 / BRR ← 随机初始化
+RPN / RoI bbox / 几何头 / UBR ← 随机初始化
 SAM2 mask decoder           ← SAM2 预训练权重
 ```
 
@@ -154,10 +216,10 @@ UAV 深度+相机 ──→ 几何图(纯数学) ──→ 几何头 🎯 ──
              SAM2 mask decoder 🎯 → mask logits
                    │                    (不再有 UDPR)
                    ↓
-             BRR 🎯 (训练内, native res, +UAV几何)
+             UBR 🎯 (训练内, native res, +UAV几何)
                    │
                    ↓
-             refined mask → loss_mask + loss_brr
+             refined mask → loss_mask + loss_ubr
 ```
 
 ### 5.3 损失集——7 项（vs 当前单流 8 项 + 新增 2 项 = 10 项）
@@ -170,18 +232,18 @@ UAV 深度+相机 ──→ 几何图(纯数学) ──→ 几何头 🎯 ──
 | 4 | loss_bbox (RoI) | 框精修 | 1.0 |
 | 5 | loss_mask | 掩码主任务 | 1.0 |
 | 6 | loss_geometry | UAV 实例发现（focal+L1） | λ_geo (从0.1起调) |
-| 7 | loss_brr | 边界精修（带内BCE+Dice） | λ_brr (从0.1起调) |
+| 7 | loss_ubr | 边界精修（带内BCE+Dice） | λ_ubr (从0.1起调) |
 
 **删除（vs 当前单流）：**
-- ~~loss_decoder_tail (UDPR)~~ → 被 BRR 替代（同功能，更好信息，更高分辨率）
+- ~~loss_decoder_tail (UDPR)~~ → 被 UBR 替代（同功能，更好信息，更高分辨率）
 - ~~loss_shape_prior (coarse)~~ → SAM2 预训练初始化已提供掩码先验，从头训练时无需额外教粗形状
 
 ### 5.4 关键设计决策
 
 | 决策 | 理由 |
 |---|---|
-| BRR 在训练内（非后处理） | 梯度可回流 decoder，教 decoder 产出更适合精修的 mask；UDPR 做不到这一点 |
-| 删 UDPR 不删 BRR | BRR 有 UAV 几何（双流的核心价值）；UDPR 只有卫星信息（已被证明不够） |
+| UBR 在训练内（非后处理） | 梯度可回流 decoder，教 decoder 产出更适合精修的 mask；UDPR 做不到这一点 |
+| 删 UDPR，UBR 统一替代 | UBR 有 UAV 几何（双流的核心价值）；UDPR 只有卫星信息（已被证明不够） |
 | 删 coarse shape_prior | SAM2 init 已会做通用分割；从头训练时主掩码损失足够引导 |
 | 保留 loss_cls (RoI) | 从头训练时需要学前景/背景判别（不像 E73 已收敛时饱和） |
 | 几何头损失权重独立 | λ_geo 从 0.1 起调，避免多任务初期几何损失淹没检测损失 |
