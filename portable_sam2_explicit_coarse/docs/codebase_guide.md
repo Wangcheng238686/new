@@ -131,6 +131,8 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 
 ## 5. 文档同步记录
 
+- 2026-10-27：新增 `ue_rgbd_two_seed_ddp_20261027.py`、`ue_rgbd_two_seed_owner_20261027.py`（均在scripts/probes）及`configs/ablations/ue_rgbd_two_seed_ddp_20261027.json`；原RGB-D模型44/45双seed各占四卡并可共租，100轮26700更新、全val选best、完训test，通用独立初始化。每epoch保存完整CP与四rank RNG，源码/环境/全100轮图序启动前固化。命令、调度和DDP与历史单卡不能逐位等价的边界见[两seed四卡复现](dual_stream/UE_RGBD_TWO_SEED_DDP_20261027.md)。既有在训源未修改。
+
 - 2026-10-26：新增 `scripts/analysis/ue_joint_counterfactual_20261026.py`，固定正确RGB-D E67进行A正确/B均值RGB/C整组供体RGB/D独立参考面/E关闭全部UAV路由的459test诊断；复用已固化评价内核，原在训源保持不变。文件/命令、GPU2准入、输入文件审计与E的同检查点共同适应边界见[五组干预说明](dual_stream/UE_JOINT_COUNTERFACTUAL_E67_20261026.md)。先通过五组单图不变量门，再执行B–E全量并对A做同图配对统计。
 
 - 2026-10-26：新增 `scripts/analysis/ue_joint_snapshot_eval_20261026.py`，按用户要求固化原四臂当前val-best并在GPU2串行评价完整train/test；新增[补充评价说明](dual_stream/UE_JOINT_TRAIN_TEST_SNAPSHOT_20261026.md)。复用原推理及COCO内核，不修改在训数值源。固定权重epoch/预算、预测/源码SHA及同图Mask AP区间独立保存；不同预算和训练集拟合的限制明确披露，不能冒充E60或原100轮最终结果。

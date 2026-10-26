@@ -1,5 +1,11 @@
 # Explicit Coarse 训练调试字段字典
 
+## 2026-10-27：原RGB-D双seed全预算四卡训练
+
+`ue_rgbd_two_seed_ddp_20261027.py`的`progress.json`仅rank0每25次成功更新写入：`update`为该seed四rank同步完成的AdamW更新数，AMP失败尝试不计；`effective_batch=8`，不是每卡batch8。`preclip_norm`为DDP归约、AMP unscale后clip.5前的联合梯度范数；`AMP_retries_epoch`是本epoch同步回退重算次数。
+逐epoch的`mean_microbatch_loss`先对四rank每个8图更新求loss总和，再对267次累积求和、除全局2136图；不是仅rank0均值或4个独立训练的均值。`sample_order`是2136图全局顺序，`rank_sample_order`各534图，必须重建一致。
+`best.score/epoch`仅来自全459val的combined Mask AP250；四rank预测按图序在CPU汇总后统一算AP，不平均rank AP。所有新字段仅记录状态，不参与loss、路由或额外选权；仍按val-best正式规则选权。
+
 ## 2026-10-26：固定E67测试集五组输入／路由干预
 
 `ue_joint_counterfactual_20261026.py`使用独立输出，不扩展训练日志。`target_fields_preserved`为同组已处理图中geometry/index/anchor原对象保留的图数（A/B/C）；不是几何可靠像素数。`disabled_inference_checks`为E中确认两开关关闭、context/outputs为空、UAV追加候选为零及原score映射保留的图数。两者全量分母均459，单图gate分母1。
