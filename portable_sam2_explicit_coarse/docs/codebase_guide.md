@@ -209,3 +209,11 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 `docs/dual_stream/probes/dataset_reaudit_20261021/`归档两份CPU分析脚本及逐图证据，不接训练入口。
 包含新旧153图独立mask对比、固定32图深度观测支持和旧train→新test454图身份风险。
 EXP-0017生产实现与数据保持不变，后续UAV仍待新单流固化。
+
+### 2026-10-26 候选先选择与stride4几何旁路
+
+新增`data/ue_candidate_evidence.py`（由FP64锚点/相机复算7维候选属性）、`rsprompter/uav/candidate_detail_interaction.py`（Q：SAT block1 query先选RGB候选；G：多候选几何在128²零初始化写回）、`configs/ablations/ue_candidate_detail_protocol.json`（7条固定E10训练与内容对照）。新运行/调度/分析分别为`scripts/probes/ue_candidate_detail_run_20261026.py`、`ue_candidate_detail_owner_20261026.py`、`ue_candidate_detail_analysis_20261026.py`。原单表面CNN、block4、候选解码、损失和全部在训数值源不改；新源与产物独立，旧E10仅推理参考。三个真实GPU门已通过，正式完整结果未出。详见[机制与实验合同](dual_stream/UE_CANDIDATE_DETAIL_20261026.md)。本轮是保留锚点的选择/消费干预，不是恢复所有深度点或完整3D；新加入真实mask面积尺寸、密度和固定误检预算的小目标召回评价。未改现有生产入口或冻结架构合同。
+
+### 2026-10-26 用户修订：本轮每个实验四卡DDP
+
+单卡新Q/G矩阵已显式停止并留档；由`ue_candidate_detail_ddp_20261026.py`接管新实验，四卡batch1×accum2=global8，rank CPU Gloo汇总预测后算整集AP，不平均rank AP；DDP基线也重跑，避免与单卡随机流/分布式归一化混淆。新增`ue_candidate_detail_ddp_owner_20261026.py`按四卡共同余量共租组/排队，`ue_candidate_detail_ddp_analysis_20261026.py`仅比较同四卡合同，`ue_candidate_detail_repro_20261026.py`核定运行时import/Git blob/环境/输入身份，配置为`ue_candidate_detail_ddp_protocol.json`。原100轮在训源保持不变。文件、10条矩阵、随机状态恢复及复现说明见[四卡实施](dual_stream/UE_CANDIDATE_DETAIL_DDP_20261026.md)。旧单卡启动记录为历史，不表示当前执行方式。

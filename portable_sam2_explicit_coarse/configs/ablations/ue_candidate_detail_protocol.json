@@ -1,0 +1,22 @@
+{
+  "study": "candidate_selection_and_stride4_geometry_v1",
+  "variants": ["query", "detail", "both"],
+  "training_jobs": [
+    ["query", "correct"], ["detail", "correct"], ["both", "correct"], ["both", "constant"],
+    ["query", "constant"], ["detail", "constant"], ["both", "plane"]
+  ],
+  "epochs": 10,
+  "updates": 2670,
+  "schedule": "first2670 successful updates of sealed100epoch schedule; no task warm start",
+  "selection": "fixed E10; full val and development-test, no test-based selection",
+  "test": "only after all seven E10 trainings; all locked arms, no adaptive structure or weight selection",
+  "geometry": "unchanged retained8 anchors; seven per-anchor attributes from FP64 anchors and camera transforms; no hard surface filter",
+  "query": "block1 SAT112 query reads separate32ch source RGB keys plus7ch geometry keys; initial uniform; RGB values only",
+  "detail": "block1 SAT112 query reads7ch per-candidate geometry embedded32; zero32-to112 writeback at128square; no prior target mean pooling",
+  "unchanged": "single-surface geometry CNN, block4 interaction, sourceP0, losses, coarse64, UDPR, NMS and candidate score/merge",
+  "allocator_cap_MiB": 7800,
+  "device_margin_MiB": 2048,
+  "initial_seed": 2060,
+  "telemetry": "existing update25 and epoch means only; attention/geometry diagnostic offline; no new loss or decision telemetry",
+  "limitations": "only retained candidates; not full3D, no complete visibility certification; single seed and development-exposed v1 test"
+}

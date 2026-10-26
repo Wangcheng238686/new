@@ -152,3 +152,17 @@ AMP+checkpoint 校验启停诊断的输出及梯度相同，避免共享权重�
 checkpoint推理现在按快照primary_max_dets评估（旧无合同的checkpoint仍默认100）。
 新增train_augmentation配置身份记录噪声概率/标准差与ColorJitter参数、顺序，非随机触发次数遥测。
 原loss/UDPR字段的聚合范围不变；本路线禁用EMA，所有val均model权重。
+
+### 2026-10-26 candidate_detail
+
+新独立`ue_candidate_detail_20261026`沿用既有compact训练遥测：progress每25次成功更新，last_loss为末microbatch未除accum8的原任务+中心框目标；preclip_norm为8图累积后全模型L2/globalclip.5之前；epoch.mean_microbatch_loss分母2136唯一图；AMP_retries_epoch仅失败累积尝试次数。variant/content为身份，未增加逐步attention或深度统计，不进入loss/选权/门控。
+
+Q/G门的initial_features_max_error、initial_head_max_error为相同初始化FP32旧/新路径各张量元素绝对差最大值，非平均误差。candidate_geometry_vs_legacy_six_max_error比较7维前6项(偏移减.5)与旧float16 geom6，单位已归一化；不是物理标定误差。frozen_tensors_exact计不训练参数张量，changed_parameters为3次工程更新后的逐值变化，不代表输入贡献。peak_reserved_MiB是本进程allocator累计峰值，不含外部CUDA内存/其它共租任务。formal_FP32和max_decoder_instances=250是工程覆盖，不是AP/召回结果。
+
+分析的small_gt/small_TP/small_FN按GT实际RLE面积<1024分组；TP+FN=GT，TP+FP=输出DT，IoU>=.5且按score贪心一对一，bbox与mask两种匹配独立，不能混分母。duplicate/localization/background_proxy以失败DT对全部GT的最大IoU分别>=.5、[.1,.5)、<.1划分，不是人工背景标签或COCO AP分解。small_recall_at_FP_per_image使用全部尺寸共同FP预算/459图，分母为该split全部small GT；score阈值由各模型自身曲线产生，不用于训练/选模。mask_area_groups补算GT和DT实际mask面积；density_groups固定<=50/51–100/>100，val无>100图应为null，不以0代替。content_interaction为同一次500图像bootstrap的四臂差中差，不能相减两个区间。所有诊断只用于离线观察。
+
+### 2026-10-26 四卡candidate_detail（取代本轮单卡运行字段）
+
+新progress仅rank0每25次全局成功更新落盘：world_size=4、effective_batch=8；last_global_microbatch_mean是本次4rank各2图的原loss总和/8，区别于旧last_loss末图；preclip_norm为同步和累积后全模型clip前L2，各rank理论相同，门已核对真实副本权重一致。AMP_retries_epoch是全局失败尝试次数，每rank共同重试一次只计一次。epoch.mean_microbatch_loss分母全局2136图，rank_sample_order各534图，按每rank连续2图重组为sample_order，并逐值核对原合同。rank0_pid不能代表只有单卡训练；rank_launches必须有4个真实rank PID/local_rank和起始tick。
+
+四卡门rank_peaks按各rank单独的allocator累计峰值，不能把4rank峰值当一张卡或跨卡均值；forced_decoder_instances=250为每rank实际解码数量。replicas_identical核对第3次成功更新的全模型SHA；门另在恢复后完成第4次更新。restored_all_five_rng包括各rank Python/NumPy/Torch CPU/当前CUDA/DataLoader generator，4rank合起来覆盖4张卡，不调用每rank get_rng_state_all。每epoch验证459图按rank分片/Gloo收集/恢复顺序后统一评价，单rank子集AP不是正式数值。scheduler的per_GPU_reservation_MiB为实际最大门峰值+1024，另留每卡2048；组准入同时检查四卡，并扣除启动中的未兑现预留，无固定组数上限。

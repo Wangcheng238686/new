@@ -1,0 +1,28 @@
+{
+  "study": "candidate_detail_four_gpu_ddp_v1",
+  "world_size": 4,
+  "per_rank_batch": 1,
+  "per_rank_accumulation": 2,
+  "effective_batch": 8,
+  "epochs": 10,
+  "updates_per_epoch": 267,
+  "updates": 2670,
+  "training_jobs": [
+    ["query", "correct"], ["detail", "correct"], ["both", "correct"], ["both", "constant"],
+    ["query", "constant"], ["detail", "constant"], ["both", "plane"],
+    ["baseline", "correct"], ["baseline", "constant"], ["satellite", "correct"]
+  ],
+  "selection": "fixed E10; full distributed val each epoch; full development-test once all ten trainings complete",
+  "learning_rate": "original sealed100epoch schedule first2670 successful updates, lr5e-4/wd.05/warmup100/clip.5",
+  "initialization": "common generic foundation/new heads only; never task-weight warm start",
+  "sample_order": "fixed original epoch2136 IDs; each global block8 split into contiguous2 IDs per rank",
+  "augmentation": "seed44+rank; matched DDP arms identical rank loader generators and worker setup; not single-GPU trajectory equivalent",
+  "normalization": "DDP mean gradients and native distributed task loss normalizers; rerun matched DDP baselines",
+  "resume": "epoch boundaries only; unwrapped model, optimizer, scaler, all rank Python/NumPy/Torch/CUDA/DataLoader RNG",
+  "overflow": "same two prepared batches per rank, synchronized all-rank retry, restore buffers and RNG, max4 retries",
+  "allocator_cap_MiB": 7800,
+  "device_margin_MiB": 2048,
+  "evaluation": "rank-strided shard, CPU Gloo gather, original image order restored before canonical FP32 AP250",
+  "co_renting": "every experiment occupies all four GPUs; admit additional four-rank groups only if all four GPUs have reserved headroom; otherwise queue",
+  "limitations": "retained8 candidates only; early100epoch-schedule prefix, single seed, development-exposed v1 test"
+}
