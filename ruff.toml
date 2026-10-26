@@ -11,3 +11,6 @@ select = [
     "F",   # pyflakes (unused vars/imports, real bug classes)
     "N",   # pep8-naming
 ]
+ignore = [
+    "N812",  # `import torch.nn.functional as F` is the universal torch idiom
+]
