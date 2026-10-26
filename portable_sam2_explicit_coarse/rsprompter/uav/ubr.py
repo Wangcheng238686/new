@@ -32,9 +32,9 @@ UAV_GEOMETRY_CHANNELS = 5  # height, dx, dy, viewcount, support
 def signed_distance_transform(mask: torch.Tensor) -> torch.Tensor:
     """SDT of a binary mask; positive inside, negative outside, in pixels.
 
-    mask: [B, 1, H, W] float/bool. Returns float32 [B, 1, H, W].
-    Uses scipy EDT per sample (exact Euclidean); batch loop is acceptable at
-    512x512 probe scales.
+    mask: [B, 1, H, W] float/bool; must be non-empty per sample (an empty
+    mask has no boundary and its band would span the whole image). Returns
+    float32 [B, 1, H, W].
     """
     from scipy import ndimage
 
@@ -63,10 +63,11 @@ def build_constant_geometry(
 
     Fills train-only per-channel means where support == 1, zeros in holes, so
     the support channel distribution matches the real arm exactly.
-    real_geometry: [B,5,H,W]; channel_means: [5] (train-split means of the
-    first four channels under support; the support channel itself is copied).
+    real_geometry: [B,5,H,W]; channel_means: [4] — train-split means of
+    channels 0..3 under support == 1 (the support channel itself is copied).
     """
     assert real_geometry.shape[1] == UAV_GEOMETRY_CHANNELS
+    assert channel_means.numel() == 4, 'means for channels 0..3 only'
     fill = channel_means.to(real_geometry.dtype).view(1, 4, 1, 1)
     filled = fill.expand(real_geometry.shape[0], 4, *real_geometry.shape[2:])
     const = torch.cat([filled, real_geometry[:, 4:5]], dim=1)
@@ -132,26 +133,40 @@ class UnifiedBoundaryRefiner(nn.Module):
 def apply_band_reclassification(
     mask: torch.Tensor, ubr_logits: torch.Tensor, sdt: torch.Tensor, k: int
 ) -> torch.Tensor:
-    """Write UBR's in-band decision back, keep largest connected component.
+    """Write UBR's in-band decision back; inference-only (no gradient).
 
+    Write rule per band pixel: logit > 0 -> 1, logit < 0 -> 0, logit == 0 ->
+    original value (a zero-initialized UBR is an exact copy). Anti-speckle:
+    the largest 8-connected component of the post-write mask is kept and
+    smaller components' pixels revert to the ORIGINAL mask value; then all
+    pixels OUTSIDE the band are restored to the original, so the result may
+    differ from the input only inside |SDT| <= k (bit-exact containment).
     mask: [B,1,H,W] float (0/1); returns refined float mask of same shape.
-    Outside the band the original mask is preserved bit-exactly.
     """
     from scipy import ndimage
 
     assert mask.shape == ubr_logits.shape == sdt.shape
     band = band_mask(sdt, k)
-    refined = (ubr_logits > 0).to(mask.dtype) * band + mask * ~band
+    decision = torch.where(
+        ubr_logits > 0, torch.ones_like(mask),
+        torch.where(ubr_logits < 0, torch.zeros_like(mask), mask),
+    )
+    refined = decision * band + mask * ~band
     out = refined.clone()
+    structure = np.ones((3, 3))  # 8-connectivity: SAM2 masks are 8-connected
     for b in range(refined.shape[0]):
         m = refined[b, 0].detach().cpu().numpy() > 0.5
         if not m.any():
             out[b, 0] = 0.0
             continue
-        labels, n = ndimage.label(m)
+        labels, n = ndimage.label(m, structure=structure)
         if n > 1:
             sizes = ndimage.sum(m, labels, range(1, n + 1))
             keep = 1 + int(np.argmax(sizes))
-            keep_mask = torch.from_numpy(labels == keep).to(refined.device)
-            out[b, 0] = keep_mask.to(refined.dtype)
+            dropped = torch.from_numpy(labels != keep).to(refined.device)
+            out[b, 0] = torch.where(
+                dropped, mask[b, 0], out[b, 0]
+            )
+        band_b = band[b, 0]
+        out[b, 0] = torch.where(band_b, out[b, 0], mask[b, 0])
     return out
