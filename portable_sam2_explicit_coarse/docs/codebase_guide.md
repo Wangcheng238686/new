@@ -221,3 +221,7 @@ EXP-0017生产实现与数据保持不变，后续UAV仍待新单流固化。
 ### 2026-10-26 独立审查与 FROC 同分组修正
 
 独立审查建议继续四卡10臂；确认冻结分析器的逐检测前缀 FROC 可拆开同分预测。新增独立 `scripts/analysis/ue_candidate_detail_froc_ties_20261026.py`，只在完整同分组端点计算 score 阈值可实现的小目标召回；保留原匹配和所有训练/AP代码。`--watch-root ROOT --owner-pid PID`监听固定24份完整评价，在 `analysis_corrected_froc/{val,test}`输出权威 FROC，绑定 records/complete/checkpoint/source SHA；不覆盖原分析。合成同分反例、100次无同分等价和真实459图顺序反转门已通过。详见四卡实施文档的审查补充。
+
+### 2026-10-26 Q/G完成与控制面恢复
+
+Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且state仍标running；其余8训练未启动，不能标整轮完成。新增 `scripts/probes/ue_candidate_detail_ddp_recovery_20261026.py`，只恢复调度，不改93份冻结源及数值合同：独占原lock，核原owner/rank不存在、原manifest/DAG相等、完成receipt/CP SHA/10轮顺序记录后跳过完成臂；有部分训练权重或意外评价即停止要求专项审查。旧state/owner launch归档recovery_20261026；使用脱离会话的Popen重启owner，继续四卡共租与原固定E10评价。退出原因未获证据，不认定OOM或正常整轮完成。

@@ -170,3 +170,7 @@ Q/G门的initial_features_max_error、initial_head_max_error为相同初始化FP
 ### 2026-10-26 FROC 权威修正口径
 
 `analysis_corrected_froc/{split}/*.json` 的 `small_recall_at_FP_per_image` 取完整同分组阈值端点，允许空预测；预算为全部尺寸误检数/整集图数，召回分母为真实掩码面积<1024的GT实例数，匹配仍为每图score稳定排序、IoU≥.5贪心一对一，bbox/mask分别计算。无small GT时为null。它仅替代冻结分析的FROC字段，不改变AP、总TP/FN/FP或训练。`images/detections/small_gt`公开整集分母；`records_sha256/identity_sha256/checkpoint_sha256/source_sha256`绑定来源。watcher每30秒检查24份既定完整评价，不新增逐步训练遥测，不参与loss、门控、选模。
+
+### 2026-10-26 调度恢复状态
+
+`owner_recovery_launch.json`记录新owner PID、源SHA及已核定完成job；`recovery_20261026/audit.json`记录原owner缺失、无活跃数值子进程、93源身份、完成receipt/CP核定及控制代码提交。`recovered_from_verified_receipt`仅表示重建控制面完成状态，不代表额外训练。旧progress每25更新，E10最后记录2650而完成receipt为2670是正常采样间隔；不能据progress判未完成。state可能为退出前快照，需同时核实PID与完成产物。无新增训练字段。

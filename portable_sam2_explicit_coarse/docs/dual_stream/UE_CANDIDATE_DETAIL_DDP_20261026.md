@@ -70,3 +70,7 @@ python -u scripts/analysis/ue_candidate_detail_froc_ties_20261026.py --watch-roo
 权威修正产物在 `analysis_corrected_froc/{val,test}`，覆盖10个匹配评价及QG正确训练权重的constant/donor干预，共24项；绑定预测、身份、checkpoint和修正源SHA。同分反例、100组无tie等价及真实旧val459图的图序反转一致性已核对。修正器作为后续独立提交，不改训练提交c9b6d60。
 
 结论限制：G是保留旧CNN的增量旁路，不能据净AP声称旧冗余已解除；Q仍限8候选/32维，常量RGB可含位置特征，必须靠匹配内容差及差中差判断真实内容价值。中心格碰撞、3×3峰值抑制、NMS及新增候选未二次分类保持原样。10epoch单seed仅筛查机制，正式化仍需全预算、重复性、成本及逐GT净纠错验收。恢复门验证状态恢复和后续更新，但尚未验证真实epoch连续路径与恢复路径逐值等价；首次实际续训前需完成该专项，不打断健康任务。
+
+## Q/G首批完成与调度恢复
+
+Q、G各完成10轮2670更新；E10 val Mask AP×100为81.1164/81.6439，bbox为79.5336/79.5073。无同DDP匹配基线/内容对照及test，不能判UAV净收益。原owner消失、state未刷新、后续8训练未启动；原因未确认。新增控制脚本 `scripts/probes/ue_candidate_detail_ddp_recovery_20261026.py` 核验原owner及数值子进程不存在、原DAG/manifest、冻结93源与已完成CP/receipt/逐轮记录，归档旧控制面并跳过Q/G完成项。任何部分训练或意外已有评价均拒绝自动恢复；本次不涉及训练续接。新owner须通过Popen start_new_session=True、DEVNULL stdin、独立持久日志启动；继续每实验四卡及显存共租合同。独立FROC watcher跟随新owner PID重新启动，原训练提交及源不变。
