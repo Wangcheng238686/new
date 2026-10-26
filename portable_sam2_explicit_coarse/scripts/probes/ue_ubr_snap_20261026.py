@@ -75,7 +75,7 @@ def snap_mask(m: np.ndarray, h: np.ndarray, support: np.ndarray,
     |grad(height)| (real mode) or to a uniformly drawn support==1 candidate
     (sham mode, rng not None); with no admissible candidate it stays put.
     Constant height has zero gradient everywhere, hence never snaps and is
-    bit-identical to nosnap.
+    bit-identical to nosnap. Vectorized over band pixels.
     """
     m = m.astype(bool)  # guard: ~ on uint8 is bitwise (254/255), not logical
     inner = cv2.erode(m.astype(np.uint8), E.KERNEL, iterations=1) > 0
@@ -87,33 +87,32 @@ def snap_mask(m: np.ndarray, h: np.ndarray, support: np.ndarray,
     sdt = ndimage.distance_transform_edt(~m) - ndimage.distance_transform_edt(m)
     ny, nx = np.gradient(sdt)
     ys, xs = np.nonzero(band)
-    snapped = np.zeros_like(m, dtype=bool)
+    norm = np.hypot(nx[ys, xs], ny[ys, xs])
+    norm = np.where(norm > 1e-6, norm, 1.0)
+    ux, uy = nx[ys, xs] / norm, ny[ys, xs] / norm
     ts = np.linspace(-SEARCH_PX, SEARCH_PX, STEPS)
-    for y, x in zip(ys, xs):
-        norm = float(np.hypot(nx[y, x], ny[y, x]))
-        ux, uy = (nx[y, x] / norm, ny[y, x] / norm) if norm > 1e-6 else (0.0, 0.0)
-        qy = np.rint(y + ts * uy).astype(int)
-        qx = np.rint(x + ts * ux).astype(int)
-        ok = ((qy >= 0) & (qy < 512) & (qx >= 0) & (qx < 512)
-              & support[np.clip(qy, 0, 511), np.clip(qx, 0, 511)])
-        if not ok.any():
-            snapped[y, x] = True
-            continue
-        if rng is None:
-            val = np.where(ok, gmag[np.clip(qy, 0, 511), np.clip(qx, 0, 511)], -1.0)
-            k = int(val.argmax())
-            if val[k] <= 0.0:
-                snapped[y, x] = True
-                continue
-        else:
-            cand = np.nonzero(ok)[0]
-            k = int(rng.choice(cand))
-        snapped[int(qy[k]), int(qx[k])] = True
+    qy = np.rint(ys[:, None] + ts[None, :] * uy[:, None]).astype(np.int64)
+    qx = np.rint(xs[:, None] + ts[None, :] * ux[:, None]).astype(np.int64)
+    qyc, qxc = np.clip(qy, 0, 511), np.clip(qx, 0, 511)
+    ok = ((qy >= 0) & (qy < 512) & (qx >= 0) & (qx < 512) & support[qyc, qxc])
+    rows = np.arange(len(ys))
+    if rng is None:
+        val = np.where(ok, gmag[qyc, qxc], -1.0)
+        k = val.argmax(axis=1)
+        fires = ok[rows, k] & (val[rows, k] > 0.0)
+    else:
+        g = rng.random(ok.shape)
+        k = np.where(ok, g, -1.0).argmax(axis=1)
+        fires = ok.any(axis=1)
+    snapped = np.zeros_like(m, dtype=bool)
+    stay = rows[~fires]
+    snapped[ys[stay], xs[stay]] = True
+    hit = rows[fires]
+    snapped[qyc[hit, k[hit]], qxc[hit, k[hit]]] = True
     # Reconstruction: the original 1px frame is vacated and replaced by the
     # snapped positions; 3x3 closing seals sub-2px gaps (corner leaks defeat
     # plain fill_holes), then fill_holes repairs the interior.
-    union = inner | snapped
-    sealed = ndimage.binary_closing(union, structure=np.ones((3, 3), bool))
+    sealed = ndimage.binary_closing(inner | snapped, structure=np.ones((3, 3), bool))
     return ndimage.binary_fill_holes(sealed).astype(np.uint8)
 
 
