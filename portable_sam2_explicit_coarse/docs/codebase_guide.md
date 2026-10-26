@@ -229,3 +229,7 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 ### 2026-10-26 正向实验恢复归档
 
 新增`scripts/analysis/ue_positive_experiment_recovery_20261026.py`，仅CPU审计与复制两组历史source/初始化/固定CP/关键预测/逐轮记录，不改训练源。实例内部交互14个E10及联合四臂E50可找回；E60仅指标、无独立权重。外部归档`ue_positive_recovery_20261026/recovery.json`绑定SHA/代码提交；原source未跟踪owner/统计/协议按原字节补入Git，不能把归档当实际训练/AP重现。详情见[正向实验恢复](dual_stream/UE_POSITIVE_EXPERIMENT_RECOVERY_20261026.md)。无新增训练遥测字段。
+
+### 2026-10-26 原四臂后续验证独立讨论
+
+三方向只读审查形成[后续验证决定](dual_stream/UE_FOUR_ARM_NEXT_VALIDATION_REVIEW_20261026.md)：完成原100轮与既定val-best/test，先拆原路径/追加候选净纠错，再读完已有Q/G同DDP矩阵，不追加重复短训练。纠正此前过度简化：原u128直达128²实例头，只有卫星block4回写路径经pool64；新高分辨率RGB入口是另一个独立干预。记录E67原四臂与QG E4观察及限制；无数值源、选权或训练遥测变更。
