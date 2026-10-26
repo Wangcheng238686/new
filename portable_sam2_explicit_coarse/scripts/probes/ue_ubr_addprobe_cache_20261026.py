@@ -174,10 +174,12 @@ def match_greedy(masks, gt_masks, dev):
     n, g = len(masks), len(gt_masks)
     if n == 0 or g == 0:
         return np.full(n, -1, np.int32), np.zeros(n, np.float32)
-    p = torch.from_numpy(masks.reshape(n, -1)).to(dev).half()
-    q = torch.from_numpy(gt_masks.reshape(g, -1).astype(np.uint8)).to(dev).half()
+    # fp32: fp16 sums overflow inf for masks > ~65k px (>25% of image),
+    # silently zeroing IoU and dropping the sample (review finding)
+    p = torch.from_numpy(masks.reshape(n, -1)).to(dev).float()
+    q = torch.from_numpy(gt_masks.reshape(g, -1).astype(np.uint8)).to(dev).float()
     inter = torch.zeros(n, g, device=dev)
-    for s in range(0, n, 64):  # 64 x 262144 fp16 slices keep temps small
+    for s in range(0, n, 64):
         inter[s:s + 64] = p[s:s + 64] @ q.T
     union = p.sum(1, keepdim=True) + q.sum(1) - inter
     iou = (inter / union.clamp(min=1)).float().cpu().numpy()
@@ -230,7 +232,12 @@ def process_scene(model, caps, entry, gt_list, dev):
     match, iou = match_greedy(masks, gt_masks, dev)
     win = np.array([window(b, LOGIT_MARGIN, 512) for b in boxes], np.int32) \
         if len(boxes) else np.zeros((0, 4), np.int32)
-    fwin = np.array([window(b / 4.0, FEAT_MARGIN, 128) for b in boxes],
+    # derive the feature window from the 512-grid window (//4 with ceil end)
+    # so the upsampled feat is registered to the logit window exactly;
+    # window(b/4) floored first and left a 0-3px shift (review finding)
+    fwin = np.array([[w[0] // 4, w[1] // 4,
+                      -(-(w[0] + w[2]) // 4) - w[0] // 4,
+                      -(-(w[1] + w[3]) // 4) - w[1] // 4] for w in win],
                     np.int32) if len(boxes) else np.zeros((0, 4), np.int32)
     arrays = dict(
         boxes=boxes.astype(np.float32), scores=scores.astype(np.float32),

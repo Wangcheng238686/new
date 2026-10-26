@@ -163,6 +163,40 @@ def assemble(store: SceneStore, sid: int, i: int, arm: str, means, k,
     return out
 
 
+class SceneMajorSampler(torch.utils.data.Sampler):
+    """Shuffle scene order, keep a scene's instances contiguous.
+
+    With random shuffling the SceneStore LRU thrashes (one ~5MB npz reload
+    per sample -> 20x budget overrun, review finding); scene-major order
+    hits the cache almost every sample while instance order stays shuffled
+    within scene and scenes reshuffle every epoch.
+    """
+
+    def __init__(self, index, seed=SEED):
+        self.pos = {(sid, i): j for j, (sid, i) in enumerate(index)}
+        by_scene = {}
+        for sid, i in index:
+            by_scene.setdefault(sid, []).append(i)
+        self.by_scene = {k: sorted(v) for k, v in by_scene.items()}
+        self.seed, self.epoch = seed, 0
+
+    def set_epoch(self, epoch):
+        self.epoch = epoch
+
+    def __iter__(self):
+        rng = np.random.default_rng(self.seed + self.epoch)
+        scenes = sorted(self.by_scene)
+        rng.shuffle(scenes)
+        for sid in scenes:
+            insts = list(self.by_scene[sid])
+            rng.shuffle(insts)
+            for i in insts:
+                yield self.pos[(sid, i)]
+
+    def __len__(self):
+        return sum(len(v) for v in self.by_scene.values())
+
+
 class AddProbeDataset(Dataset):
     """Matched instances across the split cache (one sample per instance)."""
 
@@ -417,10 +451,10 @@ def main():
 
     ds = AddProbeDataset(a.train_dir, a.arm, a.k, means)
     print(f'arm={a.arm} train samples={len(ds)} from {a.train_dir}', flush=True)
-    loader = DataLoader(ds, batch_size=a.batch, shuffle=True,
+    sampler = SceneMajorSampler(ds.index)
+    loader = DataLoader(ds, batch_size=a.batch, sampler=sampler,
                         num_workers=a.num_workers, collate_fn=pad_collate,
-                        drop_last=False,
-                        generator=torch.Generator().manual_seed(SEED))
+                        drop_last=False)
     steps_per_epoch = len(loader) if not a.limit_smoke else min(len(loader),
                                                                 SMOKE_STEPS)
     assert steps_per_epoch > 0, 'empty loader (fewer samples than batch?)'
@@ -442,6 +476,7 @@ def main():
 
     epochs, last_val = [], orig
     for ep in range(a.epochs):
+        sampler.set_epoch(ep)
         parts, tr_secs = train_epoch(ubr_net, loader, opt, sched, scaler, ep,
                                      steps_per_epoch, log)
         last_val = val_pass(ubr_net, a.val_dir, a.arm, means, a.k, dev)
