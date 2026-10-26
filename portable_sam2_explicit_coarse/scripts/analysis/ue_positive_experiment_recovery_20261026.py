@@ -75,7 +75,10 @@ def main():
                 arm = row['arm']
                 receipt = read(root/arm/'training_complete.json')
                 assert receipt['complete'] and receipt['updates'] == 2670
-                preserve(root/arm/'epoch10.pth', target/'weights'/arm/'epoch10.pth', records, row['sha256'])
+                # The original evaluator and receipt bind last.pth, written
+                # again after epoch10.pth; serialized bytes need not match.
+                assert receipt['checkpoint_sha256'] == row['sha256']
+                preserve(root/arm/'last.pth', target/'weights'/arm/'last_E10.pth', records, row['sha256'])
                 for src in sorted((root/arm).glob('*.json')):
                     if src.name != 'progress.json':
                         preserve(src, target/'metadata'/arm/src.name, records)

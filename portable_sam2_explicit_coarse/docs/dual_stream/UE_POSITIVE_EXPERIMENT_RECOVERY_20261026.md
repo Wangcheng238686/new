@@ -20,3 +20,5 @@
 原数值代码多数已在c9b6d60按实际加载依赖补录；本次补齐原快照中尚未跟踪的owner、验收、统计与协议文件，保持每一份字节不变。无需退回f0b20e9，也不将当前Q/G当作历史正向模型。归档后以`recovery.json.git_commit`检出，核对外部输入，再在新目录做复评/复跑，原目录保持隔离。
 
 实例模型可用原runner `eval --family rgb --route internal --content geometry --rgb correct --seed 44 --split test --input geometry --checkpoint 原epoch10.pth --out 新评价目录`重新评价；需同时保留原root的初始化、原E73路径、数据和缓存及通用权重。新训练须遵守当前每实验四卡要求；原单卡合同的精确重跑与四卡新对照是不同实验，本次不启动任一种训练。联合E50可核对来源/恢复状态，若要重新继续训练先做真实恢复连续轨迹专项，不能将E50当E60。
+
+归档实现核定：实例训练在保存epoch10后再次序列化last，原评价和收据绑定的是last.pth字节SHA。本归档使用该收据绑定文件，保存为`weights/<arm>/last_E10.pth`；不能用epoch10.pth文件SHA冒充它。首次归档工具比较错文件而退出，保留`ue_positive_recovery_20261026_attempt1/failure.json`，修正后重新从全新目录执行；没有修改原检查点。
