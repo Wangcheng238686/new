@@ -1,5 +1,12 @@
 # Explicit Coarse 训练调试字段字典
 
+## 2026-10-26：四臂固定best的训练集／测试集补充评价
+
+`ue_joint_snapshot_eval_20261026.py`只在独立运行目录写评价遥测，不改训练字段。
+`progress.images_done/images_total`为当前arm、当前split已完成图数／总评价图数（train2142、test459），每25图及最后一图写入；不是batch均值或跨rank汇总。`elapsed_seconds`含该评价循环的输入读取与推理，不能当隔离GPU延迟benchmark。
+`selected_epoch`是被固定的val-best权重epoch；`completed_epochs_at_snapshot`是固化时该臂已完成训练预算，两者不能混用。`optimizer_updates=0/state_unchanged=true`仅认证只读评价，不认证内容净收益。
+`analysis.comparisons.*.MaskAP_delta`用0–1 AP单位，区间为500次同图bootstrap名义95%；仅合并Mask AP有该区间。训练集区间不能当泛化证据，不同预算和单seed限制保留。Boundary AP带宽仍为512图像对角线2%／1%，约14／7px。
+
 本字典是 `portable_sam2_explicit_coarse/` 训练日志中机制字段的唯一解释来源。它区分
 单步 latest-forward 快照与跨全部 DDP rank 的 epoch 统计；不得混用两者比较结论。
 
