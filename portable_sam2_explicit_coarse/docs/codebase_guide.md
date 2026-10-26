@@ -225,3 +225,7 @@ EXP-0017生产实现与数据保持不变，后续UAV仍待新单流固化。
 ### 2026-10-26 Q/G完成与控制面恢复
 
 Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且state仍标running；其余8训练未启动，不能标整轮完成。新增 `scripts/probes/ue_candidate_detail_ddp_recovery_20261026.py`，只恢复调度，不改93份冻结源及数值合同：独占原lock，核原owner/rank不存在、原manifest/DAG相等、完成receipt/CP SHA/10轮顺序记录后跳过完成臂；有部分训练权重或意外评价即停止要求专项审查。旧state/owner launch归档recovery_20261026；使用脱离会话的Popen重启owner，继续四卡共租与原固定E10评价。退出原因未获证据，不认定OOM或正常整轮完成。
+
+### 2026-10-26 正向实验恢复归档
+
+新增`scripts/analysis/ue_positive_experiment_recovery_20261026.py`，仅CPU审计与复制两组历史source/初始化/固定CP/关键预测/逐轮记录，不改训练源。实例内部交互14个E10及联合四臂E50可找回；E60仅指标、无独立权重。外部归档`ue_positive_recovery_20261026/recovery.json`绑定SHA/代码提交；原source未跟踪owner/统计/协议按原字节补入Git，不能把归档当实际训练/AP重现。详情见[正向实验恢复](dual_stream/UE_POSITIVE_EXPERIMENT_RECOVERY_20261026.md)。无新增训练遥测字段。
