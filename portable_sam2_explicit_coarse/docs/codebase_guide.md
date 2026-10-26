@@ -131,6 +131,8 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 
 ## 5. 文档同步记录
 
+- 2026-10-26：新增 `scripts/analysis/ue_joint_counterfactual_20261026.py`，固定正确RGB-D E67进行A正确/B均值RGB/C整组供体RGB/D独立参考面/E关闭全部UAV路由的459test诊断；复用已固化评价内核，原在训源保持不变。文件/命令、GPU2准入、输入文件审计与E的同检查点共同适应边界见[五组干预说明](dual_stream/UE_JOINT_COUNTERFACTUAL_E67_20261026.md)。先通过五组单图不变量门，再执行B–E全量并对A做同图配对统计。
+
 - 2026-10-26：新增 `scripts/analysis/ue_joint_snapshot_eval_20261026.py`，按用户要求固化原四臂当前val-best并在GPU2串行评价完整train/test；新增[补充评价说明](dual_stream/UE_JOINT_TRAIN_TEST_SNAPSHOT_20261026.md)。复用原推理及COCO内核，不修改在训数值源。固定权重epoch/预算、预测/源码SHA及同图Mask AP区间独立保存；不同预算和训练集拟合的限制明确披露，不能冒充E60或原100轮最终结果。
 
 - 2026-10-14：UE新增覆盖区门控/置信/有效缩放、按真实裁剪分区的梯度与LR、跨rank有限forward均值/分母、AMP跳步和训练峰值显存。生产者仍在 `uav/fusion.py`，训练汇总仍在 `train/ue_telemetry.py`；完整范围、公式与判读边界同步至 [DEBUG_FIELDS](DEBUG_FIELDS.md)。没有新增模型配置键或改变融合计算。

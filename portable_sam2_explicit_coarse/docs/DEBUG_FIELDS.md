@@ -1,5 +1,12 @@
 # Explicit Coarse 训练调试字段字典
 
+## 2026-10-26：固定E67测试集五组输入／路由干预
+
+`ue_joint_counterfactual_20261026.py`使用独立输出，不扩展训练日志。`target_fields_preserved`为同组已处理图中geometry/index/anchor原对象保留的图数（A/B/C）；不是几何可靠像素数。`disabled_inference_checks`为E中确认两开关关闭、context/outputs为空、UAV追加候选为零及原score映射保留的图数。两者全量分母均459，单图gate分母1。
+`input_files_sha256`仅列本进程实际打开的UAV输入/几何缓存文件；C的`donor_rgb_sha256`明确列实际替换使用的2295个RGB，目标RGB可能被原loader读取后丢弃，不能按读取次数推断内容消费。D禁止实测cache读取，E禁止任何UAV输入读取。
+OpenCV imread另行包装核验；`identity_metadata_sha256`列合同检查读取的manifest/BUILD_COMPLETE元数据，和实际NPZ/RGB消费分开，E允许这些身份检查。
+`A_minus_B/C/D/E.MaskAP_delta`为0–1合并AP差，名义95%同图区间500次；不是训练配对消融或种子稳定性。`mean_appended_candidates`为459图UAV追加候选数均值，不含原卫星推理本身的候选；E应为0。
+
 ## 2026-10-26：四臂固定best的训练集／测试集补充评价
 
 `ue_joint_snapshot_eval_20261026.py`只在独立运行目录写评价遥测，不改训练字段。
