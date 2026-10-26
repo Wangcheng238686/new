@@ -166,3 +166,7 @@ Q/G门的initial_features_max_error、initial_head_max_error为相同初始化FP
 新progress仅rank0每25次全局成功更新落盘：world_size=4、effective_batch=8；last_global_microbatch_mean是本次4rank各2图的原loss总和/8，区别于旧last_loss末图；preclip_norm为同步和累积后全模型clip前L2，各rank理论相同，门已核对真实副本权重一致。AMP_retries_epoch是全局失败尝试次数，每rank共同重试一次只计一次。epoch.mean_microbatch_loss分母全局2136图，rank_sample_order各534图，按每rank连续2图重组为sample_order，并逐值核对原合同。rank0_pid不能代表只有单卡训练；rank_launches必须有4个真实rank PID/local_rank和起始tick。
 
 四卡门rank_peaks按各rank单独的allocator累计峰值，不能把4rank峰值当一张卡或跨卡均值；forced_decoder_instances=250为每rank实际解码数量。replicas_identical核对第3次成功更新的全模型SHA；门另在恢复后完成第4次更新。restored_all_five_rng包括各rank Python/NumPy/Torch CPU/当前CUDA/DataLoader generator，4rank合起来覆盖4张卡，不调用每rank get_rng_state_all。每epoch验证459图按rank分片/Gloo收集/恢复顺序后统一评价，单rank子集AP不是正式数值。scheduler的per_GPU_reservation_MiB为实际最大门峰值+1024，另留每卡2048；组准入同时检查四卡，并扣除启动中的未兑现预留，无固定组数上限。
+
+### 2026-10-26 FROC 权威修正口径
+
+`analysis_corrected_froc/{split}/*.json` 的 `small_recall_at_FP_per_image` 取完整同分组阈值端点，允许空预测；预算为全部尺寸误检数/整集图数，召回分母为真实掩码面积<1024的GT实例数，匹配仍为每图score稳定排序、IoU≥.5贪心一对一，bbox/mask分别计算。无small GT时为null。它仅替代冻结分析的FROC字段，不改变AP、总TP/FN/FP或训练。`images/detections/small_gt`公开整集分母；`records_sha256/identity_sha256/checkpoint_sha256/source_sha256`绑定来源。watcher每30秒检查24份既定完整评价，不新增逐步训练遥测，不参与loss、门控、选模。

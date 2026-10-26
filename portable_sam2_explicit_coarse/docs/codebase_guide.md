@@ -217,3 +217,7 @@ EXP-0017生产实现与数据保持不变，后续UAV仍待新单流固化。
 ### 2026-10-26 用户修订：本轮每个实验四卡DDP
 
 单卡新Q/G矩阵已显式停止并留档；由`ue_candidate_detail_ddp_20261026.py`接管新实验，四卡batch1×accum2=global8，rank CPU Gloo汇总预测后算整集AP，不平均rank AP；DDP基线也重跑，避免与单卡随机流/分布式归一化混淆。新增`ue_candidate_detail_ddp_owner_20261026.py`按四卡共同余量共租组/排队，`ue_candidate_detail_ddp_analysis_20261026.py`仅比较同四卡合同，`ue_candidate_detail_repro_20261026.py`核定运行时import/Git blob/环境/输入身份，配置为`ue_candidate_detail_ddp_protocol.json`。原100轮在训源保持不变。文件、10条矩阵、随机状态恢复及复现说明见[四卡实施](dual_stream/UE_CANDIDATE_DETAIL_DDP_20261026.md)。旧单卡启动记录为历史，不表示当前执行方式。
+
+### 2026-10-26 独立审查与 FROC 同分组修正
+
+独立审查建议继续四卡10臂；确认冻结分析器的逐检测前缀 FROC 可拆开同分预测。新增独立 `scripts/analysis/ue_candidate_detail_froc_ties_20261026.py`，只在完整同分组端点计算 score 阈值可实现的小目标召回；保留原匹配和所有训练/AP代码。`--watch-root ROOT --owner-pid PID`监听固定24份完整评价，在 `analysis_corrected_froc/{val,test}`输出权威 FROC，绑定 records/complete/checkpoint/source SHA；不覆盖原分析。合成同分反例、100次无同分等价和真实459图顺序反转门已通过。详见四卡实施文档的审查补充。

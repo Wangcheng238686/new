@@ -56,3 +56,17 @@ python -u scripts/probes/ue_candidate_detail_ddp_owner_20261026.py --root /data/
 首条示例需分别替换variant为query/detail/both/baseline/satellite完成五门。显式续训同样用torchrun4，`train --variant ... --content ... --resume .../last.pth --root ...`；控制面失败需先审查原state/退出码，不能重复启动owner或盲目重跑覆盖。
 
 工程门/首批更新不证明输入内容净收益。科学目标仍待完整10条固定实验、全部test/内容对照/困难分组及后续全预算/成本复核。
+
+## 2026-10-26 独立审查补充
+
+审查报告与门记录归档在运行根 `review/independent_review.md`、`review/froc_correction_gate.json`。未发现必须停训的确认DDP错误；93份源与提交逐字节一致，两组各4个真实rank和五类工程门已独立核定。
+
+确认离线指标问题：原冻结分析的FROC逐检测前缀允许拆开同分组。新增独立 `scripts/analysis/ue_candidate_detail_froc_ties_20261026.py`，按完整同分组端点计算合法score阈值，并允许空预测。它沿用原贪心匹配，仅替代FROC，不改AP、计数、训练数值源或原产物。独立watcher命令：
+
+```bash
+python -u scripts/analysis/ue_candidate_detail_froc_ties_20261026.py --watch-root /data/wangcheng/checkpoint/ue_candidate_detail_ddp_20261026 --owner-pid 904665
+```
+
+权威修正产物在 `analysis_corrected_froc/{val,test}`，覆盖10个匹配评价及QG正确训练权重的constant/donor干预，共24项；绑定预测、身份、checkpoint和修正源SHA。同分反例、100组无tie等价及真实旧val459图的图序反转一致性已核对。修正器作为后续独立提交，不改训练提交c9b6d60。
+
+结论限制：G是保留旧CNN的增量旁路，不能据净AP声称旧冗余已解除；Q仍限8候选/32维，常量RGB可含位置特征，必须靠匹配内容差及差中差判断真实内容价值。中心格碰撞、3×3峰值抑制、NMS及新增候选未二次分类保持原样。10epoch单seed仅筛查机制，正式化仍需全预算、重复性、成本及逐GT净纠错验收。恢复门验证状态恢复和后续更新，但尚未验证真实epoch连续路径与恢复路径逐值等价；首次实际续训前需完成该专项，不打断健康任务。
