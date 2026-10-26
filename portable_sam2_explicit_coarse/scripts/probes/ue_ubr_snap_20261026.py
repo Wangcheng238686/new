@@ -51,19 +51,28 @@ CACHE = Path('/data2/wangcheng/remote-lthpc/cache/ue_v1_native_geometry')
 CONSTANTS = Path('/data2/wangcheng/remote-lthpc/checkpoint/'
                  'ue_geometry_mechanism_20261022/common_constants.json')
 OUT = Path('/data2/wangcheng/remote-lthpc/checkpoint/ue_ubr_probe_20261026/snap')
+TAG = 'SNAP-20261026'
 RATIO, DIL = 0.01, 7
 SEARCH_PX, STEPS = 5, 21
 SEED = 20261021
 
 
-def height_field(image_id: int, mode: str) -> np.ndarray:
-    """Real / constant height channel + support for one scene."""
+def height_field(image_id: int, mode: str):
+    """Real / constant height channel + support for one scene.
+
+    Constant mode fills the train-only mean height EVERYWHERE (not just
+    under support): the zero-training snap consumes gradients, and any
+    support-masked constant would develop spurious gradients at hole edges
+    after smoothing (v1 bug — constant arm moved). A everywhere-constant
+    field has provably zero gradient, hence never snaps and is bit-identical
+    to nosnap. The support-matched fill discipline still governs the
+    LEARNED UBR port (ubr.build_constant_geometry), not this probe.
+    """
     with np.load(CACHE / f'{image_id:06d}.npz') as z:
         h = z['fields'][0].astype(np.float32)
         support = z['support'] > 0
     if mode == 'constant':
-        mean_h = float(json.loads(CONSTANTS.read_text())['mean_fields'][0])
-        h = np.where(support, mean_h, 0.0).astype(np.float32)
+        h = np.full_like(h, float(json.loads(CONSTANTS.read_text())['mean_fields'][0]))
     return h, support
 
 
@@ -208,7 +217,7 @@ def main():
 
     imgs = [{'id': e_['id'], 'width': 512, 'height': 512} for e_ in ann['images']]
     cats = [{'id': 1, 'name': 'building'}]
-    out = {'tag': 'SNAP-20261026', 'ckpt': str(CKPT), 'split': 'val', 'ratio': RATIO}
+    out = {'tag': TAG, 'ckpt': str(CKPT), 'split': 'val', 'ratio': RATIO}
 
     def global_ap(cond):
         gt_bnd_all = {}
