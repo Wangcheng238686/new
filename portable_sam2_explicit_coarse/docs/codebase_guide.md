@@ -297,3 +297,7 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 ### 2026-10-27 Native三组训练接线与并行调度
 
 新增native_run、native_owner、native_resource_gate和native_protocol；明确复用旧train/save/restore/五类RNG与原inference_outputs评价，旧源不改。A无头/B尾证据全零/C正确，每组四卡10轮2670/global8，E1/E10完整val、全部训练完固定E10全test。每臂资源cap仅外合同，源码commit与全repo import闭包绑定；详情见[三组说明](dual_stream/UE_UBR_NATIVE_ROI_SHORT_STUDY_20261027.md)。
+
+### 2026-10-27 Native三组已并行发射
+
+数值提交864b441、owner1518567；`ue_g_ubr_native_short_20261027`三组各四rank并行。A/B/C资源门与C四卡恢复门通过；owner绑定101源/runner98源、同数值合同与初始化，资源每臂5988/8596/8890MiB预留，512MiB/card共同余量。发射审计见root_launch_audit，尚无AP结论；详情见Native三组说明。

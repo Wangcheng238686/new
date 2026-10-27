@@ -17,3 +17,11 @@
 发射前真实四卡resume gate核模型、optimizer非空synthetic状态、scaler及每rank Python/NumPy/Torch/CUDA/DataLoader generator五种流；该门仅恢复机制，不冒充真实next-update轨迹相等。源码先提交后发射，owner给子进程`UE_UBR_NATIVE_SOURCE_COMMIT`锁定数值提交，后续仅文档提交不改变此身份。
 
 本实验是固定10轮机制比较，不代表全量收敛；A/B/C比较新增容量和联合尾部RGB-D证据贡献，不是完整RGB必要性证明。测试集已暴露，仅描述性开发评价，不据结果改预算/选权。
+
+## 实际发射
+
+数值/运行器提交`864b441`；root `/data/wangcheng/checkpoint/ue_g_ubr_native_short_20261027`，owner PID1518567。A/B/C launcher分别1518737/1518738/1518739，已核12个rank存活并进入真实训练。`root_launch_audit.json`绑定三臂合同一致、101份owner来源零漂移；共同runner实际98源。
+
+发射前四卡C恢复门通过全部rank五类RNG/model/scaler/optimizer；另A/B/C各四卡2次正式global8资源门通过。A/B/C allocator峰5476/8084/8378MiB，实际PID驻留最高5932/8542/8836MiB。按每组峰值+512上下文预留5988/8596/8890MiB，合计23474；每卡另留512MiB准入余量。torch cap5600/8200/8500MiB，只管allocator不含CUDA上下文。共租余量紧，owner按全部四卡核算，不预先保证不同场景永不OOM。
+
+完整val/test按原固定协议继续，当前无AP结论。源在owner manifest固定，后续文档提交不改变数值身份；旧short/fast任务与产物未恢复/覆盖。
