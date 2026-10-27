@@ -8,7 +8,12 @@ Integrity contract (docs/UBR-RESEAL-20261027_preregistration.md, fail-closed):
        appear in the loss dict)
     2. roi_head.mask_head.ubr_integration_cfg.*             (UBR wiring
        keys, consumed by rsprompter/uav/ubr_train_integration.py)
-  and NOTHING else. Any additional drift is a harness FAIL. The training
+  3. Dead-config deletions (PI instruction 2026-10-27, journal hygiene):
+     point_warmup_cfg (idle enabled=False block), box_prompt_cfg (guard of
+     a removed jitter arm), dense_prompt_cfg.gaussian_{omega,gamma}
+     (accepted-but-unused, see dense_prompt_utils docstring).
+  and NOTHING else. Any additional drift is a harness FAIL. Zero model
+  impact is proven by a seeded dual-build state_dict bit-compare. The training
   protocol (seed 44, DDP4 b1xa2, lr 5e-4, wd 0.05, warmup 100, cosine,
   100 epochs, hflip 0.5, val 459 every epoch, last-epoch selection, test
   never read) is identical to EXP-0025 and is asserted by the runner
@@ -34,6 +39,16 @@ model = dict(
         mask_head=dict(
             # 1) UDPR tail NOT instantiated (delete, not disable).
             decoder_tail_refiner_cfg=dict(_delete_=True),
+            # 3) Config hygiene (PI instruction 2026-10-27, zero model
+            #    impact, proven by bit-exact dual-build state_dict compare):
+            #    dead keys left by past arm deletions.
+            point_warmup_cfg=dict(_delete_=True),   # idle block, enabled=False
+            box_prompt_cfg=dict(_delete_=True),     # removed jitter arm guard
+            dense_prompt_cfg=dict(                  # drop unused omega/gamma
+                _delete_=True,
+                transform='raw_logits', detach_input=True, temperature=1.0,
+                outside_fill_logit=0.0, clamp_range=(-8.0, 8.0),
+                foreground_threshold=0.5),
             # 2) UBR wiring keys (read by the runner; inert as build kwargs).
             ubr_integration_cfg=dict(
                 enabled=True,

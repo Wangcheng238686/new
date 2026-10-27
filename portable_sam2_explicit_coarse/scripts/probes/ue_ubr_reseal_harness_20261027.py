@@ -67,9 +67,12 @@ OLD_LAST_NAME = "last_model_epoch100.pth"
 
 # expected exact config diff (flattened leaf paths)
 EXPECTED_ADDED = sorted(
-    f"/roi_head/mask_head/ubr_integration_cfg/{k}" for k in (
-        "enabled", "band_k", "loss_weight", "window_margin", "focal_gamma",
-        "uav_port", "neighbors_train", "neighbors_predict"))
+    [f"/roi_head/mask_head/ubr_integration_cfg/{k}" for k in (
+        "enabled", "band_k", "loss_weight", "window_margin",
+        "focal_gamma", "uav_port", "neighbors_train",
+        "neighbors_predict")]
+    + ["/roi_head/mask_head/point_warmup_cfg/_delete_",
+       "/roi_head/mask_head/box_prompt_cfg/_delete_"])
 EXPECTED_REMOVED = sorted(
     f"/roi_head/mask_head/decoder_tail_refiner_cfg/{k}" for k in (
         "enabled", "num_points", "hidden_dim", "point_loss_weight",
