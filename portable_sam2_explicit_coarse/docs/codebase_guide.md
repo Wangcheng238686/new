@@ -251,3 +251,7 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 ### 2026-10-27 完整G＋UBR结构与独立审查
 
 新增[完整结构展示](dual_stream/UE_G_UBR_FULL_ARCHITECTURE_REVIEW_20261027.md)及[独立审查](dual_stream/reviews/UE_G_UBR_INDEPENDENT_REVIEW_20261027.md)：明确已有G/旧RGB均值/双向交互/128²实例头与拟建40ch UBR；图区分候选7维几何与native单表面5ch。审查有条件推进，长训练前补邻居训练来源、补充框训练覆盖、初始化梯度、空满mask和真实资源门。仅设计记录，无活跃模型/配置/日志字段改变。
+
+### 2026-10-27 G＋UBR首批组件实施
+
+按用户授权由子代理实施、主代理审核，新增[分批实施计划](dual_stream/UE_G_UBR_IMPLEMENTATION_PLAN_20261027.md)和`configs/ablations/ue_g_ubr_development_contract_20261027.json`。P0新增`rsprompter/uav/unified_boundary_refiner.py`（40ch、无界残差、SDT与按图平均raw带内loss）、`rsprompter/uav/ubr_prediction_context.py`（metadata先NMS再只解码保留预测、ID/lineage/self排除）、两份对应tests及`scripts/probes/ue_ubr_component_gate_20261027.py`（四rank synthetic组件更新/250实例推理）。组合CPU16项通过；四卡门记录单独落盘，不能视为整个SAM/G接线/资源或AP成功。P1前必须核roi_local概率paste，P2使用原256/.25来源盲采样，不加来源quota；P3再改容量/读取。没有修改旧数值源或发射全量训练。

@@ -180,3 +180,9 @@ flowchart TD
 首版损失外权重：原四项RPN/RoI各1，最终mask1；coarse为0.1×(BCE+Dice)；UBR为0.1×(focal gamma2+Dice)，内部各1；实例为1×(中心focal+offset+0.1×log-wh)。原loss_decoder_tail删除，无其他新辅助目标。0.1的UBR外权重为新首版起点，不宣称最优；不做动态权重。返回加权loss后runner只求和，避免重复乘系数。
 
 UBR端口比较固定同一套双流上游：D0端口零、Dc支持不变但四字段均值、Dr实测几何；另有纯卫星UBR零端口单流S。Dr-S比较总体系统，Dr-Dc比较尾部内容，二者不混用。详见[修订收敛提案](UE_UBR_CONVERGED_PROPOSAL_20261027.md)的公式、分母与判据。本节取代此前收敛提案中“首轮关闭G/实例头”的默认建议；未修改任何模型源码或启动训练。
+
+## 10. 首批实施合同修订：恒等残差参数化
+
+用户认可缺口修复与简化意见，授权分批实施。当前输出参数化采用空间UBR `z_final=z+B*r`（r无界、末层零初始化、无额外alpha），替代第6节与早期收敛文档中的b+r绝对重分类。它保证组件目标网格输入logit恒等、保留带内原z直接梯度；仍需核旧roi_local probability-paste与最终二值等价，不能将组件恒等称为旧全模型恒等。UBR仍是整带空间卷积，不恢复UDPR。P0组件不等于完整UBR替换已实现。
+
+P1先概率paste/坐标适配，再opt-in mask/ROI接线；P2共享候选确认，沿原256/.25来源盲采样，不新增配额超参；P3候选容量与RGB读取。详见[实施计划](UE_G_UBR_IMPLEMENTATION_PLAN_20261027.md)。全量100epoch本次不发射。

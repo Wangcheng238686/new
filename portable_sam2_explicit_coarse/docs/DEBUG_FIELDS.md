@@ -194,3 +194,9 @@ Q/G门的initial_features_max_error、initial_head_max_error为相同初始化FP
 ### 2026-10-26 调度恢复状态
 
 `owner_recovery_launch.json`记录新owner PID、源SHA及已核定完成job；`recovery_20261026/audit.json`记录原owner缺失、无活跃数值子进程、93源身份、完成receipt/CP核定及控制代码提交。`recovered_from_verified_receipt`仅表示重建控制面完成状态，不代表额外训练。旧progress每25更新，E10最后记录2650而完成receipt为2670是正常采样间隔；不能据progress判未完成。state可能为退出前快照，需同时核实PID与完成产物。无新增训练字段。
+
+### 2026-10-27 UBR组件工程门（非训练遥测）
+
+`ue_ubr_component_gate_20261027/*rank*_result.json`为4rank各自独立synthetic组件门，不是正式训练epoch。updates各row是一rank本地1图（rank3首步0实例但图分母仍1）的mask平均＋0.1×raw_ubr_loss；raw_ubr_loss为带内像素均值→有效实例均值→本图loss，weight在gate仅乘一次。grad_norm_before_clip是同步DDP梯度AMP unscale后的整体L2，clip_limit=.5；decoder_feature_leaf_grad_norm为synthetic输入叶子范数除AMP scale后的值，不是实际decoder参数梯度。replica_sha为每次更新后四rank核同的参数SHA。zero_init_exact_identity只对组件输入目标网格的连续logit，不能代替旧RoI probability-paste等价。
+
+training_peak_allocated_mib/reserved为每rank进程allocator训练阶段峰值，非整卡/整模型总量。inference.num_instances=250是每rank顺序执行250个512² UBR实例、一次驻留1个输入；秒数包括CPU scipy SDT与设备传输，optimizer状态仍驻留。不是250实例同时反传峰值，也不包括SAT/UAV/SAM/候选生成。finite/outside_logits_and_binary_exact只检验该组件边界合同。source_sha绑定module/gate；complete仅4rank全部成功后写，异常保留failed_rank。字段不进入loss决策/门控/选权，不扩充逐步训练日志。
