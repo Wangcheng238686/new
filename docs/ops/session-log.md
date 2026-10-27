@@ -49,3 +49,25 @@ Dual arms ~1.5x satellite per-epoch cost (2790 vs 1846 s). Tests run after per-a
 3. candidate_detail correct-vs-constant at ep10 (both/both: .8067 vs .8063 segm) shows near-zero delta — same watch item as #1.
 
 **Artifacts**: remote dirs read only; no files created on remote. Local: this log entry only.
+
+## OPS-002 | 2026-10-28 02:10 CST | Workspace map pass (docs-only, chief-authorized)
+
+**Agent role**: docs organization (this session, authorized by chief). Scope: index documents only — zero file moves/renames/deletes, zero git commits (left for chief).
+
+### 1. Deliverables written
+- `docs/WORKSPACE-MAP.md` — master map: active assets (3 arms + code + contract lineage + authoritative docs), archived-verdict ladder (probe phase / interface era / old fleets / EXP-0001..0027), data-disk artifact map (`/data2/wangcheng/remote-lthpc/checkpoint/`, caches, `citysample_v1`, `surfbev_b0`), and launch runbook with wrapper commands.
+- `README.md` (worktree root) — rewritten as short entry point; the previous WHU-SurfaceBEV-migration README content is preserved as the "历史" section (nothing discarded).
+- This log entry.
+
+### 2. Running-jobs evidence check (not guessed)
+- EXP-0028-R2: owner PID 2972162 alive, cwd = worktree `portable_sam2_explicit_coarse/`, ep 21/100 (log 01:53), CUDA_VISIBLE_DEVICES=0,1,2,3, SAM2_CKPT pinned. Imports: `scripts/probes/ue_ubr_reseal_20261027.py` -> `rsprompter/uav/{ubr,ubr_train_integration}.py`, host `train/train_rsprompter_fusion.py`, config `ue_ubr_single_512.py`.
+- EXP-0029 arm-2: owner PID 3006086 alive, same cwd/env, ep 7/100, runner `ue_ubr_reseal_dual_20261027.py` -> `ubr_dual_integration.py` (extends, never forks).
+- EXP-0030: not launched (PI freeze). NOTE: tag `exp/EXP-0030` does not exist at HEAD (ae26918) — the wrapper will fail-closed until tagged; flagged in map §四.
+
+### 3. Flagged ambiguities (registered in map, not resolved here)
+- `WARM-RR-V2_preregistration.md` has no matching conclusion/EXP-ID (arm launched or not, unknown).
+- Remote verdict doc `UE_UAV_EFFECTIVE_DIRECTION_VERDICT_20261024.md` referenced by 3 docs but not present in this worktree (original lives on the remote line).
+- `run_ubr_reseal_ddp4.sh` asserts audit `UBR-RESEAL-20261027_audit.md` while an `UBR-RESEAL-R2_audit.md` also exists (matches actual running process argv; registered as-is).
+- EXP-0025 last-anchor ep98-100 supplementation note vs prereg's `last_model_epoch100.pth` — chief decision at level-3 closeout.
+
+**Artifacts**: 3 files written above; no other path touched. Worktree was clean before this pass (git status 0 lines); these 3 files are the only changes, uncommitted per order.
