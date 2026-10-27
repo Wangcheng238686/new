@@ -1,0 +1,33 @@
+{
+  "imported_on": "2026-10-27",
+  "source_worktree": "/home/wangcheng/project/new/.worktrees/dual-stream-dev",
+  "source_branch": "codex/dual-stream-dev",
+  "source_commit": "0d21759e13873186234f501a090fa29e13fe542b",
+  "pass_record_commit": "eb4f49b",
+  "source_access": "Read pre-existing local Git objects after read-only ls-remote; no fetch or checkout; remote uncommitted files not inspected",
+  "files": [
+    {
+      "source_path": "docs/UBR-UNIFIED-ARCHITECTURE-DESIGN-20261026.md",
+      "local_file": "UBR-UNIFIED-ARCHITECTURE-DESIGN-20261026.md",
+      "sha256": "8044376cf28eddc7a0fc09903827767d5b4db8319052ef5c56a4193ac8da58b7",
+      "git_blob": "36c0dbfb6a9a9222af99d58806a9a1d91e701091"
+    },
+    {
+      "source_path": "docs/UBR-PROBE-PHASE-20261026_preregistration.md",
+      "local_file": "UBR-PROBE-PHASE-20261026_preregistration.md",
+      "sha256": "062307fe1dd98838f7d1754bdb787289cb12fb34eba8f2b332868a5366eede57",
+      "git_blob": "82a8031cea3b456e2cec1f17643c54305813b806"
+    },
+    {
+      "source_path": "docs/UBR-PROBE-PHASE-20261026_progress.md",
+      "local_file": "UBR-PROBE-PHASE-20261026_progress.md",
+      "sha256": "9ff5f8ef3397f26e4a6533977faca6a76155258d56ed871516100224a1f9709a",
+      "git_blob": "142d4d679147b23b83ad3335938456b5963c77ca"
+    }
+  ],
+  "implementation_reference": {
+    "path": "portable_sam2_explicit_coarse/rsprompter/uav/ubr.py",
+    "git_blob": "2217659c5fe277ffc3cba9882854eccaf44d824d"
+  },
+  "scope": "Documentation archive only. Archived instructions are historical source material, not authorization to execute experiments. Local adoption decision is in UE_UBR_UNIFIED_DESIGN_20261027.md."
+}
