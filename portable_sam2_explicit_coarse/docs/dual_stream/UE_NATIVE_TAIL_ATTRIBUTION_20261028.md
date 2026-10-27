@@ -15,3 +15,11 @@
 区间只刻画这批图像重采样，不证明跨训练种子稳定性；测试集已暴露，不当独立新基准。上游G存在于所有三臂，不能把A/B称为纯卫星。结论须分为跨模型净差异、固定权重内容依赖、固定框mask质量归因。
 
 `ue_ubr_native_attribution_queue_20261028.py`将后续四组固定记录配对与两组像素纠错串入最多两CPU进程队列，在既有架构bootstrap完成后执行，不占训练预算。干预供体匹配始终事先固定，不能依据结果换供体/阈值。
+
+## 首批审计状态（中间结果，不是完整归因结论）
+
+C干预459图的correct raw正式框/score/label/RLE全部精确复现，固定sourcechunk已落segments；A/B已各四卡启动同C框解码。CPU配对首先完成original_path MaskAP500重采样：C-A .03594855，名义95% [.03154095,.03674571]；C-B .03767172，[.03453350,.04000989]；B-A −.00172317，[−.00569043,−.00039462]。这是原检测路径，不是完整combined，也不是纯卫星对照。
+
+`scripts/analysis/ue_ubr_native_fixed_box_errors_20261028.py`用同一C bbox/score贪心IoU≥.5一对一GT匹配（不读mask定匹配）。四区域：boundary=dilate14−erode14、interior=erode14、background=~dilate14且不在全图GT并集、other_instance=~dilate14且在GT并集，互斥完备。分母为匹配实例像素（跨实例可重复），未匹配GT/预测单列；给纠正/新增错误/净纠错和均值IoU，不代替AP。
+
+后续正确/zero/donor Mask/BoundaryAP与固定框结果未完成前，不下尾部内容归因结论。后台队列独立落盘，不需要手工再发射；若任一子任务失败保留产物并停新准入，需显式审查。
