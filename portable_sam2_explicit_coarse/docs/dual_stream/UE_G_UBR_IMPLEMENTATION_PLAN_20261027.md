@@ -58,3 +58,11 @@ P0只工程；P1先过坐标/初始化/空rank/真实反传资源/续训RNG门�
 ## 8. 审核与责任
 
 实现代理分别负责core、context；第三代理独立核工程接线。主代理核代码、重跑组合CPU门、核四卡进程与实际产物、按任务source SHA/Git提交归档。只暂存本轮文件及本轮指南/字段新增段落，不吞入旧dirty修改。新字段仅工程产物，不扩逐步训练遥测、不参与loss/门控/选权。
+
+## 9. P0验收记录（主代理复核）
+
+源码提交`8104ed2`。主代理重跑组合CPU测试16项通过。四卡torchrun组件门全部成功：各rank4次AMP+AdamW更新，rank3首步空实例仍完成DDP；四次更新参数SHA跨rank一致，原生目标网格零初始化恒等与带外连续/二值不变，第二步synthetic decoder-feature叶子有梯度。模型163,537参数。
+
+每rank实际顺序250个512²实例：耗时13.02–13.49秒（含CPU scipy SDT与传输），训练peak reserved均678MiB，推理394–396MiB。这是组件进程allocator峰值，一次1实例；不是完整SAM/G、不是250实例同时反传，不据此确定正式每卡batch。没有AP评价。
+
+原始产物：`/data/wangcheng/checkpoint/ue_ubr_component_gate_20261027/complete.json`；审核与源码Git绑定`reviewed_acceptance.json`；六份源/配置/tests另有独立快照。P0组件可进入P1适配开发，尚不能启动完整100epoch。P1开工顺序先native/RoI→sat坐标与概率paste parity，再真实模型接线/梯度/资源；不能跳过当前已发现的roi_local语义缺口。

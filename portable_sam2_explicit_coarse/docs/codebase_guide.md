@@ -255,3 +255,7 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 ### 2026-10-27 G＋UBR首批组件实施
 
 按用户授权由子代理实施、主代理审核，新增[分批实施计划](dual_stream/UE_G_UBR_IMPLEMENTATION_PLAN_20261027.md)和`configs/ablations/ue_g_ubr_development_contract_20261027.json`。P0新增`rsprompter/uav/unified_boundary_refiner.py`（40ch、无界残差、SDT与按图平均raw带内loss）、`rsprompter/uav/ubr_prediction_context.py`（metadata先NMS再只解码保留预测、ID/lineage/self排除）、两份对应tests及`scripts/probes/ue_ubr_component_gate_20261027.py`（四rank synthetic组件更新/250实例推理）。组合CPU16项通过；四卡门记录单独落盘，不能视为整个SAM/G接线/资源或AP成功。P1前必须核roi_local概率paste，P2使用原256/.25来源盲采样，不加来源quota；P3再改容量/读取。没有修改旧数值源或发射全量训练。
+
+### 2026-10-27 P0四卡组件验收
+
+`8104ed2`独立UBR与context组件CPU16项通过，四rank各4次AMP更新/参数SHA一致/空实例rank通过；每rank顺序250个512² UBR推理通过。原始`ue_ubr_component_gate_20261027/complete.json`与`reviewed_acceptance.json`绑定源码与提交。训练allocator reserved678MiB、推理394–396MiB为组件局部结果，不是完整双流资源/AP。进入P1前先解决roi_local probability-paste坐标门，尚未完整模型接线或长训练。
