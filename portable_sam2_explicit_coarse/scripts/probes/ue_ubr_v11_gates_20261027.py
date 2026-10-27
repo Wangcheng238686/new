@@ -508,14 +508,14 @@ def _sha_param(name: str, t: torch.Tensor) -> str:
     return h.hexdigest()
 
 
-def _git_blob_sha(rel: str) -> str:
-    """Blob sha of a code-root-relative file at HEAD (repo may be higher)."""
+def _git_blob_sha(rel: str, ref: str = "HEAD") -> str:
+    """Blob sha of a code-root-relative file at `ref` (repo may be higher)."""
     repo = subprocess.run(["git", "rev-parse", "--show-toplevel"],
                           cwd=str(ROOT), capture_output=True, text=True)
     assert repo.returncode == 0, "not a git repo"
     repo_rel = (Path(ROOT) / rel).resolve().relative_to(
         Path(repo.stdout.strip()).resolve()).as_posix()
-    out = subprocess.run(["git", "show", f"HEAD:{repo_rel}"], cwd=str(ROOT),
+    out = subprocess.run(["git", "show", f"{ref}:{repo_rel}"], cwd=str(ROOT),
                          capture_output=True)
     assert out.returncode == 0, f"git show failed for {repo_rel}"
     return hashlib.sha256(out.stdout).hexdigest()
@@ -562,14 +562,15 @@ def cmd_g4(_args) -> dict:
     assert lora_a == lora_b, "backbone LoRA structure drifted"
     n_ubr_params = sum(p.numel() for p in patched.ubr_refiner.parameters())
 
-    # source_hashes bump: v1.1 working tree vs git HEAD (EXP-0028 code)
+    # source_hashes bump: v1.1 HEAD vs the dead-arm commit 36b5215
+    # (worktree-vs-HEAD can never differ on a clean tagged tree — audit fix)
     runner = _runner()
     hashes = {}
     for rel in runner.CONTRACT_SOURCE_FILES:
         new = runner.sha256_of(ROOT / rel)
-        old = _git_blob_sha(rel)
-        assert new != old, f"source hash did not bump: {rel}"
-        hashes[rel] = dict(v11=new[:16], exp0028_head=old[:16], bumped=True)
+        old = _git_blob_sha(rel, ref="36b5215")
+        assert new != old, f"source hash did not bump vs dead arm: {rel}"
+        hashes[rel] = dict(v11=new[:16], dead_arm=old[:16], bumped=True)
 
     contract = runner._build_contract(
         Path(DS_ROOT), Path(GATES_DIR / "g4_contract_probe"), None,

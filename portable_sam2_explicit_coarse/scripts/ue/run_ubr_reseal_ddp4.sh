@@ -38,6 +38,6 @@ grep -q "VERDICT: PASS" "$AUDIT" || { echo "FAIL: audit not PASS"; exit 1; }
   echo "commit $GIT_SHA tag $GIT_TAG"; sha256sum configs/ablations/ue_ubr_single_512.py; } \
   | tee "${RESEAL_ROOT}.launch_contract.txt"
 
-exec $PY -u scripts/probes/ue_ubr_reseal_r2_20261027.py \
+exec $PY -u scripts/probes/ue_ubr_reseal_20261027.py \
   --out-root "$RESEAL_ROOT" \
   --audit-verdict "$AUDIT"
