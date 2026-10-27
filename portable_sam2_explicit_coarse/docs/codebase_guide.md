@@ -313,3 +313,7 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 ### 2026-10-28 Native全预算wrapper与臂隔离
 
 新增experiments/ue_native_full100.sh、ue_native_full100_control.py、README规范；独立full_run与full_protocol，固定100轮26700、fresh共同初始化、同序、每轮完整val-best、全部完成后test。CPUprepare创建不可改Git运行工作树与orders；queue等待现有归因后GPU门/三臂四卡，arm目录/锁/恢复合同隔离。所有后续全预算实验必须有一键wrapper。详情[100轮合同](dual_stream/UE_NATIVE_FULL100_WRAPPER_20261028.md)。
+
+### 2026-10-28 Native全100轮已登记持久队列
+
+数值/运行器e8fe406，owner1576874，root ue_g_ubr_native_full100_20261028，105来源与100轮orders固定；独立runtime_source工作树。当前waiting_for_analysis，不抢先训练。重复queue幂等、gate身份/失败依赖负向CPU核验已过；fullGPU恢复门待前置完成后执行，审计root_queue_acceptance.json。

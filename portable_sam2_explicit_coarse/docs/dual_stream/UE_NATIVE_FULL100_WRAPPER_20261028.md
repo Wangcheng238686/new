@@ -33,3 +33,9 @@ queue持久owner等待当前analysis_native_20261028三份完成标记（所有�
 ## 工程范围
 
 100轮入口独立新增，原短研究/归因源码不改。CPU顺序/拒覆盖/协议/CLI、Git重定位及来源核验与真实排队状态需验收。GPU恢复门在前置完成后执行，排队成功不冒充100轮训练已启动/已完成或收益已验证。
+
+## 已实际排队
+
+运行源码提交`e8fe406`，不可改工作树`ue_g_ubr_native_full100_20261028/runtime_source`；105份运行来源与100轮orders准备成功。owner PID1576874，状态`waiting_for_analysis`，仅等待`analysis_native_20261028/attribution_queue_state.json`完成；恢复门/三训练/三测试共7项pending，无100轮训练进程抢跑。重复wrapper queue已实际验证幂等。
+
+独立审查发现并修复SAM2 editable闭包、gate身份绑定不足、manual入口绕过准入问题；CPU负向核验拒旧git/错arm/错cap/损坏CP与失败依赖。独立运行树CPU导入和源码一致性审计记录root_queue_acceptance.json。GPU full恢复门仍排在前置之后，不将当前CPU排队验收写成GPU100轮验收。
