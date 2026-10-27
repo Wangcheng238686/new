@@ -72,6 +72,10 @@ PREREG = dict(
     uav_port="zero",
     neighbors_train="gt",
     neighbors_predict="pred",
+    # Augmentation protocol keys (PI instruction 2026-10-27, 3090 line):
+    # declared here, consumed by the runner's dataset patch; values fixed.
+    aug_gaussian="0.5,0.02",
+    aug_jitter="0.15,0.15,0.10,0.02,0.5",
 )
 EXPECTED_UBR_CFG_KEYS = set(PREREG) | {"enabled"}
 IMAGE_SIZE = 512  # fixed 512-native protocol
