@@ -25,3 +25,13 @@
 
 ## 工件
 训练器 `scripts/probes/ue_ubr_reseal_20261027.py`（模块替换式复用生产 trainer，UDPR 删除 + UBR 训练内接入）；配置 `configs/ablations/ue_ubr_single_512.py`；产物根 `/data2/wangcheng/remote-lthpc/checkpoint/ue_ubr_reseal_20261027/`（lthpc 宿主时为 `/data/wangcheng/checkpoint/` 同名）。
+
+## 修订 1（2026-10-27，发射前，PI 指令）
+- **增强协议变更**：hflip 0.5 → **全关**（flip/vflip/ms/noise/erasing 全 0）。理由：(a) 与 3090/远端线（compact_joint 谱系）的训练分布保持一致；(b) 双流形态下卫星图与 UAV 几何图/候选缓存必须同步翻转，翻转类增强引入跨模态一致性风险，双流起跑前统一关闭。协议锚从 EXP-0025 改为 EXP-0024 的增强口径（其余协议项不变）。基线参考读数仍双份报告（EXP-0024 noaug 与 EXP-0025 defaug）。
+- **发射纪律**：一切发射经 wrapper（`scripts/ue/run_exp0028_ubr_reseal.sh`，契约回显 fail-closed），禁止裸命令启动。
+
+## 发射修订（2026-10-27，PI 指令）
+- 批布局 b1×a2 → **b2×a1**（DDP4，有效 batch 8 不变；先例 EXP-0026/27 同口径调整）。
+- 增强协议：hflip0.5 → **零翻转 + ColorJitter(.15,.15,.10,.02)@p.5 + Gauss(.5,.02) 仅训练**（3090 线口径，双流翻转一致性）；与 EXP-0025 的对照为跨增强参考读数。
+- 配置死键清理（point_warmup/box_prompt/gaussian_omega/gamma），双构建逐位零影响证明。
+- 发射通道唯一化：`scripts/ue/run_ubr_reseal_ddp4.sh`（contract echo + 存档）。

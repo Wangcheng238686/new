@@ -11,8 +11,9 @@ pure module substitution, so the trainer's protocol handling (DDP, seed,
 AMP, cosine schedule, per-epoch mmdet val, checkpointing) is bit-for-bit
 the code path EXP-0025 ran.
 
-Protocol (preregistered, verbatim EXP-0025): seed 44, DDP4 batch1 x
-accum2 (global 8), lr 5e-4, wd 0.05, warmup 100 optimizer steps, cosine,
+Protocol (preregistered, EXP-0025 equivalent; PI launch order
+2026-10-27): seed 44, DDP4 batch2 x accum1 (global 8, same effective
+batch as EXP-0025 b1xa2, precedent EXP-0026/27), lr 5e-4, wd 0.05, warmup 100 optimizer steps, cosine,
 100 epochs, default augmentation (hflip 0.5, everything else pinned 0),
 val 459 every epoch, last-epoch selection (SAVE_LAST_MODEL=1), test never
 read. Asserted fail-closed below, along with the dataset SHA pins of the
@@ -54,8 +55,8 @@ SAM2_CKPT_DEFAULT = "/data1/wangcheng/pretrained/sam2_hiera_base_plus.pt"
 # is a launch refusal.
 PROTOCOL = dict(
     seed=44,
-    batch_size=1,
-    grad_accum_steps=2,
+    batch_size=2,
+    grad_accum_steps=1,
     epochs=100,
     lr=5e-4,
     weight_decay=0.05,
