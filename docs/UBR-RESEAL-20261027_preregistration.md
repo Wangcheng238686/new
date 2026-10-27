@@ -35,3 +35,9 @@
 - 增强协议：hflip0.5 → **零翻转 + ColorJitter(.15,.15,.10,.02)@p.5 + Gauss(.5,.02) 仅训练**（3090 线口径，双流翻转一致性）；与 EXP-0025 的对照为跨增强参考读数。
 - 配置死键清理（point_warmup/box_prompt/gaussian_omega/gamma），双构建逐位零影响证明。
 - 发射通道唯一化：`scripts/ue/run_ubr_reseal_ddp4.sh`（contract echo + 存档）。
+
+## 级4 双流臂预注册（2026-10-27 深夜，PI 指令：与 R2 共租并行）
+- **臂②双流·真实** = R1 统一单流（32ch×6 UBR）+ 几何头（pilot 网络与直接中心框监督，loss_geometry 权重 1.0，仅训练期损失；候选不进检测器损失=FW1）+ 端口⑤真实几何（native512 缓存）；**臂③双流·常量** = 同②但端口⑤为 support=1 处 train-only 逐通道均值、洞处零（ubr.build_constant_geometry）。
+- 协议与 R2 逐字相同（seed44/DDP4 b1×a2/lr5e-4/wd.05/warmup100/cosine/100ep/3090 增强/分片 val）；推理 = 卫星前缀 r(s) 带 + 候选 0.25 带合并 ≤250 + UBR 全实例精修（接口契约逐位）。
+- 判定（收线时三对比，全部 val 459 逐图配对 500 draws seed 20261021）：内容门 ②−③ CI>0；净增益门 ②−R1 CI>0；伴随 B-AP_l/AP75/密度分层。test 密封。
+- 显存共租纪律：R2 实测 12.5–15.5GB/卡；双臂单进程 ≈16GB（几何头 MB 级、端口⑤仅 +5 输入通道）；**同卡至多 2 个训练进程**（3×16GB 逼近 47.38 上限）——臂②先共租发射，臂③以臂②或 R2 完成为触发自动接续。
