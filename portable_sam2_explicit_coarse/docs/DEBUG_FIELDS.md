@@ -242,3 +242,7 @@ attribution rank_progress.images分母为rank分片114/115图，最后gather全4
 ### 2026-10-28 共租控制覆盖审计
 
 launch_manifest.co_rent_override明确reason/released_dependencies/time/controller_source_sha256/numerical_commit_unchanged；仅调度依赖变化，不参与loss/门控/选权。control_overrides存旧manifest/state/override，release拒已有GPU任务或失败owner；恢复从已核状态继续。
+
+### 2026-10-28 Native归因中期结果状态与纠错分母
+
+paired*.partial.json 的metrics各项已经500次，但complete=false表示整份四指标尚未结束，不能当全部完成；root_verified_results_snapshot显式GPU/CPU状态并绑定SHA。固定C权重zero/donor AP点差是推理依赖干预，含分布变化，不称配对训练净增益；训练净差看C−B。净纠错helper按固定bbox一对一匹配、四互斥区域统计，分母matched-instance pixels（跨实例重复），未匹配不纳入；没有完成产物不得报告像素结果。

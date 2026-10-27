@@ -325,3 +325,7 @@ wrapper新增release，用户明确授权后仅解除分析完成等待，归档
 ### 2026-10-28 全100轮三组共租已核实更新
 
 用户授权提前共租后full恢复门通过，三组各四rank均已E1 update25，AMP重试0；owner1578097，三数值合同相同、固定105运行源零漂移。root_co_rent_launch.json为实际审计；数值仍e8fe406，控制release8032d6a，分析未停止。
+
+### 2026-10-28 Native归因结果核定与记录
+
+新增[归因结果](dual_stream/UE_NATIVE_TAIL_ATTRIBUTION_RESULTS_20261028.md)：完整test C−A MaskAP+.03435/CI正，C固定尾部zero/donor明显下降，同C框C仍较A/B高约.039/.040；bbox C较A下降必须保留。GPU全完成，CPU部分Boundary与干预/固定框bootstrap尚未全完。队列优先让固定框像素归因先算，500预算不变；机器快照与SHA绑定。100轮任务继续不改合同。

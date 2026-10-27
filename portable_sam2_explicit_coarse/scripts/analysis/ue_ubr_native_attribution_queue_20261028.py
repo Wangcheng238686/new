@@ -28,9 +28,10 @@ def main():
    job.update(status='complete' if passed else 'failed',returncode=rc);print('END',label,rc,flush=True)
   # The two already-running architecture analyses hold the CPU slots until done.
   prerequisites=all((OUT/('paired_C_minus_A_'+view+'.json')).exists() for view in ('combined','original_path'))
-  if prerequisites and not any(j['status']=='failed' for j in jobs.values()):
+  if not any(j['status']=='failed' for j in jobs.values()):
    for label,job in jobs.items():
     if len(children)>=2:break
+    if not prerequisites and not label.endswith('_errors'):continue
     if job['status']!='pending' or not all(Path(p).exists() for p in job['inputs']):continue
     assert not Path(job['output']).exists(),'Preserve completed output'
     log=OUT/(label+'.log');s=log.open('x');streams[label]=s
