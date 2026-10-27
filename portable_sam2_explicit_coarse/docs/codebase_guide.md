@@ -301,3 +301,7 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 ### 2026-10-27 Native三组已并行发射
 
 数值提交864b441、owner1518567；`ue_g_ubr_native_short_20261027`三组各四rank并行。A/B/C资源门与C四卡恢复门通过；owner绑定101源/runner98源、同数值合同与初始化，资源每臂5988/8596/8890MiB预留，512MiB/card共同余量。发射审计见root_launch_audit，尚无AP结论；详情见Native三组说明。
+
+### 2026-10-28 Native固定权重与固定框归因
+
+新增native_paired（98源/CP/顺序审计＋500配对bootstrap）、native_attribution（C尾部correct/zero/donor、正确精确复现、A/B同C框/score/sourcechunk重解码）及一次性fixed_box_queue。只分析固定E10完整459，无训练修改/新loss/选模；供体包含支持，联合错配不称RGB必要性。详见[归因合同](dual_stream/UE_NATIVE_TAIL_ATTRIBUTION_20261028.md)。

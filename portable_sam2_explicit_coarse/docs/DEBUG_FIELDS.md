@@ -230,3 +230,7 @@ main_mask_only_precision公开autocast、gradient_scale、无optimizerstep及其
 ### 2026-10-27 Native短训练与资源调度字段
 
 native runner复用旧progress每25更新rank0采样：last_global_microbatch_mean分母8，preclip_norm是DDP全参数AMP unscale后裁剪前L2；epochs mean分母2136，样本每rank534。E1/E10完整459，测试固定E10。native_resource_gate每臂4rank×2次global8更新，memory是rank进程allocator/实际nvidia驻留，非每卡全部进程；inference250为固定框资源fixture，无AP含义。owner per_arm_reservation_mib含进程上下文，allocator_caps仅torch上限，admissible_free_mib=实际free−共同margin−运行组未兑现预留；资源只用于准入，不用于loss/选权。恢复gate synthetic moment仅机制验证。
+
+### 2026-10-28 Native离线归因字段
+
+attribution rank_progress.images分母为rank分片114/115图，最后gather全459；correct/zero/donor固定C框score/sourcechunk。model_state_unchanged是预测前后权重/缓冲SHA，不是单流冻结。donor_map来自全459顺序+229，错配含RGB支持/geometry支持差异。paired_image_bootstrap95为同图500次seed20261021名义区间，不能解释训练种子不确定性；BoundaryAP2%/1%内带radius14/7px，与双侧净纠错band定义分开。
