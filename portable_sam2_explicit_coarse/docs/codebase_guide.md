@@ -309,3 +309,7 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 ### 2026-10-28 Native归因队列和首批配对区间
 
 新增独立`ue_ubr_native_attribution_queue_20261028.py`最多两CPU后续队列，以及`ue_ubr_native_fixed_box_errors_20261028.py`固定bbox匹配的四区域净纠错。C正确干预459图精确复现，A/B同C框四卡已发射；original_path MaskAP区间已出且C-A/C-B为正，combined及内容干预未完成不下最终结论。详细分母/中间数值见Native归因合同。
+
+### 2026-10-28 Native全预算wrapper与臂隔离
+
+新增experiments/ue_native_full100.sh、ue_native_full100_control.py、README规范；独立full_run与full_protocol，固定100轮26700、fresh共同初始化、同序、每轮完整val-best、全部完成后test。CPUprepare创建不可改Git运行工作树与orders；queue等待现有归因后GPU门/三臂四卡，arm目录/锁/恢复合同隔离。所有后续全预算实验必须有一键wrapper。详情[100轮合同](dual_stream/UE_NATIVE_FULL100_WRAPPER_20261028.md)。

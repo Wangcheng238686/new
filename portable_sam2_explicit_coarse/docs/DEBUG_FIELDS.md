@@ -234,3 +234,7 @@ native runner复用旧progress每25更新rank0采样：last_global_microbatch_me
 ### 2026-10-28 Native离线归因字段
 
 attribution rank_progress.images分母为rank分片114/115图，最后gather全459；correct/zero/donor固定C框score/sourcechunk。model_state_unchanged是预测前后权重/缓冲SHA，不是单流冻结。donor_map来自全459顺序+229，错配含RGB支持/geometry支持差异。paired_image_bootstrap95为同图500次seed20261021名义区间，不能解释训练种子不确定性；BoundaryAP2%/1%内带radius14/7px，与双侧净纠错band定义分开。
+
+### 2026-10-28 Native全100轮调度与恢复字段
+
+全量progress仍每25更新rank0，last_global_microbatch_mean分母8，mean_microbatch_loss分母2136；full validation每epoch完整459。best.score为val segm/mAP，strictgreater且ties earlier；test绑定best_checkpoint_sha256，不是固定E10。owner.stage等待waiting_for_analysis、running、failed、complete；dependencies仅完成门，不读指标。gate epoch0为gate_only/phase gate_no_validation/validation_performed=false，正式CP after_validation/true；rank_rng五流，合成gate不等同真实next-update轨迹。日志按action+arm+attempt时间戳隔离，资源caps/预留/512margin语义沿native短研究不变。
