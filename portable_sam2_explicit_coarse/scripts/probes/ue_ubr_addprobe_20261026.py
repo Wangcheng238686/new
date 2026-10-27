@@ -348,11 +348,12 @@ def refine_scene(ubr_net, store, sid, arm, means, k, dev):
     return d, refined
 
 
-def val_pass(ubr_net, val_dir, arm, means, k, dev, orig=False):
+def val_pass(ubr_net, val_dir, arm, means, k, dev, orig=False,
+             split='val'):
     """Full val sweep; returns per-scene APs + global boundary/segm stats."""
     store = SceneStore(val_dir)
     ids = [r['id'] for r in manifest_ids(val_dir)]
-    ev = BoundaryEvaluator(DATA / 'annotations/val.json', ids)
+    ev = BoundaryEvaluator(DATA / f'annotations/{split}.json', ids)
     aps, dets_bnd, dets_std = [], [], []
     for sid in ids:
         if orig:

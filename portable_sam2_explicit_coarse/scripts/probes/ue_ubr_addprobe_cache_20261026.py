@@ -83,7 +83,7 @@ OUT_ROOT = Path('/data2/wangcheng/remote-lthpc/checkpoint/ue_ubr_probe_20261026/
 LOGIT_MARGIN = 32  # px around the box on the 512 grid (task spec)
 FEAT_MARGIN = 8    # px around box/4 on the 128 stride-4 grid (task spec)
 MAX_PER_IMG = 250
-SPLIT_SIZES = {'train': 2142, 'val': 459}  # dataset build 2026-10-21
+SPLIT_SIZES = {'train': 2142, 'val': 459, 'test': 459}  # dataset build 2026-10-21
 
 
 def sha256_prefix(path: Path, n: int = 8) -> str:
@@ -253,7 +253,7 @@ def process_scene(model, caps, entry, gt_list, dev):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--split', choices=['train', 'val'], required=True)
+    ap.add_argument('--split', choices=['train', 'val', 'test'], required=True)
     ap.add_argument('--limit', type=int, default=0, help='first K scenes only')
     ap.add_argument('--out-root', default=str(OUT_ROOT))
     ap.add_argument('--device', default='cuda:0')
