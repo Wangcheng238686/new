@@ -238,3 +238,7 @@ attribution rank_progress.images分母为rank分片114/115图，最后gather全4
 ### 2026-10-28 Native全100轮调度与恢复字段
 
 全量progress仍每25更新rank0，last_global_microbatch_mean分母8，mean_microbatch_loss分母2136；full validation每epoch完整459。best.score为val segm/mAP，strictgreater且ties earlier；test绑定best_checkpoint_sha256，不是固定E10。owner.stage等待waiting_for_analysis、running、failed、complete；dependencies仅完成门，不读指标。gate epoch0为gate_only/phase gate_no_validation/validation_performed=false，正式CP after_validation/true；rank_rng五流，合成gate不等同真实next-update轨迹。日志按action+arm+attempt时间戳隔离，资源caps/预留/512margin语义沿native短研究不变。
+
+### 2026-10-28 共租控制覆盖审计
+
+launch_manifest.co_rent_override明确reason/released_dependencies/time/controller_source_sha256/numerical_commit_unchanged；仅调度依赖变化，不参与loss/门控/选权。control_overrides存旧manifest/state/override，release拒已有GPU任务或失败owner；恢复从已核状态继续。

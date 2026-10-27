@@ -39,3 +39,7 @@ queue持久owner等待当前analysis_native_20261028三份完成标记（所有�
 运行源码提交`e8fe406`，不可改工作树`ue_g_ubr_native_full100_20261028/runtime_source`；105份运行来源与100轮orders准备成功。owner PID1576874，状态`waiting_for_analysis`，仅等待`analysis_native_20261028/attribution_queue_state.json`完成；恢复门/三训练/三测试共7项pending，无100轮训练进程抢跑。重复wrapper queue已实际验证幂等。
 
 独立审查发现并修复SAM2 editable闭包、gate身份绑定不足、manual入口绕过准入问题；CPU负向核验拒旧git/错arm/错cap/损坏CP与失败依赖。独立运行树CPU导入和源码一致性审计记录root_queue_acceptance.json。GPU full恢复门仍排在前置之后，不将当前CPU排队验收写成GPU100轮验收。
+
+## 用户授权提前GPU共租（2026-10-28）
+
+用户明确表示卡已空，可共租。新增前端wrapper `release`：仅在全任务pending且owner waiting_for_analysis时核PID/starttick/argv，停止空闲调度器，归档原manifest与state，去掉分析完成依赖，再用原固定数值源码恢复调度。当前旧owner1576874退出、新owner1578097接管；不停止分析进程、不修改e8fe406运行树，也不改实验合同/种子/预算/测试准入。source/hash和移除依赖原因记control_overrides。正式GPU恢复门仍先于三组train。

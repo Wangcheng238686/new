@@ -34,3 +34,11 @@
 每臂100轮26700更新，fresh共同基础初始化，新的固定100轮共同顺序（seed44+epoch），每轮完整459val；验证MaskAP严格更高才更新best，平局保较早轮。三训练完成后各自best在完整459test评价。历史10轮仅参考，不作本轮初始化。
 
 故障的半成品eval或恢复门不会自动删除/覆盖；先查看日志，显式归档该失败目录后使用recover。同臂checkpoint合同不匹配直接拒绝。
+
+## 显式解除归因等待并共租
+
+```bash
+./scripts/experiments/ue_native_full100.sh release
+```
+
+仅在owner还处于纯等待、所有GPU任务尚未发射时，记录显式共租授权，归档旧manifest/state，停止空闲owner并原合同恢复调度；不终止分析/训练rank。解除的只有分析完成依赖，四卡恢复门、源码/权重合同、显存准入仍执行。已经释放时命令幂等。运行工作树仍为原固定提交，控制覆盖记录存于root/control_overrides。

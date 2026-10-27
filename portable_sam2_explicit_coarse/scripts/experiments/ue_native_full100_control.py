@@ -182,8 +182,42 @@ def owner(root,recover=False):
   time.sleep(15)
 
 
+def release_analysis_wait(root,m):
+ """Explicit user co-rent override; only stops an idle owner, never a GPU rank."""
+ import signal
+ with (root/'release.lock').open('a') as lock:
+  fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+  path=root/'owner_state.json'
+  state=read(path) if path.exists() else None
+  if not m['dependencies']:return m
+  if state:
+   if state['stage']!='waiting_for_analysis' or state['failures'] or any(j['status']!='pending' for j in state['jobs'].values()):
+    raise RuntimeError('Release requires idle analysis-waiting owner; running GPU jobs are untouched')
+   for job in state['jobs'].values():
+    if job.get('launcher') and live(job['launcher']):raise RuntimeError('Live launcher exists; refusing release')
+   me=state['owner']
+   if live(me):
+    actual=identity(me['pid'])
+    expected=str(Path(m['runtime_source'])/WORK.name/'scripts/experiments/ue_native_full100_control.py')
+    if expected not in actual['argv'] or 'owner' not in actual['argv']:raise RuntimeError('Owner command identity differs')
+    os.kill(me['pid'],signal.SIGTERM)
+    for _ in range(100):
+     if not live(me):break
+     time.sleep(.1)
+    if live(me):raise RuntimeError('Idle owner did not exit; preserved manifest')
+  with (root/'owner.lock').open('a') as owner_lock:
+   fcntl.flock(owner_lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+   audit=root/'control_overrides'/str(time.time_ns())
+   write(audit/'previous_manifest.json',m)
+   if state:write(audit/'previous_owner_state.json',state)
+   override=dict(reason='user explicitly authorized GPU co-rent before analysis completion',released_dependencies=m['dependencies'],time=time.time(),controller_source_sha256=sha(__file__),numerical_commit_unchanged=m['git_commit'])
+   m=dict(m,dependencies=[],co_rent_override=override)
+   write(root/'launch_manifest.json',m);write(audit/'override.json',override)
+ return m
+
+
 def main():
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('action',choices=['plan','prepare','queue','status','train','resume','eval','recover','owner']);p.add_argument('--arm',choices=list(ALIASES));p.add_argument('--root',type=Path,default=ROOT);a=p.parse_args();root=a.root.resolve()
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('action',choices=['plan','prepare','queue','status','train','resume','eval','recover','release','owner']);p.add_argument('--arm',choices=list(ALIASES));p.add_argument('--root',type=Path,default=ROOT);a=p.parse_args();root=a.root.resolve()
  if a.action=='status':
   for n in ('launch_manifest.json','owner_state.json'):
    path=root/n
@@ -197,6 +231,8 @@ def main():
  if a.action=='owner':owner(root,bool(os.environ.get('UE_FULL_RECOVER')));return
  m=prepare(root)
  if a.action=='prepare':print(json.dumps(m,indent=2));return
+ if a.action=='release':
+  m=release_analysis_wait(root,m);a.action='recover' if (root/'owner_state.json').exists() else 'queue'
  source_control=Path(m['runtime_source'])/WORK.name/'scripts/experiments/ue_native_full100_control.py'
  if a.action in ('queue','recover'):
   state=root/'owner_state.json'

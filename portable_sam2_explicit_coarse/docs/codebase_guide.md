@@ -317,3 +317,7 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 ### 2026-10-28 Native全100轮已登记持久队列
 
 数值/运行器e8fe406，owner1576874，root ue_g_ubr_native_full100_20261028，105来源与100轮orders固定；独立runtime_source工作树。当前waiting_for_analysis，不抢先训练。重复queue幂等、gate身份/失败依赖负向CPU核验已过；fullGPU恢复门待前置完成后执行，审计root_queue_acceptance.json。
+
+### 2026-10-28 全100轮提前共租释放
+
+wrapper新增release，用户明确授权后仅解除分析完成等待，归档旧控制合同、核验并停止空闲owner，原e8fe406固定数值树恢复；GPU门/四卡准入不变，不终止分析。新owner1578097，审计control_overrides，详情全100轮文档。
