@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runner for UBR-RESEAL-20261027 (level 3: UDPR->UBR re-seal, 100ep).
+"""Runner for UBR-RESEAL-20261027-R2 (level 3 v1.1: 100ep relaunch).
 
 Launches the SAME production trainer entry EXP-0025 used
 (train/train_rsprompter_fusion.py, invoked by
@@ -11,13 +11,27 @@ pure module substitution, so the trainer's protocol handling (DDP, seed,
 AMP, cosine schedule, per-epoch mmdet val, checkpointing) is bit-for-bit
 the code path EXP-0025 ran.
 
+UBR v1.1 (docs/UBR-V1.1-PERF-AND-RELAUNCH-20261027.md): the dead first
+launch (EXP-0028, output root ue_ubr_reseal_20261027/, launch2.log) is
+archived untouched as the equivalence-replay reference. This R2 runner
+differs from it ONLY in: new output root (ue_ubr_reseal_r2_20261027),
+VAL_SHARD_ACROSS_RANKS=1 (A5 sharded validation: rank-strided batches,
+CPU/Gloo gather_object to rank0, global-order reassembly, canonical
+COCO metrics), the RESEAL_CONTRACT v2 echo (source hashes + capacity
+declaration), per-epoch peak-memory/seconds telemetry
+(epoch_telemetry.jsonl), and the v1.1 execution layer/capacity inside
+ubr_train_integration.py + ubr.py (equivalence-gated by G1-G4,
+scripts/probes/ue_ubr_v11_gates_20261027.py).
+
 Protocol (preregistered, verbatim EXP-0025): seed 44, DDP4 batch1 x
 accum2 (global 8). PI b2xa1 order 2026-10-27 REVERTED: rank activations
 doubled to 45GB/card and OOMed at step ~50 (47.38GB limit); b1xa2 keeps
-the effective batch 8 invariant within memory., lr 5e-4, wd 0.05, warmup 100 optimizer steps, cosine,
-100 epochs, default augmentation (hflip 0.5, everything else pinned 0),
-val 459 every epoch, last-epoch selection (SAVE_LAST_MODEL=1), test never
-read. Asserted fail-closed below, along with the dataset SHA pins of the
+the effective batch 8 invariant within memory.
+lr 5e-4, wd 0.05, warmup 100 optimizer steps, cosine,
+100 epochs, default augmentation (3090 line: no flip; train-only
+ColorJitter(.15,.15,.10,.02)@p=.5 + Gaussian noise p=.5/std=.02), val 459
+every epoch, last-epoch selection (SAVE_LAST_MODEL=1), test never read.
+Asserted fail-closed below, along with the dataset SHA pins of the
 EXP-0025 wrapper.
 
 Modes:
@@ -31,9 +45,10 @@ Modes:
                  scenes, single process, output under {out}/smoke.
   --_worker      internal: the substituted trainer process itself.
 
-Output root: /data2/wangcheng/remote-lthpc/checkpoint/ue_ubr_reseal_20261027/
+Output root: /data2/wangcheng/remote-lthpc/checkpoint/ue_ubr_reseal_r2_20261027/
 (on the lthpc host the same name under /data/wangcheng/checkpoint/ —
-override with --out-root / RESEAL_OUT_ROOT).
+override with --out-root / RESEAL_OUT_ROOT). The dead v1.0 arm's root
+(ue_ubr_reseal_20261027) is archived as-is and never written to.
 """
 import argparse
 import hashlib
@@ -41,6 +56,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -48,9 +64,29 @@ ROOT = HERE.parents[1]  # portable_sam2_explicit_coarse (repo root)
 sys.path.insert(0, str(ROOT))
 
 CONFIG_REL = "configs/ablations/ue_ubr_single_512.py"
-OUT_ROOT_DEFAULT = "/data2/wangcheng/remote-lthpc/checkpoint/ue_ubr_reseal_20261027"
+OUT_ROOT_DEFAULT = "/data2/wangcheng/remote-lthpc/checkpoint/ue_ubr_reseal_r2_20261027"
 DS_ROOT_DEFAULT = "/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v1_20261021"
 SAM2_CKPT_DEFAULT = "/data1/wangcheng/pretrained/sam2_hiera_base_plus.pt"
+RUN_TAG = "ue_ubr_reseal_r2_20261027"
+
+# RESEAL_CONTRACT v2 (echoed at launch): v1.1 execution layer is
+# numerically neutral (G1 equivalence replay, rel err < 1e-3) and refiner
+# capacity 32ch x 6 conv blocks is the NEW UNIFIED definition for every
+# single-/dual-stream arm from EXP-0028-R2 onward (legacy 48x7 pinned for
+# the G1 replay only; band_k unchanged).
+CONTRACT_V2_DECLARATION = (
+    "v1.1 execution-layer changes numerically neutral (G1 replay <1e-3); "
+    "capacity 32ch x 6 conv blocks is the new unified definition "
+    "(48x7 legacy pinned for G1 old-capacity equivalence replay only); "
+    "band_k unchanged")
+# source_hashes bump (G4): every file this arm's wiring depends on that
+# v1.1 touched; recorded in the contract so the run is bound to its code.
+CONTRACT_SOURCE_FILES = (
+    "rsprompter/uav/ubr.py",
+    "rsprompter/uav/ubr_train_integration.py",
+    "scripts/probes/ue_ubr_reseal_20261027.py",
+    "configs/ablations/ue_ubr_single_512.py",
+)
 
 # Sealed protocol (EXP-0025 wrapper run_exp0025_ddp4.sh). Any drift here
 # is a launch refusal.
@@ -165,13 +201,102 @@ def set_protocol_env(sam2_ckpt: str):
     os.environ["TRAIN_VFLIP_PROB"] = str(p["vflip_prob"])
     os.environ["TRAIN_MULTI_SCALE_RESIZE_PROB"] = str(p["ms_resize_prob"])
     os.environ["SAVE_LAST_MODEL"] = "1"
+    # A5 (UBR v1.1): sharded validation — every DDP rank owns loader
+    # batches rank, rank+W, ...; predictions are gathered to rank0 over
+    # the CPU/Gloo control group and reassembled in global batch order,
+    # so COCO inputs match the rank0-only path exactly (the remote-proven
+    # pattern; FP32 + no_grad unchanged, ~0.6 min/epoch instead of 2.1).
+    os.environ["VAL_SHARD_ACROSS_RANKS"] = "1"
+    # UBR v1.1 doc section 5 remedy, enabled up front: the v1.0 arm's
+    # reserved-vs-allocated gap (fragmentation from bucketed train shapes
+    # alternating with the val refine path) is allocator-level; expandable
+    # segments keep reserved close to allocated. Numerics-neutral
+    # (allocator config only); an explicit caller value wins (setdefault).
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
     assert float(os.environ["TRAIN_FLIP_PROB"]) == 0.5
     assert float(os.environ["TRAIN_VFLIP_PROB"]) == 0.0
     assert float(os.environ["TRAIN_MULTI_SCALE_RESIZE_PROB"]) == 0.0
 
 
+def _source_hashes() -> dict:
+    """G4 source_hashes: sha256 of every CONTRACT_SOURCE_FILES entry."""
+    return {rel: sha256_of(ROOT / rel) for rel in CONTRACT_SOURCE_FILES}
+
+
+def _build_contract(data_root, out_root, resume_from, verdict) -> dict:
+    """RESEAL_CONTRACT v2 (echoed before cards are pulled, fail-closed)."""
+    from mmengine.config import Config
+    cfg = Config.fromfile(str(ROOT / CONFIG_REL))
+    ubr_cfg = cfg.model.roi_head.mask_head.ubr_integration_cfg
+    return dict(
+        tag="UBR-RESEAL-20261027-R2",
+        contract_version=2,
+        declaration=CONTRACT_V2_DECLARATION,
+        config=CONFIG_REL,
+        protocol=PROTOCOL,
+        ubr_capacity=dict(hidden=ubr_cfg["refiner_hidden"],
+                          depth=ubr_cfg["refiner_depth"]),
+        dataset=str(data_root),
+        out_root=str(out_root),
+        resume_from=resume_from,
+        audit_verdict=str(verdict),
+        commit=subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(ROOT),
+                              capture_output=True, text=True).stdout.strip(),
+        source_hashes=_source_hashes(),
+        val_shard_across_ranks=1,
+    )
+
+
+def _install_epoch_telemetry(trainer, out_dir: str) -> None:
+    """Per-epoch wall seconds + CUDA peak memory -> epoch_telemetry.jsonl.
+
+    UBR v1.1 monitoring sentinel (doc section 5): rank0 appends one record
+    per train/val phase. Wraps the trainer's own loop functions in place
+    (module substitution; sealed files untouched).
+    """
+    import torch
+
+    orig_train = trainer.train_one_epoch
+    orig_val = trainer.validate_one_epoch
+    log_path = Path(out_dir) / "epoch_telemetry.jsonl"
+    is_main = int(os.environ.get("RANK", "0")) == 0
+
+    def _record(phase, epoch, t0):
+        if not (is_main and torch.cuda.is_available()):
+            return
+        rec = dict(
+            phase=phase, epoch=int(epoch),
+            secs=round(time.perf_counter() - t0, 2),
+            peak_mem_alloc_gb=round(
+                torch.cuda.max_memory_allocated() / 2**30, 3),
+            peak_mem_reserved_gb=round(
+                torch.cuda.max_memory_reserved() / 2**30, 3),
+        )
+        with open(log_path, "a") as fh:
+            fh.write(json.dumps(rec) + "\n")
+
+    def train_wrapped(*a, **k):
+        if is_main and torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+        t0 = time.perf_counter()
+        out = orig_train(*a, **k)
+        _record("train", a[13] if len(a) > 13 else k.get("epoch", -1), t0)
+        return out
+
+    def val_wrapped(*a, **k):
+        t0 = time.perf_counter()
+        out = orig_val(*a, **k)
+        _record("val", a[16] if len(a) > 16 else k.get("epoch", -1), t0)
+        return out
+
+    trainer.train_one_epoch = train_wrapped
+    trainer.validate_one_epoch = val_wrapped
+
+
 def run_worker(argv: list) -> None:
     """Module substitution + the sealed trainer entry, in-process."""
+    import torch
+
     os.chdir(ROOT)
     set_protocol_env(os.environ.get("SAM2_CKPT", SAM2_CKPT_DEFAULT))
     from mmengine.config import Config
@@ -182,11 +307,30 @@ def run_worker(argv: list) -> None:
     # fail-closed: tail deleted in the resolved config, UBR keys exact
     assert cfg.model.roi_head.mask_head.decoder_tail_refiner_cfg == {}, (
         "decoder_tail_refiner_cfg must resolve empty (deleted, not toggled)")
+    # fail-closed v1.1 launch flags: A4 is single-process-only (DDP
+    # reducer guard) and B2 is OFF for the 512 protocol.
+    assert ubr_cfg["bucket_backward"] is False, (
+        "bucket_backward must stay OFF for the DDP4 protocol")
+    assert ubr_cfg["grad_checkpoint"] is False, (
+        "grad_checkpoint is OFF at 512 (required only at 1024)")
     ubr_train_integration.install_class_patch(ubr_cfg)
 
     sys.path.insert(0, str(ROOT / "train"))
     import train_rsprompter_fusion  # noqa: E402  (sealed trainer entry)
 
+    # A4 plumbing (dormant while the flag is OFF): register the trainer's
+    # GradScaler with the integration so a future single-process
+    # bucketed-backward run scales manual contributions consistently.
+    _orig_scaler_init = torch.amp.GradScaler.__init__
+
+    def _scaler_init(self, *a, **kw):
+        _orig_scaler_init(self, *a, **kw)
+        ubr_train_integration.register_grad_scaler(self)
+
+    torch.amp.GradScaler.__init__ = _scaler_init
+
+    out_dir = argv[argv.index("--checkpoint-dir") + 1]
+    _install_epoch_telemetry(train_rsprompter_fusion, out_dir)
     sys.argv = argv
     # Protocol: no flip (3090 line). Set authoritatively here so worker
     # subprocesses inherit it regardless of caller env.
@@ -282,7 +426,7 @@ def main():
         train_ratio = subset_ratio(2142, SMOKE["train_scenes"])
         val_ratio = subset_ratio(459, SMOKE["val_scenes"])
         argv = trainer_argv(
-            CONFIG_REL, "ue_ubr_reseal_20261027_smoke", str(data_root),
+            CONFIG_REL, f"{RUN_TAG}_smoke", str(data_root),
             str(out_dir), epochs=SMOKE["epochs"], train_ratio=train_ratio,
             val_ratio=val_ratio, num_workers=2)
         # smoke: single process on the allowed GPU (e.g. GPU3), no DDP
@@ -313,7 +457,7 @@ def main():
                            capture_output=True, text=True).stdout.strip()
     assert not dirty, "full training requires a clean git worktree"
 
-    argv = trainer_argv(CONFIG_REL, "ue_ubr_reseal_20261027", str(data_root),
+    argv = trainer_argv(CONFIG_REL, RUN_TAG, str(data_root),
                         str(out_root), epochs=PROTOCOL["epochs"],
                         resume_from=a.resume_from)
     set_protocol_env(a.sam2_ckpt)
@@ -321,14 +465,8 @@ def main():
            "--nnodes=1", f"--nproc_per_node={a.nproc}",
            str(HERE / "ue_ubr_reseal_20261027.py"),
            "--_worker", "--worker-argv", json.dumps(argv)]
-    contract = dict(
-        tag="UBR-RESEAL-20261027", config=CONFIG_REL, protocol=PROTOCOL,
-        dataset=str(data_root), out_root=str(out_root),
-        resume_from=a.resume_from, audit_verdict=str(verdict),
-        commit=subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(ROOT),
-                              capture_output=True, text=True).stdout.strip(),
-    )
-    print("RESEAL_CONTRACT", json.dumps(contract), flush=True)
+    contract = _build_contract(data_root, out_root, a.resume_from, verdict)
+    print("RESEAL_CONTRACT_V2", json.dumps(contract), flush=True)
     sys.exit(subprocess.call(cmd, cwd=str(ROOT)))
 
 

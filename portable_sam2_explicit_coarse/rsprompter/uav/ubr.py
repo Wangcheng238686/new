@@ -25,6 +25,7 @@ import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint
 
 UAV_GEOMETRY_CHANNELS = 5  # height, dx, dy, viewcount, support
 
@@ -54,6 +55,27 @@ def signed_distance_transform(mask: torch.Tensor) -> torch.Tensor:
 def band_mask(sdt: torch.Tensor, k: int) -> torch.Tensor:
     """Boolean band |SDT| <= k around the current boundary. [B,1,H,W]."""
     return sdt.abs() <= float(k)
+
+
+def signed_distance_transform_numpy(mask: np.ndarray) -> np.ndarray:
+    """Batched-CPU SDT, bit-identical to signed_distance_transform.
+
+    mask: [B,H,W] uint8/bool. Same per-sample arithmetic order as the torch
+    version (each EDT cast to float32 BEFORE the subtraction), so band
+    masks derived from either implementation agree bit-for-bit. Zero rows
+    (empty masks / bucket padding) stay exactly 0 like the torch version.
+    """
+    from scipy import ndimage
+
+    assert mask.ndim == 3
+    out = np.zeros(mask.shape, dtype=np.float32)
+    for b in range(mask.shape[0]):
+        m = mask[b] > 0
+        if not m.any():
+            continue
+        out[b] = (ndimage.distance_transform_edt(m).astype(np.float32)
+                  - ndimage.distance_transform_edt(~m).astype(np.float32))
+    return out
 
 
 def build_constant_geometry(
@@ -88,11 +110,26 @@ class ConvBlock(nn.Module):
 
 
 class UnifiedBoundaryRefiner(nn.Module):
-    """Dense CNN (~200K params) producing in-band per-pixel binary logits."""
+    """Dense CNN producing in-band per-pixel binary logits.
 
-    def __init__(self, base_ch: int = 35, hidden: int = 48, depth: int = 7):
+    Capacity contract (UBR v1.1, docs/UBR-V1.1-PERF-AND-RELAUNCH-20261027.md
+    item B1): hidden=32 x depth=6 (67,457 params) is the NEW UNIFIED
+    definition for every single-/dual-stream arm from EXP-0028-R2 onward.
+    The legacy (48, 7) capacity (163,537 params) remains constructible ONLY
+    for the G1 old-capacity equivalence replay against the dead EXP-0028
+    arm. Pre-v1.1 probes that relied on the ctor default pinned the legacy
+    capacity implicitly.
+
+    grad_checkpoint (B2): recompute the conv blocks' activations in
+    backward via torch.utils.checkpoint (~8x UBR activation saving, forward
+    recompute cost). Default OFF at the 512 protocol; required ON at 1024.
+    """
+
+    def __init__(self, base_ch: int = 35, hidden: int = 32, depth: int = 6,
+                 grad_checkpoint: bool = False):
         super().__init__()
         assert base_ch == 32 + 1 + 1 + 1  # decoder feat + logits + sdt + nbr
+        self.grad_checkpoint = bool(grad_checkpoint)
         self.input_proj = nn.Conv2d(
             base_ch + UAV_GEOMETRY_CHANNELS, hidden, 3, padding=1
         )
@@ -127,7 +164,26 @@ class UnifiedBoundaryRefiner(nn.Module):
         x = torch.cat(
             [decoder_feat, mask_logits, sdt, neighbors, uav_geom], dim=1
         )
-        return self.out(self.blocks(self.input_proj(x)))
+        x = self.input_proj(x)
+        for block in self.blocks:
+            if (self.grad_checkpoint and self.training
+                    and torch.is_grad_enabled()):
+                x = checkpoint(block, x, use_reentrant=False)
+            else:
+                x = block(x)
+        return self.out(x)
+
+
+def refiner_param_count(hidden: int, depth: int) -> int:
+    """Total trainable parameters of UnifiedBoundaryRefiner(hidden, depth).
+
+    Pure function so the integration's fail-closed pin and the harnesses
+    share one arithmetic source: input_proj + depth * (conv + groupnorm)
+    + 1x1 readout, all bias-inclusive.
+    """
+    proj = (32 + 1 + 1 + 1 + UAV_GEOMETRY_CHANNELS) * hidden * 9 + hidden
+    block = hidden * hidden * 9 + hidden + 2 * hidden  # conv / GroupNorm(8)
+    return proj + depth * block + hidden + 1
 
 
 def apply_band_reclassification(

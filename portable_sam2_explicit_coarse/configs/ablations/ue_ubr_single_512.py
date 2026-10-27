@@ -1,5 +1,24 @@
 """UBR-RESEAL-20261027 level-3 arm: single-stream unified architecture.
 
+RESEAL_CONTRACT v2 (UBR v1.1, docs/UBR-V1.1-PERF-AND-RELAUNCH-20261027.md,
+supersedes the v1 contract of the dead EXP-0028 arm):
+  Declaration:
+    1. The v1.1 execution-layer changes (A1 window-area bucketing, A2
+       vectorized assembly, A3 fp16 UBR path, A4 flag off, A5 sharded
+       validation) are NUMERICALLY NEUTRAL: proven by the G1 equivalence
+       replay (v1.1 at OLD capacity vs the frozen v1.0 assembly on the
+       fixed ep1 batches, per-loss relative error < 1e-3, AMP tolerance).
+    2. Refiner capacity 32ch x 6 conv blocks (67,457 params) is the NEW
+       UNIFIED DEFINITION for every single-/dual-stream arm from
+       EXP-0028-R2 onward (bit-identical isomorphism across arms);
+       (48, 7) remains pinned ONLY for the G1 old-capacity equivalence
+       replay against the dead arm. band_k and every other prereg key
+       are unchanged.
+    3. grad_checkpoint (B2) is default OFF at the 512 protocol and
+       REQUIRED at 1024.
+  The launch contract (source hashes of the four touched files) is echoed
+  by the runner's RESEAL_CONTRACT_V2 line.
+
 Integrity contract (docs/UBR-RESEAL-20261027_preregistration.md, fail-closed):
   The resolved diff of this config against the EXP-0025 sealed config
   (configs/ue_whu_a3sgm_512.py, fingerprint 5305b315...) is EXACTLY
@@ -8,23 +27,25 @@ Integrity contract (docs/UBR-RESEAL-20261027_preregistration.md, fail-closed):
        appear in the loss dict)
     2. roi_head.mask_head.ubr_integration_cfg.*             (UBR wiring
        keys, consumed by rsprompter/uav/ubr_train_integration.py)
-  3. Dead-config deletions (PI instruction 2026-10-27, journal hygiene):
-     point_warmup_cfg (idle enabled=False block), box_prompt_cfg (guard of
-     a removed jitter arm), dense_prompt_cfg.gaussian_{omega,gamma}
-     (accepted-but-unused, see dense_prompt_utils docstring).
-  and NOTHING else. Any additional drift is a harness FAIL. Zero model
-  impact is proven by a seeded dual-build state_dict bit-compare. The training
+    3. Dead-config deletions (PI instruction 2026-10-27, journal hygiene):
+       point_warmup_cfg (idle enabled=False block), box_prompt_cfg (guard of
+       a removed jitter arm), dense_prompt_cfg.gaussian_{omega,gamma}
+       (accepted-but-unused, see dense_prompt_utils docstring).
+  and NOTHING else (v1.1 adds keys INSIDE ubr_integration_cfg only). Any
+  additional drift is a harness FAIL. Zero model impact outside UBR is
+  proven by a seeded dual-build state_dict bit-compare (G4). The training
   protocol (seed 44, DDP4 b1xa2, lr 5e-4, wd 0.05, warmup 100, cosine,
-  100 epochs, hflip 0.5, val 459 every epoch, last-epoch selection, test
-  never read) is identical to EXP-0025 and is asserted by the runner
-  scripts/probes/ue_ubr_reseal_20261027.py, which launches the SAME
-  trainer entry (train/train_rsprompter_fusion.py) as
+  100 epochs, no flip (3090 line), val 459 every epoch, last-epoch
+  selection, test never read) is identical to EXP-0025 and is asserted by
+  the runner scripts/probes/ue_ubr_reseal_20261027.py, which launches the
+  SAME trainer entry (train/train_rsprompter_fusion.py) as
   scripts/ue/run_exp0025_ddp4.sh.
 
 UBR integration (declared here; wired at runtime without touching any
 existing file):
-  - rsprompter/uav/ubr.py::UnifiedBoundaryRefiner, default ctor
-    (163,537 params), port 5 (UAV geometry) ZERO-FILLED -> UBR(off).
+  - rsprompter/uav/ubr.py::UnifiedBoundaryRefiner, v1.1 unified capacity
+    (refiner_hidden=32, refiner_depth=6; 67,457 params), port 5 (UAV
+    geometry) ZERO-FILLED -> UBR(off).
   - loss_ubr: band k=8 focal BCE (gamma 2) + soft Dice vs the matched GT
     on each sampled positive RoI's box+32px window, per-instance equal
     weight, lambda 0.1; neighbors channel = sum of OTHER GT masks in the
@@ -67,6 +88,21 @@ model = dict(
                 #    data/ue_minimal_dataset.py MinimalSatelliteDataset).
                 aug_gaussian='0.5,0.02',
                 aug_jitter='0.15,0.15,0.10,0.02,0.5',
+                # 5) v1.1 capacity + execution flags (RESEAL_CONTRACT v2):
+                #    B1 — 32ch x 6 conv blocks is the NEW UNIFIED capacity
+                #    definition for every arm from EXP-0028-R2 on. The
+                #    legacy (48, 7) pair is pinned for the G1 equivalence
+                #    replay only (never launched).
+                refiner_hidden=32,
+                refiner_depth=6,
+                #    B2 — UBR block gradient checkpointing: OFF at 512
+                #    (required ON at 1024).
+                grad_checkpoint=False,
+                #    A4 — per-bucket backward: single-process fallback,
+                #    stays OFF (DDP reducer guard; see integration module).
+                bucket_backward=False,
+                #    A2 — vectorized one-sync containment assert (debug).
+                debug_containment_assert=False,
             ),
         ),
     ),
