@@ -43,3 +43,7 @@ queue持久owner等待当前analysis_native_20261028三份完成标记（所有�
 ## 用户授权提前GPU共租（2026-10-28）
 
 用户明确表示卡已空，可共租。新增前端wrapper `release`：仅在全任务pending且owner waiting_for_analysis时核PID/starttick/argv，停止空闲调度器，归档原manifest与state，去掉分析完成依赖，再用原固定数值源码恢复调度。当前旧owner1576874退出、新owner1578097接管；不停止分析进程、不修改e8fe406运行树，也不改实验合同/种子/预算/测试准入。source/hash和移除依赖原因记control_overrides。正式GPU恢复门仍先于三组train。
+
+## 共租真实发射核验
+
+full四卡恢复门passed，A/B/C launcher1578521/1578522/1578523，12rank全部存活。三组均E1 update25，AMP_retries_epoch均0，无Traceback；同数值合同逐字段核同，固定运行树105源零漂移。owner1578097继续调度。实测当前每卡剩余约718–1157MiB（瞬时），不以此代替后续显存观察。启动审计root_co_rent_launch.json绑定源提交e8fe406及控制覆盖8032d6a；分析任务继续，未抢占其进程。
