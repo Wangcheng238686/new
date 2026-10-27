@@ -7,11 +7,11 @@ OUT=ROOT/'analysis_native_20261028'
 PYTHON='/data/wangcheng/envs/cvt2/bin/python'
 
 def main():
- while not (OUT/'interventions/complete.json').exists():
+ while not (OUT/'interventions/segments.json').exists():
   failed=list((OUT/'interventions').glob('*failed*'))
   if failed:raise RuntimeError(str(failed))
   time.sleep(15)
- done=json.loads((OUT/'interventions/complete.json').read_text());assert done['complete'] and done['images']==459
+ segments=json.loads((OUT/'interventions/segments.json').read_text());assert len(segments)==459 and len({r['image_id'] for r in segments})==459
  children=[];streams=[]
  for arm in ('A_nohead','B_zero'):
   folder=OUT/'fixed_C_boxes'/arm
