@@ -1,95 +1,97 @@
 # EXP-0028-R2 (UBR v1.1) Independent Pre-Relaunch Audit — 2026-10-27
 
-VERDICT: FAIL (relaunch blocked — 2 mechanical blockers, no numerical or seal-invariance regression found)
+VERDICT: PASS (round 2 — both blockers fixed and independently re-verified;
+one launch precondition remains, see §4, enforced fail-closed by the wrapper)
 
-Auditor scope: read-only review + independent re-run of G1/G4 on GPU3
+Auditor scope: read-only review + independent re-runs on GPU3
 (CUDA_VISIBLE_DEVICES=3, PY=/data2/wangcheng/envs/cvt2/bin/python — bare
-`python` lacks mmengine). HEAD a8968af, tagged exp/EXP-0028-R2, tree clean.
+`python` lacks mmengine). Round 1 audited HEAD a8968af (FAIL, 2 blockers);
+round 2 re-verified the fixes at HEAD **c251e5a**, tagged exp/EXP-0028-R2.
 
-## 1. Gate re-runs (independent, GPU3)
+## 1. Round 2 — the two blocker fixes (both VERIFIED)
 
-- **G1 PASS — implementer's claim CONFIRMED.** worst_rel_err exactly **0.0**
-  on all 3 replayed updates (dead-arm ep1 rank-0 order, indices [1696, 121,
-  591]) for every component (loss_ubr / focal / dice): v1.1-at-old-capacity
-  is bit-identical to the frozen v1.0 assembly. Magnitude ratios vs dead-arm
-  ep1 epoch means 2.019 / 1.976 / 2.038, inside the prereg [0.25, 4.0] band.
-- **G4 FAIL at HEAD — gate is stale, seal property itself PASSED.**
-  My re-run trips `assert new != old` at the first CONTRACT_SOURCE_FILES
-  entry (`rsprompter/uav/ubr.py`): the source_hashes "bump" check compares
-  the working tree against **HEAD** blobs, but v1.1 is now committed at HEAD
-  (tag exp/EXP-0028-R2, clean tree), so the hashes are equal by design. G4
-  as shipped cannot pass at the very commit it is meant to certify.
-  Critically, every seal-relevant assert executed **before** the bump check
-  passed in my run: patched-v1.1 build vs sealed EXP-0025 build have
-  identical key sets (a_only == ubr keys, b_only == decoder-tail keys),
-  **every shared (non-UBR) state_dict tensor bit-equal**, LoRA structure
-  identical, frozen set contains the prompt stack and PE. The frozen-SHA
-  value claim (1dff1b8101a803f5…) is no longer recoverable from artifacts
-  (see §5) and was not re-verified literally; the invariance property it
-  fingerprints was independently re-verified PASS. The "665 non-UBR tensors
-  bit-equal" count is consistent with the passing `not mismatched` assert
-  but the literal count is not re-emitted on a failed gate.
+- **Blocker 1 (wrapper exec path) — FIXED.**
+  `scripts/ue/run_ubr_reseal_ddp4.sh` line 41 now execs
+  `scripts/probes/ue_ubr_reseal_20261027.py`, which exists and is the R2
+  runner (RUN_TAG/OUT_ROOT_DEFAULT = ue_ubr_reseal_r2_20261027). The
+  single-line diff restores the path mangled by the earlier global sed;
+  RESEAL_ROOT (line 8) keeps the r2 name, as intended.
+- **Blocker 2 (G4 stale at HEAD) — FIXED and independently re-run: PASS.**
+  `_git_blob_sha` gained a `ref` argument and the source-hash bump check now
+  compares v1.1 files against the dead-arm commit **36b5215** instead of
+  HEAD. The diff touches only these two hunks in the gates file — every
+  seal-invariance assert is unchanged. Independent G4 re-run at c251e5a
+  (GPU3, 13.4 s): **PASS**, and the literal round-1 claims are now fully
+  reproduced:
+  - `frozen_param_sha` =
+    `1dff1b8101a803f5a6ab472f3339b3a4a51de6a63e77cac5c1bcec0bfd372ff0`
+    — exactly the claimed `1dff1b8101a803f5…` prefix.
+  - `non_ubr_tensors_compared` = **665**, every shared (non-UBR) tensor
+    bit-equal between the v1.1-patched build and the sealed EXP-0025 build
+    (frozen set 323 params incl. prompt stack 16 + PE 2; LoRA structure 104
+    keys identical; UBR-only 28 keys vs sealed-tail 6; capacity 32×6 =
+    67,457 params).
+  - All 4 CONTRACT_SOURCE_FILES bumped vs 36b5215 (ubr.py,
+    ubr_train_integration.py, ue_ubr_reseal_20261027.py,
+    ue_ubr_single_512.py); RESEAL_CONTRACT v2 echo verified (version 2,
+    tag UBR-RESEAL-20261027-R2, capacity 32×6, val_shard=1).
+  - G1 remains valid at c251e5a without re-running: a8968af..c251e5a
+    changed only the gates script's two hunks and the wrapper line (plus
+    this audit file); the integration sources G1 exercises are identical.
 
-## 2. Spot-review of the two highest-risk v1.1 changes
-(`rsprompter/uav/ubr_train_integration.py`) — both SOUND:
+## 2. Round 1 record (superseded FAIL, kept for provenance)
 
-- **(a) Bucketed loss restacking in capture order.** `bucket_of =
-  digitize(window areas)` over all n_pos windows; per bucket `idx` (ascending
-  original positions) → `focal_all[int(j)] = focals[slot]` restacks
-  per-instance losses to their original capture slots, with a fail-closed
-  `all(v is not None)` assert; final `stack(...).mean()` over n_pos is
-  exactly the v1.0 per-instance-equal-weight reduction. The A4 per-bucket
-  budget `loss_b = λ·(Σfocals+Σdices)/n_pos` is algebraically identical to
-  the unbucketed loss. Empty-band instances contribute zeros exactly as in
-  v1.0; `img_of`/`gt_of` ordering and `nbr = all-GT-sum − own` match the
-  frozen v1.0 reference. The `& inside` guard reproduces v1.0's
-  pad-excluded band semantics.
-- **(b) fp16 assembly with fp32 band membership.** SDT is computed in fp32
-  numpy (`sdt32`); `band_np = (|sdt32| ≤ k) & inside` is derived from the
-  **fp32** SDT **before** any fp16 cast and stays bool to the loss; gt stays
-  fp32; feat/logit/sdt/nbr are stored fp16 under autocast and focal/dice are
-  computed via `.float()` upcast from the fp16 logits — precisely the
-  claimed design. G1's 0.0 rel err seals it empirically.
+- G1 independently re-run at a8968af on GPU3: PASS, worst_rel_err exactly
+  **0.0** on all 3 replayed updates (dead-arm ep1 rank-0 order, indices
+  [1696, 121, 591]) for loss_ubr/focal/dice — v1.1-at-old-capacity is
+  bit-identical to the frozen v1.0 assembly; magnitude ratios vs dead-arm
+  ep1 2.019/1.976/2.038, inside [0.25, 4.0].
+- Spot-review of the two highest-risk v1.1 changes in
+  `rsprompter/uav/ubr_train_integration.py` — both SOUND:
+  (a) bucketed restack: `focal_all[int(j)] = focals[slot]` restores capture
+  order with a fail-closed all-filled assert; mean over n_pos preserves
+  per-instance equal weight; A4's `λ(Σ)/n_pos` is algebraically identical;
+  empty-band instances contribute zeros exactly as v1.0; `& inside`
+  reproduces v1.0's pad-excluded band semantics.
+  (b) fp16 assembly / fp32 band: band computed from fp32 numpy SDT
+  (sdt32) before any fp16 cast and kept bool; gt fp32; feat/logit/sdt/nbr
+  fp16 under autocast; focal/dice via `.float()` upcast — as claimed, and
+  sealed empirically by G1's 0.0 rel err.
+- Reseal runner: VAL_SHARD_ACROSS_RANKS=1 authoritative (direct assign,
+  line 209); OUT_ROOT_DEFAULT r2 (line 67); contract v2 echo at launch.
+- Registry EXP-0028-R2 row records "PI 接受速度证伪" (G3 11.6 GB < 20 GB
+  limit, epoch ~12.5 min) — PI accepts, recorded.
+- Failures found: wrapper exec'd a nonexistent `ue_ubr_reseal_r2_20261027.py`;
+  G4's bump check compared working tree vs HEAD and could never pass on the
+  clean tagged tree. Both fixed in c251e5a (§1).
 
-## 3. Reseal runner (`scripts/probes/ue_ubr_reseal_20261027.py`) — CONFIRMED
+## 3. Wrapper checks at c251e5a
 
-`os.environ["VAL_SHARD_ACROSS_RANKS"] = "1"` set authoritatively (direct
-assignment, not setdefault); `OUT_ROOT_DEFAULT =
-/data2/wangcheng/remote-lthpc/checkpoint/ue_ubr_reseal_r2_20261027`;
-contract v2 (contract_version=2, tag UBR-RESEAL-20261027-R2,
-RESEAL_CONTRACT_V2 echoed at launch).
+RESEAL_ROOT = ue_ubr_reseal_r2_20261027; tag check accepts exp/EXP-0028*
+and HEAD c251e5a carries exp/EXP-0028-R2; exec target exists; audit gate
+reads VERDICT from the R1 file docs/reviews/UBR-RESEAL-20261027_audit.md
+(exists, PASS at R1 — cosmetic note only: it does not read this R2 file).
 
-## 4. Wrapper (`scripts/ue/run_ubr_reseal_ddp4.sh`)
+## 4. Launch precondition (fail-closed, not a code defect)
 
-- CONFIRMED: `RESEAL_ROOT` = ue_ubr_reseal_r2_20261027 (line 8); tag check
-  accepts exp/EXP-0028* and HEAD carries exp/EXP-0028-R2.
-- **BLOCKER 1 (relaunch fails immediately):** line 41 execs
-  `scripts/probes/ue_ubr_reseal_r2_20261027.py` — **no such file exists**
-  under $CODE ($WORKTREE/portable_sam2_explicit_coarse/scripts/probes/; the
-  actual R2 runner is `ue_ubr_reseal_20261027.py`). One-line filename fix.
-- Minor: the audit gate still reads VERDICT from the R1 file
-  docs/reviews/UBR-RESEAL-20261027_audit.md rather than this R2 audit.
+`git status --porcelain` at c251e5a shows ONE untracked file:
+**docs/UBR-V1.1-PERF-AND-RELAUNCH-20261027.md** — the v1.1 design spec
+referenced by the gates docstring and the registry row. The wrapper asserts
+a fully clean tree before exec, so the relaunch will refuse to start until
+this doc is committed (or otherwise resolved). Commit it as part of the
+final pre-launch commit; no code change required.
 
-## 5. Side effects + observations (non-blocking)
+## 5. Side-effects note
 
-- Re-running the gates overwrote g1.json (now this audit's PASS) and g4.json
-  (now this audit's FAIL) in /data2/.../ue_ubr_v11_gates_20261027/ — inherent
-  to the fail-closed script; no preserved G4 PASS artifact exists elsewhere,
-  which is why the literal frozen-SHA value is not re-verifiable. Recommend
-  the fix for BLOCKER 2 below be followed by a fresh full G4 PASS and its
-  archival into the repo.
-- **BLOCKER 2:** G4's source_hashes check must compare against the dead-arm
-  blobs (git 36b5215) instead of HEAD (or treat post-commit equality as the
-  expected terminal state). Until then G4 cannot pass at the launch tag.
-- Registry EXP-0028-R2 row (docs/EXP_REGISTRY.md) records the G3-speed
-  falsification decision — "PI 接受速度证伪" with G3 memory 11.6 GB (limit
-  20) and epoch ~12.5 min — CONFIRMED recorded, PI accepts.
+Re-running the gates overwrote g1.json/g4.json in
+/data2/.../ue_ubr_v11_gates_20261027/ — the current g1.json (round-1 PASS,
+0.0 rel err) and g4.json (round-2 PASS, full SHA + counts) are this audit's
+independent runs. Recommend archiving both into the repo with the launch
+contract.
 
 ## Bottom line
 
-Numerics and seal invariance are in good order (G1 independently
-reproduced at 0.0 rel err; non-UBR tensor bit-equality re-verified), but
-relaunch must NOT proceed until (1) the wrapper's runner filename is
-corrected and (2) G4's source-hash check is fixed to be satisfiable at the
-tagged commit and re-run to a full PASS. Both are mechanical fixes that do
-not touch the sealed trainer or the v1.1 execution layer.
+All audited claims are confirmed, both round-1 blockers are fixed and
+re-verified at the tagged HEAD c251e5a, and G1/G4 are green under
+independent re-run. Relaunch is cleared once the untracked v1.1 spec doc is
+committed so the wrapper's clean-tree gate passes.
