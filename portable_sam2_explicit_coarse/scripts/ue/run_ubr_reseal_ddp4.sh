@@ -5,7 +5,7 @@
 # value is echoed and archived into the output dir before training starts.
 set -euo pipefail
 
-export RESEAL_ROOT=/data2/wangcheng/remote-lthpc/checkpoint/ue_ubr_reseal_20261027
+export RESEAL_ROOT=/data2/wangcheng/remote-lthpc/checkpoint/ue_ubr_reseal_r2_20261027
 export SAM2_CKPT=/data1/wangcheng/pretrained/sam2_hiera_base_plus.pt
 export SAM2_REPO=${SAM2_REPO:-}
 export TRAIN_FLIP_PROB=0          # 3090 protocol: NO flip (dual-stream)
@@ -38,6 +38,6 @@ grep -q "VERDICT: PASS" "$AUDIT" || { echo "FAIL: audit not PASS"; exit 1; }
   echo "commit $GIT_SHA tag $GIT_TAG"; sha256sum configs/ablations/ue_ubr_single_512.py; } \
   | tee "${RESEAL_ROOT}.launch_contract.txt"
 
-exec $PY -u scripts/probes/ue_ubr_reseal_20261027.py \
+exec $PY -u scripts/probes/ue_ubr_reseal_r2_20261027.py \
   --out-root "$RESEAL_ROOT" \
   --audit-verdict "$AUDIT"
