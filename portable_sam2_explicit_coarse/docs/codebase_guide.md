@@ -269,3 +269,7 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 新增`rsprompter/uav/ubr_detector_integration.py`、`tests/test_ubr_detector_integration.py`、`scripts/probes/ue_ubr_runtime_20261027.py`及`ue_ubr_detector_gate_20261027.py`。原decoder三元组不改，构造前禁UDPR，native主loss保持，UBR全图band监督；所有参数在satellite/DDP注册。context/predict复现旧source段＋默认32批，active逐实例完整checkpoint。33项CPU门及真实四卡attempt3通过：250自然pool zeroUBR raw/prob/binary/box/score exact，真实更新/64匹配预测/空rank/250压力已测，非AP或续训证明。
 
 新增`configs/ablations/ue_g_ubr_short_protocol_20261027.json`、`scripts/probes/ue_ubr_short_run_20261027.py`、`ue_ubr_short_owner_20261027.py`与[短研究说明](dual_stream/UE_G_UBR_SHORT_STUDY_20261027.md)：fresh共同初始化、三臂10轮机制诊断、每实验4卡，full459val E1/E10、全部结束后固定E10 test、不按test选权。每epoch after_epoch保存与5类rank RNG恢复；owner最多2组按4卡headroom共租、第三排队。旧93份数值源保持不变，未启动100轮。
+
+### 2026-10-27 UBR短比较已发射
+
+代码提交5b719ee，四卡恢复门实际通过（模型/optimizer synthetic moment/scaler/五类RNG）。owner1407943在`ue_g_ubr_short_20261027`启动geometry与no_tail两个四卡组，zero_geometry按合同队列；94份数值源已绑定，完整预算未启动。已见参考臂E1真实成功更新，尚无本轮AP结论。实际rank/状态见[短研究启动记录](dual_stream/UE_G_UBR_SHORT_STUDY_20261027.md)。

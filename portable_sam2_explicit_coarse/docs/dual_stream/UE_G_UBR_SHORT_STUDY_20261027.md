@@ -33,3 +33,11 @@
 每卡资源依据真实峰值6530MiB＋1024余量＋512 context＝8066MiB预约，另留2048MiB；allocator cap9216MiB不是预约量。按四卡共同headroom准入，扣除启动进程尚未实际驻留的预约，不凭单卡空闲启动。每任务独立torchrun rendezvous、source/argv/PID/starttick/log/rc归档，source/receipt/order改动停止新准入。
 
 产物计划`/data/wangcheng/checkpoint/ue_g_ubr_short_20261027`；具体启动与完成状态以owner_state/rank_launches/progress/receipt为准，不把计划写成已经跑完。
+
+## 实际启动记录
+
+源码固定提交`5b719eee64786e0c0e4e88f2d6b4815eed7781b5`。独立四卡恢复门`/data/wangcheng/checkpoint/ue_ubr_resume_gate_20261027/resume_gate/G_UBR_geometry/complete.json`全部通过：模型、synthetic AdamW moment、scaler与五类RNG next-five exact。
+
+owner PID1407943已实际启动两组四卡：G_UBR_geometry launcher1408127（rank1408141/43/48/50），G_no_tail launcher1408128（rank1408137/38/42/44），zero_geometry pending按资源接续。实际study_contract绑定94份本地数值源及上述提交，各rank身份独立核查通过。初始no_tail已完成E1 update150，loss/clip前范数有限、AMP retry0；UBR当时在首25日志窗口，进程活跃无错误，不能将此状态写成已完成训练或已有AP收益。最新状态始终以owner_state/progress为准。
+
+当前UBR整池上下文＋逐实例完整反传明显比参考耗时，应将训练/推理成本与AP一起报告；本轮不在运行中改批次、分辨率或结构来优化速度。每卡实际两组约13GiB，留有余量；第三等待是本轮2组上限及资源合同，不是单卡调度。
