@@ -32,10 +32,11 @@ echo "out         : $RESEAL_ROOT"
 [ "${GIT_TAG#exp/EXP-0028}" != "$GIT_TAG" ] || { echo "FAIL: HEAD not tagged exp/EXP-0028"; exit 1; }
 grep -q "VERDICT: PASS" "$AUDIT" || { echo "FAIL: audit not PASS"; exit 1; }
 
-mkdir -p "$RESEAL_ROOT"
+# Contract archived to a SIDELINE file: the runner fail-closed asserts the
+# output root does NOT exist yet, so the wrapper must not create it.
 { echo "=== EXP-0028 WRAPPER CONTRACT ==="; env | grep -E "TRAIN_|SAM2_CKPT"; \
   echo "commit $GIT_SHA tag $GIT_TAG"; sha256sum configs/ablations/ue_ubr_single_512.py; } \
-  | tee "$RESEAL_ROOT/wrapper_contract.txt"
+  | tee "${RESEAL_ROOT}.launch_contract.txt"
 
 exec $PY -u scripts/probes/ue_ubr_reseal_20261027.py \
   --out-root "$RESEAL_ROOT" \
