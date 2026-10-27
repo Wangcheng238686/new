@@ -273,3 +273,7 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 ### 2026-10-27 UBR短比较已发射
 
 代码提交5b719ee，四卡恢复门实际通过（模型/optimizer synthetic moment/scaler/五类RNG）。owner1407943在`ue_g_ubr_short_20261027`启动geometry与no_tail两个四卡组，zero_geometry按合同队列；94份数值源已绑定，完整预算未启动。已见参考臂E1真实成功更新，尚无本轮AP结论。实际rank/状态见[短研究启动记录](dual_stream/UE_G_UBR_SHORT_STUDY_20261027.md)。
+
+### 2026-10-27 用户要求三组四卡共租
+
+新增`scripts/probes/ue_ubr_short_adopt_owner_20261027.py`，按用户指示移除原两组限制，审计后仅替换owner、保留已有训练rank，接管并发射zero_geometry第三四卡组。每组预约7042MiB＋每卡全局2048余量，仍按实际4卡余量准入；归档初始owner状态、数值提交5b719ee不变，控制器另有Git/SHA，test保持串行。

@@ -41,3 +41,9 @@
 owner PID1407943已实际启动两组四卡：G_UBR_geometry launcher1408127（rank1408141/43/48/50），G_no_tail launcher1408128（rank1408137/38/42/44），zero_geometry pending按资源接续。实际study_contract绑定94份本地数值源及上述提交，各rank身份独立核查通过。初始no_tail已完成E1 update150，loss/clip前范数有限、AMP retry0；UBR当时在首25日志窗口，进程活跃无错误，不能将此状态写成已完成训练或已有AP收益。最新状态始终以owner_state/progress为准。
 
 当前UBR整池上下文＋逐实例完整反传明显比参考耗时，应将训练/推理成本与AP一起报告；本轮不在运行中改批次、分辨率或结构来优化速度。每卡实际两组约13GiB，留有余量；第三等待是本轮2组上限及资源合同，不是单卡调度。
+
+## 用户要求立即三组共租（2026-10-27）
+
+用户明确要求显存足够时立即启动等待的zero_geometry。新增`scripts/probes/ue_ubr_short_adopt_owner_20261027.py`独立控制器：严格核旧owner与8rank身份、归档原状态，只终止旧owner（torchrun/rank进程不接收信号），取得同一owner锁后接管存活任务并启动第三个四卡组。数值源/预算/初始化/allocator cap/固定E10评价不变，训练仍绑定5b719ee。
+
+准入改为每组实测最坏6530MiB＋512 context＝7042MiB，保留每卡全局2048MiB余量；移除旧每组额外1024MiB重复缓冲及两组上限，最多三组。实际四卡准入余量约7855–7966MiB，足以放入7042MiB。源与order检查、未兑现预约扣除、失败停止新发射、完整test串行规则继续保留。接管归档及新controller SHA/commit见产物`adoption_three_groups_20261027/policy.json`，实际状态看owner_state。
