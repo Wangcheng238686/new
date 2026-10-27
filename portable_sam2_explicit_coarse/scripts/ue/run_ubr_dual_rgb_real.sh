@@ -43,7 +43,7 @@ AUDIT=$WORKTREE/docs/reviews/UBR-DUAL-RGB-20261028_audit.md
 cd "$CODE"
 GIT_SHA=$(git -C "$WORKTREE" rev-parse HEAD)
 GIT_TAG=$(git -C "$WORKTREE" describe --tags --exact-match HEAD 2>/dev/null || echo UNTAGGED)
-GEOM_CONSTANTS_SHA=$(sha256sum "$GEOM_CONSTANTS" 2>/dev/null | cut -d' ' -f1 || echo MISSING)
+GEOM_CONSTANTS_SHA=$(sha256sum "$UBR_GEOM_CONSTANTS" 2>/dev/null | cut -d' ' -f1 || echo MISSING)
 ANCHOR_COUNT=$(ls "$UBR_RGB_ANCHOR_CACHE"/*.npz 2>/dev/null | wc -l)
 
 echo "=== EXP-0030 UBR DUAL+RGB WRAPPER CONTRACT (v4) ==="

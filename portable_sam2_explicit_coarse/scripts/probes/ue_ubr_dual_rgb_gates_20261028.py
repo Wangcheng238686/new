@@ -789,6 +789,7 @@ def cmd_g5(_args) -> dict:
         val_r = _payload(model, val_batch, False)
         ref_pred = model(val_r["inputs"], val_r["data_samples"],
                          mode="predict")
+    masks_ref = _pred_masks_np(ref_pred[0])
 
     # train-only descriptor mean over the gate's staged real descriptors
     # (DRILL ONLY: the fourth arm's production json must be computed over
@@ -847,7 +848,12 @@ def cmd_g5(_args) -> dict:
     scene_val = int(val_batch["img_metas"][0]["image_id"])
     cell_c = integ._rgb_pooled[0].reshape(rgb_mod.RGB_PROJECT_DIM, -1).T
     sel = cell_c[_support128(scene_val)]
-    assert float(sel.std()) == 0.0, "constant descriptors are not constant"
+    # Exact constancy: every supported cell must hold bitwise the SAME 32-dim
+    # vector. (std()==0 was the wrong proxy: std over the [N,32] selection
+    # measures the spread ACROSS the mean vector's 32 channel values, which
+    # are legitimately different - audit 20261028.)
+    assert sel.numel() and bool((sel == sel[:1]).all()), (
+        "constant descriptors are not constant")
     peak = _peak_gb()
     assert peak < MEM_TARGET_GB, peak
     model.to("cpu")
