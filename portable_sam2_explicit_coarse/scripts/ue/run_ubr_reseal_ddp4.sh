@@ -29,7 +29,7 @@ echo "flip        : $TRAIN_FLIP_PROB (3090 protocol: no flip)"
 echo "aug         : ColorJitter(.15,.15,.10,.02)@p.5 + Gauss(.5,.02) train-only"
 echo "out         : $RESEAL_ROOT"
 [ "$(git -C "$WORKTREE" status --porcelain | wc -l)" -eq 0 ] || { echo "FAIL: dirty tree"; exit 1; }
-[ "$GIT_TAG" = "exp/EXP-0028*" ] || [ "$GIT_TAG" = "exp/EXP-0028" ] || { echo "FAIL: HEAD not tagged exp/EXP-0028"; exit 1; }
+[ "${GIT_TAG#exp/EXP-0028}" != "$GIT_TAG" ] || { echo "FAIL: HEAD not tagged exp/EXP-0028"; exit 1; }
 grep -q "VERDICT: PASS" "$AUDIT" || { echo "FAIL: audit not PASS"; exit 1; }
 
 mkdir -p "$RESEAL_ROOT"
