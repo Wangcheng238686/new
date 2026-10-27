@@ -37,7 +37,6 @@ mkdir -p "$RESEAL_ROOT"
   echo "commit $GIT_SHA tag $GIT_TAG"; sha256sum configs/ablations/ue_ubr_single_512.py; } \
   | tee "$RESEAL_ROOT/wrapper_contract.txt"
 
-exec $PY -u scripts/probes/ue_ubr_reseal_20261027.py train \
-  --config configs/ablations/ue_ubr_single_512.py \
-  --out "$RESEAL_ROOT" \
+exec $PY -u scripts/probes/ue_ubr_reseal_20261027.py \
+  --out-root "$RESEAL_ROOT" \
   --audit-verdict "$AUDIT"
