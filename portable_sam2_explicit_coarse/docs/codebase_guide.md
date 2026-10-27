@@ -285,3 +285,11 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 ### 2026-10-27 效率版三臂重启已核定
 
 效率源码246e4aa，最终四卡attempt4及fast恢复门通过，旧两UBR/owner已停且完整归档。新root`ue_g_ubr_fast_20261027` owner1485153实际并行三组各4rank，三臂97数值源均在owner100来源闭包且同Gitblob；初始化/10轮2670/global8/train1infer4均一致。最新状态/性能界限见[效率记录](dual_stream/UE_G_UBR_EFFICIENCY_20261027.md)，尚无AP收益结论。
+
+### 2026-10-27 Native RoI头与主任务监督接线
+
+新增`rsprompter/uav/native_roi_refiner.py`（70ch native残差与显式RoI证据采样）、`ubr_native_integration.py`（prefusion缓存/局部decoder shim/空rank连参）、`scripts/probes/ue_ubr_native_runtime_20261027.py`（A/B/C共同初始、不构旧UBR）和`ue_ubr_native_gate_20261027.py`（真实四卡工程门）。新测试`tests/test_native_roi_refiner.py`及`test_ubr_native_integration.py`共15CPU通过。开发合同`configs/ablations/ue_native_roi_development_contract_20261027.json`与[实施说明](dual_stream/UE_UBR_NATIVE_ROI_IMPLEMENTATION_20261027.md)记录native128修正、原512主监督、独立RGB/geometry支持和无额外loss。当前实验保持停止，本轮不发射长训练。原全图/fast源97份均不改。
+
+新轻量头完整FP32 island，原模型继续AMP，delta按接收logits dtype相加；解决低scale下新隐藏层梯度下溢，不改loss分母/初始化。正式训练恢复/调度仍需另行核定，工程门不等于长训练或AP证明。
+
+最终真实四卡attempt5通过（3次AMP工程更新、空rank、主mask独立反传、250框8decode、zero恒等），81份import源零漂移；训练峰值8558MiB，含所有诊断8564MiB。250框maskconsumer .635–.688秒不含extract_feat，A/C单批顺序计时不作加速结论。15CPU通过，无AP或正式续训轨迹证明。

@@ -1,0 +1,103 @@
+{
+  "study": "native_roi_refiner_development_v1",
+  "status": "engineering_passed_no_training_launched",
+  "training_launched": false,
+  "arms": {
+    "A_nohead": "same upstream G correct RGB-D, no refiner",
+    "B_zero": "same G, zero both tail evidence ports only",
+    "C_correct": "same G, pre-fusion aligned RGB plus geometry"
+  },
+  "initialization": {
+    "common_generic_foundation": true,
+    "no_task_checkpoint_warmstart": true,
+    "G_seed": 2060,
+    "native_head_seed": 2080,
+    "zero_last_conv": true
+  },
+  "head": {
+    "input_channels": {
+      "decoder": 32,
+      "aligned_RGB": 32,
+      "geometry": 5,
+      "detached_probability": 1
+    },
+    "hidden": 32,
+    "blocks": 3,
+    "spatial_block": "DW3x3_PW1x1_GN8_GELU_residual",
+    "normalization": "independent_no_affine_channel_LayerNorm_decoder_and_RGB",
+    "output": "native_logits_plus_unbounded_delta",
+    "no_support": "evidence_zero_satellite_refinement_allowed",
+    "checkpoint_default": false,
+    "precision": "complete_FP32_island_under_outer_AMP; delta_cast_to_original_logits_dtype"
+  },
+  "coordinates": {
+    "ROI": "bbox_edge_xyxy_native_cell_centers",
+    "RGB_origin_xy": [
+      2.0,
+      2.0
+    ],
+    "RGB_stride_xy": [
+      4.0,
+      4.0
+    ],
+    "RGB_sampling": "validity_weighted_bilinear",
+    "RGB_validity": "retained_candidate_valid_any",
+    "geometry_origin_xy": [
+      0.5,
+      0.5
+    ],
+    "geometry_stride_xy": [
+      1.0,
+      1.0
+    ],
+    "geometry_sampling": "nearest_own_support",
+    "image_size": [
+      512,
+      512
+    ]
+  },
+  "supervision": {
+    "main_mask_target": [
+      512,
+      512
+    ],
+    "main_mask_weight": 1.0,
+    "coarse_size": [
+      64,
+      64
+    ],
+    "coarse_weight": 0.1,
+    "instances_weight": 1.0,
+    "instance_logwh_internal_weight": 0.1,
+    "detector_losses": "unchanged",
+    "additional_native_loss": false
+  },
+  "removed": [
+    "UDPR",
+    "global_UBR",
+    "SDT",
+    "neighbors",
+    "predicted_active_rematching",
+    "extra_SAM_decode",
+    "independent_UBR_boundary_loss"
+  ],
+  "retained": [
+    "G_upstream_math",
+    "UAV_LoRA",
+    "instance_head",
+    "candidate_policy",
+    "native_mask_ROI_assignments",
+    "old_sigmoid_then_bbox_paste"
+  ],
+  "limitations": [
+    "candidate_aggregation_compression_remains",
+    "bbox_limited_growth",
+    "upstream_G_present_in_all_arms",
+    "not_full_UAV_RGB_necessity_test",
+    "not_AP_evidence"
+  ],
+  "engineering_world_size": 4,
+  "full_training_authorized_by_this_contract": false,
+  "engineering_receipt": "/data/wangcheng/checkpoint/ue_ubr_native_gate_20261027/attempt5/complete.json",
+  "engineering_receipt_sha256": "5b9ee9588fc95c91f77b3f5635039b857170fd48119a50d6a5b9c171d0c61901"
+}
