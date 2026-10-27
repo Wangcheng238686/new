@@ -186,9 +186,11 @@ def run_worker(argv: list) -> None:
     import train_rsprompter_fusion  # noqa: E402  (sealed trainer entry)
 
     sys.argv = argv
+    # Protocol: no flip (3090 line). Set authoritatively here so worker
+    # subprocesses inherit it regardless of caller env.
+    os.environ["TRAIN_FLIP_PROB"] = "0"
+    os.environ["TRAIN_VFLIP_PROB"] = "0"
     _install_3090_augmentation()
-    assert os.environ.get("TRAIN_FLIP_PROB") == "0", \
-        "dual-stream protocol: TRAIN_FLIP_PROB must be 0 (no flip)"
     train_rsprompter_fusion.main()
 
 
@@ -225,7 +227,7 @@ def _install_3090_augmentation():
         return item
 
     WHUCocoInstanceDataset.__init__ = init_
-    WHUCocoInstanceDataset.__getitem__ = get__
+    WHUCocoInstanceDataset.__getitem__ = get_
 
 
 def subset_ratio(n_full: int, n_want: int) -> float:
