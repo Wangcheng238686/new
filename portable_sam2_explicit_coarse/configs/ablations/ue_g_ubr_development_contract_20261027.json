@@ -1,7 +1,7 @@
 {
   "study": "g_ubr_development_components_v1",
   "status": "components_only_not_integrated_detector",
-  "active_stage": "P0",
+  "active_stage": "P1_coordinate_adapter_only",
   "world_size_gate": 4,
   "ubr": {
     "inputs": {
@@ -32,11 +32,11 @@
     "rpn_bbox": 1.0,
     "roi_cls": 1.0,
     "roi_bbox": 1.0,
-    "mask_final": 1.0,
     "coarse": 0.1,
     "ubr": 0.1,
     "instances": 1.0,
-    "center_size_internal": 0.1
+    "center_size_internal": 0.1,
+    "mask_native": 1.0
   },
   "ubr_loss": {
     "focal_gamma": 2.0,
@@ -46,11 +46,33 @@
     "reduction": "band_pixel_mean_then_nonempty_instance_mean_per_image_then_all_image_mean"
   },
   "P1": {
-    "roi_alignment": "pending_probability_paste_parity",
+    "roi_alignment": "native_feature_and_sigmoid_probability_same_bbox_paste",
     "tail": "UBR replaces UDPR",
     "preserve_G_and_instance_head": true,
     "preserve_candidate_policy": true,
-    "prediction_neighbors": "detached_predictions_no_GT"
+    "prediction_neighbors": "detached_predictions_no_GT",
+    "adapter_status": "implemented_not_integrated_detector",
+    "probability_epsilon": 1e-06,
+    "roundtrip_absolute_tolerance": 1.1e-06,
+    "zero_residual_deployment": "saved_probability_exact_binary_and_scores",
+    "state_binary_source": "saved_pasted_probability_not_inverse_logit_roundtrip",
+    "main_mask_target": "unchanged_native_roi_loss_pre_UBR",
+    "ubr_target": "assigned_full_image_GT_on_prediction_boundary_band",
+    "active_instances": "IoU_matched_current_predictions_with_stable_candidate_ID",
+    "active_match": {
+      "bbox_iou_min": 0.5,
+      "assignment": "max_IoU_GT_first_GT_index_breaks_ties",
+      "many_predictions_per_GT": true,
+      "low_quality_below_threshold": false,
+      "add_GT_to_prediction_pool": false,
+      "max_per_image": 64,
+      "selection": "score_desc_candidate_ID_asc"
+    },
+    "context_decode": "detached_pre_UBR_full_current_prediction_pool",
+    "active_decode": "differentiable_redecode_not_detached_context_tensor",
+    "empty_positive_loss": "zero_connected_to_all_UBR_parameters_with_all_image_denominator",
+    "full_model_gate": "pending_real_decoder_geometry_context_and_active_backward",
+    "false_positive_training": "not_solved_P2_shared_RoI_confirmation"
   },
   "P2": {
     "sampler_num": 256,

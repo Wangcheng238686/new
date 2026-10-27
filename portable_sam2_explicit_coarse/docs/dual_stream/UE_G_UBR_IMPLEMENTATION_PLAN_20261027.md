@@ -18,7 +18,7 @@
 - UBR40ch，hidden48/depth7单conv残差块、GN8+SiLU；带宽8原生目标像素。输入prob/SDT/neighbor detach，decoder feature可微。末层零初始化，无额外alpha门。
 - 输出改为无界residual：z_final=z+B*r。它保留带内原z的直接梯度、初始输入网格精确恒等，不再使用b+r绝对替换。它仍是空间边界带卷积修正，不回到64点UDPR。此处是用户认可讨论后的合同修订，不称远端原加法探针逐位复现。
 - 部署比较符固定prob>=0.4（已读本地mmdet FCNMaskHead），SDT与neighbor二值化使用同一比较符。empty/full mask SDT以无边界语义产生空band；不自动全图修改。首版不加入连通域重写。
-- loss维持检测四项各1/final1/coarse .1/UBR .1/实例1；实例内部尺寸 .1；UBR focal gamma2、无额外alpha，Dice仅分母eps1e-6。各目标的职责和分母不互相平均，不动态调lambda。
+- loss维持检测四项各1/native RoI mask1/coarse .1/UBR .1/实例1；实例内部尺寸 .1；UBR focal gamma2、无额外alpha，Dice仅分母eps1e-6。各目标的职责和分母不互相平均，不动态调lambda。
 - 同一整图/窗口的几何/特征坐标显式输入，core不自动resize。GN裁窗不等价整图：窗口为新模型明确合同，不能伪称数值等价；未核定窗口规则前资源先按整网格测。
 - 不加来源embedding、动态采样配额、learnable温度、额外可见性loss、模态dropout或PCGrad。
 
@@ -41,7 +41,7 @@ P1第一步仅新增RoI→卫星适配器与landmark/checkerboard/paste等价门
 
 上下文来自当前模型无梯度预测，复用提取特征，候选集合/阈值/NMS/上限与当前P1推理族一致；不能将GT正RoI直接当邻居集合。mask均为精修前预测，同步构建，不依赖实例处理顺序。排除self依靠稳定预测candidate ID和NMS归属，不靠GT assigned instance ID。
 
-P1仍沿旧正RoI mask训练，对补充框的训练覆盖缺口公开保留，不宣称端到端统一完成；P2才修复。参考neighbor工具的标准NMS不能直接替换P1旧评分/保护prefix规则：集成时必须使用P1当前已选集合或明确等价核验，不能把helper误用变成额外候选策略改动。P2再使用统一NMS路径。
+P1原生mask仍沿旧正RoI训练；UBR则从当前真实预测pool选bbox IoU>=.5的匹配正例可微重解码，使用已知预测ID排除self。GT只分配目标，不向预测pool补GT。每图最多64个，score降序/ID升序，最高IoU分配、平手取GT原序，允许同GT多预测；空正例loss为图等权分母下的连参零。补充预测可获UBR监督，但共享RoI分类确认仍待P2，不宣称已解决候选拒伪。参考neighbor工具的标准NMS不能直接替换P1旧评分/保护prefix规则：集成时必须使用P1当前已选集合或明确等价核验，不能把helper误用变成额外候选策略改动。P2再使用统一NMS路径。
 
 ## 6. P2共享候选：不添加复杂配额
 
@@ -66,3 +66,13 @@ P0只工程；P1先过坐标/初始化/空rank/真实反传资源/续训RNG门�
 每rank实际顺序250个512²实例：耗时13.02–13.49秒（含CPU scipy SDT与传输），训练peak reserved均678MiB，推理394–396MiB。这是组件进程allocator峰值，一次1实例；不是完整SAM/G、不是250实例同时反传，不据此确定正式每卡batch。没有AP评价。
 
 原始产物：`/data/wangcheng/checkpoint/ue_ubr_component_gate_20261027/complete.json`；审核与源码Git绑定`reviewed_acceptance.json`；六份源/配置/tests另有独立快照。P0组件可进入P1适配开发，尚不能启动完整100epoch。P1开工顺序先native/RoI→sat坐标与概率paste parity，再真实模型接线/梯度/资源；不能跳过当前已发现的roi_local语义缺口。
+
+## 10. 2026-10-27历史接线审查后的监督修订（覆盖旧final-mask表述）
+
+Git `6dc6aa4/49670c5/eef70ca/ddb9524`确认：native输出按roi_local监督，32ch最终捕获特征与logits同格；必须共同bbox映射，概率先sigmoid再paste。新增`ubr_coordinate_adapter.py`与真实MMDet对照测试，尚未接入生产head。详见[坐标接线审计与锁定合同](UE_UBR_WIRING_AUDIT_20261027.md)。
+
+**明确修订早期“原主mask loss直接监督UBR”的设计承诺**：原native RoI主mask loss保持原target、原分母及权重1，只监督UBR前输出；UBR使用全图GT、预测边界带的focal+Dice，权重.1一次。禁止将512² UBR输出送旧roi_local loss_and_target后缩至28²，禁止paste→inverse-crop伪造恒等，也不新增全图主BCE。loss项数不增加；这仍是新尾部监督人口与网格的变化，不宣称总loss数值等价。
+
+上下文为完整当前预测pool的detached pre-UBR masks；active训练来自同pool的匹配正例，必须可微redecode。GT不建邻居、不改变预测排序/NMS。旧候选保护prefix与评分仍保留。原概率保存用于零residual部署精确恢复；epsilon=1e-6，roundtrip max abs容许1.1e-6，不能用该近似保证threshold tie。band/邻居必须由保存的原概率>=.4生成，不能经finite logit回环重算。UBR全图输出不二次bbox paste。
+
+坐标适配组件门通过后，实际head接线仍需单独验收：真实decoder输出恒等、extraPE只一次、无旧capture污染、context无梯度/active可微、模式与RNG可恢复，以及完整context+最多64 active反传四卡资源门。P0四卡顺序250推理不替代这个门。

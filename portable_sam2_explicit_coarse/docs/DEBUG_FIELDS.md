@@ -200,3 +200,7 @@ Q/G门的initial_features_max_error、initial_head_max_error为相同初始化FP
 `ue_ubr_component_gate_20261027/*rank*_result.json`为4rank各自独立synthetic组件门，不是正式训练epoch。updates各row是一rank本地1图（rank3首步0实例但图分母仍1）的mask平均＋0.1×raw_ubr_loss；raw_ubr_loss为带内像素均值→有效实例均值→本图loss，weight在gate仅乘一次。grad_norm_before_clip是同步DDP梯度AMP unscale后的整体L2，clip_limit=.5；decoder_feature_leaf_grad_norm为synthetic输入叶子范数除AMP scale后的值，不是实际decoder参数梯度。replica_sha为每次更新后四rank核同的参数SHA。zero_init_exact_identity只对组件输入目标网格的连续logit，不能代替旧RoI probability-paste等价。
 
 training_peak_allocated_mib/reserved为每rank进程allocator训练阶段峰值，非整卡/整模型总量。inference.num_instances=250是每rank顺序执行250个512² UBR实例、一次驻留1个输入；秒数包括CPU scipy SDT与设备传输，optimizer状态仍驻留。不是250实例同时反传峰值，也不包括SAT/UAV/SAM/候选生成。finite/outside_logits_and_binary_exact只检验该组件边界合同。source_sha绑定module/gate；complete仅4rank全部成功后写，异常保留failed_rank。字段不进入loss决策/门控/选权，不扩充逐步训练日志。
+
+### 2026-10-27 UBR坐标适配器工程产物
+
+`ue_ubr_adapter_gate_20261027/complete.json`是4rank数组，每rank独立三种incoming dtype（FP32/FP16/BF16），每种3个合成框、128²canvas，非数据集或训练遥测。`max_roundtrip_error`为该rank该dtype全部像素的max abs(sigmoid(finite_logit)-原paste概率)，epsilon1e-6、容差1.1e-6；不均值或跨rank平均。`exact_binary_and_uint8`逐像素对比真实FCN threshold .4/.5及负阈值uint8；`threshold_ties_exact`直接保存概率覆盖exact/adjacent .4、0/1。`gradient_finite_nonzero`是合成native logits/features输入叶子梯度，不是实际decoder参数。source/script SHA绑定本次源。无AP、无完整模型资源指标，不进入loss/门控/选权，不增加逐步日志。

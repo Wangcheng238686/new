@@ -259,3 +259,7 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 ### 2026-10-27 P0四卡组件验收
 
 `8104ed2`独立UBR与context组件CPU16项通过，四rank各4次AMP更新/参数SHA一致/空实例rank通过；每rank顺序250个512² UBR推理通过。原始`ue_ubr_component_gate_20261027/complete.json`与`reviewed_acceptance.json`绑定源码与提交。训练allocator reserved678MiB、推理394–396MiB为组件局部结果，不是完整双流资源/AP。进入P1前先解决roi_local probability-paste坐标门，尚未完整模型接线或长训练。
+
+### 2026-10-27 UBR坐标适配与历史接线裁定
+
+新增`rsprompter/uav/ubr_coordinate_adapter.py`：native32ch与sigmoid概率同bbox grid映射到图像，finite-logit epsilon1e-6，推理保留原概率恢复未改动像素；不接生产head。`tests/test_ubr_coordinate_adapter.py`对照真实FCN；`scripts/probes/ue_ubr_adapter_gate_20261027.py`四卡三精度合成适配门。CPU组合26项、四卡三精度通过；不是完整检测器/AP。新增审计`dual_stream/UE_UBR_WIRING_AUDIT_20261027.md`及reviews下history/independent review，配置与实施计划同步。历史明确不允许全图UBR输出送旧28² ROI loss；修订为保留native主mask监督，UBR直接全图band监督；active来自当前预测pool匹配，GT不构建邻居。P1实际head、正式几何、全pool+active反传资源仍待完成。
