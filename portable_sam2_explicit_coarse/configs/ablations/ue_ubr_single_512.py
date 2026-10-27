@@ -59,6 +59,14 @@ model = dict(
                 uav_port='zero',          # UBR(off): port 5 all zeros
                 neighbors_train='gt',     # documented choice (see docstring)
                 neighbors_predict='pred',
+                # 4) Augmentation = 3090-line protocol (PI instruction
+                #    2026-10-27): NO flip (dual-stream flip-consistency);
+                #    train-only ColorJitter(.15,.15,.10,.02)@p=.5 and
+                #    Gaussian noise p=.5 std=.02, applied via class patch
+                #    in the runner (semantics copied verbatim from
+                #    data/ue_minimal_dataset.py MinimalSatelliteDataset).
+                aug_gaussian='0.5,0.02',
+                aug_jitter='0.15,0.15,0.10,0.02,0.5',
             ),
         ),
     ),

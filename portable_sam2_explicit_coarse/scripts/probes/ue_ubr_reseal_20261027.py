@@ -186,7 +186,46 @@ def run_worker(argv: list) -> None:
     import train_rsprompter_fusion  # noqa: E402  (sealed trainer entry)
 
     sys.argv = argv
+    _install_3090_augmentation()
+    assert os.environ.get("TRAIN_FLIP_PROB") == "0", \
+        "dual-stream protocol: TRAIN_FLIP_PROB must be 0 (no flip)"
     train_rsprompter_fusion.main()
+
+
+def _install_3090_augmentation():
+    """Class patch: train-split ColorJitter + Gaussian noise, zero flip.
+
+    Semantics copied verbatim from data/ue_minimal_dataset.py
+    (MinimalSatelliteDataset, the 3090-line protocol): RandomApply(
+    ColorJitter(.15,.15,.10,.02), p=.5) on the BGR->RGB uint8 image and
+    gaussian_noise_prob=.5/std=.02, train split only; flip stays 0 via env.
+    """
+    import torch
+    from torchvision.transforms import ColorJitter, RandomApply
+    from data.whu_instance_dataset import WHUCocoInstanceDataset
+    jitter = RandomApply([ColorJitter(brightness=.15, contrast=.15,
+                                      saturation=.10, hue=.02)], p=.5)
+    orig_init = WHUCocoInstanceDataset.__init__
+    orig_get = WHUCocoInstanceDataset.__getitem__
+
+    def init_(self, *a, **kw):
+        orig_init(self, *a, **kw)
+        ann = str(kw.get('ann_file') or (a[1] if len(a) > 1 else ''))
+        if 'annotations/train' in ann:
+            self.gaussian_noise_prob = 0.5
+            self.gaussian_noise_std = 0.02
+            self._ubr3090_jitter = jitter
+
+    def get_(self, idx):
+        item = orig_get(self, idx)
+        j = getattr(self, '_ubr3090_jitter', None)
+        if j is not None and isinstance(item, dict) and 'img' in item:
+            rgb = item['img'][[2, 1, 0]].to(torch.uint8)
+            item['img'] = j(rgb)[[2, 1, 0]].float()
+        return item
+
+    WHUCocoInstanceDataset.__init__ = init_
+    WHUCocoInstanceDataset.__getitem__ = get__
 
 
 def subset_ratio(n_full: int, n_want: int) -> float:
