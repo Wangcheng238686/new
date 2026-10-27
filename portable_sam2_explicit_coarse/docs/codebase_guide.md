@@ -281,3 +281,7 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 ### 2026-10-27 UBR效率实现与新三臂重启
 
 新增`rsprompter/uav/ubr_detector_fast.py`和`tests/test_ubr_detector_fast.py`：同模型/512网格/active64/原loss下，context只概率paste、邻居sum-self、trainSDT局部缓存、去嵌套checkpoint，固定训练1/推理4。`scripts/probes/ue_ubr_fast_gate_20261027.py`做真实四卡loss/grad/离散/250预测/完整目标资源；`ue_ubr_fast_runtime_20261027.py`和`ue_ubr_fast_run_20261027.py`独立复用相同参数与oldengine；`configs/ablations/ue_g_ubr_fast_protocol_20261027.json`保持10轮合同；`ue_ubr_fast_owner_20261027.py`修全repo源闭包含SAM2lazy依赖，按新实测峰值共租三组。`scripts/analysis/ue_ubr_fast_restart_audit_20261027.py`审计并停止旧owner/两组，原输出完整保留。旧no_tail E10真实完成，owner因漏vendor2源误报failed，非漂移。实现与验收/重启范围见[效率记录](dual_stream/UE_G_UBR_EFFICIENCY_20261027.md)。
+
+### 2026-10-27 效率版三臂重启已核定
+
+效率源码246e4aa，最终四卡attempt4及fast恢复门通过，旧两UBR/owner已停且完整归档。新root`ue_g_ubr_fast_20261027` owner1485153实际并行三组各4rank，三臂97数值源均在owner100来源闭包且同Gitblob；初始化/10轮2670/global8/train1infer4均一致。最新状态/性能界限见[效率记录](dual_stream/UE_G_UBR_EFFICIENCY_20261027.md)，尚无AP收益结论。

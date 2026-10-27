@@ -53,3 +53,11 @@ attempt1受共租诊断cap7040限制，在FP32微批4反传触发本进程alloca
 无插桩仅UBR目标前反传提速1.45–1.46×；FP32完整250推理提速1.24–1.27×，不能称整轮训练等比加速。正式完整目标AMP每rank1图无累积的两次工程更新含rank3空例，参数副本SHA一致；正式执行峰值6550MiB（约6.40GiB），FP32梯度诊断峰值4350MiB单列。新owner每组预约7062MiB、全卡再留2048，允许三四卡组共租。
 
 CPU41项组合测试主代理重跑通过，旧93份冻结数值源全部未改变。新final源全repo实际import闭包及快照在attempt4目录，正式发射前要求提交Git、通过fast运行器恢复门；后续运行状态见新root owner_state/rank_launches/progress。
+
+## 实际发射与来源核定
+
+数值提交`246e4aa32db80572bf387545c5bb17bcdb7f2cdf`。fast运行器独立四卡恢复门全部passed（model、显式synthetic AdamW moment、scaler、5类RNG next-five exact），产物`/data/wangcheng/checkpoint/ue_ubr_fast_resume_gate_20261027/resume_gate/G_UBR_geometry/complete.json`。
+
+新owner1485153已实际启动三组四卡，共12rank：geometry launcher1485368/ranks1485379/81/82/83，no_tail launcher1485369/ranks1485395/96/98/99，zero_geometry launcher1485370/ranks1485386/87/88/89。独立发射审查核PID/startticks/rank/world及初始化/合同均一致；三臂97份实际数值源为owner100来源的精确子集，SAM2延迟依赖完整，全部与上述Gitblob一致。owner状态running3/failures空，各卡总占用约19–20GiB，尚无报错。
+
+初始发射不等于训练完成或AP收益。后续最新状态看`/data/wangcheng/checkpoint/ue_g_ubr_fast_20261027/owner_state.json`及各臂progress/epoch/complete；日志25更新采样，最后训练记录250后可能是本轮最后17更新或完整val阶段，不能仅凭该记录判定卡死。
