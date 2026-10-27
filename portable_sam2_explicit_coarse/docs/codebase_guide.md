@@ -263,3 +263,9 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 ### 2026-10-27 UBR坐标适配与历史接线裁定
 
 新增`rsprompter/uav/ubr_coordinate_adapter.py`：native32ch与sigmoid概率同bbox grid映射到图像，finite-logit epsilon1e-6，推理保留原概率恢复未改动像素；不接生产head。`tests/test_ubr_coordinate_adapter.py`对照真实FCN；`scripts/probes/ue_ubr_adapter_gate_20261027.py`四卡三精度合成适配门。CPU组合26项、四卡三精度通过；不是完整检测器/AP。新增审计`dual_stream/UE_UBR_WIRING_AUDIT_20261027.md`及reviews下history/independent review，配置与实施计划同步。历史明确不允许全图UBR输出送旧28² ROI loss；修订为保留native主mask监督，UBR直接全图band监督；active来自当前预测pool匹配，GT不构建邻居。P1实际head、正式几何、全pool+active反传资源仍待完成。
+
+### 2026-10-27 G＋UBR实际接线与首轮四卡运行器
+
+新增`rsprompter/uav/ubr_detector_integration.py`、`tests/test_ubr_detector_integration.py`、`scripts/probes/ue_ubr_runtime_20261027.py`及`ue_ubr_detector_gate_20261027.py`。原decoder三元组不改，构造前禁UDPR，native主loss保持，UBR全图band监督；所有参数在satellite/DDP注册。context/predict复现旧source段＋默认32批，active逐实例完整checkpoint。33项CPU门及真实四卡attempt3通过：250自然pool zeroUBR raw/prob/binary/box/score exact，真实更新/64匹配预测/空rank/250压力已测，非AP或续训证明。
+
+新增`configs/ablations/ue_g_ubr_short_protocol_20261027.json`、`scripts/probes/ue_ubr_short_run_20261027.py`、`ue_ubr_short_owner_20261027.py`与[短研究说明](dual_stream/UE_G_UBR_SHORT_STUDY_20261027.md)：fresh共同初始化、三臂10轮机制诊断、每实验4卡，full459val E1/E10、全部结束后固定E10 test、不按test选权。每epoch after_epoch保存与5类rank RNG恢复；owner最多2组按4卡headroom共租、第三排队。旧93份数值源保持不变，未启动100轮。

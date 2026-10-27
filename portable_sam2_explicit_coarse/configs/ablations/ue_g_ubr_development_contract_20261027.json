@@ -1,7 +1,7 @@
 {
   "study": "g_ubr_development_components_v1",
-  "status": "components_only_not_integrated_detector",
-  "active_stage": "P1_coordinate_adapter_only",
+  "status": "integrated_opt_in_detector_engineering_passed_short_runner_pending_resume",
+  "active_stage": "P1_real_detector_engineering_passed",
   "world_size_gate": 4,
   "ubr": {
     "inputs": {
@@ -51,7 +51,7 @@
     "preserve_G_and_instance_head": true,
     "preserve_candidate_policy": true,
     "prediction_neighbors": "detached_predictions_no_GT",
-    "adapter_status": "implemented_not_integrated_detector",
+    "adapter_status": "integrated_opt_in_frozen_old_sources_unchanged",
     "probability_epsilon": 1e-06,
     "roundtrip_absolute_tolerance": 1.1e-06,
     "zero_residual_deployment": "saved_probability_exact_binary_and_scores",
@@ -71,8 +71,9 @@
     "context_decode": "detached_pre_UBR_full_current_prediction_pool",
     "active_decode": "differentiable_redecode_not_detached_context_tensor",
     "empty_positive_loss": "zero_connected_to_all_UBR_parameters_with_all_image_denominator",
-    "full_model_gate": "pending_real_decoder_geometry_context_and_active_backward",
-    "false_positive_training": "not_solved_P2_shared_RoI_confirmation"
+    "full_model_gate": "passed_attempt3_full_context_64_natural_positive_and_250_inference",
+    "false_positive_training": "not_solved_P2_shared_RoI_confirmation",
+    "eval_decode": "original_source_segments_and_mask_roi_chunk_size_default32"
   },
   "P2": {
     "sampler_num": 256,

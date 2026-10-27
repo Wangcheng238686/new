@@ -52,3 +52,9 @@ context保留当前P1候选评分/保护prefix政策，来自完整pre-UBR预测
 新opt-in decoder capture/mask head/ROI head与G wrapper尚未接入。后续必须保证UDPR不实例化、extraPE一次、capture逐调用局部保存、不由context覆盖训练输出；固定train/eval/dropout模式与RNG恢复。geometry5与返回canvas同坐标，satellite缺省geometry=0。
 
 真实同权重tail-disabled基线对比raw logits/embedding/coarse/det scores，零UBR最终binary/score精确恒等；移除训练过的UDPR本身不可能与旧UDPR结果恒等。真实可微active decoder梯度、首步out与更新后hidden梯度，以及完整pool context+最多64 active反传四卡峰值尚待测。已过的250个顺序组件推理不替代此门。当前没有新增AP结论、没有正式训练启动、没有改动旧实验。
+
+## 6. 后续实施覆盖状态（2026-10-27，覆盖第5节“尚未接入”）
+
+实际opt-in检测器已接入：`ubr_detector_integration.py`与`ue_ubr_runtime_20261027.py`。33项组合CPU门通过。四卡真实门attempt3通过；详见[实施计划第11节](UE_G_UBR_IMPLEMENTATION_PLAN_20261027.md)。推理按原source调用段及默认32批处理后，完整自然250pool raw/prob/binary/box/score exact。训练native loss保持原样，UBR使用预测匹配active可微重解码。参数注册一次、UDPR构造前禁、capture保持旧3tuple。
+
+仍需诚实区分：真实active64压力已过，单卡/整池特征组件门不再是唯一资源依据；完整checkpoint续训检查与正式短实验由新runner负责，尚无AP收益。通用foundation初始化，不曾加载trained G做本次门。

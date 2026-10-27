@@ -76,3 +76,13 @@ Git `6dc6aa4/49670c5/eef70ca/ddb9524`确认：native输出按roi_local监督，3
 上下文为完整当前预测pool的detached pre-UBR masks；active训练来自同pool的匹配正例，必须可微redecode。GT不建邻居、不改变预测排序/NMS。旧候选保护prefix与评分仍保留。原概率保存用于零residual部署精确恢复；epsilon=1e-6，roundtrip max abs容许1.1e-6，不能用该近似保证threshold tie。band/邻居必须由保存的原概率>=.4生成，不能经finite logit回环重算。UBR全图输出不二次bbox paste。
 
 坐标适配组件门通过后，实际head接线仍需单独验收：真实decoder输出恒等、extraPE只一次、无旧capture污染、context无梯度/active可微、模式与RNG可恢复，以及完整context+最多64 active反传四卡资源门。P0四卡顺序250推理不替代这个门。
+
+## 11. P1真实检测器工程验收（2026-10-27）
+
+已新增`ubr_detector_integration.py`、`ue_ubr_runtime_20261027.py`与四卡`ue_ubr_detector_gate_20261027.py`，不改旧冻结源。构造前禁UDPR；原common_init只过滤旧tail参数，其余严格加载；新增UBR参数挂satellite，不遗漏optimizer/DDP。保持原decoder三元组返回，独立hook局部捕获32ch。GWithUBR在一次DDP forward内完成原loss与UBR；上游G/实例头不变。active完整decode→paste→UBR→loss采用非reentrant checkpoint，避免累计64份decoder激活。
+
+发现并修复真实batch合同：原consumer按sat/sat_supplement/UAV分别调用mask head，默认每批32；新context/predict必须保持该分段及批次，不能逐实例decode后仅凭binary相同宣称概率恒等。active训练仍逐实例可微重解码。上下文使用train-mode backbone提取的同一features＋eval-mode head，不声称是整网eval；head mode/Torch RNG恢复。
+
+有效产物`/data/wangcheng/checkpoint/ue_ubr_wiring_20261027/detector_foundation_gate_attempt3/complete.json`：四卡完整自然250pool与真实旧consumer零UBR raw/prob/binary/score/box全exact（概率maxerror0）；3次真实AMP成功更新参数SHA各rank一致、冻结参数不变；rank0–2自然预测匹配64 RoI并有band，rank3首步空GT/active正常。这里64为预测RoI，允许同GT重复，不是64不同建筑。训练reserved最大6368MiB。每rank250完整decoder+UBR压力约14秒、最大6530MiB；压力fixture重复一真实框，独立parity才是自然完整pool。
+
+attempt1暴露AMP回退缺口与不同decode batch造成概率偏差，attempt2的singleton门不替代旧batch合同；全部保留。attempt3首次AMP512→256同批RNG/buffer恢复重试一次，未跳成功更新。该门保存5类RNG但未验完整续训，短runner需另过恢复门。foundation pool可能SAT已填满250，尚不声称UAV新增框来源覆盖或AP改善。后续配对短预算及全量预算的效用结论分开。

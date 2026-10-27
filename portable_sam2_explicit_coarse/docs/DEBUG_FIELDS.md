@@ -204,3 +204,9 @@ training_peak_allocated_mib/reserved为每rank进程allocator训练阶段峰值�
 ### 2026-10-27 UBR坐标适配器工程产物
 
 `ue_ubr_adapter_gate_20261027/complete.json`是4rank数组，每rank独立三种incoming dtype（FP32/FP16/BF16），每种3个合成框、128²canvas，非数据集或训练遥测。`max_roundtrip_error`为该rank该dtype全部像素的max abs(sigmoid(finite_logit)-原paste概率)，epsilon1e-6、容差1.1e-6；不均值或跨rank平均。`exact_binary_and_uint8`逐像素对比真实FCN threshold .4/.5及负阈值uint8；`threshold_ties_exact`直接保存概率覆盖exact/adjacent .4、0/1。`gradient_finite_nonzero`是合成native logits/features输入叶子梯度，不是实际decoder参数。source/script SHA绑定本次源。无AP、无完整模型资源指标，不进入loss/门控/选权，不增加逐步日志。
+
+### 2026-10-27 UBR真实检测器门与短训练口径
+
+`ue_ubr_wiring_20261027/detector_foundation_gate_attempt3`是四rank真实模型工程门，不是完整训练/AP。parity对完整自然250pool按旧source段/chunk32真实head.predict_mask比较，probability_max_error为全部像素max abs，raw/binary/scores/boxes逐值比较。updates每rank本地1图，rank3首步显式空GT；gradient_norms为DDP聚合且unscale后范数，空rank非零不说明本地loss有贡献。active_count<=64为预测RoI数，可多RoI指同GT，不是唯一GT数。context_count是已选pool总数。nonempty_band_count为active里band非空数量，用于UBR有效实例平均。AMP_attempts记录同批恢复重试，失败不计成功更新；峰值MiB均rank进程allocator reserved。250压力fixture重复一真实框，非250自然实例；自然pool仅parity另测。
+
+新短runner progress每25成功更新仅rank0写，last_global_microbatch_mean分母8图，preclip_norm同步累积AMP unscale后全参数L2；epoch mean_microbatch_loss分母全局2136图（含空图），rank_sample_order各534、sample_order重组2136逐值核原顺序。无新增训练逐步几何stats。resume_gate complete的rng_next_five_exact逐rank逐Python/NumPy/Torch/CUDA/loader五种各5个随机数，optimizer_moment为显式synthetic零AdamW状态；只证明恢复机制，不证明真实next-update轨迹。owner headroom扣实际驻留后的未兑现预约，reservation8066MiB/card，cap9216是上限、margin2048另计。字段不用于loss/门控/选权。
