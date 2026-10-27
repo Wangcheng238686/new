@@ -293,3 +293,7 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 新轻量头完整FP32 island，原模型继续AMP，delta按接收logits dtype相加；解决低scale下新隐藏层梯度下溢，不改loss分母/初始化。正式训练恢复/调度仍需另行核定，工程门不等于长训练或AP证明。
 
 最终真实四卡attempt5通过（3次AMP工程更新、空rank、主mask独立反传、250框8decode、zero恒等），81份import源零漂移；训练峰值8558MiB，含所有诊断8564MiB。250框maskconsumer .635–.688秒不含extract_feat，A/C单批顺序计时不作加速结论。15CPU通过，无AP或正式续训轨迹证明。
+
+### 2026-10-27 Native三组训练接线与并行调度
+
+新增native_run、native_owner、native_resource_gate和native_protocol；明确复用旧train/save/restore/五类RNG与原inference_outputs评价，旧源不改。A无头/B尾证据全零/C正确，每组四卡10轮2670/global8，E1/E10完整val、全部训练完固定E10全test。每臂资源cap仅外合同，源码commit与全repo import闭包绑定；详情见[三组说明](dual_stream/UE_UBR_NATIVE_ROI_SHORT_STUDY_20261027.md)。
