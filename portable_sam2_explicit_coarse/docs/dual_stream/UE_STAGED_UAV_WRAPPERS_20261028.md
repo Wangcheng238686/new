@@ -104,7 +104,16 @@ S→C同时改变U和T，只作完整系统比较。S/T没有UAV实例loss、U/C
 
 ## 6. 验收状态
 
-- CPU测试覆盖配置因子、全路径模态控制、S/T路由、队列/锁定/共租预扣、检查点/缓存篡改拒绝、初始化家族、离线配对分析及既有UBR/子集回归；87项测试通过；CPU prepare收据在提交后补充。
+- CPU测试覆盖配置因子、全路径模态控制、S/T路由、队列/锁定/共租预扣、检查点/缓存篡改拒绝、初始化家族、离线配对分析及既有UBR/子集回归；88项测试通过；CPU prepare亦已通过，详见下方记录。
 - shell语法和实际audit命令检查；独立代理审查发现的“锁定前暴露test”“直接runner绕过缓存”“默认root不一致”“S依赖无关UAV缓存”已修。
 - 新四卡真实gate/资源/下一步训练轨迹未运行，本次不宣称GPU验收、AP增益或正式续训已通过。GPU仍由现有ABC共租占用。
 - 任何后续stage开始前都先通过本stage真实工程门；门只验证接线/资源，不能代替内容净收益证据。
+
+
+### 最终CPU准备验收
+
+数值/控制源码提交 `a95a444`（主实现 `6e985ad`），正式待启动根目录已准备：`/data/wangcheng/checkpoint/ue_staged_uav_full100_20261028`。detached runtime_source冻结536个源码/配置文件；100轮订单及manifest共101份文件验证通过，实际本地导入闭包匹配，S缺cache验收的直接runner调用正确拒绝。88项CPU测试通过，CUDA未初始化，正式训练未发射。
+
+机器收据：`/data/wangcheng/checkpoint/ue_staged_uav_full100_20261028/CPU_PREPARE_AUDIT.json`。当前cache_receipts为空、base_lock为空是预期准备状态；后续start先做当前阶段缓存验收与四卡gate。
+
+第一次CPU准备因PyTorch动态命名空间伪`_ops.py`被误判为真实未冻结源码而失败；源码文件实际不存在。已增加is_file筛选与回归测试，从新提交重新准备。旧失败产物完整保留在`/data/wangcheng/checkpoint/ue_staged_uav_full100_20261028_prepare_attempt1`，未修改旧源码字节；该目录仅审计，不可用于启动。本次新冻结源未改动当前ABC工作树。

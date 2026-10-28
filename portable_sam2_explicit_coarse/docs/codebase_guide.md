@@ -353,3 +353,7 @@ observer1aff788、PID1642915，CPU逐epochval已回填9份无失败；11项CPUte
 ### 2026-10-28 三阶段完整wrapper与模态入口
 
 新增 `scripts/experiments/ue_staged_uav.sh`、`ue_staged_uav_control.py`、`ue_staged_uav_matrix.py`，`scripts/probes/ue_staged_uav_run_20261028.py`，`scripts/analysis/ue_staged_uav_analysis_20261028.py`，两份staged协议/矩阵JSON，`rsprompter/uav/modality_controls.py`及对应5组CPU测试；SUTC工厂新增全路径RGB/显式几何控制。wrapper按structure/modality/views独立启动，阶段内所有gate通过并核初始状态后才训练；结构先val锁基座再显式test；模态/视角各只新增两组并复用基座。完整100轮数学复用旧full runner、source/checkpoint/五流恢复隔离；显存允许四卡任务共租。显式analyze只CPU并输出四指标500配对bootstrap。详见 [wrapper与单变量审查](dual_stream/UE_STAGED_UAV_WRAPPERS_20261028.md)。本次不启动正式训练或真实GPU门，在训ABC不改。
+
+### 2026-10-28 三阶段wrapper CPU冻结验收完成
+
+数值/控制提交a95a444；正式待启动root为`/data/wangcheng/checkpoint/ue_staged_uav_full100_20261028`，536源码/配置及100轮101份订单文件核定，88CPU测试通过，CUDA未初始化，未发射训练。CPU_PREPARE_AUDIT.json记录源码闭包与缺cache硬门；第一次伪_ops.py误判的失败产物单独归档prepare_attempt1保留，不作正式runtime。缓存/真实四卡门仍待后续start执行；本次仅文档更新，不改已冻结数值源。
