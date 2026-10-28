@@ -333,3 +333,7 @@ wrapper新增release，用户明确授权后仅解除分析完成等待，归档
 ### 2026-10-28 检测与掩码遥测sidecar
 
 新增gradient_math/gradient_telemetry/detection_telemetry/telemetry_owner四个analysis模块、ue_native_telemetry.sh一键start/status及两组11项CPUtests。逐epoch完整val独立框误差FPFN，E1/10/25/50/75/100四卡固定8图任务gradnorm/cos，未知loss拒绝、aux单列、None0固定union、buffer恢复及CP源SHA审计。只观察不参与训练/选权，原full运行树不改；GPU需空闲15872MiB/card，真模型验收待资源。详见[遥测定义](dual_stream/UE_NATIVE_TASK_TELEMETRY_20261028.md)。
+
+### 2026-10-28 只读遥测已实际部署
+
+observer1aff788、PID1642915，CPU逐epochval已回填9份无失败；11项CPUtests与A/E1 459图验收通过。full105源未改、ABC未重启。四卡梯度门因空闲1.3GiB/card不足仍排队，尚无梯度数值，审计telemetry/root_enable_receipt.json。
