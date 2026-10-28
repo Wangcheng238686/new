@@ -345,3 +345,7 @@ observer1aff788、PID1642915，CPU逐epochval已回填9份无失败；11项CPUte
 ### 2026-10-28 视角子集敏感性接线
 
 新增 `rsprompter/uav/view_subset.py`（canonical槽位/所选源编码/G读取）、`data/ue_view_subset_inputs.py`（子集原始深度重建和严格loader）、`scripts/probes/ue_build_view_subset_cache_20261028.py`（隔离缓存CLI）、`scripts/probes/ue_view_subset_cpu_gate_20261028.py`（真实单train图I/O/旧缓存等价门）、`configs/ablations/ue_uav_view_sensitivity_20261028.json`、`tests/test_uav_view_subset.py`。SUTC工厂支持 `view_count=1/3/5` 或显式 `uav_view_ids`，全路径同步且不变容量；减少视角须完整子集缓存，S仍无UAV。几何五通道不是视角数，计数保持/5单位，未选RGB不编码。详见 [子集接线说明](dual_stream/UE_UAV_VIEW_SUBSET_WIRING_20261028.md)；38CPU测试及真实图001234门通过，真实四卡/全缓存/新训练未执行，在训ABC冻结源码不变。
+
+### 2026-10-28 收紧后续实验路线
+
+新增 [三方向分阶段实验路线](dual_stream/UE_COMPACT_EXPERIMENT_ROADMAP_20261028.md)：先S/U/T/C结构主比较；仅对保留结构新增常量RGB、关闭显式几何两组；有相对S可靠净收益后再新增1/3视角训练并复用5视角。禁止全结构×模态×视角展开，不安排双关/固定平面/逐入口模态矩阵，不据此声称RGB-几何交互或深度对应必要性。优先严格合同复用，模态入口仍待实施；本次仅记录，不发射训练、不改在训合同或遥测。
