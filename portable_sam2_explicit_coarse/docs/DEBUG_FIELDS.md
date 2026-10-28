@@ -250,3 +250,7 @@ paired*.partial.json 的metrics各项已经500次，但complete=false表示整�
 ### 2026-10-28 检测／掩码方向与框误差字段
 
 遥测位于full root/telemetry而非原progress。gradient stats的detection_norm/mask_norm是FP32无增强trainmode固定global8均值原已加权loss对预注册参数组的L2、preclip；dot/cos在固定union None0算，零norm时null/status undefined，joint_connected_only仅补充，instance_auxiliary_norm独立。rank rows shared_direction_unaveraged_image是单图未除8范数，勿与主global8比较。support=both/det_only/mask_only/neither张量/元素数，native_refiner det无梯度属预期。CPU detection views每行固定score .05/.25/.5与IoU .5/.75，各自459图分母；TP/FP/FN守恒，FPduplicate/localization/background代理，FN保留前/后score候选bestIoU分桶。TP_bbox_errors每字段count=TP，中心dx/dy px及GTwh归一化、宽高px/logratio，signed/abs/P50/P90；尺寸GTmask与FPbbox不混同。全部定义及score跨view校准限制见Native遥测文档；字段只观察，不用于loss、门控、选权。
+
+### 2026-10-28 SUTC 开关审计字段
+
+新增 runtime.initialization_audit 的 matrix_arm/upstream/tail_evidence/UBR_present/UAV_instance_loss/UAV_proposals 是模型构造与路由的布尔身份审计，不是训练统计或收益证据；UAV_instance_loss/UAV_proposals 同时跟随 U，不能只关 hook 留下辅助监督。source_subset 对 S 为 none，对 T 为共享 RGB 子集。S 无 UAV 样本 loader、参数或候选；T 的 enabled=False 仅指上游/补框关闭，独立 prepare_uav 仍提取尾部证据。无新增逐步训练日志、loss、门控或选模字段。CPU 门不能代替真实四卡 S/T 验收或 AP 结论。

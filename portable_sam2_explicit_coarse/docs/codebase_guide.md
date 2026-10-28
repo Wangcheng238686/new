@@ -337,3 +337,7 @@ wrapper新增release，用户明确授权后仅解除分析完成等待，归档
 ### 2026-10-28 只读遥测已实际部署
 
 observer1aff788、PID1642915，CPU逐epochval已回填9份无失败；11项CPUtests与A/E1 459图验收通过。full105源未改、ABC未重启。四卡梯度门因空闲1.3GiB/card不足仍排队，尚无梯度数值，审计telemetry/root_enable_receipt.json。
+
+### 2026-10-28 SUTC 独立开关接线
+
+新增 `rsprompter/uav/native_sutc.py`（不可变 U/T 开关、纯卫星/尾部证据模型和独立 UBR 安装）、`scripts/probes/ue_ubr_native_sutc_runtime_20261028.py`（SUTC 初始化/目标/正式候选消费路由）、`configs/ablations/ue_native_sutc_contract_20261028.json` 及 `tests/test_native_sutc.py`、`tests/test_native_sutc_runtime.py`。四组同构 native UBR；S 不构造或读取样本 UAV，T 独立 P0 证据不写回卫星且无实例 loss/补框；U/C 复用原 B/C。UDPR 在新四格构建时禁用，不物理删除历史复现源码。不修改在训 ABC 源码。新 runtime 为工程 API，不是训练 wrapper，真实 S/T 四卡门待执行。详见 [SUTC 实施合同](dual_stream/UE_NATIVE_SUTC_SWITCH_IMPLEMENTATION_20261028.md)。

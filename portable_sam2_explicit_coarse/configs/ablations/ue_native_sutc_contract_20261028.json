@@ -1,0 +1,18 @@
+{
+  "study": "native_UBR_SUTC",
+  "status": "engineering_only_not_authorized_training",
+  "tail": "same NativeRoIRefiner in all arms; UDPR disabled before build",
+  "arms": {
+    "S": {"upstream": false, "tail_evidence": false},
+    "U": {"upstream": true, "tail_evidence": false},
+    "T": {"upstream": false, "tail_evidence": true},
+    "C": {"upstream": true, "tail_evidence": true}
+  },
+  "upstream_scope": ["early_geometry_writeback", "bidirectional_interaction", "instance_head_and_loss", "UAV_proposal_supplement"],
+  "S": "No UAV construction, input loader, parameters, auxiliary loss or proposals; train satellite-only UBR",
+  "T": "P0/project/LN/continuous_candidate_sample/valid_mean plus native geometry5; no upstream hooks, instance loss or proposals",
+  "initialization": "same generic common_init satellite and RGB subset; head seed2080; never trained ABC checkpoint",
+  "inference": "same original satellite candidate consumer; UAV supplementary candidates iff upstream",
+  "training_world_size": 4,
+  "GPU_acceptance": "pending real four-rank S/T gate; old ABC gate does not certify new wiring"
+}
