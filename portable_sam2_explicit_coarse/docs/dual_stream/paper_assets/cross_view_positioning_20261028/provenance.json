@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-28",
+  "timezone": "Asia/Shanghai",
+  "scope": "discussion_and_visualization_snapshot_only_no_experiment_launch",
+  "original_visualization_directory": "/home/wangcheng2021/.codex/visualizations/2026/10/28/01a18195-db6d-73f0-8ec8-ad8758d61451/uav_cache_001234",
+  "dataset_point": "/data/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v1_20261021/points/001234",
+  "cache_root": "/data/wangcheng/checkpoint/ue_native_sutc_engineering_20261028/view_subset_cache",
+  "files": {
+    "cache_overview.png": {
+      "sha256": "1372209a6909b38c85ee02d93e8756dfbe90f5ab42bad6184d96ea483706c000",
+      "bytes": 1878858
+    },
+    "cache_overview.pdf": {
+      "sha256": "31bb747b38ceaabe21ba48ae2d61a56fee3a205d97945fc4c5f03d1183ae9908",
+      "bytes": 606755
+    },
+    "anchor_correspondences.png": {
+      "sha256": "bb2f6ac6004a602915598af00d7b194022a22b9a514dfc578dca40d1f937f464",
+      "bytes": 1625677
+    },
+    "anchor_correspondences.pdf": {
+      "sha256": "5683398929be50bee2dc34eb7d70c7a878aec2083cdc9450115ac70e94a53717",
+      "bytes": 681250
+    },
+    "visualization_data.json": {
+      "sha256": "8bbeff757120826cd1d00e8c91a12830beeaa182f8b07727455898b9481430ac",
+      "bytes": 3883
+    },
+    "render_cache.py": {
+      "sha256": "19e7f25c1988ab5bb8969bf185dbf6d72186c5de49f14c5ab52c2a7bdf77fa68",
+      "bytes": 7285
+    },
+    "references.bib": {
+      "sha256": "c9744113da84137d48c4fc11d31a6b12699d7c2544e1e32df8037c8ca2c5cf4c",
+      "bytes": 2570
+    }
+  },
+  "main_document": {
+    "relative_to_assets": "../../UE_PAPER_POSITIONING_CROSS_VIEW_VS_RECONSTRUCTION_20261028.md",
+    "sha256": "512909cb01b42541dd1e28b101835415435ff511ee0fd3861edba63341ae4dcf"
+  },
+  "reference_metadata_checked": "2026-10-28; primary research papers/project pages; six BibTeX entries"
+}

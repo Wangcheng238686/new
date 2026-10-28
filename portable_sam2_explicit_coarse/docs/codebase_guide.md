@@ -216,6 +216,401 @@ UAV 双流扩展（2026-10-14）位于 `detection/dual_detector.py` 与独立 `u
 包含新旧153图独立mask对比、固定32图深度观测支持和旧train→新test454图身份风险。
 EXP-0017生产实现与数据保持不变，后续UAV仍待新单流固化。
 
+2026-10-21 文献与开发设计：新增[现有数据证据约束下的文献与开发方向](dual_stream/UE_LITERATURE_AND_DEVELOPMENT_20261021.md)，覆盖Multi-View SAM、DeepViewAgg、CVT、HQ-SAM、SG-BEV/CRFFNet、S²DB-Net和Aerial Lifting；区分任务证据与接口借鉴，记录单入口局部查询方案及公平评价规则。仅文档，未启动训练或改生产实现。
+
+2026-10-21：新增[v1冻结基座UAV适配器开发草案](dual_stream/UE_V1_FROZEN_ADAPTER_PROTOCOL_20261021.md)，核对EXP-0017完成/封存身份，明确v1开发边界、RoI局部feat_s0残差入口、冻结/梯度合同及10epoch建议筛查预算。未实现、未启动新任务。
+
+2026-10-21：新增实验模块`rsprompter/uav/local_adapter_probe.py`和独立runner
+`scripts/probes/ue_v1_adapter.py`；统一wrapper新增`adapter prepare|smoke|train|eval`路由。
+通过mask_head前置hook取得真实RoI、conv_s0输出hook注入局部残差，原生产模型/冻结架构合同不改。
+几何cache放数据盘，prepare只读train/val。smoke核定零初始化/无候选恒等、梯度与基座state不变。
+协议与遥测解释见对应v1草案和DEBUG_FIELDS.md；原single/minimal/dual/fpn/sam路由不变。
+
+`adapter`结果分析使用`scripts/probes/ue_v1_adapter_analysis.py`：从完整459图缓存重新计算
+Mask AP和min(MaskIoU,BoundaryIoU)的Boundary AP，图像配对bootstrap复用COCO逐图匹配；
+先校验相同GT、框/分数，以及恒等重采样AP复现。不读取test。
+
+`ue_v1_adapter_finish.py`负责已授权筛查的训练后顺序执行：等待指定live训练PID退出，
+校验last存在，正确/常量/错配验证及配对分析；正向信号触发同预算常量外观训练对照。
+run_state仅作进度索引，活性以实际PID/进程和日志核实。
+
+2026-10-21用户授权并行筛查后新增`local_adapter_variants.py`：early入口在two-way transformer前，
+contextual源表示融合FPN0细节与FPN2语义；高分辨率fine原模块不改。独立smoke均通过恒等/冻结/梯度门。
+`ue_v1_adapter_multi_finish.py`接管原训练PID，并行启动geometry/early/contextual臂，逐臂完成后评价，
+统一使用原FP32基座缓存；新增真实UAV臂有正向信号时按同配置补常量外观训练归因。
+
+`ue_v1_adapter_collect.py`在并行臂全部完成后核对2670连续更新、10轮、冻结状态、启动源码快照、
+各模式459图覆盖及GT/框/分数逐值一致，交叉检查缓存AP与配对分析并计算checkpoint SHA。
+汇总仅作为证据索引，最终结论仍需人工/主代理逐项核对原产物。
+
+`ue_v1_adapter_interim.py`只在预先固定E1/E3检查点写完后进行完整开发验证，记录中途信号与
+冻结检测不变量；不修改训练进程、超参、选权或10轮终点。
+
+2026-10-22：`native_geometry_probe.py`提供512²表面高度/梯度/视角数及小型RoI局部残差适配器；
+`ue_v1_native_geometry.py`复用基座严格重建、损失与训练预算，替换payload与适配器并独立记录源码身份。
+统一wrapper新增nativegeo路由，原adapter及生产路由不变。该方向不编码RGB，以同support零几何内容作对照。
+
+`ue_v1_native_finish.py`并行训练native_geometry/native_zero，随后在GPU1顺序完成FP32评价，
+并计算各自对基座及geometry对zero内容的配对AP/Boundary AP分析。状态native_state.json独立于
+原四臂run_state.json；最终collect必须同时核定两份状态与所有六臂产物，不能只凭四臂完成落判。
+
+interim监督器支持`--family rgbd|native`，复用已完成记录并以`probe_gpu_lease.py`协调GPU2单个中途
+评价任务；训练不停止、不改变终点。native中途进度独立保存在native_interim_state.json。
+
+固定第1轮六臂结果记录于[中途观察](dual_stream/UE_V1_PARALLEL_PROBE_INTERIM_20261022.md)，
+明确不是最终结论；全部原始缓存和后续终点仍保留在数据盘工件目录。
+
+2026-10-22恢复：`ue_v1_probe_recover.py`以独立session管理六臂共同完整前缀续训及后处理。
+通用probe train新增resume-from/reseed-from-epoch、原子checkpoint、RNG保存、parent合同链和逐轮
+基座SHA检查；原架构/损失不改。原中断工件分目录保留，具体随机流修订与共同前缀见协议。
+
+UnitLocalUAVAdapter在原局部查询路径增加无affine源/残差归一化，无新增可训练参数；通过source-mode
+unit选择，保留原dtype。强化smoke记录soft logits恒等。八臂矩阵与尺度漂移背景见开发协议。
+
+`ue_v1_unit_finish.py`以独立session管理unit/unit_geometry完整10轮、干预和配对内容比较；
+unit_interim_state.json记录固定E1/E3。最终collect同时要求RGB-D恢复组、native组、unit组完成，
+核对归一化范数界、恢复/逐轮随机种子、所有checkpoint来源与全部16项中途观察。
+
+终点collect还实际加载各臂及触发的early/contextual常量训练对照的last.pth，核定E10/2670、
+权重内合同与JSON快照一致、封版基座SHA及数据身份一致；对照同样检查完整逐轮预算、源码、
+冻结state SHA和459图检测不变量，不能仅凭control目录存在或监督器done判断完成。
+原生几何两臂的这组实际权重审计已通过；阶段结果文档已补E3、E10及内容对照区间。
+
+2026-10-22用户将主要判断改为test：adapter/nativegeo eval新增`--eval-split val|test`，默认val，
+非eval动作禁止test；不改训练损失/模型。`evaluation_identity.json`记录实际split、图数、
+基座/分支权重SHA、FP32/scores/maxDets250。`ue_v1_test_finish.py`在独立test目录管理固定
+十臂+基座共19次完整推理和15项配对比较；GPU1串行推理，最多3项CPU分析并行，不按test选权。
+`ue_v1_contextual_control_finish.py`在GPU3无条件补齐contextual的同预算常量RGB训练对照，
+状态contextual_control_state.json，不让旧val非正的触发规则遗漏新主要终点的归因控制。
+新计划/修订记录在读取新增test结果前写入；旧val产物仍作为诊断保留，详情见开发协议末节。
+`ue_v1_test_collect.py`要求19项test推理和15项配对比较实际产物、十个E10训练检查点、
+459个test来源缓存审计、test与train/val图ID互斥、全部模式的检测/GT不变量及split/权重SHA一致；
+生成complete_test_audit_summary.json。原val collect也增加test完成门与无条件contextual控制核定，
+不再以val方向触发与否作为新主要终点的完成标准。结果前后线程/统计校准仍在8图重复COCO重建上误差0。
+
+### 2026-10-22 S²DB-Net机制借鉴独立探针
+
+- `rsprompter/uav/s2db_geometry.py`：扩展锚点元数据，逐值核定旧index/geom；源/目标camera-Z单位m。
+- `rsprompter/uav/s2db_adapter.py`：固定或局部可学习读取、归一化或拼接残差、条件UAV辅助头。
+- `scripts/probes/ue_s2db_probe.py`：独立prepare/init/gate/train/eval入口，固定v1/E10合同及完整RNG恢复。
+- `scripts/probes/ue_s2db_gate.py`：CPU读取/边缘/续训回放与GPU原始logits/梯度/250RoI资源门。
+
+10臂第一阶段及D固定的辅助六格合同见[预注册协议](dual_stream/UE_S2DB_MECHANISM_PROTOCOL_20261022.md)。
+代码实现、工程验收、完整训练和指标结论分别记录；不将已实现模块描述为已取得收益。
+此入口不改原高分辨率全图repeat路径，也不解冻decoder/UDPR。
+- `scripts/probes/ue_s2db_cache_audit.py`：对全部train/val及独立test缓存复算原深度→世界→卫星投影、来源SHA和旧候选兼容性。
+- `scripts/probes/ue_s2db_analysis.py`：固定记录的AP/边界AP、共同500次bootstrap向量、因子效应、匹配纠错分母及内容预测变化。
+- `scripts/probes/ue_s2db_aux_audit.py`：独立进程离线辅助IoU及固定train样本主/辅梯度诊断。
+- `scripts/probes/ue_s2db_schedule.py`：持久调度owner，尊重旧任务GPU预约；第一阶段核定后仅启动预定D辅助三臂。
+- `scripts/probes/ue_s2db_collect.py`：实际权重/源码/初始化/冻结/样本顺序/全部推理审计及最终报告；不按test选结构。
+
+命令示例：`/data/wangcheng/envs/cvt2/bin/python scripts/probes/ue_s2db_schedule.py --root /data/wangcheng/checkpoint/ue_s2db_probe_20261022`。
+调度前准备train/val缓存并通过CPU/GPU门；默认新缓存`ue_v1_s2db_geometry_v2`以float64保存投影元数据。
+新增加的采样统计和梯度分析只在离线产物中，解释见DEBUG_FIELDS.md；此轮是工程实现与运行中状态，收益待完整审计。
+
+工程验收已通过，见[验收记录](dual_stream/UE_S2DB_ENGINEERING_20261022.md)。源码/初始化冻结后由持久owner运行；
+新方案训练及AP结论须等待E10完整矩阵，不能用此验收替代。2026-10-22同步新增9个探针文件、固定合同及离线遥测定义。
+
+### 2026-10-22 探针阶段结论索引
+
+[阶段结论与遥测核定](dual_stream/UE_V1_PROBE_STAGE_CONCLUSIONS_20261022.md)整理原八臂完整test、匹配内容对照、末RoI分块遥测及下一步路线；early/contextual对照与独立S²DB矩阵未完，不作为最终验收。
+
+独立可信度审查见[子代理报告](dual_stream/UE_V1_INDEPENDENT_EVIDENCE_REVIEW_20261022.md)：抽查原始比较、native完整更新行及源码合同，列出空间依赖缺口、固定矩阵盲点和有停止标准的下一步。
+
+### Native固定权重空间诊断
+
+`scripts/probes/ue_native_spatial_diagnostic.py`独立冻结权重推理、支持内字段置换、残差RMS匹配及配对分析；不修改旧runner或训练路径。见[固定合同](dual_stream/UE_NATIVE_SPATIAL_DIAGNOSTIC_20261022.md)。
+
+### 2026-10-22 测试集弱点三路离线探索
+
+- `scripts/analysis/ue_test_distribution_audit_20261022.py`：train/val/test密度、真实mask及bbox面积、触边、空间块及基座分层评价；独立校正GT面积分组并回放总体AP。
+- `scripts/analysis/ue_test_error_modes_20261022.py`：固定框Hungarian失败类型、分割阈值纠错/新增及像素区域计数，单列COCO分数顺序匹配。
+- `scripts/analysis/ue_test_support_audit_20261022.py`：已有459图候选/原生缓存的观测支持与错误关联，明确格、保留投影点邻域及可见性认证的差别。
+- `scripts/analysis/ue_test_weakness_collect_20261022.py`：核对共同来源SHA、计数及面积回放，生成[测试弱点综合报告](dual_stream/UE_TEST_WEAKNESS_SYNTHESIS_20261022.md)。
+
+独立CPU产物在`/data/wangcheng/checkpoint/ue_test_weakness_20261022/`；有限32图原深度重建及最终DT尾部/框内覆盖上界脚本按精确研究产物归档，不是训练入口。
+本轮不改冻结探针模型、训练预算、选权、评价源码或缓存。下一步方向待当前S²DB完整E10矩阵与审计后，按综合报告的证据判定表再决定。
+
+### 2026-10-22 读取/对齐/消费审查
+
+新增`scripts/analysis/ue_read_consume_audit_20261022.py`，CPU坡度坐标合同、固定32train缓存的源token中心/实测像素原点核对与来源SHA。
+[审查报告](dual_stream/UE_READ_ALIGN_CONSUMPTION_AUDIT_20261022.md)明确局部残差与全图接收特征、深度代理与特征偏移原点、native插值及RGB/几何捷径边界。
+没有改动41份冻结源码、训练预算、缓存或评价规则；新检查不代表性能消融。
+
+`scripts/probes/ue_native_spatial_collect.py`独立核对五组实际输出、源码/权重身份、冻结state、全部RoI调用覆盖及RMS匹配误差，生成诊断RESULTS.md及complete_audit_summary.json；这些是离线验收，不修改训练。
+
+### 2026-10-22 下一步探针计划（待独立审核）
+
+[计划草案](dual_stream/UE_NEXT_PROBE_PLAN_DRAFT_20261022.md)在旧17/19测试推理、11/15比较及当前S²DB矩阵未完的状态下，
+限定下一步为native固定权重的字段空间依赖诊断及8图有限对应核查；不启动新训练、不修改运行合同。
+用户要求先plan再独立审核，审核意见单列保存，最终采纳/修订在同一任务中同步；不将草案标成已执行。
+
+下一步计划独立审核已给出[有条件通过意见](dual_stream/UE_NEXT_PROBE_PLAN_REVIEW_20261022.md)。
+[修订计划](dual_stream/UE_NEXT_PROBE_PLAN_20261022.md)逐项采纳M1–M4：空间赋值敏感性的窄解释、native实际来源射线与缓存逐值对账、8图影像抽查的真值/代表性限制、Mask AP两项主检验及多重比较限制。
+先CPU及来源影像核查、再空闲GPU的有限固定权重诊断；目前仅计划交付，无新增推理/训练。
+修订版经同一独立代理定向复核通过，限定为有限机制诊断；原审核末节保存复核结果，无新增必须修改项。原始影像抽查不能替代外部标定认证，最终方法方向仍待完整矩阵与独立验证。
+
+本轮空间诊断的耐久report owner在产物根finish_report.py中等待原计划全部分析完成，再执行独立collect、输出RESULTS及同步文档。当前状态与已完成点值见固定合同；不能将仍在计算的区间描述为已完成。
+
+### 2026-10-22 Native真实来源核查（P2已实施）
+
+新增`scripts/analysis/ue_native_source_provenance_20261022.py`追溯固定4train/4val的native实际最近表面射线、相邻高度差及近表面视角来源，历史cache逐值核对后选24个固定点并生成影像接触图。
+新增`scripts/analysis/ue_native_source_root_verify_20261022.py`使用原始厘米制齐次矩阵独立复算选点与邻点，不调用子代理重建函数；8图缓存和24点来源核定通过。
+[核查报告](dual_stream/UE_NATIVE_SOURCE_AUDIT_20261022.md)区分来源忠实、内部一致性与视觉无法判断；没有外部对应真值，不报整库正确率。
+产物在`/data/wangcheng/checkpoint/ue_native_source_audit_20261022/`，含全部来源射线、历史SHA、24点、8图、视觉记录及主代理复核。
+本轮仅CPU；未运行P1或新增训练，未改冻结源码与共享缓存。
+
+### native置零现象定向排查
+
+[报告](dual_stream/UE_NATIVE_ZERO_PARADOX_20261022.md)记录卫星query路径、几何首卷积项分解及固定32图纠错抵消。`scripts/probes/ue_native_path_diagnostic.py`只读8train+8val激活；`ue_native_error_diagnostic.py`只读32test既有预测，不启动训练或选结构。
+
+`scripts/probes/ue_native_query_factorial.py`补齐新增适配器query/几何四格的两项固定权重推理，关闭query只影响新适配器，原SAT保持完整；见[诊断合同](dual_stream/UE_NATIVE_QUERY_FACTORIAL_20261022.md)。
+
+### 2026-10-22 已审核六条件Native诊断实施
+
+新增`scripts/probes/ue_native_assignment_probe.py`与`ue_native_assignment_analysis.py`，实施P2完成后的P1：correct/zero/mean/三组固定seed联合置换，原始logits回放门、全调用平方和、固定8图残差诊断、Mask AP两项主比较与最终审计。
+与历史五条件含RMS匹配诊断完全独立，不改变其产物或本轮冻结模型。[实施与排队纪律](dual_stream/UE_NATIVE_ASSIGNMENT_IMPLEMENTATION_20261022.md)。
+CPU门已过；GPU推理需等待实际空闲和旧owner预约结束，不能把排队当已完成。
+
+[Native独立补充复审](dual_stream/UE_NATIVE_INDEPENDENT_FOLLOWUP_20261022.md)核定空间干预区间，收紧卫星路径、纠错抵消和高度RMS归因，并明确固定函数诊断的完成边界。
+
+### Native归因诊断最终交付
+
+[最终可信结论](dual_stream/UE_NATIVE_CREDIBLE_CONCLUSION_20261022.md)汇总空间干预、query四格及独立复审；`scripts/probes/ue_native_conclusion_audit.py`核对两轮实际预测、权重/源码身份、全部459图及500次配对比较，输出complete_conclusion_audit.json。固定模型问题已收口，不代表其他矩阵完成。
+
+### 几何实现与消费调研
+
+[调研与最小改进建议](dual_stream/UE_GEOMETRY_IMPLEMENTATION_AND_CONSUMPTION_RESEARCH_20261022.md)核查表面选择/插值风险、原始文献及差分残差假说。`scripts/probes/ue_native_sampling_audit.py`为固定8val的CPU只读审计，含NumPy/PyTorch公式回放与边界高度混合计数；未改模型或启动训练。
+
+### 2026-10-22 用户授权GPU共租调度
+
+新增`scripts/probes/ue_probe_coresident_owner.py`，按显存工作预算接管S²DB与六条件Native诊断，保留运行子进程及原冻结源码。
+[共租修订](dual_stream/UE_PROBE_CORESIDENT_SCHEDULING_20261022.md)取代此前“等待独占空闲GPU”的资源纪律，科学依赖和训练/评价合同保持原样。实际启动与显存记录独立保存，不增加训练日志字段。
+
+### 几何采样×消费8臂探针
+
+[固定协议](dual_stream/UE_GEOMETRY_MECHANISM_PROTOCOL_20261022.md)规定bilinear/nearest×concat/difference×真实/非零常量训练控制。独立模型native_geometry_mechanism.py、CPU门及ue_geometry_mechanism_*脚本；不改旧训练入口。resource gate后按显存共卡，不按AP启动或筛选。
+
+[几何机制工程验收](dual_stream/UE_GEOMETRY_MECHANISM_ENGINEERING_20261022.md)记录四个CUDA门、实际208实例训练及250RoI峰值和共卡准入。8臂调度与最终审计源码已冻结，当前运行中，未有本轮AP结论。
+
+### 六方向归一化attention探针
+
+[固定协议](dual_stream/UE_ATTENTION_LADDER_PROTOCOL_20261022.md)定义L0共同基准与L1–L6单机制干预/常量控制、GPU1–3首发限制。L1须依据实际patch lattice验证；L3须避免输出LN消除拒绝；L6仅指定decoder Q/V LoRA并单测资源。当前实现/验收中，未宣称训练或收益完成。
+
+[Attention ladder工程记录](dual_stream/UE_ATTENTION_LADDER_ENGINEERING_20261022.md)列出L1–L3 CUDA门、实际patch坐标核定、峰值与GPU1–3固定slot。`attention_ladder.py`、`ue_attention_ladder_cpu_gate.py`、`ue_attention_ladder_probe.py`、schedule/collect均为独立入口；L4–L6未做GPU门，按队列后置。
+
+[2026-10-23正向信号阶段状态](dual_stream/UE_PROBE_POSITIVE_SIGNAL_STATUS_20261023.md)记录当前E10 test点值/内容差与未完成项。几何组输出目录错误由产物根独立repair脚本恢复，不改已冻结数值source；运行状态不等于全部审计完成。
+
+[已完成内容归因裁决](dual_stream/UE_COMPLETED_CONTENT_ATTRIBUTION_VERDICT_20261023.md)及`scripts/probes/ue_content_attribution_review.py`独立审计完成9CP（4对8臂及Czero）、固定500次向量配对。几何组原统计写盘错误已依据完整原日志恢复，保留原失败/来源/数值核对证明，不改冻结数值source。
+
+`scripts/probes/ue_geometry_content_priority.py`只读已训权重/完整预测，优先输出固定四个几何内容对照的Mask AP配对区间；不等待其它离线图表、不占GPU、无新增训练字段。全指标与全队列最终验收仍保留。
+
+[4090 N系列核查](dual_stream/UE_REMOTE_N_REVIEW_20261023.md)记录远端实际N1辅助边界监督、N2后激活注入、N3可学习温度及六臂训练状态；建议本机优先补后激活入口的成对内容验证。本轮只读核查，没有新增训练或遥测字段。
+
+[梯度拓扑核查](dual_stream/UE_GRADIENT_TOPOLOGY_REVIEW_20261023.md)结合L1–3实际三步反向门排除持续全支断梯度，区分alpha起步延迟、消费者敏感性、辅助梯度冲突和固定候选不可导边界；建议离线分损失/分模块诊断及N2入口成对验证，未宣称其已执行。
+
+[N2实施与G0结果](dual_stream/UE_POST_ACTIVATION_PROTOCOL_20261023.md)记录独立post_activation模型/runner/scheduler、已通过GPU门、两臂启动和L1 E10离线梯度证据。现有冻结source不变；梯度范数和局部衰减不代替AP内容对照。
+
+[S1稀疏UDPR证据协议](dual_stream/UE_UDPR_POINT_PROTOCOL_20261023.md)：udpr_point_probe仅增强原UDPR选中点的32维输入，不改变原MLP/选点/损失。独立runner/schedule与CPU/GPU/评估门、零W初始化、全图mask格坐标、正确/常量训练及离线点改正/破坏统计均在文档中；不改原数值source。
+
+**S1历史协议已作废**：全图输出格假设错误，旧任务已停止。当前有效为[S1-R与N2-shared](dual_stream/UE_CONSUMER_BLINDSPOT_PROBES_20261023.md)：udpr_point_roi_probe通过proposal映射roi_local选点；post_activation_shared_probe显式共享注入后tensor给UDPR。ue_consumer_blindspot_schedule统一在GPU0/1运行四臂，独立解析crop/共享tensor门通过，旧source保留。
+
+[RS2-SAM2精读与J1设计](dual_stream/UE_RS2_SAM2_JOINT_ENCODING_PROBE_20261023.md)区分BEiT-3 union、Hiera内部BHFM、外部BC/提示通路及官方训练范围；定义Base+ block4的局部闭合双向交互、正确/常量内容对照和完整检测评估。实施状态见下文。
+
+[J1实现与启动](dual_stream/UE_J1_IMPLEMENTATION_20261023.md)：joint_encoding_probe在Hiera block4执行局部闭合双向交互；独立runner保留融合后SAT自动求导、递归计入RPN列表损失，独立analysis允许检测框变化并增加bboxAP。CPU/CUDA/接线门通过，两臂已启动；bounded_worker设置实测通过的5500MiB allocator上限，资源策略记录于manifest。旧源不变。
+
+[S1-R/N2-shared阶段结果](dual_stream/UE_CONSUMER_RESULTS_INTERIM_20261024.md)：两组完成，未确认整体Mask内容增益；N2-shared有Boundary内容差，不能扩展为正确配对特异性或共享机制优越性。J1仍在训练。旧N2离线梯度OOM通过产物根独立repair顺序恢复，不改冻结数值source。
+
+[旧 N2 训练分布诊断](dual_stream/UE_TRAIN_DISTRIBUTION_AUDIT_20261024.md)：独立 `ue_train_distribution_audit.py` 复用冻结评估，完整 train2142 图、七次推理，对比基座、正确/常量训练与固定权重 donor；输出 bbox/Mask/Boundary AP，区分训练内拟合、容量和内容贡献。
+
+[J1首轮结果](dual_stream/UE_J1_INTERIM_RESULTS_20261024.md)：训练及完整推理完成，正确Mask净变化+0.194pp、训练内容差+0.071pp，已得区间跨0；同权重正确优于常量/donor点值，归因分析继续排队。旧N2训练集诊断已完成，无Mask净收益。
+
+`scripts/probes/ue_joint_encoding_fast_analysis.py`：CPU配对统计加速复核。保留原J1匹配、边界定义、500次采样和随机种子，只将COCO全区域precision envelope的Python循环替换为NumPy累计最大值；每个evaluator前三次重采样与原函数校准至1e-12，保存校准误差。独立产物 `ue_joint_encoding_20261023/priority_input_audit/`，不修改原source或原队列结果。
+
+J1错配完整统计已完成：Mask/BBox/Boundary2%/Boundary1%正确−donor的500次配对区间全部跨0，24次原函数校准误差为0。完整数值和结论追加于上述J1结果文档；原队列常量/错配复核继续，不将小幅点值视作对应RGB收益已获确认。
+
+[2026-10-25证据汇总与进展](dual_stream/UE_STAGE_SYNTHESIS_20261025.md)：J1已14/14且双实现统计完全相同；新实例内部交互有RGB内容及原路径增益，精确donor对应性仍有限；四臂共同基础联合训练进行中，同E23–27排名波动；L系列14条训练完成但统计目录缺失使队列停止。区分常量对照保留几何/容量、消费入口、局部可见性和训练方差。
+
+[三代理RGB深审](dual_stream/UE_RGB_COMPRESSION_CONSUMPTION_REVIEW_20261025.md)：确认当前RGB候选先等权mean、融合后再2×2平均，查询无法恢复被抵消的视角/子格差异；SAT→U→SAT提供无纹理替代路径，但尚未证明其主导。当前joint梯度接通且source主辅范数接近，不能沿用旧冻结辅助压倒主任务解释。优先现权重逐阶段任务信息定位，保留弱Boundary配对信号与所有归因限制。
+
+[RGB机制变体共租协议](dual_stream/UE_RGB_MECHANISM_VARIANTS_20261025.md)：独立view_preserve/spatial_preserve/no_sat_copy三方向，各正确/常量配对，6个共同基础初始化的10epoch前缀训练；固定E10 val对比原100epoch日程的E10参考，不用test挑结构。源文件全独立，资源门已通过，allocator7800MiB/free11000MiB准入，每卡最多新增1任务；自动补原路径/合并路径内容差中差及固定RGB干预。
+
+[机制变体完整结果2026-10-26](dual_stream/UE_RGB_MECHANISM_RESULTS_20261026.md)：22/22完成。空间变体内容差+0.859pp但正确臂未超过原compact正确；view/no-copy的正确−donor区间为正；no-copy整体Mask上涨但常量训练仍更高。尚无单变体同时通过全部内容/对应性/超原基准比较。原四臂仍训练，最新共同E60 RGBD86.5553/常量86.1068，不能提前当最终test结果。
+
+### 2026-10-23 真实RGB内容瓶颈定向诊断
+
+[独立复核与定向诊断](dual_stream/UE_RGB_CONTENT_BOTTLENECK_20261023.md)更新几何四对已完成的训练内容正证据，并区分对SAT门槛与推理依赖。新增`scripts/analysis/ue_rgb_content_error_audit_20261023.py`分析A/D已有预测的内容净纠错；`scripts/probes/ue_rgb_content_direction_audit_20261023.py`在固定训练图、固定E10下测内容残差与真实loss方向及SAM→UDPR传递。均为独立离线诊断，非新训练方法；现有N2/N2-shared/S1-R/辅助配对继续，不重复启动近似架构。
+
+### 2026-10-23 内容诊断收尾与跨划分补测
+
+A/D全459内容净纠错及4train内容方向两项均已完成、独立验收。新增`scripts/probes/ue_rgb_content_generalization_audit_20261023.py`在固定val/test四图延续方向诊断，`ue_rgb_content_generalization_finish_20261023.py`串行共租调度并汇总train/val/test描述。独立plan/source SHA/原始logits恒等及资源门先于正式补测，无训练更新。分组结果及用途边界见[内容瓶颈记录](dual_stream/UE_RGB_CONTENT_BOTTLENECK_20261023.md)末节；不把不同划分当同图配对。
+
+### 2026-10-23 检测阶段漏失定位
+
+新增`scripts/probes/ue_detection_attrition_probe_20261023.py`：纯卫星固定检查点，独立回放全部RPN锚框/回归/top-k/尺寸/NMS/上限及RoI回归/分数/NMS/上限；逐值核定原RPN、RoI与历史完整基座检测输出。按GT任意覆盖和一对一最大匹配容量分开统计，回归恢复单列。见[固定合同](dual_stream/UE_DETECTION_ATTRITION_PROTOCOL_20261023.md)。门后共租执行459图，全部观察写独立产物，生产训练/检测阈值与旧探针source保持原样。
+
+`scripts/analysis/ue_detection_attrition_verify_20261023.py`作为独立CPU完成验收器，核定完整459图来源、GT/mask面积/最终DT、阶段计数及FP32对pycocotools float64阈值差异；不修改诊断或原预测。最大238实例工程门通过，正式459图已实际推进。
+
+### 2026-10-23 检测与内容阶段结果及离线资源修复
+
+[阶段更新](dual_stream/UE_PROBE_STATUS_DETECTION_AND_CONTENT_20261023.md)记录459图检测漏失验收、跨划分内容方向、N2-shared边界正信号及S1-R内容配对未通过。`ue_probe_coresident_owner.py`按真实任务种类将offline gradient工作预算从误用的推理3500MiB修为20000MiB，保留训练和失败证据。新增`ue_post_analysis_recover_20261023.py`在GPU审计失败后独立恢复已就绪CPU AP比较；原数值source不改，GPU失败与CPU完成分别报告。
+
+### 2026-10-23 UAV几何辅助RPN排序三臂
+
+用户授权子代理设计、主代理实施后，新增`rsprompter/uav/rpn_geometry_probe.py`及`ue_rpn_geometry_probe_20261023.py`、`ue_rpn_geometry_schedule_20261023.py`、`ue_rpn_geometry_analysis_20261023.py`、`ue_rpn_rank_reachability_20261023.py`。三臂只训练native几何条件的RPN objectness残差，冻结原网络，直接用原anchor分类loss；实际A=6，真实anchor中心nearest读取。原两级NMS/回归/1000/250预算保持，单列SAT预筛2000诊断。工程门和双worker增强mini epoch续训已通过，三臂均实际更新。源码与架构/日志口径见[实施与验收](dual_stream/UE_RPN_UAV_IMPLEMENTATION_20261023.md)，独立方案与主代理收紧K对照的依据一并保留。
+
+### 2026-10-24 UAV失败归因与候选质量桥接
+
+新增只读`scripts/analysis/ue_candidate_evidence_audit_20261024.py`（459图已有候选预算输出与native支持关联）、`scripts/probes/ue_rpn_supervision_audit_20261024.py`（固定32train/16test原anchor分配/抽样与回归候选质量）、`scripts/probes/ue_candidate_quality_bridge_20261024.py`（独立64train/32val表格可解码性检查，extract/fit两阶段，无test访问）。未改原卫星、缓存、活跃探针source或训练遥测。新产物位于/data/wangcheng/checkpoint各同名独立根；[失败归因及候选质量方向](dual_stream/UE_FAILURE_CAUSES_AND_CANDIDATE_DIRECTION_20261024.md)明确SAT候选预算收益与真实UAV收益的区别、阶段计数分母及后续门。
+
+桥接三臂全部完成：区域几何二分类AUC略高，但直接替换Top1000排序均丢失覆盖，不推进该实现。另增`scripts/probes/ue_geometry_proposal_pilot_20261024.py`（init/gate/train），独立几何五通道小CNN直接学习实例中心/offset/log-wh，真几何与常量共享支持/初始化，完整train10epoch后仅val评价候选覆盖；工程门通过，两个臂共租GPU0运行。没有加载或改动原SAT/SAM/UDPR，也没有最终实例AP结论。配置、学习率差异、资源与后续验收见同一失败归因报告第七节。
+
+`scripts/analysis/ue_geometry_proposal_complement_20261024.py`仅在这两个固定PID实际产出val结果后做CPU互补性／匹配容量分析，SAT参考为已有pre2000/post1000输出；图像配对bootstrap500。没有新增GPU排队或test推理，不把潜在可补框数解释为AP。
+
+proposal pilot两臂E10及全部val已完成：真几何top250一对一IoU.5容量12867，常量9257；相对SAT2000最终未覆盖可补142对97，尚非AP。新增`scripts/probes/ue_geometry_proposal_consume_20261024.py`执行真/常量×原框/原RoI回归框四臂冻结消费，仅val；逐值回放原检测并复用原mask，按原阈值拒绝重叠新增框、自身NMS、填final250剩余名额，仅新增框走原SAM。独立2图门后完整val，原SAT参数和预测保留。来源、资源和边界见失败归因报告第八/九节。
+
+四臂完整val均无Mask净增益。新增只读`scripts/analysis/ue_geometry_box_consumer_audit_20261024.py`定位潜在可补GT142→novelty后119→原分类链实际8的漏失；oracle与直接对应框替换上界分开记录，不以oracle作收益。新增`scripts/probes/ue_geometry_score_band_20261024.py`进行真几何/常量/SAT自有低置信候选三臂，仅val、不新训；新增假设以原阈值乘分支置信度进入低分数带，绕过原分类否决/框回归、保留全部原预测，检查UAV相对同预算控制的实际净增益。AP非下降来自可信前缀设计，不能替代内容对照。见同一报告第十节。
+
+score-band完整val：真几何Mask85.8162、常量85.6829、原SAT2000为85.5377，匹配内容差及净差区间为正；但更强SAT自身补充86.2991。`scripts/probes/ue_geometry_score_band_analysis_owner_20261024.py`执行固定五项配对分析。`scripts/analysis/ue_geometry_conditional_complement_20261024.py`对已有缓存做强SAT前缀条件增益（只读CPU），真几何86.3237、常量86.2991，微小增益区间包含零，不认定稳定。
+
+`scripts/probes/ue_geometry_conditional_online_20261024.py`在线复现缓存组合后全test，保留原SAT2000+低置信补充前缀、独立E10几何头生成候选，固定分数层级和250；`scripts/probes/ue_geometry_branch_test_20261024.py`核验相对原SAT2000的直接分支。两者每内容臂先2val精确box/score/RLE门再459test，无重训或test选参。`scripts/probes/ue_geometry_confirmation_analysis_owner_20261024.py`等待真实结果identity后执行固定五项test配对比较并核对G/K的纯SAT prefix逐字节一致。原49源未改，新source快照/协议/PID在各独立运行根；详见失败归因报告第十一/十二节。
+
+两seed主比较均已完成：seed44真几何Mask66.5516，对强SAT66.0879净+.4637pp；seed45真66.4930，净+.4051pp，配对net及内容区间均为正。`scripts/probes/ue_geometry_proposal_repeat_20261024.py`复用原Net/loss只改独立seed；`ue_geometry_conditional_configured_20261024.py`参数化checkpoint/out-root并通过原缓存精确回归；`ue_geometry_repeat_owner_20261024.py`连接E10训练审计、test与两项四指标分析。[架构说明](dual_stream/UE_GEOMETRY_INSTANCE_SUPPLEMENT_ARCHITECTURE_20261024.md)明确输入、直接实例监督、候选级消费、强SAT前缀与排序分数含义，当前不包含UAV RGB/CVT。
+
+新增只读`scripts/analysis/ue_probe_input_identity_audit_20261024.py`完成36734归档文件与3060缓存来源核对；`ue_geometry_new_instance_audit_20261024.py`核对旧COCO匹配不变与新增GT匹配（真811/常量476）；`ue_geometry_count_matched_20261024.py`按每图同新增数50838总额诊断，Mask点值差不变。这些不是生产loss或选模字段。
+
+`scripts/probes/ue_geometry_conditional_intervention_20261024.py`做固定真模型的constant/shuffle字段输入；`ue_geometry_whole_map_donor_20261024.py`做四字段+support半循环229错配，均先实际val门再全test。`ue_geometry_intervention_analysis_20261024.py`检查同权重/同SAT前缀并共享正确evaluator做500次Mask配对，只作推理内容归因。原source/缓存/SAT/UDPR保持不变，详见失败归因报告第十三至十五节。
+
+最终总验收已通过：新增`scripts/analysis/ue_geometry_direction_final_audit_20261024.py`可重跑核对权重/初始化/实际优化步数/配对epoch顺序、两seed完整指标、三项输入控制、同数量控制与全输入来源，输出`ue_geometry_direction_final_audit_20261024/audit.json`。最终推荐路线、数值及限制集中于[阶段结论](dual_stream/UE_UAV_EFFECTIVE_DIRECTION_VERDICT_20261024.md)；架构文档同步为完成状态。该路线是实验脚本与冻结模型组合，主训练/推理入口尚未改成正式共同初始化联合训练模型，UAV RGB/CVT仍未获本实验正证据。
+
+### 2026-10-24 实例监督驱动的编码器内部回写
+
+[固定协议](dual_stream/UE_INSTANCE_INTERACTION_PROTOCOL_20261024.md)规定几何内容×head/internal×两seed八臂，以及RGB六臂，共14臂；冻结前独立审查补两条常量几何字段+正确RGB，未读取任何本轮AP，不依test选结构。不是RS2-SAM2复现。head入口也有双向交互，区别仅为S′是否继续进入后续Hiera，不称无attention对照。
+
+- `rsprompter/uav/instance_interaction_probe.py`：native几何CNN高分辨率旁路、block4局部闭合交互、直接读取S′的中心/框头、可选五视角RGB LoRA及连续锚点读取。
+- `scripts/probes/ue_instance_interaction_20261024.py`：独立init/gate/train/eval；冻结E73原参数/buffer并保留回写后autograd，原loss加直接实例loss；正式推理和验收共用`inference_outputs`。
+- `scripts/probes/ue_instance_interaction_gate_20261024.py`：名义格点ramp、同权重入口开关、正式推理无支持回退、实际AdamW/AMP断点重放与两worker增强loader顺序。CUDA原算子反向存在噪声，采用独立三次内存重放标定，不宣称权重逐位续训一致。
+- `scripts/probes/ue_instance_interaction_owner_20261024.py`：14臂/119个预定训练、评价和统计任务；实测显存峰值加2048MiB余量共租，flock防重复owner，失败保留并审查，不终止其它任务。
+- `scripts/probes/ue_instance_interaction_baseline_20261024.py`：正式disabled推理全459图与历史强SAT逐框/分数/RLE/GT一致性门，未过门禁止引用历史基线的统计；不改变训练。
+- `scripts/analysis/ue_instance_interaction_audit_20261024.py`：实际CP、有效optimizer步骤、初始化、配对顺序、来源、全部评价和四指标统计的严格完成审计，缺项即失败。
+- `scripts/probes/ue_instance_interaction_finish_20261024.py`：绑定实际owner PID与进程起始ticks，等待119项产物；调用冻结最终审计，另核6120缓存内容SHA、评价权重SHA和完整合同一致，生成`study_summary.json`及`RESULTS.md`。不改变原调度、训练或选模；执行完成仍需前台审阅再确认目标完成。
+
+四组工程门已通过：最大208GT训练、250实例FP32推理；直接中心梯度到卫星回写及两向attention，RGB门另核LoRA。产物独立根`/data/wangcheng/checkpoint/ue_instance_interaction_20261024`。这只证明工程接通，尚无新AP结论。`satellite_records`在internal条件下已被交互改变，纯卫星必须来自disabled或核定的历史强基座；不沿用旧前缀对纯卫星AP非下降保证。原正式训练入口和解码器/UDPR没有改动。
+
+[实施与工程证据](dual_stream/UE_INSTANCE_INTERACTION_IMPLEMENTATION_20261024.md)记录独立复核采纳、四格实测峰值、数值续训重放边界、全459图历史强SAT精确回放和首批8进程启动。启动不等于E10或指标完成；最终审计缺任一CP/推理/统计即失败。
+
+同日补齐自动收尾：真实owner与8个子进程持续存活，独立finish PID84334已启动。报告字段接线用隔离临时fixture核定14臂/60比较/四组证据项，不把fixture当真实指标或审计完成。新增报告只写独立产物根，不改变23份冻结源码/协议的身份。
+
+内部回写真/常量两臂E1实际检查点已核验：267步、2136图同序、共同初始化、五类RNG、有限新增权重与原SAT SHA均通过，独立产物`epoch1_internal_pair_audit.json`。训练loss差仅用于观察，不作为E10内容增益或选权证据；完整数值追加于实施记录。
+
+同轮几何四格E1均已落盘并完成`epoch1_geometry_factorial_audit.json`实际CP核对：四臂初始化/顺序一致，各267次AdamW更新与冻结记录通过；继续原固定预算，未增加中途test评价或按loss筛选。
+
+`scripts/analysis/ue_instance_interaction_rgb_path_audit_20261024.py`为CPU只读有效参数范围审计，按实际optimizer参数槽映射命名参数、核对原source非LoRA状态与共同初始化、原SAT SHA及配对顺序，缺失CP单列不当通过。E1已有3/6个RGB臂通过：patch_embed.proj与blocks0/1共25648个source LoRA参数实际更新，非整个声明的1061424；不改变训练，仅完善RGB消费范围披露。产物`epoch1_rgb_effective_path_audit.json`。
+
+[几何四格阶段结果](dual_stream/UE_INSTANCE_INTERACTION_INTERIM_20261024.md)记录实际四个E10/2670 CP、10轮样本顺序及已完成459图推理审计。真实internal−head合并Mask+.103pp有正区间，但常量入口差点值相近，不能归为几何特异收益。固定权重原路径正确输入点值反低于常量/donor，新增`scripts/analysis/ue_instance_interaction_prefix_followup_20261024.py`仅对已有预测做两项离线配对统计；原14臂/119项和冻结源不变，RGB/第二seed/其余分析继续。
+
+### 2026-10-24 内部回写调度的显存准入修订
+
+新增`scripts/probes/ue_instance_interaction_capacity_owner_20261024.py`，只替换原控制面，复用原`build_jobs`/119项命令与完成判据。取消每卡固定2个本轮进程的人工上限，工作集取该家族/入口的工程门及已完成epoch峰值最大值，加512MiB CUDA上下文预算；每卡保留一次2048MiB余量，并扣除已启动但未实际分配完的预留。CPU统计并发仍最多4个（独立探索性followup单列）。
+
+原owner81973被替换，12个训练/统计子进程按PID/起始ticks接管，未中断；新owner161872。两个等待中的seed45 head臂在GPU2/3启动并均实际更新25步；14个训练臂至此全部启动，5个已完成。切换记录`capacity_handoff.json`，原控制面/finish身份和finish源码归档`control_history/`，23份冻结数值源码/协议未变。finish v2接受新控制面身份，当前PID161891；最终附加审计核对新控制面源码SHA与119项身份。资源修订不改实验初始化、样本顺序、训练预算或评价。
+
+seed44的internal训练内容比较已完整校准：合并Mask+.152974pp CI[-.021586,+.190515]、原路径−.004567pp CI[-.147670,+.102384]，四指标均跨零；head内容正区间与该结果分开解释。原路径固定权重正确−常量字段四指标统计也完成，Mask−.166407pp CI[-.237367,+.055994]仍跨零，不以负点值宣称稳定伤害；donor、RGB与第二seed继续。阶段文档同步实际完整区间，原科学合同不改。
+
+首个RGB-D head正确输入全459图test已完成：Mask66.477342；独立`rgb_head_first_test_partial_audit.json`核定E10权重SHA、FP32/max250、GT/ID及原SAT前缀逐值一致。同结构常量RGB控制尚未完成，此整模型点值不能归为RGB增量，阶段文档保留该边界。
+
+内部回写真实字段相对强SAT的净Mask统计完整校准通过：+.484852pp，CI[+.308804,+.609847]，与训练内容比较跨零并存；不能混称无净增益或已证实字段数值贡献。常量控制仍含真实深度support，不是完全无UAV/纯容量控制；阶段文档明确此归因范围。
+
+### 2026-10-24 回写value来源离线分解
+
+新增`scripts/analysis/ue_instance_interaction_value_audit_20261024.py`，对固定seed44真实几何internal E10进行FP32只读审计。保留原观察到的attention权重，将线性value及输出映射的注入拆成交互前UAV表征、读取卫星后的token增量、两层线性偏置三项；在block4结束即停止，不运行检测或修改训练。逐图核对三项相加回放原始注入；全局RMS和夹角按平方和/点积合并，不能解释为可相加贡献百分比或AP因果效应。UAV项仍包含几何CNN对support的消费，不叫纯RGB信息。
+
+独立产物`ue_instance_interaction_20261024/value_source_smoke`已完成2图×三种输入回放，最大误差8.94e-8；`value_source_val`为完整val的正确/常量字段/几何donor审计，完成须检查`complete.json`和实际459图。原14臂/119任务、冻结源和检查点不变。结构讨论优先保留现有实验完整性，未启动value分离新训练。
+
+随后完整val459图×三输入审计完成并前台核对逐图记录及回放误差，最大1.0431e-7。正确输入U项/卫星返回项/偏置/实际总注入的合并RMS为.037042/.001342/.002989/.038531，未显示卫星value返回项幅度占主导。该观察下调对应结构猜测的优先级，不代替AP因果对照；既定RGB/第二seed继续，下一步优先监督梯度方向与有效读取检查。原路径正确−donor完整统计也已完成：Mask区间跨零，Boundary1%为负区间；详见阶段文档，不概括为所有指标受损。
+
+2026-10-24新增RGB internal匹配训练结果：正确RGB相对常量RGB的合并Mask+.193716pp CI[+.061330,+.343377]，原路径+.142806pp CI[+.012801,+.265799]。已核对实际E10评价SHA、10轮各2136图共同顺序与初始化、冻结源及四指标各500次/24次校准；E10有效LoRA审计现覆盖4/6 RGB臂。该单seed正区间支持本检查点的RGB消费，但不等于训练稳定性、深度必要性或双向必要性。8/14训练和59/119项为本次快照，所有剩余任务继续；RGB固定输入诊断、head匹配与深度字段统计待齐。完整数值和限制见阶段文档。
+
+2026-10-24新增[几何消费与正式化成本复核](dual_stream/UE_GEOMETRY_CONSUMPTION_REVIEW_20261024.md)：四字段整体收益不能单独归因高度/高度差，当前字段表示为相对中心Z、像素差分和近表面视角数。记录单表面栅格、差分有效性、U128→U64与观测支持的语义边界；实际几何CNN202416参数、完整无RGB交互头259893参数。五视角共享RGB编码器当前完整前向但仅P0被消费，后续优化必须验证同权重等价。联合预算准备不等于固化完整探针架构；正式保留需要内容对照和端到端增量成本审查，不因理论价值默认保留显式几何大分支。
+
+2026-10-24按用户全模态且不冗余要求新增[联合模态角色与验收合同](dual_stream/UE_JOINT_MODALITY_CONTRACT_20261024.md)。`rsprompter/uav/rgb_p0_encoder.py`为独立可选P0源编码器（patch、位置、blocks0/1、lateral），未接入或修改冻结探针。`scripts/analysis/ue_rgb_p0_efficiency_gate_20261024.py`通过实际E10首val五视角FP32/AMP P0及候选读取逐值一致、有效LoRA梯度三次重放噪声界；70.17M→.404M源参数，源编码单样本中位104→15ms，不外推整模型速度/AP。训练丢弃后层dropout导致全运行RNG不同，不能声称旧轨迹续训等价。`scripts/analysis/ue_camera_variation_audit_20261024.py`核查3060相机：K固定、各视角相对rig固定，故跨图错配标定不是有效消融。真正无深度须重建候选/支持/属性，不能继续使用真实深度缓存。
+
+2026-10-24后续工程推进：`scripts/analysis/ue_rgb_p0_full_val_gate_20261024.py`完成全459val×5视角P0及最终融合U128/support逐值一致门，原adapter/CP/冻结源不变；不是全训练轨迹或最终AP证书。`rsprompter/uav/geometry_inputs.py`是无I/O的实测/参考平面几何转换；`scripts/analysis/ue_geometry_input_gate_20261024.py`在预定3val图对旧实测缓存逐值复现，参考平面无文件读取及全无效回退通过。`scripts/probes/ue_reference_plane_cache_20261024.py`固定sampling-origin水平面为无实测深度先验，重建index/geom/anchor/native fields/support，独立全3060缓存已启动，运行时禁止EXR和实测缓存读取；尚无相应匹配训练/AP，不拿参考平面当真实地面。
+
+2026-10-24新增[紧凑联合模型工程说明](dual_stream/UE_COMPACT_JOINT_IMPLEMENTATION_20261024.md)：`rsprompter/uav/compact_joint.py`保留原单流可训练范围并加入紧凑UAV，原任务和直接实例loss均可反传，不加载任务权重；设备迁移显式执行MMEngine子级接口。`data/ue_joint_inputs.py`将实测/参考平面及正确/常量RGB设为显式输入路径，来源逐图核对、参考缺失不回退。`scripts/analysis/ue_compact_joint_foundation_gate_20261024.py`构造期限制实际torch.load只读通用SAM2，最大208GT train图3次AMP门通过、冻结参数保持、峰值reserved5648MiB；最终forward源版本在v2门复核。它不是已启动的正式100epoch联合运行，推理/续训/匹配训练协议仍待完成，原冻结探针不改。
+
+
+### 2026-10-24 紧凑联合运行器与CPU统计准入
+
+`scripts/probes/ue_compact_joint_run_20261024.py` 与 `configs/ablations/ue_compact_joint_protocol.json` 固定四臂共同基础初始化、100ep/26700更新、单GPU batch1累积8、每轮val选best及完训一次test，尚未启动长训练。`data/ue_instance_targets.py` 从卫星框生成目标，避免无深度对照读旧实测x；`scripts/analysis/ue_compact_joint_runtime_gate_20261024.py` 已过四臂首val FP32、强制250掩码、reference-plane无实测读取的8图累积与五RNG/增强顺序恢复；`scripts/analysis/ue_compact_joint_optimizer_resume_gate_20261024.py` 补非空AdamW/AMP磁盘恢复。`scripts/analysis/ue_compact_joint_input_audit_20261024.py` 重核3060参考缓存/camera SHA及三图目标等价；`scripts/analysis/ue_compact_joint_engineering_acceptance_20261024.py` 已绑定门和当前源码。产物根 ue_compact_joint_20261024，详细范围见紧凑联合实施文档。
+
+旧固定研究仅剩统计时，新增 `scripts/probes/ue_instance_interaction_analysis_owner_20261024.py`、`scripts/probes/ue_instance_interaction_analysis_finish_20261024.py`，并发4→12；每任务4GiB预算、主机8GiB余量，接管子PID不终止任务，原119命令/科学源不变。当前owner243139/finish243143，161872/161891已退役；第一次GPU handoff保持，新CPU接管另存analysis_capacity_handoff.json，bridge额外核新源后调用原finish全审计。101/119完成为本次快照，14训练及45推理已完成，剩余统计继续。
+
+E10 RGB有效参数审计已覆盖6/6臂，均2670次实际更新、原source非LoRA保持；后层LoRA仍不在损失路径。该覆盖审计不代替完整研究最终验收。
+
+2026-10-24新增[固定梯度与整链路成本审查](dual_stream/UE_COMPACT_GRADIENT_COST_REVIEW_20261024.md)。`scripts/analysis/ue_interaction_loss_direction_20261024.py`在8固定train图×E1/E3/E10做FP32 eval-mode原任务/中心梯度与首图分项，24行完成、无参数更新；早期中心对UAV表示梯度较强，E10 writeback平均余弦约+.0067，不认定单一冲突根因。`scripts/analysis/ue_compact_cost_audit_20261024.py`对3固定val图×3重复比较SAT/完整源/紧凑源，后两者预测逐值一致；wall中位364/826/728ms，源准备107→20ms，但新增掩码数量与I/O仍有成本。它是旧冻结权重评估，非最终联合模型部署benchmark，不因此调loss或更改原119项。
+
+
+### 2026-10-24 四臂联合训练实际启动及收尾口径
+
+最新运行状态见[紧凑联合实施](dual_stream/UE_COMPACT_JOINT_IMPLEMENTATION_20261024.md)顶部，取代此前“尚未启动”和旧研究101/119等历史快照。旧14臂119任务已全部完成，最终身份/缓存/固定源码审计通过，RGB内容有正向单seed证据；四字段内部增量区间跨零，不宣称高度或深度已独立成立。
+
+新增运行控制面`scripts/probes/ue_compact_joint_owner_20261024.py`已实际启动四个独立100epoch训练，共同通用SAM2基础初始化；补齐`scripts/analysis/ue_compact_joint_amp_retry_gate_20261024.py`、`scripts/analysis/ue_compact_joint_launch_review_20261024.py`。AMP溢出对同8图恢复buffer与五RNG重算，失败尝试不计实际更新，最多4次重试；AR@250仅改原错误标签，未改数值。当前数值源及协议冻结，新分析入口不改变运行任务。
+
+新增`scripts/analysis/ue_compact_joint_paired_20261024.py`：冻结8项val-best完训配对比较，原路径/合并路径分开，500次图像bootstrap及24次原估计器校准，另报AP75/标准尺寸组/AR250。全100轮顺序及val-best选权、两臂共同合同、CP与预测SHA不一致或任务不完整时拒绝分析；不读test调整任何结构。具体范围、路径、命令与不能证明的事项见实施文档。新增工具为只读收尾分析，最终联合收益与各输入必要性仍待实验。
+
+
+2026-10-24补充只读收尾入口：`scripts/analysis/ue_compact_joint_rgb_intervention_20261024.py`在四臂训练/test全完成后，用固定RGB-D val-best执行常量/循环donor RGB干预，原几何及卫星不变；`scripts/analysis/ue_compact_joint_finish_owner_20261024.py`绑定实际训练owner句柄，等待8项训练/test完成后按资源准入运行8项配对分析＋2项干预，归档独立源码，不修改冻结训练源。全部scope与剩余科学审计见紧凑联合实施文档。
+
+
+2026-10-24新增`scripts/analysis/ue_geometry_encoding_diagnostic_20261024.py`：完整2142train原始缓存的只读字段RMS、差分缺测零值/截断和64²原始覆盖代理统计，逐缓存SHA绑定、不读取标签及val/test。四字段RMS .37–.56，差分约.2%有效对截断；零差分中的未知占dx15.8%/dy25.6%，有支持起点未知约3.8%/4.3%。见[几何消费复核](dual_stream/UE_GEOMETRY_CONSUMPTION_REVIEW_20261024.md)新增实测节；不是AP损失成因证明，不改在训合同。
+
+
+### 2026-10-25 联合检查点审计
+
+新增`scripts/analysis/ue_compact_joint_checkpoint_audit_20261025.py`：CPU复建可训练参数顺序并对已保存实际CP逐项核对冻结参数/持久buffer、AdamW moment及逐参数step、五RNG、共同初始化与来源。可按anchor epoch或四臂完训后的best/last审计，非持久buffer公开为CP不可核验。首个卫星E1通过：323冻结张量不变、334参数实际267更新；原SAM未参与目标的IoU/obj-score头12参数无optimizer状态，未将其虚报为已训练。详细边界及首次分析程序非持久buffer键修订见紧凑联合实施文档。
+
+
+2026-10-25四臂E1检查点审计完成：同轮样本顺序完全一致，全部冻结张量不变，UAV新增可训练张量均有267步AdamW状态。E1全val Mask为SAT67.6711、RGB-D66.4703、常量RGB68.4940、参考平面65.4744，尚无本轮test/稳定内容收益结论。新增`scripts/analysis/ue_compact_joint_epoch1_paths_20261025.py`只读快照并核对四臂E1原路径/合并候选的Mask与bbox，score从合并前缀原样取用，预测身份/点值校准后才输出完整诊断。见紧凑联合实施末节，不据此改变冻结实验合同。
+
+
+2026-10-25 E1路径分解完成并归档：RGB-D原路径/合并Mask66.4292/66.4703，平均追加115.009候选只增加.041099pp；首轮bbox提高主要在原路径，Mask落差也已在原路径。三UV臂几乎填满250预算，候选成本收益需与内部交互分开核算。此为早期val、不同模型训练结果，未证明具体对齐或梯度冲突原因，不据此更改在训合同或宣称最终成功。
+
+
+2026-10-25新增`scripts/analysis/ue_compact_joint_loss_direction_20261025.py`及`scripts/analysis/ue_compact_joint_gradient_owner_20261025.py`。前者在固定train 8图上用同一FP32/eval前向分离det/seg/aux三个梯度，按组计算四种配对；后者绑定真实RGB-D训练句柄并等E3/E10落盘，按显存准入复查同一驱动。E1已完成且CP/模型不变、无optimizer更新：det/seg的writeback/源LoRA/卫星LoRA平均余弦+.240/+.400/+.281，未支持普遍强冲突；seg/aux回写平均−.026、7/8负但幅度接近正交。完整范数、分母、空梯度及训练外推限制见紧凑联合实施末节和DEBUG_FIELDS；不据此自动调权。
+
+
+### 2026-10-25 收尾控制面v2与新增只读入口
+
+`scripts/analysis/ue_compact_joint_fixed_rgb_paired_20261025.py`补4个同CP正确−常量/donor、原路径/合并路径的完整配对区间；`scripts/analysis/ue_compact_joint_final_inputs_20261025.py`补最终实际archive与9180缓存的字节SHA；`scripts/analysis/ue_compact_joint_cost_20261025.py`补真实val-best纯SAT/完整RGB-D/只跳过追加候选解码的独立进程成本测量。`scripts/analysis/ue_compact_joint_finish_owner_v2_20261025.py`保留原10命令，扩为19项并检查9组成本预测前缀等价。新owner291123接替只有等待、无子进程的274663，四训练PID未动，28数值源逐项未变；旧控制面身份保留。当前权威posttraining状态为state_v2/owner_v2_launch，不再看旧PID判断完成。
+
+仅最终成本benchmark要求同张空闲GPU顺序测量并等自身统计结束，训练和功能诊断继续按显存共租。完整合同/限制及尚未执行的科学核查见紧凑联合实施末节。E2早期全val的正确RGB-D Mask70.0818低于SAT73.0874、常量RGB75.2438与参考平面72.6691；不掩盖回撤，也不据此改变在训合同。
+
+
+### 2026-10-25 独立原始影像对应核查
+
+新增`scripts/analysis/ue_rgb_depth_image_alignment_20261025.py`：固定8train×5view的RGB/深度边缘内容代理、固定同点平移控制与40组原图。新增`scripts/analysis/ue_rgb_sat_image_correspondence_20261025.py`：不读模型/cache/标签，厘米坐标直接重投影UAV原RGB到实际卫星图；真实深度/参考面在相同像素交集做ZNCC。40view均真实深度优于参考面，均值.862/.298；10组源视图、3组目标棋盘图已实际查看，作用边界与原始记录见[原始影像对应报告](dual_stream/UE_RAW_RGBD_CORRESPONDENCE_20261025.md)。只下调严重全局错位猜测，不认证全部物理真值/互补信息/AP增益；没有改在训源。numpy汇总序列化失败原目录保留，整数cast重跑后40逐view记录逐值相同。
+
+
+2026-10-25新增`scripts/analysis/ue_retained_rgb_read_audit_20261025.py`：同8train、668301锚点独立复算源view/源像素/EXR-Z/SAT投影，原色聚合的固定格对照。缓存对应一致，后方>1m约6.13%；硬过滤原色ZNCC .914低于当前平均.922（8/8），没有实施任何过滤/重排序/新训练。见原始对应报告C节。E3首次同轮val正向：RGB-D78.0419高于SAT75.2622、常量RGB77.2910和参考平面75.9853；同8图E3梯度复查完成，没有持续强冲突证据。仍保持100轮计划，不能当最终test/稳定净增益。
+
+
+2026-10-25同步[联合模态合同](dual_stream/UE_JOINT_MODALITY_CONTRACT_20261024.md)中的过时“尚未启动/工程门待完成”状态，新增用户目标逐项证据矩阵：RGB/深度/标定实际角色、通用共同初始化、非空挂与成本、全预算净收益分开验收。当前仍在训练，表中未将E3点值/原图相关性/工程通过当作正式目标完成，固定rig识别限制保留。
+
+
+2026-10-25记录E4完整同轮val：RGB-D78.1413、SAT77.8317、常量RGB78.2975、参考平面77.3177（Mask AP×100），RGB增量从E3正点转为−.1562pp；更新模态验收表，未将单轮正向提前判为稳定成功，训练数值源/预算未变。
+
+
+2026-10-25记录E5完整同轮val：RGB-D79.3335高于SAT77.9739、常量RGB78.8230及参考平面77.7781（Mask AP×100），三点差均正；保留E4波动记录，不将其升级为最终/稳定收益，训练合同不变。
+
+
+2026-10-25记录E6完整val三项Mask匹配点差均负，并把当前所有共同完成E1–E6逐轮指标与实际epoch文件SHA汇总至运行根`matched_validation_observation.json`；不挑阳性、不跨轮均值代替预定选权，训练/测试合同未变。详见紧凑联合实施E6节。
+
+
+### 2026-10-25 11:20 联合中期核定
+
+E1/E3/E10固定函数梯度诊断24项全部完成，driver/实际E10 CP SHA复核通过，owner287046正常退出；不能据其PID消失或末次state waiting快照误判失败。E10四CP冻结/optimizer/RNG审计通过（334/427状态均step2670、冻结张量保持），E1–E20同轮2136训练图顺序跨臂一致。全轨迹已更新，E20 Mask RGB-D83.5102高于SAT82.4716/常量RGB83.1073/参考平面82.1281；E10/E15内容负点保留。实际训练约E21–E31，无失败，100轮/test/19项收尾仍待完成。详见联合实施和模态合同的中期节。
+
 ### 2026-10-26 候选先选择与stride4几何旁路
 
 新增`data/ue_candidate_evidence.py`（由FP64锚点/相机复算7维候选属性）、`rsprompter/uav/candidate_detail_interaction.py`（Q：SAT block1 query先选RGB候选；G：多候选几何在128²零初始化写回）、`configs/ablations/ue_candidate_detail_protocol.json`（7条固定E10训练与内容对照）。新运行/调度/分析分别为`scripts/probes/ue_candidate_detail_run_20261026.py`、`ue_candidate_detail_owner_20261026.py`、`ue_candidate_detail_analysis_20261026.py`。原单表面CNN、block4、候选解码、损失和全部在训数值源不改；新源与产物独立，旧E10仅推理参考。三个真实GPU门已通过，正式完整结果未出。详见[机制与实验合同](dual_stream/UE_CANDIDATE_DETAIL_20261026.md)。本轮是保留锚点的选择/消费干预，不是恢复所有深度点或完整3D；新加入真实mask面积尺寸、密度和固定误检预算的小目标召回评价。未改现有生产入口或冻结架构合同。
@@ -310,6 +705,10 @@ Q、G正确内容训练各完成固定E10/2670更新，但原owner已消失且st
 
 新增独立`ue_ubr_native_attribution_queue_20261028.py`最多两CPU后续队列，以及`ue_ubr_native_fixed_box_errors_20261028.py`固定bbox匹配的四区域净纠错。C正确干预459图精确复现，A/B同C框四卡已发射；original_path MaskAP区间已出且C-A/C-B为正，combined及内容干预未完成不下最终结论。详细分母/中间数值见Native归因合同。
 
+### 2026-10-28 UAV完整预算与消融候选规划
+
+新增[按证据推进的实验规划](dual_stream/UE_UAV_FULL_BUDGET_EVIDENCE_GATED_PLAN_20261028.md)：区分S/U/T/C结构矩阵、全路径RGB/显式几何对照、深度对应与1/3/5视角敏感性；矩阵为候选，按既有归因→最小主比较→必要消融逐阶段准入。明确无增益时简化/暂停、单种子和开发测试限制，不预承诺所有模块成立。仅文档，不改配置、数值源、训练/归因队列，不发射完整预算。
+
 ### 2026-10-28 Native全预算wrapper与臂隔离
 
 新增experiments/ue_native_full100.sh、ue_native_full100_control.py、README规范；独立full_run与full_protocol，固定100轮26700、fresh共同初始化、同序、每轮完整val-best、全部完成后test。CPUprepare创建不可改Git运行工作树与orders；queue等待现有归因后GPU门/三臂四卡，arm目录/锁/恢复合同隔离。所有后续全预算实验必须有一键wrapper。详情[100轮合同](dual_stream/UE_NATIVE_FULL100_WRAPPER_20261028.md)。
@@ -357,3 +756,7 @@ observer1aff788、PID1642915，CPU逐epochval已回填9份无失败；11项CPUte
 ### 2026-10-28 三阶段wrapper CPU冻结验收完成
 
 数值/控制提交a95a444；正式待启动root为`/data/wangcheng/checkpoint/ue_staged_uav_full100_20261028`，536源码/配置及100轮101份订单文件核定，88CPU测试通过，CUDA未初始化，未发射训练。CPU_PREPARE_AUDIT.json记录源码闭包与缺cache硬门；第一次伪_ops.py误判的失败产物单独归档prepare_attempt1保留，不作正式runtime。缓存/真实四卡门仍待后续start执行；本次仅文档更新，不改已冻结数值源。
+
+### 2026-10-28 full100中期C臂检测分支负收益分析
+
+新增 [检测分支负收益量化、梯度图与隔离方案](dual_stream/UE_NATIVE_DET_COST_GRADIENT_AND_ISOLATION_20261028.md)：只读分析在训full100（E59快照，val）。bbox负收益持续成立的是C−B（−0.2~−0.4pp，中大型承担，小目标bbox +0.35），C−A后期已追平；E10短研究的B−A −1.19pp结构代价在100轮日程消失。遥测证明损失不在框回归（TP误差三臂相同）与召回（C更好），而是combined视图背景FP增多=分数排序退化，original_path三臂不变。给出含行号的完整梯度图：C独有耦合=M损失经native_aligned_rgb（不detach，`ubr_native_integration.py:34`）训练UAV编码器，其输出aligned位于block4写回与实例头两条检测前向上游。隔离首选端口级detach（对应a3sgm的SHAPE_DENSE_DETACH先例）+预注册C_detach臂；四卡梯度余弦遥测应先出数。附C对纯单流（S臂）设计判断：mask预期薄而稳超越(+0.5~1.5pp)，bbox或平或负。全部为中途val、单seed、无配对CI，不作test结论，不改动在训合同。

@@ -20,6 +20,29 @@ OpenCV imread另行包装核验；`identity_metadata_sha256`列合同检查读�
 `selected_epoch`是被固定的val-best权重epoch；`completed_epochs_at_snapshot`是固化时该臂已完成训练预算，两者不能混用。`optimizer_updates=0/state_unchanged=true`仅认证只读评价，不认证内容净收益。
 `analysis.comparisons.*.MaskAP_delta`用0–1 AP单位，区间为500次同图bootstrap名义95%；仅合并Mask AP有该区间。训练集区间不能当泛化证据，不同预算和单seed限制保留。Boundary AP带宽仍为512图像对角线2%／1%，约14／7px。
 
+## J1编码器内部交互（2026-10-23）
+
+latest_forward.target_support_fraction为整张64²目标token中32个候选至少1个有效的比例；source_delta_rms是224维输出残差RMS，base_stage_rms是Hiera block4原224维张量RMS。不是RoI/UDPR点统计，不能与N2/S1残差RMS直接比较。target_tokens=4096、candidates_per_token=32为维度合同。
+无可训练alpha，输出映射零初始化。loss为所有有梯度loss项之和（包括RPN list/tuple项），grad_norm为AMP unscale之后、clip.5之前的全adapter范数；不可与旧尾部只连接mask/tail目标的loss直接比大小。每epoch loss_microbatch_mean和样本顺序/指纹沿用原审计字段。
+所有统计仍是当前forward快照，checkpoint重算时覆盖含义不变；新增字段不引入逐步全参数/attention分布同步。
+
+## S1稀疏UDPR点读取（2026-10-23）
+
+**旧S1已作废**：其全图坐标假设与实际roi_local监督不符，点级GT诊断不得用于结论。当前S1-R同名统计先经proposal框把native点映射到图像，再读取UAV/GT；以UE_CONSUMER_BLINDSPOT_PROBES_20261023.md为准。原始输入feature未裁剪不代表输出mask是全图语义。
+
+沿用训练日志节奏。latest_forward.point_support_fraction为最后一次UDPR调用中选中点有候选的比例，包含重复RoI，不是全图覆盖率；base_point_rms只统计原选中点的32维特征。source_delta_rms/applied_delta_rms也仅对应选中点，不能与密集N2的整张张量RMS直接比较。rois/points_per_roi说明该次范围。
+S1没有可学习alpha，冻结值为1，W零初始化；不得用缺少alpha梯度判为断路。
+仅离线评估的read_observation.point_diagnostics跨当前图全部UDPR调用累积：matched_rois/points为最佳GT框IoU≥.5的RoI/点数（重复计数）；supported_matched_points为有UAV候选的子集。corrected/damaged相对相同raw logits和未增强特征的原UDPR结果定义，阈值为实际boundary_logit。old_correct/new_correct满足差值=corrected−damaged。该统计不是AP、Boundary AP或训练标签覆盖率。
+
+## 2026-10-23：G0离线梯度诊断
+
+独立脚本ue_gradient_topology_audit.py写gradients.json，不增加训练每步字段。
+parameters.status区分None（该loss无路径）、zero、nonzero；norm为FP32未缩放未裁剪梯度L2。
+groups.rms_all_parameters以该组全部可训练参数数目归一，connected_numel单列；深层未用于P0的LoRA不可自动视为故障。
+receiver_gradients/post_activation_gradients统计实际mask调用张量的梯度RMS，含重复RoI和无支持区；zones为训练GT每实例/并集1px内边及前景内部/背景，不是Boundary AP带宽。
+cosines为同次前向不同实际loss在各参数组的梯度余弦；任一范数为0时为null。负值不自动判定训练失败，范数不等于AdamW更新。
+optimizer_steps=0、satellite_state_unchanged和adapter_state_unchanged为离线只读检查；dropout/augmentation关闭，不能充作整段训练梯度分布。
+
 本字典是 `portable_sam2_explicit_coarse/` 训练日志中机制字段的唯一解释来源。它区分
 单步 latest-forward 快照与跨全部 DDP rank 的 epoch 统计；不得混用两者比较结论。
 
@@ -172,6 +195,287 @@ AMP+checkpoint 校验启停诊断的输出及梯度相同，避免共享权重�
 checkpoint推理现在按快照primary_max_dets评估（旧无合同的checkpoint仍默认100）。
 新增train_augmentation配置身份记录噪声概率/标准差与ColorJitter参数、顺序，非随机触发次数遥测。
 原loss/UDPR字段的聚合范围不变；本路线禁用EMA，所有val均model权重。
+
+## 2026-10-21 v1冻结适配器筛查（独立runner）
+
+`scripts/probes/ue_v1_adapter.py`的`train.jsonl`不进入生产训练遥测。`latest_forward`
+仅指每次累积8张后最后一次microbatch；无DDP、不是epoch均值。`alpha`为无界单个残差系数，
+`source_delta_rms`/`applied_delta_rms`为该次所有RoI空间通道的RMS，`base_rms`是conv_s0输出RMS；
+`support_fraction`分母为128²卫星候选格，不是GT/边界覆盖率。`rois`为该次正RoI或推理RoI数。
+`grad_norm`为累积后裁剪前参数梯度L2范数；`loss`是末microbatch参与梯度的原掩码及UDPR损失之和。
+字段只用于接线/数值诊断，不参与选权或替代完整验证。实际对齐与关闭分支由smoke数值校验。
+
+独立probe直接调用的canonical evaluator仍把第三个AR槽命名为`AR@100`；实际本协议传入
+`max_dets=[1,10,250]`，其数值对应AR@250。原始缓存不改写；最终collect汇总显式重命名为
+`AR@250`，避免与旧maxDets100实验混读。这是字段命名兼容问题，不改变匹配或AP数值。
+
+### native_geometry / native_zero独立筛查
+
+沿用RMS/alpha的latest-forward定义；`support_grid=512`明确支持率分母为原生512²像素，
+不能与adapter候选128²格支持率直接比较。两臂不使用RGB编码器/LoRA，只比较同support下
+真实几何内容和零内容。高度与梯度来自最近UAV已观测表面，不是目标视角可见性真值。
+
+恢复训练行新增`epoch_seed`与`recovery_parent_epoch`：前者为恢复后逐轮确定的随机种子，后者标识
+恢复前缀epoch；它们是来源字段，不是性能遥测。旧前缀行缺这些键属正常。epoch checkpoint包含
+RNG与parent合同，逐轮satellite_state_sha256核定冻结；最终更新日志必须连续且不能混入归档的未继承尾部。
+
+unit/unit_geometry的`source_delta_rms`仍是原公式，但输出无affine LayerNorm将有效位置的通道RMS
+限制在约1（无效位置0，验收容差1.01）；实际注入RMS由alpha与有效支持共同决定。训练幅度
+稳定不能替代Mask/Boundary AP及真实RGB对常量RGB的净贡献比较。`zero_init_logits_exact`为
+smoke原始mask logits逐值恒等，强于只检查二值mask；输出dtype校准不改变mask阈值。
+
+终点审计不以state.stage=done代替证据：实际加载last.pth核对epoch=10、step=2670及完整合同，
+逐行核对10轮各267次更新。常量内容训练对照遵守同一审计；这些检查是离线验收，不新增训练遥测。
+
+用户改为test主要评价后，eval新增离线`evaluation_identity.json`：`split`、`images`为实际数据范围；
+`base_sha256`/`adapter_sha256`固定权重身份；`mode`为correct/constant/donor/disabled，
+`score_key=scores`、`max_dets=[1,10,250]`、`inference_precision=fp32`为评价合同。
+这不新增训练遥测、不读test训练。test/test_state.json的完成条件是19项推理与15项完整配对分析；
+frozen_test_plan.json记录结果产生前固定的十臂/五个内容对照，不能用val旧gate替代test判断。
+
+推理records中的`stats`是该图**最后一次mask head调用**留下的统计。anchor_roi_head推理默认
+按最多32个RoI分块，所以stats.rois不是整图检测实例数，RMS也只覆盖最后分块；训练的
+latest_forward仍沿用末microbatch/末调用定义。对459图stats取中位数必须明确为“末分块统计的
+跨图中位数”，不能写为整图/所有RoI或像素加权平均。alpha属于全模型单个系数，与分块无关。
+
+## 2026-10-22 S²DB机制探针（独立产物）
+
+`ue_s2db_probe.py`沿用旧latest_forward及更新行loss语义；loss仍为最后microbatch原掩码+UDPR，
+不将aux混入该字段。每epoch独立summary的main_loss_microbatch_mean/aux_bce_microbatch_mean
+分别以实际2136个microbatch为分母；aux_valid_pixel_sum是逐图唯一锚点投影像素数之和，
+不是跨图去重，也不是4×4格覆盖。无支持的aux BCE为0。辅助总loss系数固定.1。
+
+采样统计只在离线评价开启，不新增逐步字段：valid_anchors是保留候选数，offset_mean_abs/
+offset_p95_abs是按源特征像素计的每轴绝对偏移；axis_at_95pct_count为每轴abs(offset)≥.95计数；
+accepted/fallback以valid_anchors为分母；depth_jump_accepted是接受样本中深度差
+>max(1m,.05*anchor_z)的计数，报告比例时须写分母accepted。
+这些统计在每图encode计算一次，各RoI复用；与末mask调用RMS的聚合范围不同。
+深度突变不参与拒绝，偏移只描述外观上下文。记录不参与训练loss/门控/选模。
+
+`epochN_summary.json`的sample_order为实际参与更新的2136张顺序，SHA仅作续训审计；
+卫星SHA包括参数及缓冲区，逐轮核对。完整RNG包括DataLoader generator；CPU回放门同时检验worker增强随机流。
+工程gate文件不代表完整2670次更新或AP提升；完成审计必须实际读取E10权重、训练行及固定评价记录。
+
+### 2026-10-22 离线遥测阶段核定
+
+完整数值见[阶段报告](dual_stream/UE_V1_PROBE_STAGE_CONCLUSIONS_20261022.md)。applied/base为每图末mask调用RMS比值后取跨图中位数，不是两个中位数相除；alpha无约束可为负。原始RGB实际注入约75%接收RMS，unit约58%，原生几何约36%。这些比例只说明扰动强度，内容收益必须结合独立训练对照。未新增训练字段。
+
+### Native空间诊断离线字段
+
+`all_call_telemetry.json`按图保存全部mask调用，`rois`为每调用实例数；records.stats仍为末调用。`raw_intervention_rms`为幅度匹配前残差RMS，`reference_delta_rms`为相同query/boxes下正确字段残差RMS，`rms_match_scale`为应用的每调用单标量，`residual_cosine_to_correct`为未匹配残差与正确残差的展平余弦，`residual_change_rms`为最终残差相对正确残差差值RMS。仅离线诊断、不写训练日志、不用于门控或选模。
+
+### 2026-10-22 测试弱点离线审计
+
+新增`ue_test_*_20261022.py`仅分析已有数据/预测，不向训练日志增加字段。尺寸组须区分：
+canonical GT `area=bbox_w*bbox_h`，现有s/m/l按bbox面积的COCO阈值划分；
+离线补充将GT area换为mask面积，all-area AP回放不变，不覆盖冻结评价记录。
+`errors/summary.json`的Hungarian按bbox IoU≥.5优先最大匹配数，再最大总IoU；
+`support/summary.json`先最大化总bbox IoU再筛≥.5，两者固定各自配对且不是COCO AP匹配。
+COCO分数顺序匹配单列；其ignore flag用logical_not，不对整型flag做按位取反。
+像素计数公开各自区域分母，重叠实例可重复计数；错误审计的OpenCV默认形态学图外值与
+支持审计显式背景值不同，两者边界分母不可混用。支持审计union FN不反映实例区分质量。
+保留点覆盖由float16 geom重建时是近似值；32图原深度重建只作独立子集校准。
+
+### 2026-10-22 读取有效率的解释边界
+
+S²DB离线`accepted`在`original_source_uv+4*offset`上检查深度有效性，特征读取在离散token中心偏移。
+两者起点不同，因此该比例是“锚点平移的深度代理有效率”，不是精确新3D对应率或全特征感受野有效率。
+实际4×4格token中心与source_uv差异的CPU核对见读取审查报告；此说明不改变现有字段公式。
+接收base RMS来自原全图repeat特征，残差RMS来自RoI局部网格；RMS比值用于数值强度，不能证明地面点对齐。
+
+### 2026-10-22 Native来源P2（离线，不新增训练字段）
+
+`*_cache_check.json`的mismatch计数分母分别为512² bool support元素和4×512² float16字段元素，
+是历史缓存逐值核对，不是几何准确率；8张均cached-reference。
+`source_camera_roundtrip_max_px`为原始有效射线按同一矩阵回放的最大像素误差，属于内部一致性。
+`visual_review.json`为固定24点视觉记录；全部无法判断不等于校准通过，也不等于24点错误。
+`root_verification.json`是独立厘米制原始射线复算，计数8图24点，仍共享渲染相机与深度，不提供外部真值。
+
+### native路径分解与像素错误审计
+
+path_decomposition的first_conv_*_rms在固定整图box128²网格分解，非实际检测RoI、非末mask调用；geometry_term_per_field_rms为每字段单独卷积，不能视作因果贡献。matched_error_audit固定32图、bboxIoU≥.5关联，区域像素按匹配实例计、可重叠；漏检不计入平均IoU。形态学2px区域不是Boundary AP的14/7px带。仅离线产物，无新增训练字段。
+
+query四格诊断沿用原records.stats的末mask调用字段；query关闭包括投影bias，但mixer bias与支持仍保留。factorial_identity明确干预位置，paired_mask_analysis为固定权重内容比较，不是重新训练效果。无新增训练字段。
+
+### 六条件Native赋值诊断（独立离线产物）
+
+`all_call_squares.json`每图累加所有实际mask调用：elements是32通道×128²×实际RoI数，
+base/residual/injected_square_sum是FP64累加平方和。整图/全集RMS=sqrt(平方和之和/elements之和)，
+不是RMS或比值的算术平均；image injected_to_base_rms_ratio是同图平方和比值开根，base为0记null。
+`input_mapping_identity.json`记录整图支持内四维联合向量置换的映射SHA、原/改fields SHA、cache SHA，不含GT决定的参数。
+`delta8.json`只覆盖固定8trainval所有实际mask调用，记录未缩放残差差值平方和、点积和余弦，零范数null；不参与loss/门控。
+主检验仅Mask AP两个对比，500次同图bootstrap；Boundary及尺寸/纠错为描述性，无额外确认主张。
+
+### 几何采样审计离线统计
+
+ue_native_sampling_audit的supported_samples为重复计数的RoI网格采样点，非整图唯一像素。material neighbor要求有效且归一化双线性权重≥.05；mixed_height_gt2m/5m按这些邻居高度跨度统计，是不连续代理而非错误表面真值。GT边界2px由独立实例带取并集，与Boundary AP无关。numpy_vs_torch_max_error_m验证float64采样公式，不认证外部配准。无新增训练字段。
+
+### 2026-10-22 共租调度状态（不属于训练遥测）
+
+`ue_probe_coresident_20261022/state.json`每5秒按整机刷新：`physical_memory`为nvidia-smi每卡MiB；`projected_memory_MiB`在实际占用上补足每个受管运行进程的工作预算差额，并包含旧GPU1评价的未来预算。它不是峰值实测，也不是GPU利用率。`running`仅列该owner接管的进程，整机其他进程仍计入实际显存。字段只用于资源调度，不参与loss、门控或选模；训练日志未扩展。
+
+### 几何机制8臂统计合同
+
+训练沿用loss末microbatch、grad_norm累积unscale后clip前、latest_forward末调用；difference source_delta_rms指相减后的最终残差，不能与任一H单支幅度混淆。epoch_summary记录实际样本顺序及均值loss；GPU gate分别记录training AMP和250RoI FP32峰值allocated/reserved，以及整卡快照，不能把本进程峰值当整卡总占用。非零constant来自train全有效像素均值，字段zero不同于constant。
+
+### attention ladder观测纪律
+
+沿用原latest_forward末mask调用及训练末microbatch语义，不新增逐步字段。L3 null质量/拒绝与各方向候选观测只在离线observe开启；null probability必须对应输出LN后真实残差幅度。L6额外decoderLoRA的变化单列，原SAT参数buffer冻结证明不包含新增adapter-owned LoRA；不能写整消费者冻结。源坐标单位为整数像素中心，L1 feature grid由patch kernel/stride/padding解析确定。
+
+L3 read_observation只存eval/gate，训练latest_forward不合并null字段；当前null统计scope为最后adapter内部4RoI chunk（可能由checkpoint重算覆盖），不是全部图/实例平均。read_observation须与stats最后mask调用（最多32RoI）区分；解释时明确范围，不将其称总体拒绝率。
+
+### 2026-10-23 RGB内容净纠错与方向诊断（独立产物）
+
+`ue_rgb_content_error_audit_20261023`比较同权重correct与constant/donor；`corrected`是干预错而correct对，`introduced`相反，`net_corrected=corrected-introduced`。分母为固定bbox关联实例的区域像素，实例间可重复，不是整图唯一像素。boundary为GT两次3×3形态学带，内部/背景互斥，均限于GT/DT框并集外扩8像素。cell支持与实际保留锚点唯一投影支持分别划分，二者均非遮挡真值。IoU阈值上/下跨不是AP分解；canonical阈值与计数守恒由独立verification核定，原始计算保留来源。
+
+`ue_rgb_content_direction_audit_20261023`只覆盖固定4train图、FP32、关闭增强/dropout、无更新：`content_difference_rms`是全部实际conv_s0调用correct−intervention数值注入差的RMS；总注入RMS分母为相同调用所有RoI×32×H×W元素，按平方和累计，不对调用RMS求平均。`content_difference_over_correct_total_rms`不能解释成信息贡献比例。loss按model.loss实际加权key分别记录，receiver叶子只测下游敏感性，不测源参数梯度。`dot`为各调用梯度与内容差点积之和；正值表示在对应端点沿intervention→correct方向局部增大该loss；零范数cosine为null。实际loss差另列，离散选点可变，不能把一阶dot等同于全跨度loss差。raw/final差异RMS比及选点rank/set变化率只描述原生部署路径，不是强制同点UDPR因果消融；全部不参与训练loss、门控或选模。
+
+### 跨划分内容方向补测
+
+`ue_rgb_content_generalization_audit_20261023`与原train方向诊断公式相同，增加显式`split`、`sample_index`、`donor_sample_index`；不沿用train_index命名。每划分按实际GT实例数稳定排序取四分位位置。collect的`mean_delta`为该划分四图实际加权loss差的等权均值、`favorable`为差<0的图数（分母4），不是跨划分配对估计、不是按RoI或像素加权，也不代表完整验证集均值。使用GT正proposal的诊断不能代替部署Mask AP；所有结果仅离线产物。
+
+### 检测阶段漏失定位（独立产物）
+
+`ue_detection_attrition_20261023/records.json`每图每阶段：`candidates`是候选框数；`best_iou`是每GT在该阶段的最大bbox IoU、无候选为0；`one_to_one_capacity`是IoU≥.5/.75稀疏二部图的最大匹配数量，不是分数顺序COCO匹配。summary的分组recall分母为该组GT总数，以任意框覆盖计；不同GT可共享框，须结合整图最大基数容量阅读。
+
+`transitions`逐相邻阶段分别计lost/recovered；回归可能恢复。`final_uncovered_last_transition`只对最终无框覆盖的GT，按最后一次有覆盖后的下个阶段分类；从未被覆盖者记never_covered，总和必须等于最终无覆盖GT数。它不认证某步骤的反事实AP贡献。`max_foreground_score_among_good_decoded_boxes`为RoI回归后IoU达标候选的最高前景分数，无候选为−1。
+
+`final_dt_proxies.no_gt_overlap`为最终DT没有任何IoU达标GT的数量；`unmatched_capacity`为DT数减最大匹配容量；均非背景误检/重复的唯一判据。全部尺寸组为真实mask面积，密度阈值固定。resource峰值是本诊断进程allocator读数，不含其它GPU进程；state/progress只记录诊断，不参与训练、门控或选模。
+
+检测漏失的`verification.json`另记`final_coverage_fp32_vs_independent_coco_float64_threshold_disagreements`，分母为全部44988GT，计数为最终任意覆盖判定在相同bbox IoU阈值下的布尔差异；只核定数值边界，不覆盖主FP32统计。不能将稀疏最大基数容量与旧Hungarian最大基数再最大IoU的匹配身份混用。
+
+离线梯度审计调度修订：`reserve_MiB=20000`为FP32多loss审计的准入工作预算，不是实测峰值；仍加2048MiB设备余量。旧3500MiB只适用于原推理预算，不能用于该梯度审计。previous_attempts/旧OOM日志保留，重排不改变训练或统计合同；state失败不等于模型效果差，恢复CPU统计也不等于GPU审计成功。
+
+### UAV几何RPN objectness探针
+
+2026-10-24独立离线诊断：candidate_evidence的mask_support_fraction按单GT mask像素计，group均值按实例等权，pixel_weighted按重复实例像素加权；final recovered/lost为任意框IoU≥.5，不是一对一或AP归因。rpn_supervision_audit的counts按唯一anchor抽样，实例内good_*按GT–回归候选匹配计，可跨GT重复；assigned正负按原anchor，sampled按一次确定sampler，ignore含原ignore及图外无效。saturated正/负分别logit>10/<−10，分母为抽样正/负数；mean_image_sampled_bce为每图抽样未乘原loss权重BCE均值再图像等权，不同于正式AMP增强训练loss。candidate_quality_bridge的candidate_average_precision是候选二分类PR积分，不是实例Mask AP；top1000/pool2000是NMS前任意GT框IoU≥.5覆盖。所有新字段仅离线文件，不参与现有loss/门控/选模，不新增逐步训练遥测。
+
+geometry_proposal_pilot仅写每epoch汇总，不增加既有逐步训练日志。mean_batch_loss为267个batch训练损失等权均值；mean_batch_components.heat/offset/size均先按当batch唯一GT中心cell总数归一，其中size尚未乘总loss的0.1系数；amp_scale是该epoch末缩放器值。sample_order为2136个实际图ID，step每轮267次更新尝试（若AMP跳步由scale体现，不冒称每次均成功参数更新）。独立val totals的any50@K/any75@250按GT任意候选IoU覆盖计，一个候选可覆盖多GT，不是实例AP或一对一召回。两个内容臂同一投影support；常量臂不等于无UAV。
+
+score-band/conditional均为独立离线/推理产物，不扩充生产训练日志。score-band新增分数=原score_thr×head_objectness，原高置信SAT scores保持；条件组合为完整强SAT前缀的严格单调分数映射(.5,1]及几何新增≤.25，不能把层级分数当经过概率校准的共同置信度。conditional的admission.original、satellite_supplement、geometry_cached_equivalent、geometry_accepted均按当图候选个数计，不是独立GT或像素；geometry_cached_equivalent为先复现原几何mask批次、再条件筛选前的个数。prefix raw记录可与纯SAT补充直接比较，combined保留prefix排名与mask但其数值分数已重新编码。AP非下降是原全局前缀保留的设计性质，只有匹配内容差能回答UAV字段是否额外有用。
+
+geometry_new_instance_audit的new50/new75是全area、max250、COCO segm贪心一对一新增GT匹配，分母44988；old dtMatches/dtIgnore在10阈值全部不变才出报告。additional_unmatched包含重复/背景/定位失败，不能直接当背景误检。bbox_small/medium/large按序列化GT bbox面积阈值1024/9216，不等于真实mask面积分组；density按GT数≤50、51–100、>100固定。count_matched按每图min(G,K)新增数量截断各自分数尾部，共50838，GT不参与配额，是离线诊断不是新推理策略。
+
+独立seed45复用同mean_batch_*分母与10×267更新，新增epoch_seed=1045000+e，初始化46；seed44为1044000+e、初始化45。RNG保存含Python/NumPy/Torch/CUDA/DataLoader generator，但当前重复为不中断运行，不借此宣称新CNN中断续训已实测。固定input_mode constant/shuffle保留support；whole_map_donor的donor_offset229同时替换四字段和support，input_point_id记录真实输入点。干预均是OOD/配对诊断，不改变训练loss或选模；其置信区间为同图bootstrap，并非训练seed方差。
+
+新runner的train.jsonl中`loss`仅为累积8图后末microbatch的原RPN分类loss（各FPN层之和），不含bbox/Mask/UDPR；`grad_norm`仍为unscale后clip前新增模块总L2。`latest_forward.levels`覆盖该末microbatch实际全部5个RPN层：locations为该层H×W，supported为nearest中心有支持位置数；elements为B×6×H×W；delta/base_square_sum为该层实际logit残差/原logit的平方和。整层/全图RMS须sqrt(平方和之和/elements之和)，不对各层RMS作均值；不是检测AP或几何准确率。alpha无界原标量，实际增益因2*tanh(alpha)有界，最终残差还乘tanh(head)与support。
+
+epoch summary记录2136图实际样本顺序、每轮267次更新尝试、mean分类loss、冻结SAT SHA。推理记录的stages沿用检测漏失10阶段口径，允许框/分数和检测数变化；同图bootstrap仅要求GT一致。K/Z均保留真实support，不是完全无UAV控制。排名可达诊断gap>4仅是±2单anchor分数残差无法把原好框送入每层top1000的充分条件；gap≤4不保证有support、共享小头能学到或NMS后保留。所有排名/GT机制统计只离线保存，不用于loss、门控或选模。
+
+### 实例监督内部回写（2026-10-24）
+
+独立`ue_instance_interaction`不向生产逐步日志增加字段。`epoch*.json.mean_microbatch_components`分母为2136个实际训练microbatch，等权均值；`center`是热图focal＋offset＋.1×size，三分项先按当图唯一正中心格数归一，`size`分项尚未乘.1。`original`只汇总原loss中可求导项；head入口原卫星没有可求导路径时为0，不能解释为原网络预测误差为0。监督覆盖全部GT，无支持区域也可能训练卫星旁路，不将整体loss下降解释为UAV学习成功。
+
+`progress.update`为完成clip与scaler.step的全局更新数；非有限梯度或AMP降scale跳步即中止，保证宣称的2670次更新不是尝试数。每25更新写末microbatch的分项到stdout，不聚合成整段均值，不参与选择或门控。
+
+仅评价/验收开启`observation`：support_tokens按64²中心格计、分母target_tokens=4096；delta/base_square_sum覆盖该图64²×224所有通道，分母elements，RMS=sqrt(sum/elements)。跨图RMS先合并平方和与元素数，不平均每图RMS比值。无支持中心回写为0，但该支持仅为观测代理。geometry_accepted为当图被接纳新增框数，不是新增GT数。
+
+`satellite_records`保存本次特征条件下的原检测/掩码及SAT自身候选补充；internal时不是纯卫星。`combined_records`另加UAV实例框，score层级不是概率校准。常量几何保留support与RGB对应，常量RGB保留真实深度/pose；均不等于完全无UAV/无深度。固定donor几何换整图及support，RGBdonor只换RGB，两者不能混称同一种反事实。
+
+extended_gate的resume_parameter_max_abs_error是磁盘恢复后一次实际AdamW/AMP更新对不中断参考的最大参数绝对差；replay_noise_calibration是三次同代码内存恢复的相同差值最大值，门限max(1e-7,2×噪声标定)。loader顺序与增强输入SHA逐值一致；该门不声称CUDA权重逐位一致，也不证明训练重复性。
+
+独立收尾`finish_state.json`仅记录控制面：done/running为119个预定任务中已完成/当前运行个数，observed为观察时间戳，不是epoch比例。`study_summary.evidence_flags`的positive仅指对应Mask差值>0且名义图像bootstrap下界>0；net_clear_reference另外要求raw AP差值≥.002。不是多重比较校正或训练种子方差估计，不参与训练/门控/选权。原路径内容差与合并内容差分开，不把候选补充当内部表征改善。
+
+`epoch*_rgb_effective_path_audit`仅离线：source_LoRA_parameters_with_optimizer_state按与实际optimizer参数槽对应、持有AdamW状态的source LoRA张量numel求和；source_declared_trainable_LoRA_parameters为工厂requires_grad声明总数。前者E1实测25648（patch_embed.proj和blocks0/1），后者1061424；有optimizer状态不证明有效RGB语义/梯度质量。actual_checkpoints与missing_checkpoints明确已核定CP数及缺失列表，all_RGB_arms_present仅当6个RGB臂均存在才真。原source非LoRA逐值对初始CP核定，更新步数来自实际AdamW state，不只读取日志。
+
+完成状态需优先核对实际CP和`training_complete.json`：`progress.json`只每25更新写一次，可能在E10完成后仍显示2650。不能据该旧值判定任务尚未结束；也不能仅凭complete文件存在跳过实际CP/optimizer身份核验。`prefix_input_followup`是原路径固定E10输入干预的观察后离线分析，与原119项分开；负差表示正确字段输入低于该替代输入，不直接证明深度无信息或确定梯度冲突。
+
+`capacity_handoff`为控制面证据，不是训练遥测：adopted保存PID/起始ticks；initial_extra_admission记录按MiB核算的额外准入。working_set=同家族/入口工程门和已完成epoch最大reserved峰值+512MiB上下文预算；available=NVML free−单卡2048MiB余量−Σmax(working_set−当前该PID NVML用量,0)。每次新启动还从available扣其工作集，防止模型加载前重复占额。该数值只影响资源调度，不进入loss/门控/选模；终点训练身份仍以实际CP和优化器状态核定。
+
+`value_source_*`为固定E10的离线代数审计，不扩展训练日志。每图每输入记录一次：`uav`为卫星交互前U的线性value贡献，`satellite_return`为实际更新后邻域token减原U邻域的线性贡献，`bias`合并uv与output偏置，`actual`为原始实际注入，`base`为Hiera block4原特征。所有注入乘原中心支持，attention权重保持原观察值。`elements=4096×224`包括不支持格的零注入；跨图`pooled_rms=sqrt(Σsquare_sum/Σelements)`，`pooled_cosines=Σdot/sqrt(Σsquare_sum_a×Σsquare_sum_b)`，零分母为null。`supported_tokens`分母`target_tokens=4096×图数`，不是像素可见性认证。三项并不正交，RMS不是可相加百分比；UAV项包含support/几何CNN，不能作为独立RGB贡献。
+
+`max_reconstruction_error`为三项相加相对原注入的最大绝对误差；FP32容限逐图`2e-6+2e-5×max_abs(actual)`。原模型、adapter、CP和冻结源身份在结束核验；完整split须`all_split_images=true`。这些观察不参与loss/门控/选模，也不等价于去掉某项的AP干预。
+
+`p0_efficiency_gate`是独立工程门，不写训练日志：`checks`逐视角/FP32或AMP P0张量逐值比较；`normalized_candidate_reads_exact`包括32通道投影、无affine归一化和连续候选读取。训练梯度使用相同CUDA起始RNG，`replay_noise`是3次完整源重放相对参考的最大梯度绝对误差，`tolerance=max(1e-7,2×replay_noise)`；不是CUDA逐位相同。`end_rng_equal`明确删除无用层dropout会改变全局随机流。参数量只计共享一套source，五视角不乘5。
+
+`five_views_cuda_ms`/`median_ms`为FP32 source-only连续五视角CUDA event耗时，预热2轮、测5轮，共享GPU运行可能受其它任务影响；`additional_peak_allocated_MiB`为重置peak后最大allocated减起点常驻allocated，两套源均可能常驻，不是单独部署显存，更不是端到端延迟。所有字段仅离线观察，不进loss/门控/选模。
+
+`camera_variation_audit`中`K_unique_exact`按同split同视角[fx,fy,cx,cy]计唯一值；`relative_pose_unique_rounded_6`按satellite world_to_camera乘UAV camera_to_world后、平移cm转m的4×4矩阵保留6位计唯一值。全局世界平移消去不代表世界位置相同。固定K/rig意味着跨图错配这些量几乎不改输入，不能做任务必要性证据。
+
+`p0_full_val_gate`每25图写进度，实际结束必须核对459个唯一ID及`source_P0_exact/fused_U128_exact/support_exact`，范围为FP32且只到交互输入，不是最终AP；P0和U128比较均为torch.equal而非容差。原adapter、CP与冻结源在结束核定身份。
+
+`reference_plane_cache`进度每25图记录完成数/3060与PID，仅构建控制面，非训练遥测。每图`candidates`分母16384×8槽，`candidate_cells`分母16384格，`supported_pixels`分母512²像素；这些是参考平面投影支持，不是真实可见率。`measured_depth_read=false`与审计钩子禁止EXR/实测缓存读取配套，摄像机元数据和sampling-origin参考面仍被使用，不称完全无几何。全部完成须`BUILD_COMPLETE.json`含3060条及各缓存SHA、manifest来源身份，不能把进度或3图工程门当作无深度消融结果。
+
+`compact_joint_foundation_gate`为仅train的3步工程门；`group_parameter_norm_sums`按satellite LoRA/decoder/UAV LoRA/geometry/writeback各组逐参数L2范数相加，非整体梯度L2，也不证明内容收益。`preclip_norm`为全模型联合梯度在global .5裁剪前的整体范数，`AMP_scale`为完成更新后的scale，降scale跳步即失败；无均值跨图聚合，3步独立列出。`actual_torch_load_paths`只核构造期加载源，全部为通用foundation；`common_satellite_initial_sha`为添加UAV前新鲜卫星状态，非E73权重身份。门不训练val/test，不声称续训或正式指标已核定。
+
+
+紧凑联合runner每25次真实更新写progress：last_loss为该次最后microbatch未除累积8的原任务+实例loss，不是区间均值；preclip_norm为累积8后的全模型梯度L2、clip .5之前；epoch.mean_microbatch_loss为2136图等权均值。validation为整459图FP32 AP250，best仅按val combined segm/mAP严格较大更新，未读test。checkpoint_phase=after_validation在正式epoch边界使用；工程门epoch0/step1为隔离检查点，不能送正式train恢复。
+
+optimizer_resume_gate对非空exp_avg/exp_avg_sq、参数组、模型、AMP scaler和五RNG逐值核对，再执行8图累积更新，不宣称CUDA后续轨迹逐位一致。runtime_gate的增强顺序门使用预定16图子集的8图ID/输入SHA；input_audit对全3060参考npz实际字节及camera逐项SHA，不能仅按计数认定完成。
+
+analysis_capacity_handoff为资源控制面：CPU统计上限12，准入余量=MemAvailable−8192MiB−Σmax(4096MiB−当前统计RSS,0)，新进程再扣4096MiB；不进入估计器、loss或选模。原GPU handoff记录不改，CPU新源额外核验。owner161872/finish161891已退役，当前实际PID从owner_launch/finish_launch读取。
+
+`loss_direction_audit`仅离线24个固定train函数：main/auxiliary_square按组全部参数的梯度元素平方和（unused按零），dot同坐标内积，norm=sqrt(square)，cosine=dot/(norm_main×norm_aux)，任一零则null；mean_cosine按8图的已定义余弦等权平均，不是合并梯度余弦。active_parameters表示autograd返回非None的参数元素数，不要求数值非零。epoch首图的per-loss writeback norm只覆盖output.weight，不能与包括bias的整组norm混用。
+
+`compact_cost_audit`每种路径3图×3重复；wall_ms含eval GT/输入读取、预处理、网络和RLE，eval_input_wall_ms包含CPU缓存/PNG准备；CUDA stream事件间隔可能含host空隙，不称纯GPU算子时间。SAT/RGB-D输出实例数不同，源完整/紧凑输出指纹才逐值一致。additional_peak_allocated_MiB为共享所有常驻模型条件下相对起点新增的allocated峰值，不是单模型部署显存；中位数不作为统计置信区间。所有字段仅观察，不进loss/门控/选模。
+
+
+### 2026-10-24 正式联合运行补充（取代工程门的跳步即失败规则）
+
+`AMP_retries_epoch`是本epoch失败的累积尝试次数，分母为本epoch实际267个成功更新，不是失败图数或新增样本数。一次重试重算同8张已准备增强图，恢复该组loss前Python/NumPy/Torch/CUDA/DataLoader generator及模型buffer，保留降低后的scale；失败尝试不增加update/样本顺序/成功loss均值，最多4次重试。`progress.update`为跨epoch成功AdamW更新计数，每25次落盘；`last_microbatch`为本轮已收集图数；`epoch.mean_microbatch_loss`仅成功尝试2136图等权均值。仅溢出事件额外打印，不加逐步内容遥测。工程门的3步无跳步要求仍是该历史门的范围，不能混用于正式100轮的动态scale策略。
+
+`segm/AR@250`、`bbox/AR@250`是COCO第三maxDets槽（250）的召回；旧共享工具命名AR@100在新runner本地更正，实际评价数值不变。选权仍为val combined segm/mAP，不使用AR或test。
+
+`paired_analysis`仅离线：`baseline/candidate`各含AP/AP75/标准COCO小中大AP/AR250；`delta`为candidate−baseline原始AP（乘100才是百分点）；区间为500次459图同索引有放回重采样，seed20261021，未校正多重探索。`original_path`表示本模型交互条件下原卫星检测输出，不是纯卫星。`accumulation_reference_checks`应24条、绝对误差<1e-12；它证明累积实现一致，不证明预测或训练的科学有效性。读取效应/内容依赖/相对纯卫星净增益必须分开解释。该分析不参与loss、门控或选权。
+
+
+`posttraining/state.json`仅为收尾控制面：waiting阶段的training_owner_pid/tick需要对应实际活句柄，done/running按10个收尾命令计数，不是训练epoch或收益比例；complete的scope仅含8比较＋2干预，final_checkpoint_and_scientific_audit_still_required保持true。固定RGB干预donor_map为459图循环映射，rgb_source_sha256仅donor PNG来源；model_state_unchanged检查推理前后网络参数/缓冲区，不能证明输入有用。raw/complete仅原评价结束，外层complete才包括额外内容/权重身份检查。
+
+
+`geometry_encoding_train_audit`仅离线2142train缓存统计：四字段mean/RMS/std按全部有support的原始512像素元素等权合并，不平均每图RMS。difference.valid_pairs要求原始相邻两点均support；unknown_pairs以有support起点计缺邻点及外缘，unknown_fraction_of_supported_origins分母为有支持像素，unknown_fraction_of_zero_supported_origins分母为该通道数值等于零且有支持的起点，两者不得混用。clipped_valid_pairs以abs(normalized_dxdy)>=5计、分母valid_pairs；不是所有像素或边界像素比例。occupied64_raw_support_fraction_quantiles为全部非空8×8格的实际support数/64的合并分位数，是覆盖代理，不是CNN感受野/遮挡认证。统计不参与loss、门控或选权。
+
+
+### 2026-10-25 checkpoint_audit
+
+`optimizer_step_histogram`按实际optimizer参数ID与模型requires_grad顺序映射后统计张量个数，不按参数元素数计；缺状态列`optimizer_missing_state`，不自动判为训练失败（既有未用头/条件空分支可能没有状态）。canonical_parameter固定原RPN rpn_cls.weight，要求其实际step等于CP.step。`frozen_parameter_tensors_exact`为逐值等于共同初始化的冻结参数张量数；`trainable_tensors_changed`为逐值不同的可训练张量数，不代表非零梯度频率或信息价值。`changed_buffer_names`仅限state_dict持久buffer；`nonpersistent_buffers_not_checkpoint_auditable`列出CP无键者，不能解释为已经核验。`--epoch`是指定anchor的工程观察，`final=true`才要求四臂完训best/last，但也不证明AP净收益。日志/收据不进loss、门控或选权。
+
+
+`epoch1_path_diagnostic`为E1 val早期只读分解。original_path的score取combined同一预测前缀，逐框bbox/label/RLE一致；appended_candidates_delta为同图同前缀score下合并−原路径AP，非对真实内容或训练动力的独立因果估计。original_count_mean/appended_count_mean均分母459图，appended_total为总新增候选数，不是新增正确实例数。delta_vs_satellite是不同训练模型E1验证点值，非test、非同CP干预且无CI；不用于选结构/提前停臂。
+
+
+### 2026-10-25 joint_loss_direction
+
+仅固定train8图的离线FP32/eval函数，comparisons四项为main_vs_auxiliary/detection_vs_segmentation/detection_vs_auxiliary/segmentation_vs_auxiliary；left/right含义按名字顺序。main由同一次前向的det+seg梯度逐参数相加，无第四次随机前向。left_square/right_square/dot按组全部参数元素合并，unused视作零；norm=sqrt(square)，cosine=dot/(left_norm*right_norm)，任一零为null。*_active_parameters表示autograd返回非None张量的参数元素数，不是非零梯度元素数。summary.mean_cosine为8图已定义余弦均值，negative_cosines分母defined_cosines；mean_left/right_norm为8图L2等权均值，不是合并向量范数，二者比值也不是每图比值均值。范数未经AMP/累积8/globalclip/AdamW，不等于实际更新份额。
+
+分组卫星neck/检测头/原maskdecoder分别独立，aux对这三组梯度为零时余弦不可定义；不以0填余弦。geometry仅a/b/c/d/up；rgb_alignment_fusion为rgb_project/rgb_fusion；instance_head含head_satellite/head_fusion/heat/reg；其余UAV位置与双向query/key/value为attention。peak_reserved_MiB是本分析进程峰值，不含同卡训练进程；allocator_cap_GiB为14，对运行器预算另留512MiB上下文和每卡2048MiB余量。owner/state仅两个E3/E10分析命令的控制面，等待CP需实际RGB-D训练句柄存活；不计作训练epoch、不参与loss/门控/选权。
+
+
+### 2026-10-25 收尾v2/固定干预/成本
+
+`posttraining/state_v2`控制19个命令，owner_v2_launch为当前身份，state/owner_launch为v1历史；done不是训练轮次。成本依赖前16项完成的原因是测量隔离，不能套用该条件限制训练/功能任务共租。complete_v2的artifact_sha256逐项绑定19个marker，final_scientific_review_still_required保持true，不以工程通过认定模态贡献。
+
+`fixed_rgb_intervention/*/paired_*`的delta为正确RGB−干预RGB的原始AP；干预为baseline、正确为candidate，500次同图bootstrap seed20261021。original_path仍为固定RGB-D权重下原卫星路径，不是纯卫星。source/donor身份校验不能证明输入物理一致，且未校正多比较/空间相关/训练方差。
+
+`joint_cost`每case 3图×3重复。wall_ms含eval GT/输入读取；prepared_inference_wall_ms从输入就绪到RLE与CUDA完成；uav_prepare_stream/satellite_with_interaction_stream/detection_mask_RLE_stream为CUDA事件间隔，可能含host空隙。peak_allocated/reserved_MiB为单case进程各次前向峰值绝对量，summary取9次中位，非部署全进程显存（context/库不在allocator内）。original_instances/output_instances/appended_instances为每图预测数量，不是正确数量。retained_prefix_sha256用combined前缀完全相同score/bbox/label/RLE，v2结束必须对完整/原路径九组逐一相等，防止用不同预测冒充省时。成本不进loss/门控/选权。
+
+`final_input_identity`的archive_files/geometry_cache_files分别是实际读字节SHA核对文件数（缓存应9180），不是模型样本数；archive_bytes/geometry_cache_bytes为哈希到的字节和，非内存占用或数据增强量。标签仅身份哈希，非测试评价。source/manifests/通过标志仍不能认证真实物理标定。
+
+
+### 2026-10-25 原始影像对应离线字段
+
+`rgb_depth_image_alignment`中at_zero/best_local/controls的count均为每view中央裁剪的深度结构边缘像素数；mean_clipped_distance为到RGB Canny最近边缘距离，12px截断，within2/4为原始计数，summary按全部点合并。局部偏移是加到深度边缘坐标后查RGB距离，argmin非真值/校正；同一批点用于所有offset。不是标定准确率，纹理/暗部/LOD会改变边缘集合。
+
+`rgb_sat_image_correspondence`中common_pixels为每view真实/参考面warp支持交集再裁去40px边缘后的像素数；真实与参考面及32px控制都用同样起点。measured_ZNCC/plane_ZNCC为RGB逐通道去均值后拼接向量的相关系数；mean_view_*按40个view等权，不按像素池化。不同view共8scene，不是40独立场景。重投影只用最近已有表面，缺洞黑色，不认证完整遮挡。complete为数值计算完成；visual_review文件公开实际看过哪些图，不能据visual_review_pending历史值称全部或完全未看。两工具只读train影像，字段不进loss/门控/选权；无AP或训练重复性含义。
+
+
+### 2026-10-25 retained_rgb_read_audit
+
+valid_candidates分母为实际保留有效槽668301（非所有16384×8槽）；behind_nearest_observed_1m是锚点own-floor卫星像素的sat-Z残差>1m数量，front为[-.01,1]m；不是每格最近Z也不是遮挡真值。negative_residual_candidates为<−.01m，单列定位复算/离散化矛盾。mixed_front_and_behind_cells/cells_without_front分母supported_cells；camera_Z_spread的格仅含counts>0，格内多个不同子像素不可自动等同多表面错误。
+
+candidate_color.RGB_MAE按该组全部候选×3颜色通道等权，0–255单位；组间位置/材质分布不同。common_cell_color所有方法同74631格，SAT参考为原4×4 RGB均值，各法格内采样位置/数量不同，mean_image_ZNCC跨8图等权；这不是学习特征保真率，也不与逐view影像ZNCC共分母。anchor_replay_max_errors的Z单位m、UV单位px；index严格检查view和源stride4格。仅只读观察，不改变模型候选/聚合/门控/选权。
+
+
+`joint_loss_direction/owner`当done=[3,10]且complete.json的两个anchor/驱动SHA及实际epoch10记录均核定时，控制面已正常结束；最后state仍可能是waiting_or_running。完成后/proc owner PID不存在是正常终态，不应重新启动诊断。当前活控制面应分别核对实际训练owner和收尾v2 owner；完成marker不能免除CP/源码/8图记录绑定的前台核验。
+
+`matched_validation_observation.json`仅汇总当前所有共同完成epoch，Mask_delta_pp是RGB-D−对应臂原始AP×100，单位百分点。跨臂顺序一致性按每轮2136唯一image_id逐值核对，不代表CUDA训练重复性；累计共同轮数不是选权轮次，不跨epoch均值取代既定val-best，不参与loss/门控/选模。
+
+### 2026-10-25 RGB机制变体前缀
+
+`ue_rgb_mechanism_20261025/<variant>/<content>/progress.json`每25成功updates输出；`variant/content`仅实验身份，`last_loss/preclip_norm/AMP_retries_epoch`沿用compact成功accum8更新的既有含义。`original_prefix_order_exact`为每epoch2136个唯一ID与原compact同epoch顺序逐值相等，不代表CUDA优化数值相同。`peak_reserved_MiB`为进程allocator累计峰值，不含整个GPU上其他进程或CUDA全部外部内存。
+
+`gates/*/gpu_gate.json`中的changed_parameters只核对3个工程更新后参数是否改变，不是梯度强度/AP收益。no_sat_copy以output×0保留反向计算图，其reverse支路是零梯度而非None；这些参数仍可能因AdamW衰减改变，不可据改变声称反向复制路径被消费。`extra_trainable_parameters`为新增view_mix/spatial_mix参数数目，不是所有可达RGB参数总量。
+
+`analysis/summary(.partial).json`的`content_interaction`为四臂同一次图像bootstrap的差中差；`delta`与区间为原始AP单位，展示pp时乘100。`paths.original_path`是条件化后的原检测/掩码路径，不能标为无UAV纯卫星；`combined`还含实例头新增候选。固定E10为前缀评价点，不是val-best，也不能比较100epoch最终结果。
 
 ### 2026-10-26 candidate_detail
 

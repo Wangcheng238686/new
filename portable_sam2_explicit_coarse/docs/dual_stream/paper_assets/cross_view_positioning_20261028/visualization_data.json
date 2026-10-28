@@ -1,0 +1,174 @@
+{
+  "image_id": 1234,
+  "summary": [
+    {
+      "view_ids": [
+        0
+      ],
+      "support_pixels": 145316,
+      "support_fraction": 0.5543365478515625,
+      "candidates": 21425,
+      "height_metres_min": -3.45458984375,
+      "height_metres_max": 119.04296875,
+      "cache_sha256": "bba5e709ca050bb0a5a73b353131654f6e8c32d61d37c7923a04585bcf9d576e"
+    },
+    {
+      "view_ids": [
+        0,
+        144,
+        288
+      ],
+      "support_pixels": 224727,
+      "support_fraction": 0.8572654724121094,
+      "candidates": 58316,
+      "height_metres_min": -3.472900390625,
+      "height_metres_max": 119.04296875,
+      "cache_sha256": "1371f1c8396684440b37354782a9a52fea25fd474d22d81315e783bcd5b19bbc"
+    },
+    {
+      "view_ids": [
+        0,
+        72,
+        144,
+        216,
+        288
+      ],
+      "support_pixels": 241881,
+      "support_fraction": 0.9227027893066406,
+      "candidates": 91150,
+      "height_metres_min": -3.4820556640625,
+      "height_metres_max": 119.140625,
+      "cache_sha256": "16011f54365f0f68d0bed24ec4ee85a976f8043d208c6794136838417311bcb4"
+    }
+  ],
+  "example_anchors": [
+    {
+      "label": 1,
+      "cell": 2451,
+      "candidate_slot": 0,
+      "source_token": 13042,
+      "source_uv": [
+        459.0,
+        407.0
+      ],
+      "satellite_uv": [
+        76.27133105455349,
+        79.51968844961533
+      ],
+      "source_camera_Z_m": 485.2612109375,
+      "satellite_camera_Z_m": 1978.6750452348965
+    },
+    {
+      "label": 2,
+      "cell": 2495,
+      "candidate_slot": 0,
+      "source_token": 11456,
+      "source_uv": [
+        257.0,
+        359.0
+      ],
+      "satellite_uv": [
+        255.18805039361712,
+        76.55462300712583
+      ],
+      "source_camera_Z_m": 430.1264453125,
+      "satellite_camera_Z_m": 1912.437664473647
+    },
+    {
+      "label": 3,
+      "cell": 2539,
+      "candidate_slot": 0,
+      "source_token": 11659,
+      "source_uv": [
+        45.0,
+        365.0
+      ],
+      "satellite_uv": [
+        429.4132429863569,
+        77.55680684708203
+      ],
+      "source_camera_Z_m": 437.2725390625,
+      "satellite_camera_Z_m": 1920.7578577324352
+    },
+    {
+      "label": 4,
+      "cell": 8211,
+      "candidate_slot": 0,
+      "source_token": 7660,
+      "source_uv": [
+        433.0,
+        237.0
+      ],
+      "satellite_uv": [
+        77.79338447096764,
+        259.9425967336239
+      ],
+      "source_camera_Z_m": 551.9765234375,
+      "satellite_camera_Z_m": 1979.202677913052
+    },
+    {
+      "label": 5,
+      "cell": 8171,
+      "candidate_slot": 0,
+      "source_token": 7572,
+      "source_uv": [
+        81.0,
+        237.0
+      ],
+      "satellite_uv": [
+        429.7539069329487,
+        252.10341483819306
+      ],
+      "source_camera_Z_m": 542.0521484375,
+      "satellite_camera_Z_m": 1970.9007695980317
+    },
+    {
+      "label": 6,
+      "cell": 13715,
+      "candidate_slot": 0,
+      "source_token": 3815,
+      "source_uv": [
+        413.0,
+        117.0
+      ],
+      "satellite_uv": [
+        78.39898383662752,
+        431.02373068608813
+      ],
+      "source_camera_Z_m": 623.125703125,
+      "satellite_camera_Z_m": 1988.6121602714973
+    },
+    {
+      "label": 7,
+      "cell": 13759,
+      "candidate_slot": 0,
+      "source_token": 4160,
+      "source_uv": [
+        257.0,
+        129.0
+      ],
+      "satellite_uv": [
+        254.85425680390253,
+        430.2515103455393
+      ],
+      "source_camera_Z_m": 635.78890625,
+      "satellite_camera_Z_m": 2003.2994777240808
+    },
+    {
+      "label": 8,
+      "cell": 13803,
+      "candidate_slot": 0,
+      "source_token": 4121,
+      "source_uv": [
+        103.0,
+        129.0
+      ],
+      "satellite_uv": [
+        431.29870900294435,
+        430.2515103455393
+      ],
+      "source_camera_Z_m": 635.78890625,
+      "satellite_camera_Z_m": 2003.2994777240808
+    }
+  ]
+}

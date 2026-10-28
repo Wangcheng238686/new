@@ -5,7 +5,7 @@ PYTHON_BIN=${PYTHON_BIN:-/data/wangcheng/envs/cvt2/bin/python}
 ARM=${1:?Use single|dual|fpn|sam followed by train|infer|prepare|verify}
 ACTION=${2:?Use train|infer|prepare|verify|dump-env}
 shift 2
-case "$ARM" in single|minimal|dual|fpn|sam) ;; *) exit 2 ;; esac
+case "$ARM" in single|minimal|adapter|nativegeo|dual|fpn|sam) ;; *) exit 2 ;; esac
 export SAM2_REPO="$ROOT/../sam2"
 export PYTHONDONTWRITEBYTECODE=1
 export OMP_NUM_THREADS=2
@@ -21,6 +21,12 @@ export EARLY_STOPPING_METRIC=segm/mAP VAL_SHARD_ACROSS_RANKS=0
 export SAVE_LAST_MODEL=1 SAVE_LAST_CHECKPOINT=1
 export SAM2_CKPT=${SAM2_CKPT:-/data/wangcheng/pretrained-models/sam2/sam2_hiera_base_plus.pt}
 cd "$ROOT"
+if [[ "$ARM" == nativegeo ]]; then
+  exec "$PYTHON_BIN" scripts/probes/ue_v1_native_geometry.py "$ACTION" "$@"
+fi
+if [[ "$ARM" == adapter ]]; then
+  exec "$PYTHON_BIN" scripts/probes/ue_v1_adapter.py "$ACTION" "$@"
+fi
 case "$ACTION" in
   dump-env)
     "$PYTHON_BIN" - <<'PY'
