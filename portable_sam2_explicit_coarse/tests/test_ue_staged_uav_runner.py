@@ -70,3 +70,17 @@ def test_direct_runner_rejects_missing_recipe_cache_receipt(run,monkeypatch,tmp_
     monkeypatch.setattr(run.controller,'validate',Mock())
     with pytest.raises(RuntimeError,match='Missing or changed cache receipt'):
         run.validate_manifest(root,'C')
+
+
+def test_generated_torch_namespace_pseudo_file_is_not_a_local_source(run,monkeypatch):
+    import sys
+    fake=SimpleNamespace(__file__='_ops.py')
+    monkeypatch.setitem(sys.modules,'staged_test_generated_ops_namespace',fake)
+    sources={}
+    for module in list(sys.modules.values()):
+        name=getattr(module,'__file__',None)
+        if not name:continue
+        path=Path(name).resolve()
+        if path.is_file() and path.suffix=='.py' and run.REPO in path.parents:
+            sources[str(path.relative_to(run.REPO))]=run.sha(path)
+    run.verify_loaded_sources(sources)

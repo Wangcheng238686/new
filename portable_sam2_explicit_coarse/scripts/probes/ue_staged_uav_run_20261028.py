@@ -73,6 +73,9 @@ def verify_loaded_sources(sources):
         path=getattr(module,'__file__',None)
         if not path:continue
         path=Path(path).resolve()
+        # torch.ops namespaces expose pseudo __file__='_ops.py'; these are not
+        # filesystem sources. Match the established inventory's real-file rule.
+        if not path.is_file():continue
         if path.suffix=='.py' and REPO in path.parents and str(path.relative_to(REPO)) not in sources:
             raise RuntimeError('Imported local source outside frozen inventory '+str(path))
         if (name=='sam2' or name.startswith('sam2.')) and REPO not in path.parents:
