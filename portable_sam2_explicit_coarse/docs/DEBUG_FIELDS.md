@@ -246,3 +246,7 @@ launch_manifest.co_rent_override明确reason/released_dependencies/time/controll
 ### 2026-10-28 Native归因中期结果状态与纠错分母
 
 paired*.partial.json 的metrics各项已经500次，但complete=false表示整份四指标尚未结束，不能当全部完成；root_verified_results_snapshot显式GPU/CPU状态并绑定SHA。固定C权重zero/donor AP点差是推理依赖干预，含分布变化，不称配对训练净增益；训练净差看C−B。净纠错helper按固定bbox一对一匹配、四互斥区域统计，分母matched-instance pixels（跨实例重复），未匹配不纳入；没有完成产物不得报告像素结果。
+
+### 2026-10-28 检测／掩码方向与框误差字段
+
+遥测位于full root/telemetry而非原progress。gradient stats的detection_norm/mask_norm是FP32无增强trainmode固定global8均值原已加权loss对预注册参数组的L2、preclip；dot/cos在固定union None0算，零norm时null/status undefined，joint_connected_only仅补充，instance_auxiliary_norm独立。rank rows shared_direction_unaveraged_image是单图未除8范数，勿与主global8比较。support=both/det_only/mask_only/neither张量/元素数，native_refiner det无梯度属预期。CPU detection views每行固定score .05/.25/.5与IoU .5/.75，各自459图分母；TP/FP/FN守恒，FPduplicate/localization/background代理，FN保留前/后score候选bestIoU分桶。TP_bbox_errors每字段count=TP，中心dx/dy px及GTwh归一化、宽高px/logratio，signed/abs/P50/P90；尺寸GTmask与FPbbox不混同。全部定义及score跨view校准限制见Native遥测文档；字段只观察，不用于loss、门控、选权。

@@ -329,3 +329,7 @@ wrapper新增release，用户明确授权后仅解除分析完成等待，归档
 ### 2026-10-28 Native归因结果核定与记录
 
 新增[归因结果](dual_stream/UE_NATIVE_TAIL_ATTRIBUTION_RESULTS_20261028.md)：完整test C−A MaskAP+.03435/CI正，C固定尾部zero/donor明显下降，同C框C仍较A/B高约.039/.040；bbox C较A下降必须保留。GPU全完成，CPU部分Boundary与干预/固定框bootstrap尚未全完。队列优先让固定框像素归因先算，500预算不变；机器快照与SHA绑定。100轮任务继续不改合同。
+
+### 2026-10-28 检测与掩码遥测sidecar
+
+新增gradient_math/gradient_telemetry/detection_telemetry/telemetry_owner四个analysis模块、ue_native_telemetry.sh一键start/status及两组11项CPUtests。逐epoch完整val独立框误差FPFN，E1/10/25/50/75/100四卡固定8图任务gradnorm/cos，未知loss拒绝、aux单列、None0固定union、buffer恢复及CP源SHA审计。只观察不参与训练/选权，原full运行树不改；GPU需空闲15872MiB/card，真模型验收待资源。详见[遥测定义](dual_stream/UE_NATIVE_TASK_TELEMETRY_20261028.md)。

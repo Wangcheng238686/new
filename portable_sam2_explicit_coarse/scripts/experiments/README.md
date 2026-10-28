@@ -42,3 +42,12 @@
 ```
 
 仅在owner还处于纯等待、所有GPU任务尚未发射时，记录显式共租授权，归档旧manifest/state，停止空闲owner并原合同恢复调度；不终止分析/训练rank。解除的只有分析完成依赖，四卡恢复门、源码/权重合同、显存准入仍执行。已经释放时命令幂等。运行工作树仍为原固定提交，控制覆盖记录存于root/control_overrides。
+
+## Native只读遥测 sidecar
+
+```bash
+./scripts/experiments/ue_native_telemetry.sh start
+./scripts/experiments/ue_native_telemetry.sh status
+```
+
+逐epoch读取完整val框误差；保留检查点上四卡低频计算任务梯度。独立源快照、臂目录与资源准入，不改正在训练的full100运行树。GPU门未执行/等待显存时不冒称已经有梯度结果。定义见`docs/dual_stream/UE_NATIVE_TASK_TELEMETRY_20261028.md`。
