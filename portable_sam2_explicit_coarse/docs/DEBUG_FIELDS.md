@@ -254,3 +254,7 @@ paired*.partial.json 的metrics各项已经500次，但complete=false表示整�
 ### 2026-10-28 SUTC 开关审计字段
 
 新增 runtime.initialization_audit 的 matrix_arm/upstream/tail_evidence/UBR_present/UAV_instance_loss/UAV_proposals 是模型构造与路由的布尔身份审计，不是训练统计或收益证据；UAV_instance_loss/UAV_proposals 同时跟随 U，不能只关 hook 留下辅助监督。source_subset 对 S 为 none，对 T 为共享 RGB 子集。S 无 UAV 样本 loader、参数或候选；T 的 enabled=False 仅指上游/补框关闭，独立 prepare_uav 仍提取尾部证据。无新增逐步训练日志、loss、门控或选模字段。CPU 门不能代替真实四卡 S/T 验收或 AP 结论。
+
+### 2026-10-28 视角数量审计与CPU接线门
+
+SUTC initialization_audit.uav_view_ids/uav_view_count 是实际相机ID/配置数量，S为[]/0；subset_cache_manifest_sha256绑定精确子集产物，默认旧五视角缓存为null，不代表无深度。view_count_denominator固定5，geometry第3通道为最近表面1m内实际所选观察者数/5；不是所选数量比例，geometry.shape的5是通道数。新增CPU门 candidates分母16384×8候选槽，supported_pixels分母512²；RGB_files_read是本次真实加载文件清单，未选RGB保持空槽且不进encoder。门只有单train图001234，不是分组覆盖率/AP/四卡资源证据，不参与loss/门控/选权，无新增逐步训练遥测。正式训练必须拒绝仅工程图的局部缓存。

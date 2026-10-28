@@ -13,6 +13,9 @@ sys.path[:0] = [str(WORK.parent / 'sam2'), str(WORK), str(WORK / 'scripts/probes
 import torch
 import ue_ubr_native_runtime_20261027 as legacy
 from data.ue_instance_targets import center_targets
+from data.ue_view_subset_inputs import SubsetUAVInputs
+from rsprompter.uav.local_adapter_probe import YAWS
+from rsprompter.uav.view_subset import canonical_views, PRESETS, configure_upstream_views
 from rsprompter.uav.native_sutc import SUTCSwitches, TailP0Evidence, SatelliteTailJoint
 from rsprompter.uav.ubr_native_integration import native_model_config
 
@@ -26,7 +29,13 @@ class Runtime:
     Caller may wrap ``network`` in DDP; objective always calls that wrapper.
     No inherited old runner is allowed to unconditionally prepare UAV targets.
     """
-    def __init__(self, arm):
+    def __init__(self, arm, *, uav_view_ids=YAWS, subset_cache_root=None):
+        self.view_ids = canonical_views(uav_view_ids)
+        if arm != 'S' and self.view_ids != YAWS and subset_cache_root is None:
+            raise ValueError('Reduced-view training requires a rebuilt subset cache root')
+        # Validate full cache BEFORE allocating a model/GPU. S has no UAV cache.
+        subset_inputs = (SubsetUAVInputs(core.previous.DATA, subset_cache_root, self.view_ids)
+                         if arm != 'S' and subset_cache_root is not None else None)
         self.switches = SUTCSwitches.for_arm(arm)
         self.matrix_arm = arm
         self.root = base.ROOT
@@ -48,7 +57,7 @@ class Runtime:
             satellite = core.C._register_and_build(config)
             retired = [k for k in cp['satellite'] if k.startswith('roi_head.mask_head.decoder_tail_refiner.')]
             satellite.load_state_dict({k: v for k, v in cp['satellite'].items() if k not in retired}, strict=True)
-            provider = TailP0Evidence(base.FOUNDATION, cp['uav']) if self.switches.tail_evidence else None
+            provider = TailP0Evidence(base.FOUNDATION, cp['uav'], view_ids=self.view_ids) if self.switches.tail_evidence else None
             self.joint = SatelliteTailJoint(satellite, provider).cuda()
             self.satellite = satellite
             self.network = self.bare = self.joint
@@ -69,10 +78,18 @@ class Runtime:
                 retained_state_strict=True, main_mask_size=list(config['train_cfg']['rcnn']['mask_size']),
                 head_seed=2080, source_subset='rgb_encoder.*,rgb_project.*,rgb_mean,rgb_std' if provider is not None else 'none')
         self.arm = arm
+        if subset_inputs is not None:
+            self.uav_inputs = subset_inputs
+        if self.switches.upstream and self.view_ids != YAWS:
+            configure_upstream_views(self.joint.uav, self.view_ids)
         self.generator = torch.Generator().manual_seed(base.PROTOCOL['seed'])
         self.initialization_audit.update(matrix_arm=arm, upstream=self.switches.upstream,
             tail_evidence=self.switches.tail_evidence, UBR_present=True,
-            UAV_instance_loss=self.switches.upstream, UAV_proposals=self.switches.upstream)
+            UAV_instance_loss=self.switches.upstream, UAV_proposals=self.switches.upstream,
+            uav_view_ids=list(self.view_ids) if arm != 'S' else [],
+            uav_view_count=len(self.view_ids) if arm != 'S' else 0,
+            subset_cache_manifest_sha256=subset_inputs.complete['manifest_sha256'] if subset_inputs else None,
+            view_count_denominator=5, source_slots='canonical five slots; encode selected only')
         self._assert_wiring()
         core.C.seed(base.PROTOCOL['seed'])
 
@@ -143,10 +160,27 @@ class Runtime:
                 setter(epoch)
 
 
-def build_runtime(arm):
-    return Runtime(arm)
+def build_runtime(arm, *, uav_view_ids=None, view_count=None, subset_cache_root=None):
+    if uav_view_ids is not None and view_count is not None:
+        raise ValueError('Specify view IDs or a preset count, not both')
+    if view_count is not None and view_count not in PRESETS:
+        raise ValueError('Preset view count must be 1, 3 or 5')
+    views = PRESETS[view_count] if view_count is not None else (YAWS if uav_view_ids is None else uav_view_ids)
+    return Runtime(arm, uav_view_ids=views, subset_cache_root=subset_cache_root)
 
 
 if __name__ == '__main__':
-    # CPU-only contract inspection; do not silently start training or build CUDA models.
-    print(CONTRACT.read_text())
+    # CPU-only contract inspection; never silently launch training/CUDA models.
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--arm', choices=list('SUTC'), default='C')
+    choice = parser.add_mutually_exclusive_group()
+    choice.add_argument('--view-count', type=int, choices=sorted(PRESETS))
+    choice.add_argument('--view-ids', type=int, nargs='+')
+    parser.add_argument('--subset-cache-root', type=Path)
+    args = parser.parse_args()
+    views = canonical_views(PRESETS[args.view_count] if args.view_count else (YAWS if args.view_ids is None else args.view_ids))
+    print(json.dumps(dict(contract=json.loads(CONTRACT.read_text()), arm=args.arm,
+        resolved_uav_view_ids=list(views) if args.arm != 'S' else [],
+        subset_cache_root=str(args.subset_cache_root) if args.subset_cache_root else None,
+        action='inspect_only_no_model_no_training'), indent=2))

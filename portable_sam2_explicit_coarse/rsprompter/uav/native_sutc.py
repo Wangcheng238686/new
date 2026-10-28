@@ -11,6 +11,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from .attention_ladder import sample_source_continuous
+from .local_adapter_probe import YAWS
+from .view_subset import canonical_views, source_tokens, check_index_views
 from .native_roi_refiner import NativeRoIRefiner
 from .ubr_native_integration import NativeDecoderShim, NativeMaskHead, NativeRoIHead
 
@@ -95,8 +97,9 @@ class TailP0Evidence(nn.Module):
     shared source keys must match exactly; unrelated upstream keys are excluded.
     """
     enabled=False
-    def __init__(self,foundation,common_state,source_seed=2045,*,p0_factory=None):
+    def __init__(self,foundation,common_state,source_seed=2045,*,p0_factory=None,view_ids=YAWS):
         super().__init__()
+        self.view_ids=canonical_views(view_ids)
         factory=_make_p0 if p0_factory is None else p0_factory
         with torch.random.fork_rng(devices=[]):
             torch.random.default_generator.manual_seed(source_seed)
@@ -125,12 +128,8 @@ class TailP0Evidence(nn.Module):
         if geometry.shape!=(1,5,512,512) or rgb.shape!=(5,3,512,512):raise ValueError('Expected geo5 and five512 RGB views')
         if index.shape!=(16384,8) or anchor.shape!=(16384,8,6) or anchor.dtype!=torch.float64:
             raise ValueError('Retain original eight candidate indices and float64 anchors')
-        maps=[]
-        for image in rgb.split(1):
-            _,pyramid=self.rgb_encoder((image-self.rgb_mean)/self.rgb_std)
-            maps.append(self.rgb_project(pyramid[0]))
-        features=torch.cat(maps).permute(0,2,3,1).reshape(-1,32)
-        features=F.layer_norm(features,(32,))
+        check_index_views(index,self.view_ids)
+        features=source_tokens(self,rgb,self.view_ids)
         selected=sample_source_continuous(features,index,anchor)
         valid=index>=0
         aligned=(selected*valid[...,None]).sum(1)/valid.sum(1,keepdim=True).clamp_min(1)

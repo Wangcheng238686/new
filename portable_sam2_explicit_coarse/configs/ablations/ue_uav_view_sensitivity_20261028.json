@@ -1,0 +1,15 @@
+{
+  "study": "matched_training_view_count_sensitivity",
+  "presets": {"1": [0], "3": [0, 144, 288], "5": [0, 72, 144, 216, 288]},
+  "selector": "uav_view_ids or view_count; mutually exclusive",
+  "scope": "Train separately from common generic initialization; same parameters and budget",
+  "cache_root": "/data/wangcheng/cache/ue_v1_view_subsets_20261028",
+  "cache_policy": "Rebuild raw selected depth before top8 selection and native raster; no fallback",
+  "candidate_cap": 8,
+  "per_view_cap": 2,
+  "view_count_denominator": 5,
+  "source_slots": "canonical yaw IDs; only selected RGB read and encoded",
+  "training_world_size": 4,
+  "status": "wiring_only; no new sensitivity training launched",
+  "limitation": "One predefined subset per count does not estimate variation across viewing directions"
+}

@@ -86,3 +86,17 @@ def test_upstream_routes_instance_loss_inside_network(runtime_module, monkeypatc
     factory.assert_called_once()
     rt.network.assert_called_once_with(sample, geometry='geo5', instance_target=target,
                                        center_loss_fn=runtime_module.core.pilot.loss_fn)
+
+
+def test_view_count_factory_resolves_explicit_ids_and_rejects_ambiguous_arguments(runtime_module, monkeypatch):
+    constructor=Mock(return_value='runtime')
+    monkeypatch.setattr(runtime_module,'Runtime',constructor)
+    assert runtime_module.build_runtime('C',view_count=3,subset_cache_root='/cache')=='runtime'
+    constructor.assert_called_once_with('C',uav_view_ids=(0,144,288),subset_cache_root='/cache')
+    with pytest.raises(ValueError):runtime_module.build_runtime('C',view_count=3,uav_view_ids=[0])
+    with pytest.raises(ValueError):runtime_module.build_runtime('C',view_count=2)
+
+
+def test_reduced_views_without_cache_fail_before_GPU_allocation(runtime_module):
+    with pytest.raises(ValueError,match='rebuilt subset cache'):
+        runtime_module.Runtime('C',uav_view_ids=[0])
