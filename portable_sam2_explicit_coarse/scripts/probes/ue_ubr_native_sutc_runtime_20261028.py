@@ -18,6 +18,7 @@ from rsprompter.uav.local_adapter_probe import YAWS
 from rsprompter.uav.view_subset import canonical_views, PRESETS, configure_upstream_views
 from rsprompter.uav.native_sutc import SUTCSwitches, TailP0Evidence, SatelliteTailJoint
 from rsprompter.uav.ubr_native_integration import native_model_config
+from rsprompter.uav.modality_controls import ModalityControls
 
 base, core = legacy.base, legacy.core
 CONTRACT = WORK / 'configs/ablations/ue_native_sutc_contract_20261028.json'
@@ -29,7 +30,10 @@ class Runtime:
     Caller may wrap ``network`` in DDP; objective always calls that wrapper.
     No inherited old runner is allowed to unconditionally prepare UAV targets.
     """
-    def __init__(self, arm, *, uav_view_ids=YAWS, subset_cache_root=None):
+    def __init__(self, arm, *, uav_view_ids=YAWS, subset_cache_root=None, rgb_content='correct', geometry_content='on'):
+        controls = ModalityControls(rgb_content, geometry_content)
+        controls.validate_arm(arm)
+        self.modalities = controls
         self.view_ids = canonical_views(uav_view_ids)
         if arm != 'S' and self.view_ids != YAWS and subset_cache_root is None:
             raise ValueError('Reduced-view training requires a rebuilt subset cache root')
@@ -78,6 +82,7 @@ class Runtime:
                 retained_state_strict=True, main_mask_size=list(config['train_cfg']['rcnn']['mask_size']),
                 head_seed=2080, source_subset='rgb_encoder.*,rgb_project.*,rgb_mean,rgb_std' if provider is not None else 'none')
         self.arm = arm
+        self.modalities = controls
         if subset_inputs is not None:
             self.uav_inputs = subset_inputs
         if self.switches.upstream and self.view_ids != YAWS:
@@ -89,7 +94,8 @@ class Runtime:
             uav_view_ids=list(self.view_ids) if arm != 'S' else [],
             uav_view_count=len(self.view_ids) if arm != 'S' else 0,
             subset_cache_manifest_sha256=subset_inputs.complete['manifest_sha256'] if subset_inputs else None,
-            view_count_denominator=5, source_slots='canonical five slots; encode selected only')
+            view_count_denominator=5, source_slots='canonical five slots; encode selected only',
+            modality_controls=self.modalities.audit())
         self._assert_wiring()
         core.C.seed(base.PROTOCOL['seed'])
 
@@ -109,13 +115,15 @@ class Runtime:
             return {}
         if self.switches.upstream:
             value = base.Runtime.payload(self, ident)
-            self.joint.uav.candidate_geometry = legacy.load_candidate_geometry(
+            candidate = legacy.load_candidate_geometry(
                 core.previous.DATA, ident, value['index'], value['anchor'])
-            return value
+            controls = getattr(self, 'modalities', ModalityControls())
+            self.joint.uav.candidate_geometry = controls.apply_candidate_geometry(candidate)
+            return controls.apply_payload(value)
         value = self.uav_inputs.load(ident, geometry_mode='measured', rgb_mode='correct')
         if value.pop('provenance')['measured_depth'] is not True:
             raise RuntimeError('T requires measured correspondence')
-        return value
+        return getattr(self, 'modalities', ModalityControls()).apply_payload(value)
 
     def losses(self, sample, ident):
         payload = self.payload(ident)
@@ -160,13 +168,20 @@ class Runtime:
                 setter(epoch)
 
 
-def build_runtime(arm, *, uav_view_ids=None, view_count=None, subset_cache_root=None):
+def build_runtime(arm, *, uav_view_ids=None, view_count=None, subset_cache_root=None, rgb_content='correct', geometry_content='on'):
     if uav_view_ids is not None and view_count is not None:
         raise ValueError('Specify view IDs or a preset count, not both')
     if view_count is not None and view_count not in PRESETS:
         raise ValueError('Preset view count must be 1, 3 or 5')
     views = PRESETS[view_count] if view_count is not None else (YAWS if uav_view_ids is None else uav_view_ids)
-    return Runtime(arm, uav_view_ids=views, subset_cache_root=subset_cache_root)
+    controls = ModalityControls(rgb_content, geometry_content)
+    controls.validate_arm(arm)
+    content_options = {}
+    if rgb_content != 'correct':
+        content_options['rgb_content'] = rgb_content
+    if geometry_content != 'on':
+        content_options['geometry_content'] = geometry_content
+    return Runtime(arm, uav_view_ids=views, subset_cache_root=subset_cache_root, **content_options)
 
 
 if __name__ == '__main__':
@@ -178,9 +193,13 @@ if __name__ == '__main__':
     choice.add_argument('--view-count', type=int, choices=sorted(PRESETS))
     choice.add_argument('--view-ids', type=int, nargs='+')
     parser.add_argument('--subset-cache-root', type=Path)
+    parser.add_argument('--rgb-content', choices=['correct', 'constant'], default='correct')
+    parser.add_argument('--geometry-content', choices=['on', 'off'], default='on')
     args = parser.parse_args()
+    controls = ModalityControls(args.rgb_content, args.geometry_content)
+    controls.validate_arm(args.arm)
     views = canonical_views(PRESETS[args.view_count] if args.view_count else (YAWS if args.view_ids is None else args.view_ids))
     print(json.dumps(dict(contract=json.loads(CONTRACT.read_text()), arm=args.arm,
         resolved_uav_view_ids=list(views) if args.arm != 'S' else [],
         subset_cache_root=str(args.subset_cache_root) if args.subset_cache_root else None,
-        action='inspect_only_no_model_no_training'), indent=2))
+        modality_controls=controls.audit(), action='inspect_only_no_model_no_training'), indent=2))

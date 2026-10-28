@@ -258,3 +258,9 @@ paired*.partial.json 的metrics各项已经500次，但complete=false表示整�
 ### 2026-10-28 视角数量审计与CPU接线门
 
 SUTC initialization_audit.uav_view_ids/uav_view_count 是实际相机ID/配置数量，S为[]/0；subset_cache_manifest_sha256绑定精确子集产物，默认旧五视角缓存为null，不代表无深度。view_count_denominator固定5，geometry第3通道为最近表面1m内实际所选观察者数/5；不是所选数量比例，geometry.shape的5是通道数。新增CPU门 candidates分母16384×8候选槽，supported_pixels分母512²；RGB_files_read是本次真实加载文件清单，未选RGB保持空槽且不进encoder。门只有单train图001234，不是分组覆盖率/AP/四卡资源证据，不参与loss/门控/选权，无新增逐步训练遥测。正式训练必须拒绝仅工程图的局部缓存。
+
+### 2026-10-28 三阶段wrapper身份、工程门与模态控制
+
+launch_manifest.recipes各含arm/view_ids/rgb_content/geometry_content及canonical recipeSHA；protocol/source/order/cache SHA用于拒漂移，selection_lock绑定val选择的base和训练收据，不读test排名。gate.initialization的satellite/head/RGB/full_model SHA是更新前模型状态，不比较描述性audit；结构S/U/T/C共享sat/head，U/T/C共享RGB，后续各臂full初始状态与base一致。gate.updates为4rank×各2图的3次global8工程更新（rank3首步空GT），main_mask_gradient为仅loss_mask权重1/其余0且AMP scale/unscale后的DDP梯度，非AP或内容必要性证据；forced250是重复框资源fixture，8次chunk32原consumer，不是自然检测250GT。restore_gate只验合成moment/RNG恢复，不证明真实next-update数值重放。
+
+stage queue状态仅控制面：结构不自动test，lock后eval独立队列；modality/views在全阶段train完成后test，不跨阶段自动发射。unknown预约15872MiB/card，实测后max(reserved+1024,resident+256)再留全卡1024，启动时预扣未兑现预约；非allocator cap，默认cap0。modalities.audit明确geo5[0:4]/candidate7[2,3,6]清零而保留深度对应/support/offset/yaw，不称无深度。S cache.kind=pure_satellite只核8个卫星数据身份文件，不依赖UAV样本缓存。训练逐步字段沿原global8/2136分母口径，无新loss或逐步模态日志。analysis summary为459图500次seed20261021名义图像区间，结构交互项同一抽样，不代替训练种子重复；分析不参与loss/门控/选权。

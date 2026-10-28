@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "protocol_file": "configs/ablations/ue_staged_uav_protocol_20261028.json",
+  "cache_root": "/data/wangcheng/cache/ue_v1_view_subsets_20261028",
+  "stages": {
+    "structure": [
+      "S",
+      "U",
+      "T",
+      "C"
+    ],
+    "modality": [
+      "mod_constant",
+      "mod_no_geometry"
+    ],
+    "views": [
+      "views_1",
+      "views_3"
+    ]
+  },
+  "recipes": {
+    "S": {
+      "name": "S",
+      "arm": "S",
+      "uav_view_ids": [
+        0,
+        72,
+        144,
+        216,
+        288
+      ],
+      "rgb_content": "correct",
+      "geometry_content": "on",
+      "subset_cache_root": null
+    },
+    "U": {
+      "name": "U",
+      "arm": "U",
+      "uav_view_ids": [
+        0,
+        72,
+        144,
+        216,
+        288
+      ],
+      "rgb_content": "correct",
+      "geometry_content": "on",
+      "subset_cache_root": null
+    },
+    "T": {
+      "name": "T",
+      "arm": "T",
+      "uav_view_ids": [
+        0,
+        72,
+        144,
+        216,
+        288
+      ],
+      "rgb_content": "correct",
+      "geometry_content": "on",
+      "subset_cache_root": null
+    },
+    "C": {
+      "name": "C",
+      "arm": "C",
+      "uav_view_ids": [
+        0,
+        72,
+        144,
+        216,
+        288
+      ],
+      "rgb_content": "correct",
+      "geometry_content": "on",
+      "subset_cache_root": null
+    }
+  },
+  "followup_changes": {
+    "mod_constant": {
+      "rgb_content": "constant"
+    },
+    "mod_no_geometry": {
+      "geometry_content": "off"
+    },
+    "views_1": {
+      "uav_view_ids": [
+        0
+      ]
+    },
+    "views_3": {
+      "uav_view_ids": [
+        0,
+        144,
+        288
+      ]
+    }
+  },
+  "exclusions": [
+    "no all-off modality arm",
+    "no reference-plane arm",
+    "no per-inlet modality cross product",
+    "no automatic test-based base selection"
+  ],
+  "root": "/data/wangcheng/checkpoint/ue_staged_uav_full100_20261028"
+}

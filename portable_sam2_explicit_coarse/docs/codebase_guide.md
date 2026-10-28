@@ -349,3 +349,7 @@ observer1aff788、PID1642915，CPU逐epochval已回填9份无失败；11项CPUte
 ### 2026-10-28 收紧后续实验路线
 
 新增 [三方向分阶段实验路线](dual_stream/UE_COMPACT_EXPERIMENT_ROADMAP_20261028.md)：先S/U/T/C结构主比较；仅对保留结构新增常量RGB、关闭显式几何两组；有相对S可靠净收益后再新增1/3视角训练并复用5视角。禁止全结构×模态×视角展开，不安排双关/固定平面/逐入口模态矩阵，不据此声称RGB-几何交互或深度对应必要性。优先严格合同复用，模态入口仍待实施；本次仅记录，不发射训练、不改在训合同或遥测。
+
+### 2026-10-28 三阶段完整wrapper与模态入口
+
+新增 `scripts/experiments/ue_staged_uav.sh`、`ue_staged_uav_control.py`、`ue_staged_uav_matrix.py`，`scripts/probes/ue_staged_uav_run_20261028.py`，`scripts/analysis/ue_staged_uav_analysis_20261028.py`，两份staged协议/矩阵JSON，`rsprompter/uav/modality_controls.py`及对应5组CPU测试；SUTC工厂新增全路径RGB/显式几何控制。wrapper按structure/modality/views独立启动，阶段内所有gate通过并核初始状态后才训练；结构先val锁基座再显式test；模态/视角各只新增两组并复用基座。完整100轮数学复用旧full runner、source/checkpoint/五流恢复隔离；显存允许四卡任务共租。显式analyze只CPU并输出四指标500配对bootstrap。详见 [wrapper与单变量审查](dual_stream/UE_STAGED_UAV_WRAPPERS_20261028.md)。本次不启动正式训练或真实GPU门，在训ABC不改。
