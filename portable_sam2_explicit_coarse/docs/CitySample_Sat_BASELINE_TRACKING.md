@@ -127,6 +127,29 @@
 
 评测器（citysample_sat_test.py 含边界指标/eval_yolo 含边界指标）、run 脚本骨架、coco2yolo 转换（v1 版已在 git 历史，重定向即可）、预训练权重缓存（三 backbone 已补齐）、v1-无增强四结果（作 no-aug 消融参考行）。
 
+### v1 默认增强版（512defaug）准备清单（2026-11-02，只备不跑——全量等显卡全空）
+
+统一锚定原则（P-R=B）：各方法默认增强类型/强度不动，resize 目标 ×(512/800) 锚定或 LSJ crop=512；test 一律 identity 512；max_per_img=250；test 统一走 maxDets=[1,10,250]+BoundaryAP 评测器。
+
+| 方法 | config（各算法仓内） | wrapper（scripts/baselines/） | 冒烟 |
+|---|---|---|---|
+| Mask R-CNN | mmdetection:`configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v1_512defaug.py` | `run_mmdet_citysample.sh maskrcnn_v1d` | ✅ loss 正常 |
+| MS R-CNN | mmdetection:`ms-rcnn_r50-caffe_fpn_1x_citysample_v1_512defaug.py` | `…msrcnn_v1d` | ✅（首跑一次批次级 NaN 发散，重试 0 NaN=偶发；全量若再现即重开一次） |
+| HTC | mmdetection:`htc-wosem_r50_fpn_1x_citysample_v1_512defaug.py` | `…htc_v1d` | ✅ |
+| RTMDet-Ins-S | mmdetection:`rtmdet-ins_s_300e_citysample_v1_512defaug.py`（默认 mosaic/mixup/HSV 全保留，640→512 锚定，PipelineSwitch 恢复） | `…rtmdet_v1d` | 🔄 冒烟中 |
+| Mask2Former | mmdetection:`mask2former_r50_citysample_v1_512defaug.py`（LSJ-512+queries250+save_best） | `…mask2former_v1d` | ⏸ 冒烟需 ~35G 余量暂无处放（等空卡） |
+| YOLO11s-seg | ultralytics 默认全开，imgsz 512 | `run_yolo11_citysample.sh`（v1 重定向） | ✅ exit=0 |
+| CondInst | AdelaiDet:`configs/CitySample/condinst_MS_R_50_1x_citysample_v1_512defaug.yaml`（多尺度 640-800→410-512，等 epoch 65520 iter） | `run_adelai_citysample.sh condinst` | 🔄 |
+| SOLOv2 | AdelaiDet:`solov2_R50_1x_citysample_v1_512defaug.yaml`（同上锚定） | `run_adelai_citysample.sh solov2` | 🔄 |
+| CATNet | CATNet:`configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_512defaug.py`（原生 512+三向翻转 0.75） | `run_catnet_citysample.sh` | 🔄 |
+| MaskDINO | MaskDINO:`configs/citysample/maskdino_R50_citysample_v1_512defaug.yaml`（MIN_SIZE 512，321300 micro-iter=300ep）+`train_citysample.py` | `run_maskdino_citysample.sh` | 🔄 |
+| RSIISN | RSIISN:`configs/citysample/rsiisn_cascade_swinT_v1_512defaug.py`（多尺度 ×0.64 锚定，test 768×512 无 TTA，max_per_img 250） | `run_rsiisn_citysample.sh` | 🔄 |
+| RS4D-box | RS4D:`configs/rs4d/rs4d_bbox-citysample-v1-512defaug.py`（LSJ-512+**Pad(1024) 修复**（SAM 画布契约，同 RSPrompter 教训），800ep bf16 bs8） | `run_rs4d_citysample.sh` | 🔄 |
+| RSPrompter(anchor) | RSPrompter仓:`rsprompter_anchor-citysample-v1-512defaug.py`（LSJ-512+hflip，Pad(1024)/max250/bf16 修复全沿用） | `run_rsprompter_citysample.sh` | 🔄 |
+| SCNet | ❌ 跳过（WHU 三次复现失败史） | — | — |
+
+评测设施新增：`boundary_ap.py` 增 `evaluate_maxdets`（供 d2/mm2 栈复用）；`citysample_sat_test_adet.py`（AdelaiDet 系）与 `eval_maskdino_citysample.py`（MaskDINO）、`eval_rsiisn_citysample.py`（pkl 路线）均接 maxDets=250+BoundaryAP；AdelaiDet 数据注册 `adet/data/citysample_builtin.py`。
+
 ## 方法清单与状态
 
 | 方法 | 状态 | WHU 版 config 起点（移植派生源） | 移植改动点 |

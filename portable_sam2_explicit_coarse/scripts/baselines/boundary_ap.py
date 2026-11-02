@@ -153,6 +153,55 @@ def evaluate_boundary(preds, gt_json, max_dets=250):
     return out
 
 
+def evaluate_maxdets(preds, gt_json, max_dets=250):
+    """标准 COCO bbox/segm 12 指标, maxDets=[1,10,max_dets](P1 协议)。
+    与 citysample_sat_test.py 内同名函数同口径; 独立放此供 d2 系脚本复用
+    (该模块仅依赖 pycocotools/numpy/cv2, 不引 mmdet)。
+    preds 的 segmentation 兼容 RLE dict(bytes/未压缩 list) 与 polygon list。"""
+    from pycocotools.cocoeval import COCOeval
+
+    def _dec(o):
+        if isinstance(o, (bytes, bytearray)):
+            return o.decode('utf-8', 'replace')
+        if isinstance(o, (np.ndarray, np.generic)):
+            return o.item() if o.ndim == 0 else o.tolist()
+        return o
+    preds = json.loads(json.dumps(preds, default=_dec))
+    coco_gt = COCO(gt_json)
+    cat_id = coco_gt.dataset['categories'][0]['id']
+    for p in preds:
+        p['category_id'] = cat_id
+        if isinstance(p['segmentation'], dict):
+            h, w = coco_gt.imgs[p['image_id']]['height'], coco_gt.imgs[p['image_id']]['width']
+            if isinstance(p['segmentation'].get('counts'), (list, np.ndarray)):
+                p['segmentation'] = mask_utils.frPyObjects(p['segmentation'], h, w)
+    metrics = {}
+    coco_dt = coco_gt.loadRes(json.loads(json.dumps(preds, default=_dec)))
+    for task in ('bbox', 'segm'):
+        if task == 'segm':
+            for p in coco_dt.anns.values():
+                if not isinstance(p['segmentation'], dict):
+                    img = coco_gt.imgs[p['image_id']]
+                    rles = mask_utils.frPyObjects(p['segmentation'],
+                                                  img['height'], img['width'])
+                    p['segmentation'] = rles[0] if len(rles) == 1 else mask_utils.merge(rles)
+        E = COCOeval(coco_gt, coco_dt, task)
+        E.params.maxDets = [1, 10, max_dets]
+        E.evaluate()
+        E.accumulate()
+        E.summarize()
+        s = E.stats
+        prec = E.eval['precision'][:, :, :, 0, -1]
+        prec = prec[prec > -1]
+        metrics[f'{task}_mAP'] = round(float(prec.mean()) if prec.size else float('nan'), 4)
+        metrics[f'{task}_mAP50'] = round(float(s[1]), 4)
+        metrics[f'{task}_mAP75'] = round(float(s[2]), 4)
+        metrics[f'{task}_mAPs'] = round(float(s[3]), 4)
+        metrics[f'{task}_mAPm'] = round(float(s[4]), 4)
+        metrics[f'{task}_mAPl'] = round(float(s[5]), 4)
+    return metrics
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--pred-json', required=True)

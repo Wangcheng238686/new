@@ -33,6 +33,12 @@ case "${MODEL}" in
   rtmdet)    CFG="configs/citysample/rtmdet-ins_s_300e_citysample_v3_noaug.py";         RUNTAG="rtmdet_ins_s_citysample_v3_noaug_bs4ai64_300ep";     EXTRA_OPTS="model.backbone.init_cfg.checkpoint=/home/wangcheng/.cache/torch/hub/checkpoints/cspnext-s_imagenet_600e.pth";;
   htc)       CFG="configs/citysample/htc-wosem_r50_fpn_1x_citysample_v3_noaug.py";      RUNTAG="htc_wosem_r50_fpn_1x_citysample_v3_noaug_bs4ai4";   EXTRA_OPTS="";;
   mask2former) CFG="configs/citysample/mask2former_r50_citysample_v3_noaug.py";         RUNTAG="mask2former_r50_citysample_v3_noaug_bs4ai4_300ep";  EXTRA_OPTS="";;
+  # ---- v1 重跑(默认增强+512 原生基准, P-R=B 2026-11-02) ----
+  maskrcnn_v1d)  CFG="configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v1_512defaug.py";  RUNTAG="maskrcnn_r50_fpn_1x_citysample_v1_512defaug_bs8ai2"; EXTRA_OPTS="";;
+  msrcnn_v1d)    CFG="configs/citysample/ms-rcnn_r50-caffe_fpn_1x_citysample_v1_512defaug.py"; RUNTAG="msrcnn_r50_caffe_fpn_1x_citysample_v1_512defaug_bs4ai4"; EXTRA_OPTS="model.backbone.init_cfg.checkpoint=/home/wangcheng/.cache/torch/hub/checkpoints/resnet50_msra-5891d200.pth";;
+  htc_v1d)       CFG="configs/citysample/htc-wosem_r50_fpn_1x_citysample_v1_512defaug.py"; RUNTAG="htc_wosem_r50_fpn_1x_citysample_v1_512defaug_bs4ai4"; EXTRA_OPTS="";;
+  rtmdet_v1d)    CFG="configs/citysample/rtmdet-ins_s_300e_citysample_v1_512defaug.py"; RUNTAG="rtmdet_ins_s_citysample_v1_512defaug_bs4ai64_300ep"; EXTRA_OPTS="model.backbone.init_cfg.checkpoint=/home/wangcheng/.cache/torch/hub/checkpoints/cspnext-s_imagenet_600e.pth";;
+  mask2former_v1d) CFG="configs/citysample/mask2former_r50_citysample_v1_512defaug.py"; RUNTAG="mask2former_r50_citysample_v1_512defaug_bs4ai4_300ep"; EXTRA_OPTS="";;
   *) echo "未知 model: ${MODEL}"; exit 1;;
 esac
 

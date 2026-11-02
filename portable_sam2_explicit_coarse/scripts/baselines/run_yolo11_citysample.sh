@@ -9,10 +9,8 @@
 #
 # 协议: train 2142 全量 / val 459 选 best(ultralytics fitness) /
 #       test 459 终评 maxDets=250 (P1/P2: test 单图实例最大 238) / 不开 TTA
-# 无增强协议(与 Ours 单流卫星无增强版公平对比):
-#   imgsz=512 原生不上采样(P4); 全部数据增强关闭——
-#   mosaic/mixup/copy_paste/HSV/degrees/translate/scale/shear/perspective/
-#   flipud/fliplr/bgr/multi_scale 全 0/False
+# 默认增强协议(P-R=B, 2026-11-02): ultralytics 官方默认增强全开
+#   (mosaic/HSV/多尺度/翻转等), imgsz=512 原生基准锚定(默认 640->512)
 # 超参: 除增强外保持 ultralytics 官方默认配方: 100ep, bs16, auto 优化器
 #       (lr0 0.01), seed=0; 初始化 yolo11s-seg.pt (官方 COCO 预训练,
 #       初始化≠增强, 与 WHU 协议一致保留)
@@ -25,13 +23,13 @@ GPU="${2:-2}"
 
 PROJ_ROOT="/home/wangcheng/project/new/portable_sam2_explicit_coarse"
 SCRIPTS="${PROJ_ROOT}/scripts/baselines"
-DATA_YAML="/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v3_20261021/yolo_seg/data.yaml"
-RUNDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/yolo11seg/yolo11s_seg_citysample_v3_512noaug"
+DATA_YAML="/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v1_20261021/yolo_seg/data.yaml"
+RUNDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/yolo11seg/yolo11s_seg_citysample_v1_512defaug"
 LOGDIR="${PROJ_ROOT}/logs/baselines_citysample"
 mkdir -p "${LOGDIR}" "${RUNDIR}"
 
-RUNTAG="yolo11s_seg_citysample_v3_512noaug"
-RUNNAME="yolo11s_seg_citysample_v3_512noaug"
+RUNTAG="yolo11s_seg_citysample_v1_512defaug"
+RUNNAME="yolo11s_seg_citysample_v1_512defaug"
 export CUDA_VISIBLE_DEVICES="${GPU}"
 
 TS=$(date +%Y%m%d_%H%M%S)
@@ -74,10 +72,7 @@ case "${MODE}" in
 from ultralytics import YOLO
 m = YOLO('/home/wangcheng/project/new/yolo11s-seg.pt')
 m.train(data='${DATA_YAML}', epochs=1, batch=8, imgsz=512, device=0,
-        project='${RUNDIR}', name='smoke', seed=0, exist_ok=True, verbose=True,
-        mosaic=0.0, mixup=0.0, copy_paste=0.0, hsv_h=0.0, hsv_s=0.0, hsv_v=0.0,
-        degrees=0.0, translate=0.0, scale=0.0, shear=0.0, perspective=0.0,
-        flipud=0.0, fliplr=0.0, bgr=0.0, multi_scale=False)
+        project='${RUNDIR}', name='smoke', seed=0, exist_ok=True, verbose=True)
 EOF
     echo "[smoke] exit=$?" | tee -a "${LOG}"
     ;;
@@ -86,14 +81,11 @@ EOF
     python - <<EOF 2>&1 | tee -a "${LOG}"
 from ultralytics import YOLO
 m = YOLO('/home/wangcheng/project/new/yolo11s-seg.pt')
-# 无增强协议(公平对比): imgsz=512 原生 + 全部增强关闭;
-# 其余(100ep/bs16/auto 优化器/seed=0)保持 ultralytics 官方默认
+# 默认增强协议: 除 imgsz=512(默认 640 锚定到原生)外全部 ultralytics 官方默认
+# (100ep/bs16/auto 优化器/seed=0/mosaic/HSV/多尺度/翻转等增强全开)
 m.train(data='${DATA_YAML}', device=0, project='${RUNDIR}',
         name='${RUNNAME}', seed=0, exist_ok=True, verbose=True,
-        imgsz=512,
-        mosaic=0.0, mixup=0.0, copy_paste=0.0, hsv_h=0.0, hsv_s=0.0, hsv_v=0.0,
-        degrees=0.0, translate=0.0, scale=0.0, shear=0.0, perspective=0.0,
-        flipud=0.0, fliplr=0.0, bgr=0.0, multi_scale=False)
+        imgsz=512)
 EOF
     echo "[train] exit=$?" | tee -a "${LOG}"
     ;;

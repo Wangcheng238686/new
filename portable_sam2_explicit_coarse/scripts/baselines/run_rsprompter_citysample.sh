@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# RSPrompter (anchor) @ CitySample-Sat 512-native 无增强版 对比实验
+# RSPrompter (anchor) @ CitySample-Sat v1 512-native + 默认增强(LSJ-512 锚定) 对比实验
 #
 # 用法: bash run_rsprompter_citysample.sh [mode] [gpu]
 #   mode: smoke | train(300ep, AMP bf16, bs1x累积2) | resume | test
@@ -22,9 +22,9 @@ GPU="${2:-1}"
 PROJ_ROOT="/home/wangcheng/project/new/portable_sam2_explicit_coarse"
 SCRIPTS="${PROJ_ROOT}/scripts/baselines"
 REPO="/home/wangcheng/project/RSPrompter-release/RSPrompter-release"
-CFG="configs/rsprompter/rsprompter_anchor-citysample-512-noaug.py"
-WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/rsprompter/rsprompter_anchor_citysample512_noaug_bs1ai2_300ep"
-RUNTAG="rsprompter_anchor_citysample512_noaug_bs1ai2_300ep"
+CFG="configs/rsprompter/rsprompter_anchor-citysample-v1-512defaug.py"
+WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/rsprompter/rsprompter_anchor_citysample_v1_512defaug_bs1ai2_300ep"
+RUNTAG="rsprompter_anchor_citysample_v1_512defaug_bs1ai2_300ep"
 LOGDIR="${PROJ_ROOT}/logs/baselines_citysample"
 mkdir -p "${LOGDIR}"
 
