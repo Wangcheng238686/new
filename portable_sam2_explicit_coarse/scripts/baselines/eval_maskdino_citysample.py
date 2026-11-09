@@ -46,7 +46,7 @@ def main():
     try:
         register_coco_instances(
             args.dataset, {},
-            f'{CS_ROOT}/annotations/{args.dataset.split("_")[-1]}.json', CS_ROOT)
+            f'{CS_ROOT}/annotations_d2poly/{args.dataset.split("_")[-1]}.json', CS_ROOT)
     except AssertionError:
         pass  # 已注册
     from detectron2.modeling import build_model

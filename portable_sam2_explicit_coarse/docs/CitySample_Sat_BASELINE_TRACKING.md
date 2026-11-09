@@ -136,17 +136,24 @@
 | Mask R-CNN | mmdetection:`configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v1_512defaug.py` | `run_mmdet_citysample.sh maskrcnn_v1d` | ✅ loss 正常 |
 | MS R-CNN | mmdetection:`ms-rcnn_r50-caffe_fpn_1x_citysample_v1_512defaug.py` | `…msrcnn_v1d` | ✅（首跑一次批次级 NaN 发散，重试 0 NaN=偶发；全量若再现即重开一次） |
 | HTC | mmdetection:`htc-wosem_r50_fpn_1x_citysample_v1_512defaug.py` | `…htc_v1d` | ✅ |
-| RTMDet-Ins-S | mmdetection:`rtmdet-ins_s_300e_citysample_v1_512defaug.py`（默认 mosaic/mixup/HSV 全保留，640→512 锚定，PipelineSwitch 恢复） | `…rtmdet_v1d` | 🔄 冒烟中 |
-| Mask2Former | mmdetection:`mask2former_r50_citysample_v1_512defaug.py`（LSJ-512+queries250+save_best） | `…mask2former_v1d` | ⏸ 冒烟需 ~35G 余量暂无处放（等空卡） |
+| RTMDet-Ins-S | mmdetection:`rtmdet-ins_s_300e_citysample_v1_512defaug.py`（默认 mosaic/mixup/HSV 全保留，640→512 锚定，PipelineSwitch 恢复） | `…rtmdet_v1d` | ✅ exit=0 |
+| Mask2Former | mmdetection:`mask2former_r50_citysample_v1_512defaug.py`（LSJ-512+queries250+save_best） | `…mask2former_v1d` | ⚠️ 显存受阻：两次冒烟均 OOM（需 ≥38G 空闲，现卡仅 ~33G）；配置已验证至前向目标分配阶段，数据/模型/训练启动全通；等空卡补冒烟 |
 | YOLO11s-seg | ultralytics 默认全开，imgsz 512 | `run_yolo11_citysample.sh`（v1 重定向） | ✅ exit=0 |
-| CondInst | AdelaiDet:`configs/CitySample/condinst_MS_R_50_1x_citysample_v1_512defaug.yaml`（多尺度 640-800→410-512，等 epoch 65520 iter） | `run_adelai_citysample.sh condinst` | 🔄 |
-| SOLOv2 | AdelaiDet:`solov2_R50_1x_citysample_v1_512defaug.yaml`（同上锚定） | `run_adelai_citysample.sh solov2` | 🔄 |
-| CATNet | CATNet:`configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_512defaug.py`（原生 512+三向翻转 0.75） | `run_catnet_citysample.sh` | 🔄 |
-| MaskDINO | MaskDINO:`configs/citysample/maskdino_R50_citysample_v1_512defaug.yaml`（MIN_SIZE 512，321300 micro-iter=300ep）+`train_citysample.py` | `run_maskdino_citysample.sh` | 🔄 |
-| RSIISN | RSIISN:`configs/citysample/rsiisn_cascade_swinT_v1_512defaug.py`（多尺度 ×0.64 锚定，test 768×512 无 TTA，max_per_img 250） | `run_rsiisn_citysample.sh` | 🔄 |
-| RS4D-box | RS4D:`configs/rs4d/rs4d_bbox-citysample-v1-512defaug.py`（LSJ-512+**Pad(1024) 修复**（SAM 画布契约，同 RSPrompter 教训），800ep bf16 bs8） | `run_rs4d_citysample.sh` | 🔄 |
-| RSPrompter(anchor) | RSPrompter仓:`rsprompter_anchor-citysample-v1-512defaug.py`（LSJ-512+hflip，Pad(1024)/max250/bf16 修复全沿用） | `run_rsprompter_citysample.sh` | 🔄 |
+| CondInst | AdelaiDet:`configs/CitySample/condinst_MS_R_50_1x_citysample_v1_512defaug.yaml`（多尺度 640-800→410-512，等 epoch 65520 iter） | `run_adelai_citysample.sh condinst` | ✅ exit=0（经 d2poly 修复） |
+| SOLOv2 | AdelaiDet:`solov2_R50_1x_citysample_v1_512defaug.yaml`（同上锚定） | `run_adelai_citysample.sh solov2` | ✅ exit=0（经 d2poly+cv2 补丁） |
+| CATNet | CATNet:`configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_512defaug.py`（原生 512+三向翻转 0.75） | `run_catnet_citysample.sh` | ✅ exit=0 |
+| MaskDINO | MaskDINO:`configs/citysample/maskdino_R50_citysample_v1_512defaug.yaml`（MIN_SIZE 512，321300 micro-iter=300ep）+`train_citysample.py` | `run_maskdino_citysample.sh` | ✅ 100 iter 跑完（经注册修复） |
+| RSIISN | RSIISN:`configs/citysample/rsiisn_cascade_swinT_v1_512defaug.py`（多尺度 ×0.64 锚定，test 768×512 无 TTA，max_per_img 250） | `run_rsiisn_citysample.sh` | ✅ E1[600/1071] 正常（超时截断属预期） |
+| RS4D-box | RS4D:`configs/rs4d/rs4d_bbox-citysample-v1-512defaug.py`（LSJ-512+**Pad(1024) 修复**（SAM 画布契约，同 RSPrompter 教训），800ep bf16 bs8） | `run_rs4d_citysample.sh` | ✅ exit=0 |
+| RSPrompter(anchor) | RSPrompter仓:`rsprompter_anchor-citysample-v1-512defaug.py`（LSJ-512+hflip，Pad(1024)/max250/bf16 修复全沿用） | `run_rsprompter_citysample.sh` | ✅ exit=124 训练至超时（正常） |
 | SCNet | ❌ 跳过（WHU 三次复现失败史） | — | — |
+
+**冒烟阶段排障记录（2026-11-02~09）**：
+1. msrcnn 一次批次级 NaN 发散（warmup 中段 mask 分支），重试 0 NaN=偶发；全量若再现即重启一次。
+2. **d2 栈不支持 RLE GT**：CitySample 全部 GT 为未压缩 RLE，detectron2 非实例仅收 polygon（WHU 当年是 polygon 无此坑）→ 生成 `annotations_d2poly/`（外部轮廓近似，扁平 polygon，全量 186,182 实例零丢失；d2 系注册指向它，**最终 test 评测仍用原始 RLE GT** 不受近似影响）。
+3. **OpenCV 5.0.0 升级破坏 SOLOv2**：dt2 环境 cv2 被升到 5.x，>4 通道数组 resize 被拒（SOLOv2 GT 掩码 (H,W,N) 批量缩放，同尺度桶 ≥5 实例即崩）→ AdelaiDet `solov2/utils.py` imresize 加逐通道回退（数值等价，不动共享环境）。
+4. M2F 冒烟脚本分支没覆盖 `mask2former_v1d` 名（epoch 参数误入 iter 循环）→ run 脚本已修；其后冒烟 OOM（真·显存不足），待空卡。
+5. MaskDINO 派生脚本残留 `WHU_SPLITS` 引用 → 已修。
 
 评测设施新增：`boundary_ap.py` 增 `evaluate_maxdets`（供 d2/mm2 栈复用）；`citysample_sat_test_adet.py`（AdelaiDet 系）与 `eval_maskdino_citysample.py`（MaskDINO）、`eval_rsiisn_citysample.py`（pkl 路线）均接 maxDets=250+BoundaryAP；AdelaiDet 数据注册 `adet/data/citysample_builtin.py`。
 

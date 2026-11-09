@@ -77,7 +77,7 @@ cd "${REPO}"
   echo "conda env: cvt2  python: $(which python)"
 } | tee "${LOG}"
 
-if [ "${MODEL}" = "mask2former" ]; then
+if [ "${MODEL}" = "mask2former" ] || [ "${MODEL}" = "mask2former_v1d" ]; then
   # M2F 为 IterBasedTrainLoop, 冒烟用 iter 计数
   SMOKE_OPTS="train_cfg.max_iters=60 train_cfg.val_interval=999999 default_hooks.checkpoint.interval=999999 default_hooks.logger.interval=5"
 else
