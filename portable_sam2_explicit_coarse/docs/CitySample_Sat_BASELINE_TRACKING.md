@@ -136,12 +136,12 @@
 | Mask R-CNN | mmdetection:`configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v1_512defaug.py` | `run_mmdet_citysample.sh maskrcnn_v1d` | ✅ loss 正常 |
 | MS R-CNN | mmdetection:`ms-rcnn_r50-caffe_fpn_1x_citysample_v1_512defaug.py` | `…msrcnn_v1d` | ✅（首跑一次批次级 NaN 发散，重试 0 NaN=偶发；全量若再现即重开一次） |
 | HTC | mmdetection:`htc-wosem_r50_fpn_1x_citysample_v1_512defaug.py` | `…htc_v1d` | ✅ |
-| RTMDet-Ins-S | mmdetection:`rtmdet-ins_s_300e_citysample_v1_512defaug.py`（默认 mosaic/mixup/HSV 全保留，640→512 锚定，PipelineSwitch 恢复） | `…rtmdet_v1d` | ✅ exit=0 |
+| RTMDet-Ins-S | mmdetection:`rtmdet-ins_s_300e_citysample_v1_512defaug.py`（默认 mosaic/mixup/HSV 全保留，640→512 锚定，PipelineSwitch 恢复） | `…rtmdet_v1d` | 🔄 **全量在训 GPU2**（2026-11-09 起，E3 起 eta ~6.5h，实测增量显存 ~2G 全场最低） |
 | Mask2Former | mmdetection:`mask2former_r50_citysample_v1_512defaug.py`（LSJ-512+queries250+save_best） | `…mask2former_v1d` | ⚠️ 显存受阻：两次冒烟均 OOM（需 ≥38G 空闲，现卡仅 ~33G）；配置已验证至前向目标分配阶段，数据/模型/训练启动全通；等空卡补冒烟 |
 | YOLO11s-seg | ultralytics 默认全开，imgsz 512 | `run_yolo11_citysample.sh`（v1 重定向） | ✅ exit=0 |
 | CondInst | AdelaiDet:`configs/CitySample/condinst_MS_R_50_1x_citysample_v1_512defaug.yaml`（多尺度 640-800→410-512，等 epoch 65520 iter） | `run_adelai_citysample.sh condinst` | ✅ exit=0（经 d2poly 修复） |
 | SOLOv2 | AdelaiDet:`solov2_R50_1x_citysample_v1_512defaug.yaml`（同上锚定） | `run_adelai_citysample.sh solov2` | ✅ exit=0（经 d2poly+cv2 补丁） |
-| CATNet | CATNet:`configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_512defaug.py`（原生 512+三向翻转 0.75） | `run_catnet_citysample.sh` | ✅ exit=0 |
+| CATNet | CATNet:`configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_512defaug.py`（原生 512+三向翻转 0.75） | `run_catnet_citysample.sh` | 🔄 **全量在训 GPU3**（2026-11-09 起，36ep eta ~5.7h，nvidia-smi 增量 ~21G） |
 | MaskDINO | MaskDINO:`configs/citysample/maskdino_R50_citysample_v1_512defaug.yaml`（MIN_SIZE 512，321300 micro-iter=300ep）+`train_citysample.py` | `run_maskdino_citysample.sh` | ✅ 100 iter 跑完（经注册修复） |
 | RSIISN | RSIISN:`configs/citysample/rsiisn_cascade_swinT_v1_512defaug.py`（多尺度 ×0.64 锚定，test 768×512 无 TTA，max_per_img 250） | `run_rsiisn_citysample.sh` | ✅ E1[600/1071] 正常（超时截断属预期） |
 | RS4D-box | RS4D:`configs/rs4d/rs4d_bbox-citysample-v1-512defaug.py`（LSJ-512+**Pad(1024) 修复**（SAM 画布契约，同 RSPrompter 教训），800ep bf16 bs8） | `run_rs4d_citysample.sh` | ✅ exit=0 |
