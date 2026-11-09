@@ -176,7 +176,16 @@
 
 **实现排障记录（11-10）**：aug 模块双 dtype 兼容（RSPrompter to_float32）；d2 新旧栈 Augmentation API 不一致→mapper 手动 512 守卫；MaskDINO 需 MASK_FORMAT=bitmask + gt_masks tensor 化（DetrDatasetMapper 同款尾部）；M2F 冒烟分支漏 v1m 名；CATNet/RS4D custom_imports 覆盖事故（见上）。**冒烟 12/12 全过**（htc/rsprompter exit=124=训练至超时零错误）。
 
-**状态**：全部待发射（runtag 后缀 `_v1_minimal`）。
+**状态（2026-11-10 03:2x，独占四卡满载发射）**：旧协议 defaug 在跑任务全部作废（RTMDet defaug 重跑终止归档 `*_VOID_20261110`，其 mask 监督本已因 poly2mask 事故不可信）；已收集的 defaug 结果（YOLO 0.7766/0.6060、CATNet、MSRCNN）保留归档作补充参考。协议B 12/12 全部在跑/排队（显存按逐进程实测打包）：
+
+| 卡 | 在跑(实测显存) | 队列尾巴 |
+|---|---|---|
+| 0 | maskrcnn_v1m(17.5G) + rtmdet_v1m(9.9G) + htc_v1m(8.2G) | → condinst → solov2（逐个接力，峰值 ~28G 安全） |
+| 1 | msrcnn_v1m(10.5G) + rsprompter_v1m(22G) | → maskdino(+20G, 峰值 42G ✓) |
+| 2 | mask2former_v1m(44.7G 独占) | — |
+| 3 | yolo_v1m(7.1G) + rs4d_v1m(18.3G) | yolo 完 → catnet(+21G, 峰值 39.3G ✓，看门进程接力) |
+
+全线零 NaN。catnet 由看门进程在 yolo 退出后自动接续（防三任务叠加 OOM）。
 
 ## 方法清单与状态
 
