@@ -141,7 +141,7 @@
 | YOLO11s-seg | ultralytics 默认全开，imgsz 512 | `run_yolo11_citysample.sh`（v1 重定向） | ✅ **完成**（100ep，test 459 maxDets=250）：**bbox 0.8504 / segm 0.7399**（AP50 0.989/0.989，AP75 0.957/0.876，APs 0.762/0.600）；**BoundaryAP 0.6903/0.5186**。对比其 v1-无增强版（0.6865/0.5035/边界 0.474/0.352）：默认增强对 YOLO 增益巨大（bbox +0.164 / segm +0.236 / 边界 2% +0.217）——v1 表必须用增强版数字 |
 | CondInst | AdelaiDet:`configs/CitySample/condinst_MS_R_50_1x_citysample_v1_512defaug.yaml`（多尺度 640-800→410-512，等 epoch 65520 iter） | `run_adelai_citysample.sh condinst` | ✅ exit=0（经 d2poly 修复） |
 | SOLOv2 | AdelaiDet:`solov2_R50_1x_citysample_v1_512defaug.yaml`（同上锚定） | `run_adelai_citysample.sh solov2` | ✅ exit=0（经 d2poly+cv2 补丁） |
-| CATNet | CATNet:`configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_512defaug.py`（原生 512+三向翻转 0.75） | `run_catnet_citysample.sh` | 🔄 **全量在训 GPU3**（2026-11-09 起，36ep eta ~5.7h，nvidia-smi 增量 ~21G） |
+| CATNet | CATNet:`configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_512defaug.py`（原生 512+三向翻转 0.75） | `run_catnet_citysample.sh` | ✅ **完成**（36ep，best E31，test 459 maxDets=250）：**bbox 0.7276 / segm 0.6520**（AP50 0.942/0.918）；**BoundaryAP 0.6406/0.5651**——1% 边界全方法目前最高（细边界校准强） |
 | MaskDINO | MaskDINO:`configs/citysample/maskdino_R50_citysample_v1_512defaug.yaml`（MIN_SIZE 512，321300 micro-iter=300ep）+`train_citysample.py` | `run_maskdino_citysample.sh` | ✅ 100 iter 跑完（经注册修复） |
 | RSIISN | RSIISN:`configs/citysample/rsiisn_cascade_swinT_v1_512defaug.py`（多尺度 ×0.64 锚定，test 768×512 无 TTA，max_per_img 250） | `run_rsiisn_citysample.sh` | ✅ E1[600/1071] 正常（超时截断属预期） |
 | RS4D-box | RS4D:`configs/rs4d/rs4d_bbox-citysample-v1-512defaug.py`（LSJ-512+**Pad(1024) 修复**（SAM 画布契约，同 RSPrompter 教训），800ep bf16 bs8） | `run_rs4d_citysample.sh` | ✅ exit=0 |
