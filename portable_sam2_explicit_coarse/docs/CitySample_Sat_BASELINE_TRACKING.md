@@ -134,11 +134,11 @@
 | 方法 | config（各算法仓内） | wrapper（scripts/baselines/） | 冒烟 |
 |---|---|---|---|
 | Mask R-CNN | mmdetection:`configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v1_512defaug.py` | `run_mmdet_citysample.sh maskrcnn_v1d` | ✅ loss 正常 |
-| MS R-CNN | mmdetection:`ms-rcnn_r50-caffe_fpn_1x_citysample_v1_512defaug.py` | `…msrcnn_v1d` | ✅（首跑一次批次级 NaN 发散，重试 0 NaN=偶发；全量若再现即重开一次） |
+| MS R-CNN | mmdetection:`ms-rcnn_r50-caffe_fpn_1x_citysample_v1_512defaug.py` | `…msrcnn_v1d` | 🔄 **全量在训 GPU1**（加 clip_grad(35) 后零 NaN 穿过原死亡区间 iter150-200，E1 末 eta ~1.5h）。⚠️ NaN 定性更正：冒烟+全量同签名两次=**系统性不稳**（v1 密集数据 warmup 中段梯度爆炸），非偶发；clip_grad 为文档声明的稳定措施（mmdetection 仓 cab768c） |
 | HTC | mmdetection:`htc-wosem_r50_fpn_1x_citysample_v1_512defaug.py` | `…htc_v1d` | ✅ |
 | RTMDet-Ins-S | mmdetection:`rtmdet-ins_s_300e_citysample_v1_512defaug.py`（默认 mosaic/mixup/HSV 全保留，640→512 锚定，PipelineSwitch 恢复） | `…rtmdet_v1d` | 🔄 **全量在训 GPU2**（2026-11-09 起，E3 起 eta ~6.5h，实测增量显存 ~2G 全场最低） |
 | Mask2Former | mmdetection:`mask2former_r50_citysample_v1_512defaug.py`（LSJ-512+queries250+save_best） | `…mask2former_v1d` | ⚠️ 显存受阻：两次冒烟均 OOM（需 ≥38G 空闲，现卡仅 ~33G）；配置已验证至前向目标分配阶段，数据/模型/训练启动全通；等空卡补冒烟 |
-| YOLO11s-seg | ultralytics 默认全开，imgsz 512 | `run_yolo11_citysample.sh`（v1 重定向） | ✅ exit=0 |
+| YOLO11s-seg | ultralytics 默认全开，imgsz 512 | `run_yolo11_citysample.sh`（v1 重定向） | 🔄 **全量在训 GPU0**（E22/100，~45min） |
 | CondInst | AdelaiDet:`configs/CitySample/condinst_MS_R_50_1x_citysample_v1_512defaug.yaml`（多尺度 640-800→410-512，等 epoch 65520 iter） | `run_adelai_citysample.sh condinst` | ✅ exit=0（经 d2poly 修复） |
 | SOLOv2 | AdelaiDet:`solov2_R50_1x_citysample_v1_512defaug.yaml`（同上锚定） | `run_adelai_citysample.sh solov2` | ✅ exit=0（经 d2poly+cv2 补丁） |
 | CATNet | CATNet:`configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_512defaug.py`（原生 512+三向翻转 0.75） | `run_catnet_citysample.sh` | 🔄 **全量在训 GPU3**（2026-11-09 起，36ep eta ~5.7h，nvidia-smi 增量 ~21G） |
