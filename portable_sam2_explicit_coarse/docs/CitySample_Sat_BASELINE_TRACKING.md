@@ -138,7 +138,7 @@
 | HTC | mmdetection:`htc-wosem_r50_fpn_1x_citysample_v1_512defaug.py` | `…htc_v1d` | ✅ |
 | RTMDet-Ins-S | mmdetection:`rtmdet-ins_s_300e_citysample_v1_512defaug.py`（默认 mosaic/mixup/HSV 全保留，640→512 锚定，PipelineSwitch 恢复） | `…rtmdet_v1d` | 🔄 **全量在训 GPU2**（2026-11-09 起，E3 起 eta ~6.5h，实测增量显存 ~2G 全场最低） |
 | Mask2Former | mmdetection:`mask2former_r50_citysample_v1_512defaug.py`（LSJ-512+queries250+save_best） | `…mask2former_v1d` | ⚠️ 显存受阻：两次冒烟均 OOM（需 ≥38G 空闲，现卡仅 ~33G）；配置已验证至前向目标分配阶段，数据/模型/训练启动全通；等空卡补冒烟 |
-| YOLO11s-seg | ultralytics 默认全开，imgsz 512 | `run_yolo11_citysample.sh`（v1 重定向） | ✅ **完成**（100ep，test 459 maxDets=250）：**bbox 0.8504 / segm 0.7399**（AP50 0.989/0.989，AP75 0.957/0.876，APs 0.762/0.600）；**BoundaryAP 0.6903/0.5186**。对比其 v1-无增强版（0.6865/0.5035/边界 0.474/0.352）：默认增强对 YOLO 增益巨大（bbox +0.164 / segm +0.236 / 边界 2% +0.217）——v1 表必须用增强版数字 |
+| YOLO11s-seg | ultralytics 默认全开，imgsz 512 | `run_yolo11_citysample.sh`（v1 重定向） | ✅ **完成（已修正）**（100ep，test 459 maxDets=250）：**bbox 0.7766 / segm 0.6060**（AP50 0.982/0.949，AP75 0.910/0.685）；**BoundaryAP 0.5808/0.4625**。⚠️ 首报 0.8504/0.7399 系**误评事故已撤回**：eval 脚本 DS_ROOT 在 v3→v1 批量重定向中漏改仍指 v3，首报实为 v1 训练模型在 v3-test 上的数字（v3-test∩v1-train 重叠→训练泄漏污染 inflated）；修正脚本后在真 v1 test 重评（459 图 id 复核 ⊆ v1 ✓）。真实增强收益仍显著：较无增强版（0.6865/0.5035/边界 0.474/0.352）bbox +0.090 / segm +0.103 / 边界 +0.107 |
 | CondInst | AdelaiDet:`configs/CitySample/condinst_MS_R_50_1x_citysample_v1_512defaug.yaml`（多尺度 640-800→410-512，等 epoch 65520 iter） | `run_adelai_citysample.sh condinst` | ✅ exit=0（经 d2poly 修复） |
 | SOLOv2 | AdelaiDet:`solov2_R50_1x_citysample_v1_512defaug.yaml`（同上锚定） | `run_adelai_citysample.sh solov2` | ✅ exit=0（经 d2poly+cv2 补丁） |
 | CATNet | CATNet:`configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_512defaug.py`（原生 512+三向翻转 0.75） | `run_catnet_citysample.sh` | ✅ **完成**（36ep，best E31，test 459 maxDets=250）：**bbox 0.7276 / segm 0.6520**（AP50 0.942/0.918）；**BoundaryAP 0.6406/0.5651**——1% 边界全方法目前最高（细边界校准强） |
@@ -149,6 +149,7 @@
 | SCNet | ❌ 跳过（WHU 三次复现失败史） | — | — |
 
 **全量阶段排障记录（2026-11-09）**：
+0. **YOLO 首报误评事故（11-10 发现并修正）**：`eval_yolo_citysample.py` DS_ROOT 在 11-02 v3→v1 批量 sed 中漏改（run 脚本与转换脚本已改），首报 test 数字实为 v3-test（413 图）上评估——而 v3 为同一批点的重划分，v3-test 与 v1-train 存在重叠 → 训练泄漏污染（0.8504/0.7399 虚高）。教训已立规：**每次 test 收数必做"预测 id ⊆ GT id 且图数=GT 图数"复核**（本次正是该复核抓出问题）；误评产物归档 `test_out_WRONGv3_bak`。
 1. **RTMDet 根因修复与作废重跑**：首跑到 E280 切 stage2 当拍"千次空取"崩溃。逐层插桩定位真根因：**官方管线 `poly2mask=False` 假设 polygon GT，与本数据 RLE dict 不兼容 → PolygonMasks 全零垃圾 → stage2 `recompute_bbox` 从垃圾 mask 重算出全零 bbox → FilterAnnotations 全灭**。且前 280ep 的 mask 监督一直无效（bbox 正常故能训能选模，segm 数字不可信）→ 目录归档 `*_maskgarbage_bak_20261109`，去掉 poly2mask=False（默认 bitmap 正确处理 RLE）后**从头重跑**（重跑 mask loss 1.95 健康）；stage2 抖动下限回滚官方 0.1（此前 0.5 系误诊撤销）。教训：mmdet 系对 RLE GT 的隐性假设要逐 transform 验证。
 2. **会话中断连带杀训练**：harness 托管的后台任务在会话中断时被连带 kill（MSRCNN/YOLO/CATNet 同时死于 20:20）。处置：全部改 nohup 脱管重发，断点无损（MSRCNN 从 E4、YOLO 从 E88、CATNet 从 E32 续）。**此后所有训练一律 nohup 启动**。
 3. MSRCNN clip_grad(35) 修复见冒烟记录更新（系统性不稳非偶发）。

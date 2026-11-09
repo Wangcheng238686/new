@@ -36,7 +36,7 @@ def _viz_color(i):
     return PALETTE[i % len(PALETTE)]
 
 
-DS_ROOT = Path('/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v3_20261021')
+DS_ROOT = Path('/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v1_20261021')
 GT_JSON = str(DS_ROOT / 'annotations/test.json')
 IMG_DIR = DS_ROOT / 'yolo_seg/images/test'
 
