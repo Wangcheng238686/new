@@ -66,6 +66,15 @@ case "${MODE}" in
     python "${SCRIPTS}/coco2yolo_seg_citysample.py" 2>&1 | tee -a "${LOG}"
     ;;
   smoke)
+    if [ "${VARIANT:-}" = "minimal" ]; then
+      echo "[smoke] minimal: 1ep bs8 经等效注入脚本, 10min 超时" | tee -a "${LOG}"
+      start_gpu_monitor
+      CS_EPOCHS=1 CS_BATCH=8 CS_NAME=smoke_minimal timeout 600 python "${SCRIPTS}/train_yolo_citysample_minimal.py" 2>&1 | tee -a "${LOG}"
+      echo "[smoke] exit=$?" | tee -a "${LOG}"
+      stop_gpu_monitor
+      echo "===== done $(date '+%F %T') =====" | tee -a "${LOG}"
+      exit 0
+    fi
     echo "[smoke] 1ep bs8, 10min 超时" | tee -a "${LOG}"
     start_gpu_monitor
     timeout 600 python - <<EOF 2>&1 | tee -a "${LOG}"
@@ -78,7 +87,11 @@ EOF
     ;;
   train)
     start_gpu_monitor
-    python - <<EOF 2>&1 | tee -a "${LOG}"
+    if [ "${VARIANT:-}" = "minimal" ]; then
+      # 协议B(minimal): 内置增强全禁 + cs_minimal_aug 光度等效注入(见脚本头)
+      python "${SCRIPTS}/train_yolo_citysample_minimal.py" 2>&1 | tee -a "${LOG}"
+    else
+      python - <<YEOF 2>&1 | tee -a "${LOG}"
 from ultralytics import YOLO
 m = YOLO('/home/wangcheng/project/new/yolo11s-seg.pt')
 # 默认增强协议: 除 imgsz=512(默认 640 锚定到原生)外全部 ultralytics 官方默认
@@ -86,7 +99,8 @@ m = YOLO('/home/wangcheng/project/new/yolo11s-seg.pt')
 m.train(data='${DATA_YAML}', device=0, project='${RUNDIR}',
         name='${RUNNAME}', seed=0, exist_ok=True, verbose=True,
         imgsz=512)
-EOF
+YEOF
+    fi
     echo "[train] exit=$?" | tee -a "${LOG}"
     ;;
   resume)

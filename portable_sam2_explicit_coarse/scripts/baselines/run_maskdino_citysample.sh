@@ -27,6 +27,14 @@ mkdir -p "${LOGDIR}"
 export TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1
 export CUDA_VISIBLE_DEVICES="${GPU}"
 
+# ---- 协议B(minimal)变体: VARIANT=minimal 切 entry/config/runtag ----
+TRAIN_ENTRY_PY="train_citysample.py"
+if [ "${VARIANT:-}" = "minimal" ]; then
+  CFG="configs/citysample/maskdino_R50_citysample_v1_minimal.yaml"
+  RUNTAG="maskdino_R50_citysample_v1_minimal_bs2ai8_300ep"
+  TRAIN_ENTRY_PY="train_citysample_minimal.py"
+fi
+
 TS=$(date +%Y%m%d_%H%M%S)
 LOG="${LOGDIR}/${RUNTAG}_${MODE}_${TS}_pid$$.log"
 GPULOG="${LOG%.log}.gpu.log"
@@ -81,7 +89,7 @@ case "${MODE}" in
   smoke)
     echo "[smoke] 10min 超时, 100 micro-iter, 不验证不存 ckpt" | tee -a "${LOG}"
     start_gpu_monitor
-    timeout 600 "${MDINO_PY}" train_citysample.py --config-file "${CFG}" --accum 8 \
+    timeout 600 "${MDINO_PY}" "${TRAIN_ENTRY_PY}" --config-file "${CFG}" --accum 8 \
       OUTPUT_DIR "${WORKDIR}/smoke" \
       SOLVER.MAX_ITER 100 SOLVER.IMS_PER_BATCH 2 SOLVER.CHECKPOINT_PERIOD 100000 \
       TEST.EVAL_PERIOD 0 DATALOADER.NUM_WORKERS 4 2>&1 | tee -a "${LOG}"
@@ -89,12 +97,12 @@ case "${MODE}" in
     ;;
   train)
     start_gpu_monitor
-    "${MDINO_PY}" train_citysample.py --config-file "${CFG}" --accum 8 2>&1 | tee -a "${LOG}"
+    "${MDINO_PY}" "${TRAIN_ENTRY_PY}" --config-file "${CFG}" --accum 8 2>&1 | tee -a "${LOG}"
     echo "[train] exit=${PIPESTATUS[0]}" | tee -a "${LOG}"
     ;;
   resume)
     start_gpu_monitor
-    "${MDINO_PY}" train_citysample.py --config-file "${CFG}" --accum 8 --resume 2>&1 | tee -a "${LOG}"
+    "${MDINO_PY}" "${TRAIN_ENTRY_PY}" --config-file "${CFG}" --accum 8 --resume 2>&1 | tee -a "${LOG}"
     echo "[resume] exit=${PIPESTATUS[0]}" | tee -a "${LOG}"
     ;;
   test)

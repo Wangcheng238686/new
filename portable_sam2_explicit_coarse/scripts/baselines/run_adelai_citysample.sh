@@ -40,6 +40,16 @@ d=yaml.safe_load(open('${REPO}/${CFG}').read().replace('_BASE_','_BASE_X'))
 print(d.get('OUTPUT_DIR',''))" 2>/dev/null || echo "")
 [ -z "${WORKDIR}" ] && WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/${MODEL}"
 
+# ---- 协议B(minimal)变体 ----
+TRAIN_ENTRY_NAME="tools/train_net.py"
+if [ "${VARIANT:-}" = "minimal" ]; then
+  TRAIN_ENTRY_NAME="tools/train_net_minimal.py"
+  case "${MODEL}" in
+    condinst) CFG="configs/CitySample/condinst_MS_R_50_1x_citysample_v1_minimal.yaml"; RUNTAG="condinst_MS_R50_1x_citysample_v1_minimal_bs8lr05m";;
+    solov2)   CFG="configs/CitySample/solov2_R50_1x_citysample_v1_minimal.yaml"; RUNTAG="solov2_R50_1x_citysample_v1_minimal_bs8lr05m";;
+  esac
+fi
+
 TS=$(date +%Y%m%d_%H%M%S)
 LOG="${LOGDIR}/${RUNTAG}_${MODE}_${TS}_pid$$.log"
 GPULOG="${LOG%.log}.gpu.log"
@@ -93,7 +103,7 @@ case "${MODE}" in
   smoke)
     echo "[smoke] 10min 超时, 100 iter, 不验证不存 ckpt" | tee -a "${LOG}"
     start_gpu_monitor
-    timeout 600 python tools/train_net.py --config-file "${CFG}" --num-gpus 1 \
+    timeout 600 python ${TRAIN_ENTRY_NAME} --config-file "${CFG}" --num-gpus 1 \
       OUTPUT_DIR "${WORKDIR}/smoke" \
       SOLVER.MAX_ITER 100 SOLVER.IMS_PER_BATCH 2 SOLVER.CHECKPOINT_PERIOD 100000 \
       TEST.EVAL_PERIOD 0 DATALOADER.NUM_WORKERS 4 2>&1 | tee -a "${LOG}"
@@ -101,14 +111,14 @@ case "${MODE}" in
     ;;
   train)
     start_gpu_monitor
-    python tools/train_net.py --config-file "${CFG}" --num-gpus 1 \
+    python ${TRAIN_ENTRY_NAME} --config-file "${CFG}" --num-gpus 1 \
       OUTPUT_DIR "${WORKDIR}" 2>&1 | tee -a "${LOG}"
     echo "[train] exit=${PIPESTATUS[0]}" | tee -a "${LOG}"
     ;;
   resume)
     start_gpu_monitor
     echo "[resume] auto from last ckpt" | tee -a "${LOG}"
-    python tools/train_net.py --config-file "${CFG}" --num-gpus 1 --resume \
+    python ${TRAIN_ENTRY_NAME} --config-file "${CFG}" --num-gpus 1 --resume \
       OUTPUT_DIR "${WORKDIR}" 2>&1 | tee -a "${LOG}"
     echo "[resume] exit=${PIPESTATUS[0]}" | tee -a "${LOG}"
     ;;

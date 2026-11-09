@@ -23,10 +23,16 @@ GPU="${2:-0}"
 PROJ_ROOT="/home/wangcheng/project/new/portable_sam2_explicit_coarse"
 REPO="/home/wangcheng/project/RS4D"
 CFG="configs/rs4d/rs4d_bbox-citysample-v1-512defaug.py"
-WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/rs4d/rs4d_bbox_citysample_v1_512defaug_bs8_bf16_800ep"
 RUNTAG="rs4d_bbox_citysample_v1_512defaug_bs8_bf16_800ep"
+WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/rs4d/${RUNTAG}"
 LOGDIR="${PROJ_ROOT}/logs/baselines_citysample"
 mkdir -p "${LOGDIR}"
+
+# ---- 协议B(minimal)变体: VARIANT=minimal 切换 config/runtag() ----
+if [ "${VARIANT:-}" = "minimal" ]; then
+  CFG="configs/rs4d/rs4d_bbox-citysample-v1-minimal.py"
+  RUNTAG="rs4d_bbox_citysample_v1_minimal_bs8_bf16_800ep"
+fi
 
 TS=$(date +%Y%m%d_%H%M%S)
 LOG="${LOGDIR}/${RUNTAG}_${MODE}_${TS}_pid$$.log"

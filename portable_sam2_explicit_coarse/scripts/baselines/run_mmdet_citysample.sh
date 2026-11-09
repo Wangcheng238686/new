@@ -39,6 +39,12 @@ case "${MODEL}" in
   htc_v1d)       CFG="configs/citysample/htc-wosem_r50_fpn_1x_citysample_v1_512defaug.py"; RUNTAG="htc_wosem_r50_fpn_1x_citysample_v1_512defaug_bs4ai4"; EXTRA_OPTS="";;
   rtmdet_v1d)    CFG="configs/citysample/rtmdet-ins_s_300e_citysample_v1_512defaug.py"; RUNTAG="rtmdet_ins_s_citysample_v1_512defaug_bs4ai64_300ep"; EXTRA_OPTS="model.backbone.init_cfg.checkpoint=/home/wangcheng/.cache/torch/hub/checkpoints/cspnext-s_imagenet_600e.pth";;
   mask2former_v1d) CFG="configs/citysample/mask2former_r50_citysample_v1_512defaug.py"; RUNTAG="mask2former_r50_citysample_v1_512defaug_bs4ai4_300ep"; EXTRA_OPTS="";;
+  # ---- 协议B(匹配增强合同 minimal, 2026-11-10): cs_minimal_aug 需 PYTHONPATH=仓根 ----
+  maskrcnn_v1m)  CFG="configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v1_minimal.py";  RUNTAG="maskrcnn_r50_fpn_1x_citysample_v1_minimal_bs8ai2"; EXTRA_OPTS="";;
+  msrcnn_v1m)    CFG="configs/citysample/ms-rcnn_r50-caffe_fpn_1x_citysample_v1_minimal.py"; RUNTAG="msrcnn_r50_caffe_fpn_1x_citysample_v1_minimal_bs4ai4"; EXTRA_OPTS="model.backbone.init_cfg.checkpoint=/home/wangcheng/.cache/torch/hub/checkpoints/resnet50_msra-5891d200.pth";;
+  htc_v1m)       CFG="configs/citysample/htc-wosem_r50_fpn_1x_citysample_v1_minimal.py"; RUNTAG="htc_wosem_r50_fpn_1x_citysample_v1_minimal_bs4ai4"; EXTRA_OPTS="";;
+  rtmdet_v1m)    CFG="configs/citysample/rtmdet-ins_s_300e_citysample_v1_minimal.py"; RUNTAG="rtmdet_ins_s_citysample_v1_minimal_bs4ai64_300ep"; EXTRA_OPTS="model.backbone.init_cfg.checkpoint=/home/wangcheng/.cache/torch/hub/checkpoints/cspnext-s_imagenet_600e.pth";;
+  mask2former_v1m) CFG="configs/citysample/mask2former_r50_citysample_v1_minimal.py"; RUNTAG="mask2former_r50_citysample_v1_minimal_bs4ai4_300ep"; EXTRA_OPTS="";;
   *) echo "未知 model: ${MODEL}"; exit 1;;
 esac
 
@@ -67,6 +73,7 @@ trap stop_gpu_monitor EXIT
 
 activate_env
 cd "${REPO}"
+export PYTHONPATH="${REPO}"  # cs_minimal_aug(custom_imports)经仓根导入
 
 {
   echo "===== runtag: ${RUNTAG} mode=${MODE} ====="
@@ -77,7 +84,8 @@ cd "${REPO}"
   echo "conda env: cvt2  python: $(which python)"
 } | tee "${LOG}"
 
-if [ "${MODEL}" = "mask2former" ] || [ "${MODEL}" = "mask2former_v1d" ]; then
+case "${MODEL}" in mask2former|mask2former_v1d|mask2former_v1m) M2F=1;; *) M2F=0;; esac
+if [ "${M2F}" = "1" ]; then
   # M2F 为 IterBasedTrainLoop, 冒烟用 iter 计数
   SMOKE_OPTS="train_cfg.max_iters=60 train_cfg.val_interval=999999 default_hooks.checkpoint.interval=999999 default_hooks.logger.interval=5"
 else

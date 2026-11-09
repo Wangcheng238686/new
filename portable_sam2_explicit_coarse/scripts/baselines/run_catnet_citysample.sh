@@ -26,10 +26,16 @@ REPO="/home/wangcheng/project/CATNet"
 CFG="configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_512defaug.py"
 TRAIN_ENTRY="/data2/wangcheng/envs/cvt2/lib/python3.9/site-packages/mmdet/.mim/tools/train.py"
 TEST_ENTRY="/data2/wangcheng/envs/cvt2/lib/python3.9/site-packages/mmdet/.mim/tools/test.py"
-WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/catnet/cat_mask_rcnn_r50_3x_citysample_v1_512defaug_bs4ai2"
 RUNTAG="catnet_citysample_v1_r50_3x_512defaug_bs4ai2"
+WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/catnet/${RUNTAG}"
 LOGDIR="${PROJ_ROOT}/logs/baselines_citysample"
 mkdir -p "${LOGDIR}"
+
+# ---- 协议B(minimal)变体: VARIANT=minimal 切换 config/runtag(PYTHONPATH 需=仓根) ----
+if [ "${VARIANT:-}" = "minimal" ]; then
+  CFG="configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_minimal.py"
+  RUNTAG="catnet_citysample_v1_r50_3x_minimal_bs4ai2"
+fi
 
 TS=$(date +%Y%m%d_%H%M%S)
 LOG="${LOGDIR}/${RUNTAG}_${MODE}_${TS}_pid$$.log"

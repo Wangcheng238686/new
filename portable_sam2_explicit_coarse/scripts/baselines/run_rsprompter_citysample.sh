@@ -23,14 +23,20 @@ PROJ_ROOT="/home/wangcheng/project/new/portable_sam2_explicit_coarse"
 SCRIPTS="${PROJ_ROOT}/scripts/baselines"
 REPO="/home/wangcheng/project/RSPrompter-release/RSPrompter-release"
 CFG="configs/rsprompter/rsprompter_anchor-citysample-v1-512defaug.py"
-WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/rsprompter/rsprompter_anchor_citysample_v1_512defaug_bs1ai2_300ep"
 RUNTAG="rsprompter_anchor_citysample_v1_512defaug_bs1ai2_300ep"
+WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/rsprompter/${RUNTAG}"
 LOGDIR="${PROJ_ROOT}/logs/baselines_citysample"
 mkdir -p "${LOGDIR}"
 
 # torch>=2.6 默认 weights_only=True 会拒载含 mmengine meta 的 ckpt(resume 需要)
 export TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1
 export CUDA_VISIBLE_DEVICES="${GPU}"
+
+# ---- 协议B(minimal)变体: VARIANT=minimal 切换 config/runtag() ----
+if [ "${VARIANT:-}" = "minimal" ]; then
+  CFG="configs/rsprompter/rsprompter_anchor-citysample-v1-minimal.py"
+  RUNTAG="rsprompter_anchor_citysample_v1_minimal_bs1ai2_300ep"
+fi
 
 TS=$(date +%Y%m%d_%H%M%S)
 LOG="${LOGDIR}/${RUNTAG}_${MODE}_${TS}_pid$$.log"

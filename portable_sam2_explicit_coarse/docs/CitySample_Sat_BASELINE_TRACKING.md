@@ -163,6 +163,21 @@
 
 评测设施新增：`boundary_ap.py` 增 `evaluate_maxdets`（供 d2/mm2 栈复用）；`citysample_sat_test_adet.py`（AdelaiDet 系）与 `eval_maskdino_citysample.py`（MaskDINO）、`eval_rsiisn_citysample.py`（pkl 路线）均接 maxDets=250+BoundaryAP；AdelaiDet 数据注册 `adet/data/citysample_builtin.py`。
 
+## 协议B：匹配增强合同（minimal，2026-11-10 立项，用户指令）
+
+**动机**：Ours（S_t50 及 R 系）增强合同为几何全禁（跨视角几何一致性约束）+ 仅两项光度增强。全部对比算法改用与 Ours 逐项相同的增强合同重训重测；v1-默认增强版结果保留归档作补充参考。
+
+**协议（唯一变量=增强，其余全不变）**：
+- 光度（所有方法统一注入，参数逐项对齐 Ours）：CSColorJitter（brightness=0.15, contrast=0.15, saturation=0.10, hue=0.02，RandomApply p=0.50）+ CSGaussianNoise（σ=0.02 即 [0,1] 域 → 像素域 5.1，p=0.50）
+- 几何全禁：翻转（水平/垂直/对角）、尺度抖动、随机裁剪、mosaic、mixup、多尺度一律关闭；512 原生 identity 守卫
+- 不变：官方优化器/lr/调度；val 459 选模；test 459 终评；maxDets=[1,10,250]+上限 250；M2F queries 250；BoundaryAP 必出；单 ckpt 无 TTA；MSRCNN clip_grad(35)；RS4D/RSPrompter Pad(1024)+bf16
+- 实现：mmdet3 系=管线注入仓根 `cs_minimal_aug.py`（custom_imports；CATNet 需合并其自身 ['models','datasets']，RS4D 需合并 ['mmdet.rs4d']——覆盖会炸注册表）；YOLO=patch build_yolo_dataset 前置光度（`train_yolo_citysample_minimal.py`，内置增强全 0 含 HSV；等效实现逐参数对齐）；d2 系=仓根 `cs_minimal_mapper.py`（DetrDatasetMapper 减法版，MaskDINO 需 bitmask+mask tensor 化）
+- ⚠️ v1-无增强旧 YOLO 结果（0.6865/0.5035）不符合本协议（当时 HSV 也关），按新协议重跑
+
+**实现排障记录（11-10）**：aug 模块双 dtype 兼容（RSPrompter to_float32）；d2 新旧栈 Augmentation API 不一致→mapper 手动 512 守卫；MaskDINO 需 MASK_FORMAT=bitmask + gt_masks tensor 化（DetrDatasetMapper 同款尾部）；M2F 冒烟分支漏 v1m 名；CATNet/RS4D custom_imports 覆盖事故（见上）。**冒烟 12/12 全过**（htc/rsprompter exit=124=训练至超时零错误）。
+
+**状态**：全部待发射（runtag 后缀 `_v1_minimal`）。
+
 ## 方法清单与状态
 
 | 方法 | 状态 | WHU 版 config 起点（移植派生源） | 移植改动点 |
