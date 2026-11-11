@@ -176,6 +176,25 @@
 
 **实现排障记录（11-10）**：aug 模块双 dtype 兼容（RSPrompter to_float32）；d2 新旧栈 Augmentation API 不一致→mapper 手动 512 守卫；MaskDINO 需 MASK_FORMAT=bitmask + gt_masks tensor 化（DetrDatasetMapper 同款尾部）；M2F 冒烟分支漏 v1m 名；CATNet/RS4D custom_imports 覆盖事故（见上）。**冒烟 12/12 全过**（htc/rsprompter exit=124=训练至超时零错误）。
 
+### 协议B(minimal) test 结果汇总（2026-11-11 更新）
+
+| 方法 | bbox mAP | segm mAP | BoundaryAP_2pct | BoundaryAP_1pct | 状态 |
+|---|---|---|---|---|---|
+| YOLO11s-seg | **0.6865** | 0.5035 | 0.4738 | 0.3523 | ✅ 完成 |
+| HTC w/o sem | 0.5282 | **0.5042** | **0.4815** | **0.3718** | ✅ 完成 |
+| RTMDet-Ins-S | 0.5370 | 0.4437 | 0.4264 | 0.3277 | ✅ 完成(best E150 val 0.739) |
+| Mask R-CNN | 0.5228 | 0.4844 | 0.4596 | 0.3502 | ✅ 完成 |
+| MS R-CNN | 0.5167 | 0.4785 | 0.4514 | 0.3370 | ✅ 完成 |
+| CondInst | — | — | — | — | 🔄 在训(~44%) |
+| SOLOv2 | — | — | — | — | 🔄 在训(刚起) |
+| CATNet | — | — | — | — | 🔄 重训中(原 ckpt 磁盘满丢失) |
+| RSPrompter | — | — | — | — | 🔄 E19 续跑 |
+| RS4D-box | — | — | — | — | 🔄 E47 续跑 |
+| MaskDINO | — | — | — | — | 🔄 续跑 |
+| Mask2Former | — | — | — | — | ⏸ 待空卡(需 45G) |
+
+观察：几何增强全禁后全方法大幅退化（两阶段 segm 从 defaug ~0.65→~0.48，-17pt）；HTC 的三阶 cascade 在弱增强下最优 segm；YOLO 仍以 bbox 0.687 领先。⚠️ YOLO minimal 结果与 v1-noaug 完全一致(0.6865/0.5035/边界 0.4738/0.3523 四位一致)——光度注入等效性待核(可能 patch 未生效，也可能光度增强对该模型确无影响)。
+
 **状态（2026-11-10 03:2x，独占四卡满载发射）**：旧协议 defaug 在跑任务全部作废（RTMDet defaug 重跑终止归档 `*_VOID_20261110`，其 mask 监督本已因 poly2mask 事故不可信）；已收集的 defaug 结果（YOLO 0.7766/0.6060、CATNet、MSRCNN）保留归档作补充参考。协议B 12/12 全部在跑/排队（显存按逐进程实测打包）：
 
 | 卡 | 在跑(实测显存) | 队列尾巴 |
