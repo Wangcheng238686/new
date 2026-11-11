@@ -34,12 +34,6 @@ case "${MODEL}" in
   *) echo "未知 model: ${MODEL}"; exit 1;;
 esac
 
-WORKDIR=$(python3 -c "
-import yaml
-d=yaml.safe_load(open('${REPO}/${CFG}').read().replace('_BASE_','_BASE_X'))
-print(d.get('OUTPUT_DIR',''))" 2>/dev/null || echo "")
-[ -z "${WORKDIR}" ] && WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/${MODEL}"
-
 # ---- 协议B(minimal)变体 ----
 TRAIN_ENTRY_NAME="tools/train_net.py"
 if [ "${VARIANT:-}" = "minimal" ]; then
@@ -49,6 +43,13 @@ if [ "${VARIANT:-}" = "minimal" ]; then
     solov2)   CFG="configs/CitySample/solov2_R50_1x_citysample_v1_minimal.yaml"; RUNTAG="solov2_R50_1x_citysample_v1_minimal_bs8lr05m";;
   esac
 fi
+
+# WORKDIR 必须在 VARIANT 之后解析(2026-11-11 修复: minimal 曾误写 defaug 名目录)
+WORKDIR=$(python3 -c "
+import yaml
+d=yaml.safe_load(open('${REPO}/${CFG}').read().replace('_BASE_','_BASE_X'))
+print(d.get('OUTPUT_DIR',''))" 2>/dev/null || echo "")
+[ -z "${WORKDIR}" ] && WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/${MODEL}"
 
 TS=$(date +%Y%m%d_%H%M%S)
 LOG="${LOGDIR}/${RUNTAG}_${MODE}_${TS}_pid$$.log"

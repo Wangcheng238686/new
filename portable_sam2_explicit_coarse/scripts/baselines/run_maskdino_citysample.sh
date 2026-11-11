@@ -33,6 +33,7 @@ if [ "${VARIANT:-}" = "minimal" ]; then
   CFG="configs/citysample/maskdino_R50_citysample_v1_minimal.yaml"
   RUNTAG="maskdino_R50_citysample_v1_minimal_bs2ai8_300ep"
   TRAIN_ENTRY_PY="train_citysample_minimal.py"
+  WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/maskdino/${RUNTAG}"
 fi
 
 TS=$(date +%Y%m%d_%H%M%S)

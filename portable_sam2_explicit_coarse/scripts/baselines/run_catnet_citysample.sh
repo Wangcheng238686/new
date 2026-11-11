@@ -35,6 +35,7 @@ mkdir -p "${LOGDIR}"
 if [ "${VARIANT:-}" = "minimal" ]; then
   CFG="configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_minimal.py"
   RUNTAG="catnet_citysample_v1_r50_3x_minimal_bs4ai2"
+  WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/catnet/${RUNTAG}"
 fi
 
 TS=$(date +%Y%m%d_%H%M%S)
@@ -52,7 +53,7 @@ env_note() {
   echo "entry: mmdet .mim tools (CATNet 为插件仓库, 无自带 train.py)"
   echo "config: ${CFG}"
   echo "work_dir: ${WORKDIR}"
-  echo "data_root: CitySample v1 (satellite-only, 512-native defaug) (train 2943 full no-filter / val 627 / test 2220)"
+  echo "data_root: CitySample v1 (satellite-only, 512-native defaug) (train 2142 / val 459 / test 459)"
   echo "conda env: cvt2  python: $(which python 2>/dev/null)"
 }
 

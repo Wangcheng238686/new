@@ -36,6 +36,7 @@ export CUDA_VISIBLE_DEVICES="${GPU}"
 if [ "${VARIANT:-}" = "minimal" ]; then
   CFG="configs/rsprompter/rsprompter_anchor-citysample-v1-minimal.py"
   RUNTAG="rsprompter_anchor_citysample_v1_minimal_bs1ai2_300ep"
+  WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/rsprompter/${RUNTAG}"
 fi
 
 TS=$(date +%Y%m%d_%H%M%S)

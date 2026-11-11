@@ -1,15 +1,16 @@
 #!/bin/bash
 # =============================================================================
-# mmdetection 家族基线 @ CitySample-Sat v3 (512-native, no-aug) 统一启动脚本
-# 覆盖: maskrcnn | msrcnn | rtmdet  (htc/mask2former 待后续解锁)  环境: cvt2
+# mmdetection 家族基线 @ CitySample-Sat v1 统一启动脚本
+# 覆盖: *_v1d(默认增强 512 锚定, 当前主协议) | *_v1m(协议B minimal, 已归档)
+#       环境: cvt2
 #
 # 用法: bash run_mmdet_citysample.sh <model> [mode] [gpu]
 #   mode: smoke(默认) | train | resume | test
 #   gpu : 默认 0
-# 协议: train 1931 全量不滤空图 / val 285 选 best(segm_mAP) / test 413 终评
+# 协议: train 2142 全量不滤空图 / val 459 选 best(segm_mAP) / test 459 终评
 #       maxDets=250 (P1/P2: 全 split 单图实例最大 238) / 512 原生不上采样
-#       / 无数据增强 (与 Ours 单流卫星无增强版公平对比)
-# test: citysample_sat_test.py (pycocotools maxDets=[1,10,250])
+# test: citysample_sat_test.py (pycocotools maxDets=[1,10,250] + BoundaryAP)
+# 注: v3_noaug 旧入口已删(2026-11-11, v3 战役作废; git 历史可溯)
 # =============================================================================
 set -uo pipefail
 
@@ -28,12 +29,7 @@ export TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1
 export CUDA_VISIBLE_DEVICES="${GPU}"
 
 case "${MODEL}" in
-  maskrcnn)  CFG="configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v3_noaug.py";      RUNTAG="maskrcnn_r50_fpn_1x_citysample_v3_noaug_bs8ai2";    EXTRA_OPTS="";;
-  msrcnn)    CFG="configs/citysample/ms-rcnn_r50-caffe_fpn_1x_citysample_v3_noaug.py";  RUNTAG="msrcnn_r50_caffe_fpn_1x_citysample_v3_noaug_bs4ai4"; EXTRA_OPTS="model.backbone.init_cfg.checkpoint=/home/wangcheng/.cache/torch/hub/checkpoints/resnet50_msra-5891d200.pth";;
-  rtmdet)    CFG="configs/citysample/rtmdet-ins_s_300e_citysample_v3_noaug.py";         RUNTAG="rtmdet_ins_s_citysample_v3_noaug_bs4ai64_300ep";     EXTRA_OPTS="model.backbone.init_cfg.checkpoint=/home/wangcheng/.cache/torch/hub/checkpoints/cspnext-s_imagenet_600e.pth";;
-  htc)       CFG="configs/citysample/htc-wosem_r50_fpn_1x_citysample_v3_noaug.py";      RUNTAG="htc_wosem_r50_fpn_1x_citysample_v3_noaug_bs4ai4";   EXTRA_OPTS="";;
-  mask2former) CFG="configs/citysample/mask2former_r50_citysample_v3_noaug.py";         RUNTAG="mask2former_r50_citysample_v3_noaug_bs4ai4_300ep";  EXTRA_OPTS="";;
-  # ---- v1 重跑(默认增强+512 原生基准, P-R=B 2026-11-02) ----
+  # ---- v1 默认增强(P-R=B 512 锚定, 2026-11-02 立项 / 11-11 复活为主协议) ----
   maskrcnn_v1d)  CFG="configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v1_512defaug.py";  RUNTAG="maskrcnn_r50_fpn_1x_citysample_v1_512defaug_bs8ai2"; EXTRA_OPTS="";;
   msrcnn_v1d)    CFG="configs/citysample/ms-rcnn_r50-caffe_fpn_1x_citysample_v1_512defaug.py"; RUNTAG="msrcnn_r50_caffe_fpn_1x_citysample_v1_512defaug_bs4ai4"; EXTRA_OPTS="model.backbone.init_cfg.checkpoint=/home/wangcheng/.cache/torch/hub/checkpoints/resnet50_msra-5891d200.pth";;
   htc_v1d)       CFG="configs/citysample/htc-wosem_r50_fpn_1x_citysample_v1_512defaug.py"; RUNTAG="htc_wosem_r50_fpn_1x_citysample_v1_512defaug_bs4ai4"; EXTRA_OPTS="";;
@@ -80,7 +76,7 @@ export PYTHONPATH="${REPO}"  # cs_minimal_aug(custom_imports)经仓根导入
   echo "date: $(date '+%F %T')  host: $(hostname)  gpu: ${GPU}"
   echo "repo: ${REPO}  head: $(git log --oneline -1 2>/dev/null)"
   echo "config: ${CFG}  work_dir: ${WORKDIR}"
-  echo "data: /data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v3_20261021 (satellite-only v3, train 1931 / val 285 / test 413, no-aug, 512-native)"
+  echo "data: /data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v1_20261021 (v1, train 2142 / val 459 / test 459, ${MODEL##*_})"
   echo "conda env: cvt2  python: $(which python)"
 } | tee "${LOG}"
 
@@ -116,7 +112,7 @@ case "${MODE}" in
     echo "[test] ckpt: ${BEST}" | tee -a "${LOG}"
     python "${SCRIPTS}/citysample_sat_test.py" "${CFG}" "${BEST}" \
       --out-dir "${WORKDIR}/test_out" \
-      --gt-json "/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v3_20261021/annotations/test.json" \
+      --gt-json "/data1/wangcheng/dataset/CitySample_SatUAV_TrainMinimal_v1_20261021/annotations/test.json" \
       --dump-prefix "${WORKDIR}/test_out/pred" 2>&1 | tee -a "${LOG}"
     echo "[test] exit=$?" | tee -a "${LOG}"
     ;;

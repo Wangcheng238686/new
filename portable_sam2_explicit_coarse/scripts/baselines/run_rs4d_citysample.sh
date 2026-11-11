@@ -32,6 +32,7 @@ mkdir -p "${LOGDIR}"
 if [ "${VARIANT:-}" = "minimal" ]; then
   CFG="configs/rs4d/rs4d_bbox-citysample-v1-minimal.py"
   RUNTAG="rs4d_bbox_citysample_v1_minimal_bs8_bf16_800ep"
+  WORKDIR="/data1/wangcheng/checkpoint/citysample_sat_baselines/rs4d/${RUNTAG}"
 fi
 
 TS=$(date +%Y%m%d_%H%M%S)
@@ -49,7 +50,7 @@ env_note() {
   echo "local patches: configs/rs4d/_base_/samseg-maskrcnn.py(custom_imports->mmdet.rs4d) mmdet/rs4d/models.py:1157(local ckpt path)"
   echo "config: ${CFG}"
   echo "work_dir: ${WORKDIR}"
-  echo "data_root: CitySample v1 (satellite-only, 512-native defaug) (train 2943 full / val 627 / test 2220)"
+  echo "data_root: CitySample v1 (satellite-only, 512-native defaug) (train 2142 / val 459 / test 459)"
   echo "conda env: cvt2  python: $(which python 2>/dev/null)"
 }
 

@@ -206,6 +206,30 @@
 
 全线零 NaN。catnet 由看门进程在 yolo 退出后自动接续（防三任务叠加 OOM）。
 
+## 🔄 协议切回默认增强（2026-11-11，用户拍板：defaug 复活为论文主协议）
+
+> 用户指令"回到之前的办法，跑默认数据增强"。协议B(minimal) 5 方法完整结果保留归档（上表）；v1-默认增强(512defaug) 升回主协议继续收全 12 方法。已收 3 个直接沿用：YOLO 0.7766/0.6060/边界 0.581/0.462、MSRCNN 0.5846/0.5360/0.511/0.395、CATNet 0.7276/0.6520/0.641/0.565（安全性复核见下）。
+
+### 切换日排障与修复记录（11-11）
+
+1. **协议B残留清剿**：上次"全停"漏网 4 进程（pgrep 模式未覆盖 `CitySample` 大写与 `train_net_minimal` 入口名）+ 看门队列 10:20 自动重拉 3 个 minimal 任务。教训：**批量停任务必须 `ps -u $USER` 全列人工核**，勿信单一 pgrep 模式。全部击杀+看门清除。
+2. **work_dir 混名事故（4 外部仓 wrapper bug）**：`VARIANT=minimal` 只切 CFG/RUNTAG 不切 WORKDIR → minimal 训练写进 `*512defaug*` 名目录（CATNet 重训还覆盖了已完成的 defaug 目录，其结果已先收数无损）。处置：5 目录隔离改名 `*_minimal_*partial*`（solov2 是 `*_minimal_DONE`——今晨 09:15 跑完 model_final 未测）；5 wrapper（catnet/rsprompter/rs4d/adelai/maskdino）补 WORKDIR 切换修复。
+3. **看门队列自锁**：`bash -c 'while pgrep -f "train_yolo..." ...'` 的 pgrep 匹配到自身 cmdline → 永不触发（侥幸避免重复拉起）。看门队列机制弃用，改人工接力。
+4. **CondInst 挂死**：进程活但日志 22h 无推进（11-10 18:02 停在 28.6k/65520 iter），dataloader 疑似死锁；击杀。其 minimal ckpt 在隔离目录可续。
+5. **后台进程收割事故**：`nohup ... & disown` 在工具调用边界大部分被收割（7 发 1 活——幸存者是 `cd X && nohup Y &` AND 列表形式）；**改 `setsid nohup ... < /dev/null &` 全脱离后 7/7 存活**。此后训练发射一律 setsid。
+6. **mmdet wrapper v3 残留（YOLO 误评同族隐患，主动排查捕获）**：test 模式 `--gt-json` 硬编码 v3-test.json（v3→v1 批量 sed 漏改第二例）；另 header 回显 v3 字样、5 个 v3_noaug 遗留入口。已全修。**已收 defaug 结果安全性复核**：MSRCNN 当时走 wrapper test 即崩于 loadRes id 断言（v1 预测 459 id ⊄ v3 GT 413 id 必断言）→ 收数走落盘重评，而重评能出数字则 GT 必含全部 459 id = 只能是 v1 test GT；CATNet 同口径；YOLO 已显式 459 id 复核。三结果均安全沿用。
+7. catnet/rs4d wrapper header 的 split 数字错误（2943/627/2220 系早期草案残留）→ 修正为 2142/459/459（config 本身一直指向 v1 正确路径，纯回显错误）。
+
+### defaug 重启打包（2026-11-11 16:56 发射，显存=逐进程实测）
+
+| 卡 | 在跑(实测) | eta | 排队 |
+|---|---|---|---|
+| 0 | RSPrompter(26G) | ~5天 | — |
+| 1 | RS4D(18.3G) + HTC(8.2G) | RS4D ~6天 / HTC ~1.5h | HTC完→CondInst |
+| 2 | MaskRCNN(17.5G, **train完**) + RTMDet(9.9G) | RTMDet ~7天 | MaskRCNN完→SOLOv2 |
+| 3 | MaskDINO(11G) + RSIISN(15G) | MaskDINO ~5天 / RSIISN ~2h | — |
+| — | Mask2Former(44.7G 近独占) | — | ⏸ 阻塞：四卡各余 31-34G < 45G，等他人任务退卡 |
+
 ## 方法清单与状态
 
 | 方法 | 状态 | WHU 版 config 起点（移植派生源） | 移植改动点 |
