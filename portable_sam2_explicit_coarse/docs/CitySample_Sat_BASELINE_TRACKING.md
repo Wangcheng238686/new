@@ -133,7 +133,7 @@
 
 | 方法 | config（各算法仓内） | wrapper（scripts/baselines/） | 冒烟 |
 |---|---|---|---|
-| Mask R-CNN | mmdetection:`configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v1_512defaug.py` | `run_mmdet_citysample.sh maskrcnn_v1d` | ✅ loss 正常 |
+| Mask R-CNN | mmdetection:`configs/citysample/mask-rcnn_r50_fpn_1x_citysample_v1_512defaug.py` | `run_mmdet_citysample.sh maskrcnn_v1d` | ✅ **完成**（12ep，best E12，test 459 maxDets=250，11-11 修复 gt-json 后内存内评测直通）：**bbox 0.6217 / segm 0.5683**（AP50 0.867/0.830，AP75 0.741/0.661）；**BoundaryAP 0.5480/0.4406**。对照其协议B minimal（0.523/0.484/0.460/0.350）：默认增强 bbox +0.099 / segm +0.084 / 边界 +0.088——几何增强对两阶段的增益量级确认 |
 | MS R-CNN | mmdetection:`ms-rcnn_r50-caffe_fpn_1x_citysample_v1_512defaug.py` | `…msrcnn_v1d` | ✅ **完成**（12ep+clip_grad，best E10）：**bbox 0.5846 / segm 0.5360 / BoundaryAP 0.5106/0.3953**。⚠️ val(0.7557 本评测器复推≈训练期 0.7560)→test 落差 -0.22 = **v1 域漂移的典型受害者**（仅 hflip 弱增强对 val 稀疏大目标→test 密集小目标最脆弱；对照 YOLO 强增强 val 0.87→test 0.85 几乎免疫）——评测可信性已闭环验证。NaN 事件定性：系统性不稳（clip_grad 35 修复，mmdetection cab768c）；test 内存路径一次 id 断言（落盘重评等价绕过，与 CATNet 同口径） |
 | HTC | mmdetection:`htc-wosem_r50_fpn_1x_citysample_v1_512defaug.py` | `…htc_v1d` | ✅ |
 | RTMDet-Ins-S | mmdetection:`rtmdet-ins_s_300e_citysample_v1_512defaug.py`（默认 mosaic/mixup/HSV 全保留，640→512 锚定，PipelineSwitch 恢复） | `…rtmdet_v1d` | 🔄 **全量在训 GPU2**（2026-11-09 起，E3 起 eta ~6.5h，实测增量显存 ~2G 全场最低） |
@@ -217,7 +217,7 @@
 3. **看门队列自锁**：`bash -c 'while pgrep -f "train_yolo..." ...'` 的 pgrep 匹配到自身 cmdline → 永不触发（侥幸避免重复拉起）。看门队列机制弃用，改人工接力。
 4. **CondInst 挂死**：进程活但日志 22h 无推进（11-10 18:02 停在 28.6k/65520 iter），dataloader 疑似死锁；击杀。其 minimal ckpt 在隔离目录可续。
 5. **后台进程收割事故**：`nohup ... & disown` 在工具调用边界大部分被收割（7 发 1 活——幸存者是 `cd X && nohup Y &` AND 列表形式）；**改 `setsid nohup ... < /dev/null &` 全脱离后 7/7 存活**。此后训练发射一律 setsid。
-6. **mmdet wrapper v3 残留（YOLO 误评同族隐患，主动排查捕获）**：test 模式 `--gt-json` 硬编码 v3-test.json（v3→v1 批量 sed 漏改第二例）；另 header 回显 v3 字样、5 个 v3_noaug 遗留入口。已全修。**已收 defaug 结果安全性复核**：MSRCNN 当时走 wrapper test 即崩于 loadRes id 断言（v1 预测 459 id ⊄ v3 GT 413 id 必断言）→ 收数走落盘重评，而重评能出数字则 GT 必含全部 459 id = 只能是 v1 test GT；CATNet 同口径；YOLO 已显式 459 id 复核。三结果均安全沿用。
+6. **mmdet wrapper v3 残留（YOLO 误评同族隐患，主动排查捕获）**：test 模式 `--gt-json` 硬编码 v3-test.json（v3→v1 批量 sed 漏改第二例）；另 header 回显 v3 字样、5 个 v3_noaug 遗留入口。已全修。**已收 defaug 结果安全性复核**：MSRCNN 当时走 wrapper test 即崩于 loadRes id 断言（v1 预测 459 id ⊄ v3 GT 413 id 必断言）→ 收数走落盘重评，而重评能出数字则 GT 必含全部 459 id = 只能是 v1 test GT；CATNet 同口径；YOLO 已显式 459 id 复核。三结果均安全沿用。**根因闭环（11-11 20:01）**：修复后 MaskRCNN test 内存内评测直通 exit=0——此前"citysample_sat_test.py 内存路径 id 断言需落盘绕过"的记载实为本 v3 gt-json 事故的表象，非环境 bug；落盘绕过规约保留（对超大数据集仍有用），内存路径疑案销案。
 7. catnet/rs4d wrapper header 的 split 数字错误（2943/627/2220 系早期草案残留）→ 修正为 2142/459/459（config 本身一直指向 v1 正确路径，纯回显错误）。
 
 ### defaug 重启打包（2026-11-11 16:56 发射，显存=逐进程实测）
