@@ -143,7 +143,7 @@
 | SOLOv2 | AdelaiDet:`solov2_R50_1x_citysample_v1_512defaug.yaml`（同上锚定） | `run_adelai_citysample.sh solov2` | ✅ exit=0（经 d2poly+cv2 补丁） |
 | CATNet | CATNet:`configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_512defaug.py`（原生 512+三向翻转 0.75） | `run_catnet_citysample.sh` | ✅ **完成**（36ep，best E31，test 459 maxDets=250）：**bbox 0.7276 / segm 0.6520**（AP50 0.942/0.918）；**BoundaryAP 0.6406/0.5651**——1% 边界全方法目前最高（细边界校准强） |
 | MaskDINO | MaskDINO:`configs/citysample/maskdino_R50_citysample_v1_512defaug.yaml`（MIN_SIZE 512，321300 micro-iter=300ep）+`train_citysample.py` | `run_maskdino_citysample.sh` | ✅ 100 iter 跑完（经注册修复） |
-| RSIISN | RSIISN:`configs/citysample/rsiisn_cascade_swinT_v1_512defaug.py`（多尺度 ×0.64 锚定，test 768×512 无 TTA，max_per_img 250） | `run_rsiisn_citysample.sh` | ✅ E1[600/1071] 正常（超时截断属预期） |
+| RSIISN | RSIISN:`configs/citysample/rsiisn_cascade_swinT_v1_512defaug.py`（多尺度 ×0.64 锚定，test 768×512 无 TTA，max_per_img 250） | `run_rsiisn_citysample.sh` | ✅ **完成**（12ep，best E12=末轮，test 459 maxDets=250，11-11 22:00）：**bbox 0.7220 / segm 0.7094**（AP50 0.897/0.887，AP75 0.848/0.844）；**BoundaryAP 0.6960/0.6248——1% 边界全方法新高**（超 CATNet 0.565）。遥感专用 cascade-swinT 仅 12ep 即登顶 segm 榜（+0.057 vs CATNet）；bbox 仍逊 YOLO(-0.055)。**Ours 对比表需重点关注该强基线** |
 | RS4D-box | RS4D:`configs/rs4d/rs4d_bbox-citysample-v1-512defaug.py`（LSJ-512+**Pad(1024) 修复**（SAM 画布契约，同 RSPrompter 教训），800ep bf16 bs8） | `run_rs4d_citysample.sh` | ✅ exit=0 |
 | RSPrompter(anchor) | RSPrompter仓:`rsprompter_anchor-citysample-v1-512defaug.py`（LSJ-512+hflip，Pad(1024)/max250/bf16 修复全沿用） | `run_rsprompter_citysample.sh` | ✅ exit=124 训练至超时（正常） |
 | SCNet | ❌ 跳过（WHU 三次复现失败史） | — | — |
