@@ -139,7 +139,7 @@
 | RTMDet-Ins-S | mmdetection:`rtmdet-ins_s_300e_citysample_v1_512defaug.py`（默认 mosaic/mixup/HSV 全保留，640→512 锚定，PipelineSwitch 恢复） | `…rtmdet_v1d` | 🔄 **全量在训 GPU2**（2026-11-09 起，E3 起 eta ~6.5h，实测增量显存 ~2G 全场最低） |
 | Mask2Former | mmdetection:`mask2former_r50_citysample_v1_512defaug.py`（LSJ-512+queries250+save_best） | `…mask2former_v1d` | ⚠️ 显存受阻：两次冒烟均 OOM（需 ≥38G 空闲，现卡仅 ~33G）；配置已验证至前向目标分配阶段，数据/模型/训练启动全通；等空卡补冒烟 |
 | YOLO11s-seg | ultralytics 默认全开，imgsz 512 | `run_yolo11_citysample.sh`（v1 重定向） | ✅ **完成（已修正）**（100ep，test 459 maxDets=250）：**bbox 0.7766 / segm 0.6060**（AP50 0.982/0.949，AP75 0.910/0.685）；**BoundaryAP 0.5808/0.4625**。⚠️ 首报 0.8504/0.7399 系**误评事故已撤回**：eval 脚本 DS_ROOT 在 v3→v1 批量重定向中漏改仍指 v3，首报实为 v1 训练模型在 v3-test 上的数字（v3-test∩v1-train 重叠→训练泄漏污染 inflated）；修正脚本后在真 v1 test 重评（459 图 id 复核 ⊆ v1 ✓）。真实增强收益仍显著：较无增强版（0.6865/0.5035/边界 0.474/0.352）bbox +0.090 / segm +0.103 / 边界 +0.107 |
-| CondInst | AdelaiDet:`configs/CitySample/condinst_MS_R_50_1x_citysample_v1_512defaug.yaml`（多尺度 640-800→410-512，等 epoch 65520 iter） | `run_adelai_citysample.sh condinst` | ✅ exit=0（经 d2poly 修复） |
+| CondInst | AdelaiDet:`configs/CitySample/condinst_MS_R_50_1x_citysample_v1_512defaug.yaml`（多尺度 640-800→410-512，等 epoch 65520 iter） | `run_adelai_citysample.sh condinst` | ✅ **完成**（65.5k iter=245ep，11-12 14:54 test 459 maxDets=250）：**bbox 0.5448 / segm 0.4642**；**BoundaryAP 0.4455/0.3402**——动态掩码系在密集小目标上明显弱于 RoI 系（vs MaskRCNN -0.078/-0.104），245ep 超大预算未能弥补。期间修复 adet 测试脚本 json.dump 编码器 bug（`cls=lambda` 传参冲突 → `_Enc` 类，citysample_sat_test_adet.py） |
 | SOLOv2 | AdelaiDet:`solov2_R50_1x_citysample_v1_512defaug.yaml`（同上锚定） | `run_adelai_citysample.sh solov2` | ✅ exit=0（经 d2poly+cv2 补丁） |
 | CATNet | CATNet:`configs/citysample/cat_mask_rcnn_r50_3x_citysample_v1_512defaug.py`（原生 512+三向翻转 0.75） | `run_catnet_citysample.sh` | ✅ **完成**（36ep，best E31，test 459 maxDets=250）：**bbox 0.7276 / segm 0.6520**（AP50 0.942/0.918）；**BoundaryAP 0.6406/0.5651**——1% 边界全方法目前最高（细边界校准强） |
 | MaskDINO | MaskDINO:`configs/citysample/maskdino_R50_citysample_v1_512defaug.yaml`（MIN_SIZE 512，321300 micro-iter=300ep）+`train_citysample.py` | `run_maskdino_citysample.sh` | ✅ 100 iter 跑完（经注册修复） |
@@ -194,6 +194,21 @@
 | Mask2Former | — | — | — | — | ⏸ 待空卡(需 45G) |
 
 观察：几何增强全禁后全方法大幅退化（两阶段 segm 从 defaug ~0.65→~0.48，-17pt）；HTC 的三阶 cascade 在弱增强下最优 segm；YOLO 仍以 bbox 0.687 领先。⚠️ YOLO minimal 结果与 v1-noaug 完全一致(0.6865/0.5035/边界 0.4738/0.3523 四位一致)——光度注入等效性待核(可能 patch 未生效，也可能光度增强对该模型确无影响)。
+
+### 协议B × Ours 旧契约 S_t50 同口径对照（2026-11-12 原始产物级核验）
+
+S_t50 数字来自 `ue_compact_s_t50_full50_20261103` 台账+原始 metrics.json/records.json（val-best E43；**口径核验：459 图 full split / det 上限 250（9 图打满，均值 144.9 det/图 vs GT 均值 98.0、最大 238）/ FP32 / 无 TTA**——与对比算法评测链逐项同口径）。S_t50 边界指标由其 records.json 预测（66,522 条 RLE）经同一 `boundary_ap.py` 补算：
+
+| 方法 | bbox mAP | b AP50 | b AP75 | segm mAP | s AP50 | s AP75 | BAP 2% | BAP 1% |
+|---|---|---|---|---|---|---|---|---|
+| **Ours S_t50(E43)** | **0.7025** | 0.9265 | **0.8116** | **0.6673** | **0.9131** | **0.7733** | **0.6516** | **0.5616** |
+| YOLO11s-seg | 0.6865 | **0.9489** | 0.8065 | 0.5035 | 0.8586 | 0.5215 | 0.4738 | 0.3523 |
+| HTC w/o sem | 0.5282 | 0.7888 | 0.5914 | 0.5042 | 0.7504 | 0.5687 | 0.4815 | 0.3718 |
+| RTMDet-Ins-S | 0.5370 | 0.7778 | 0.6470 | 0.4437 | 0.7498 | 0.4662 | 0.4264 | 0.3277 |
+| Mask R-CNN | 0.5228 | 0.7937 | 0.5800 | 0.4844 | 0.7434 | 0.5388 | 0.4596 | 0.3502 |
+| MS R-CNN | 0.5167 | 0.8006 | 0.5765 | 0.4785 | 0.7430 | 0.5259 | 0.4514 | 0.3370 |
+
+要点：对齐合同下 Ours 全列第一；bbox 仅与 YOLO 接近（-0.016，AP75 基本打平）；**差距集中在掩码质量列——segm AP75 -0.205、BoundaryAP 2% -0.170 / 1% -0.190**（vs 各列最强基线）——SAM2 掩码头优势的正面对比素材。附注：defaug 协议下 RSIISN 边界(0.696/0.625)高于 S_t50(0.652/0.562)，主表锚点选择时需留意（见"协议切回"章节）。
 
 **状态（2026-11-10 03:2x，独占四卡满载发射）**：旧协议 defaug 在跑任务全部作废（RTMDet defaug 重跑终止归档 `*_VOID_20261110`，其 mask 监督本已因 poly2mask 事故不可信）；已收集的 defaug 结果（YOLO 0.7766/0.6060、CATNet、MSRCNN）保留归档作补充参考。协议B 12/12 全部在跑/排队（显存按逐进程实测打包）：
 

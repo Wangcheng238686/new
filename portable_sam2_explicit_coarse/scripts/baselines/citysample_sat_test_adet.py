@@ -81,16 +81,16 @@ def main():
             n_img += 1
 
     if args.dump_prefix:
-        def _enc(o):
-            if isinstance(o, (bytes, bytearray)):
-                return o.decode('utf-8', 'replace')
-            if isinstance(o, (np.ndarray, np.generic)):
-                return o.item() if o.ndim == 0 else o.tolist()
-            return o
+        class _Enc(json.JSONEncoder):
+            def default(self, o):
+                if isinstance(o, (bytes, bytearray)):
+                    return o.decode('utf-8', 'replace')
+                if isinstance(o, (np.ndarray, np.generic)):
+                    return o.item() if o.ndim == 0 else o.tolist()
+                return super().default(o)
         out_json = args.dump_prefix + '.segm.json'
         with open(out_json, 'w') as f:
-            json.dump(preds, f, cls=lambda *a, **k: json.JSONEncoder(
-                *a, default=_enc, **k))
+            json.dump(preds, f, cls=_Enc)
         print(f'dumped {len(preds)} preds -> {out_json}')
 
     from boundary_ap import evaluate_boundary, evaluate_maxdets
