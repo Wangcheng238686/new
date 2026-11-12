@@ -272,6 +272,23 @@ S_t50 数字来自 `ue_compact_s_t50_full50_20261103` 台账+原始 metrics.json
 | 3 | MaskDINO(11G) + RSIISN(15G) | MaskDINO ~5天 / RSIISN ~2h | — |
 | — | Mask2Former(44.7G 近独占) | — | ⏸ 阻塞：四卡各余 31-34G < 45G，等他人任务退卡 |
 
+## ⏸ defaug 全线暂停（2026-11-12 16:31，用户指令"先停掉，后续再考虑复跑"）
+
+**暂停时快照（ckpt 全部保留、resume 即续）：**
+
+| 方法 | 中断进度 | 恢复命令 |
+|---|---|---|
+| SOLOv2 | 46%（iter 30k/65.5k，model_0029999.pth）| `bash run_adelai_citysample.sh solov2 resume <gpu>` ⚠️ 今晨 08:15 死于 detectron2 MapDataset `_addr` 共享内存索引错乱（IndexError: index 139974242577631 >> size 2142，worker 内 data 读取期）——d2 栈已知类偶发 shm 竞态；复跑若再现可降 num_workers 或换 persistent_workers=False |
+| RS4D | E137/800（epoch_137.pth） | `bash run_rs4d_citysample.sh resume <gpu>` |
+| RSPrompter | E53/300（epoch_53.pth） | `bash run_rsprompter_citysample.sh resume <gpu>` |
+| RTMDet | E50/300 | `bash run_mmdet_citysample.sh rtmdet_v1d resume <gpu>` |
+| MaskDINO | iter 70.6k/321.3k（22%） | `bash run_maskdino_citysample.sh resume <gpu>` |
+| M2F | 从未发射（45G 受阻） | `bash run_mmdet_citysample.sh mask2former_v1d train <gpu>` 需近独占卡 |
+
+**defaug 已收数 7/12**（test 459 maxDets=250 + BoundaryAP 全出）：YOLO 0.7766/0.6060/0.581/0.462 · RSIISN 0.7220/0.7094/0.696/0.625 · CATNet 0.7276/0.6520/0.641/0.565 · HTC 0.6461/0.6136/0.592/0.489 · MaskRCNN 0.6217/0.5683/0.548/0.441 · CondInst 0.5448/0.4642/0.446/0.340 · MSRCNN 0.5846/0.5360/0.511/0.395。
+
+**遗留决策（待用户拍板）**：① 论文主表锚点（defaug+D4-Ours vs 协议B 对齐合同，见"后四方法差距归因"节）② 协议B 补 RSIISN（唯一缺口，12ep≈3.5h）③ robustness 单点（Ours last-ckpt 复测 / MaskRCNN 50ep 延长）④ S_t50/R_IT 等 Ours 各臂的 BoundaryAP 可由 records.json 同法补算（暂不列入主表）。
+
 ## 方法清单与状态
 
 | 方法 | 状态 | WHU 版 config 起点（移植派生源） | 移植改动点 |
