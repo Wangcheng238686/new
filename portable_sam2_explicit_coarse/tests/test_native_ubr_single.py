@@ -265,11 +265,7 @@ def test_delta_fingerprint_touches_only_udpr_key():
         )
 
 
-@pytest.mark.skipif(not _HEAVY_OK, reason="SAM2 assets unavailable on this host")
-def test_empty_rank_losses_tuple_contract_and_refiner_graph():
-    # F1 regression: the host hook returns (losses, telemetry) despite its
-    # stale "-> dict" annotation; the override must keep that tuple contract
-    # and keep the refiner in the DDP graph on empty-positive ranks.
+def _build_delta_model(delta_path):
     os.environ.setdefault("SAM2_REPO", _SAM2_REPO)
     import mmdet.models  # noqa: F401
     from mmengine.config import Config
@@ -283,8 +279,16 @@ def test_empty_rank_losses_tuple_contract_and_refiner_graph():
         )
     import rsprompter  # noqa: F401
 
-    cfg = Config.fromfile(str(PKG / "configs/ablations/vhr10_ubr_matrix300_20261114.py"))
-    model = MODELS.build(cfg.model)
+    cfg = Config.fromfile(str(PKG / delta_path))
+    return MODELS.build(cfg.model)
+
+
+@pytest.mark.skipif(not _HEAVY_OK, reason="SAM2 assets unavailable on this host")
+def test_empty_rank_losses_tuple_contract_and_refiner_graph():
+    # F1 regression: the host hook returns (losses, telemetry) despite its
+    # stale "-> dict" annotation; the override must keep that tuple contract
+    # and keep the refiner in the DDP graph on empty-positive ranks.
+    model = _build_delta_model("configs/ablations/vhr10_ubr_matrix300_20261114.py")
     install_native_ubr_tail(model)
 
     x = (torch.zeros(1, 512, 8, 8),)
@@ -297,3 +301,70 @@ def test_empty_rank_losses_tuple_contract_and_refiner_graph():
         p.grad for p in model.roi_head.mask_head.native_refiner.parameters()
     ]
     assert any(grad is not None for grad in refiner_grads)
+
+
+@pytest.mark.skipif(not _HEAVY_OK, reason="SAM2 assets unavailable on this host")
+@pytest.mark.parametrize("delta", [d[0] for d in _DELTAS])
+def test_model_level_zero_init_identity_through_mask_forward(delta):
+    # Pre-registered probe gate: with the zero-initialised output conv, the
+    # installed tail must leave the mask logits BITWISE unchanged at install,
+    # through the real head/decoder pipeline (eval mode, no RNG paths).
+    model = _build_delta_model(delta)
+    model.eval()
+    with torch.no_grad():
+        feats, emb, pos, high = model.extract_feat(torch.randn(1, 3, 1024, 1024))
+        rois = torch.tensor(
+            [[0.0, 64.0, 64.0, 896.0, 896.0], [0.0, 128.0, 128.0, 768.0, 768.0]]
+        )
+
+        def run():
+            out = model.roi_head._mask_forward(
+                feats, rois,
+                image_embeddings=emb,
+                image_positional_embeddings=pos,
+                high_res_features=high,
+            )
+            return out["mask_preds"]
+
+        raw = run()
+        install_native_ubr_tail(model)
+        refined = run()
+    assert torch.equal(raw, refined)
+
+
+@pytest.mark.skipif(not _HEAVY_OK, reason="SAM2 assets unavailable on this host")
+def test_optimizer_grouping_unchanged_except_refiner():
+    # Audit C1 regression: the shim renames decoder keys (mask_decoder.base.*);
+    # optimizer grouping must stay identical for every pre-existing param
+    # (by param id, stable through install), with only the 6625 refiner
+    # params added to the default (other) group at lr*1.0 / wd.
+    sys.path.insert(0, str(PKG / "train"))
+    from optimizer import _build_optimizer
+
+    model = _build_delta_model("configs/ablations/whu1024_ubr_fast150_20261114.py")
+
+    def groups(model):
+        opt = _build_optimizer(
+            model, lr=5e-4, backbone_lr_mult=1.0, other_lr_mult=1.0,
+            bbox_head_lr_mult=0.0, mask_decoder_lr_mult=1.0, no_mask_lr_mult=1.0,
+            prompt_encoder_lr_mult=0.0, shape_prior_lr_mult=1.0,
+            decoder_tail_lr_mult=1.0, weight_decay=0.05,
+        )
+        mapping = {}
+        for group in opt.param_groups:
+            for param in group["params"]:
+                mapping[id(param)] = (group["lr"], group["weight_decay"])
+        return mapping
+
+    before = groups(model)
+    install_native_ubr_tail(model)
+    after = groups(model)
+    refiner_ids = {
+        id(p) for p in model.roi_head.mask_head.native_refiner.parameters()
+    }
+    assert len(refiner_ids) == 22 and refiner_ids <= set(after)
+    assert not refiner_ids & set(before)
+    for pid, spec in before.items():
+        assert after[pid] == spec  # no pre-existing param changes group/lr/wd
+    for pid in refiner_ids:
+        assert after[pid] == (5e-4, 0.05)
