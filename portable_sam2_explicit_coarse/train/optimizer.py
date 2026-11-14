@@ -56,7 +56,12 @@ def _build_optimizer(
         elif match_name.startswith("backbone.") or match_name.startswith("shared_image_embedding."):
             params_backbone.append(param)
             names_backbone.append(name)
-        elif "roi_head.mask_head.mask_decoder.decoder.iou_prediction_head" in match_name:
+        elif "roi_head.mask_head.mask_decoder.decoder.iou_prediction_head" in match_name or (
+            # native-UBR shim variant: the decoder wrapper lives one level
+            # deeper (mask_decoder.base.decoder.*); keep the same IoU group.
+            "roi_head.mask_head.mask_decoder.base.decoder.iou_prediction_head"
+            in match_name
+        ):
             # The IoU head keeps its own group (historical C2-era contract)
             # even though the quality-rerank module is gone.
             params_iou_head.append(param)

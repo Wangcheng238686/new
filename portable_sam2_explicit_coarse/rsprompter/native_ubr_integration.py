@@ -19,8 +19,10 @@ Adaptations for this post-restructure single-stream package:
 - ``RSPrompterAnchorMaskHeadSAM2.forward`` here receives ``boxes`` /
   ``roi_img_ids`` as head kwargs and returns ``MaskHeadOutput``; the shim
   context is captured from those kwargs around ``super().forward``.
-- ``RSPrompterAnchorRoIPromptHead._empty_rank_losses`` returns a plain dict
-  in this package; the empty-rank graph keeper matches that contract.
+- ``RSPrompterAnchorRoIPromptHead._empty_rank_losses`` returns a
+  ``(losses, telemetry)`` tuple in this package (its ``-> dict`` annotation
+  is stale); the empty-rank graph keeper mirrors the dual-side tuple
+  contract.
 - The 512 mask-size guard is widened to the paper 1024 family (the refiner
   is fully convolutional; 1024 input -> native lattice 256).
 
@@ -63,14 +65,16 @@ class NativeRoIHead(RSPrompterAnchorRoIPromptHead):
     """Keep the refiner parameters in the DDP graph on empty-positive ranks."""
 
     def _empty_rank_losses(self, x):
-        losses = super()._empty_rank_losses(x)
+        # Host contract (anchor_roi_head.py): returns (losses, telemetry) —
+        # the "-> dict" annotation there is stale. Mirror the dual-side
+        # installer: add a zero-graph term on the existing loss_mask entry.
+        losses, telemetry = super()._empty_rank_losses(x)
         head = getattr(self.mask_head, "native_refiner", None)
         if head is not None:
-            zero = sum(p.sum() * 0 for p in head.parameters())
-            for key in list(losses):
-                if torch.is_tensor(losses[key]) and losses[key].is_floating_point():
-                    losses[key] = losses[key] + zero
-        return losses
+            losses["loss_mask"] = losses["loss_mask"] + sum(
+                p.sum() * 0 for p in head.parameters()
+            )
+        return losses, telemetry
 
 
 class NativeDecoderShim(nn.Module):

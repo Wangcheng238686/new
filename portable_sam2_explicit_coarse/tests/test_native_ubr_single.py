@@ -23,6 +23,7 @@ sys.path.insert(0, str(PKG))
 from rsprompter.native_ubr_refiner import NativeRoIRefiner
 from rsprompter.native_ubr_integration import (  # noqa: E402
     UBR_EXPECTED_PARAMS,
+    NativeDecoderShim,
     NativeMaskHead,
     install_native_ubr_tail,
     verify_ubr_ready,
@@ -152,6 +153,19 @@ def test_aux_clip_partition_separates_refiner():
     assert not refiner_ids & {id(p) for p in base}
 
 
+def test_shim_context_guards():
+    # A NativeMaskHead without its own shim refuses to forward.
+    head = _FakeHead()
+    head.__class__ = NativeMaskHead
+    with pytest.raises(RuntimeError):
+        head.forward()
+    # The shim refuses to forward without an active call context.
+    head2 = _FakeHead()
+    shim = NativeDecoderShim(head2.mask_decoder, head2)
+    with pytest.raises(RuntimeError):
+        shim.forward()
+
+
 # ---------------------------------------------------------------------------
 # heavy: full CPU build of both delta configs + parity gate
 # ---------------------------------------------------------------------------
@@ -249,3 +263,37 @@ def test_delta_fingerprint_touches_only_udpr_key():
             architecture_fingerprint(restored)
             == architecture_fingerprint(paper_model)
         )
+
+
+@pytest.mark.skipif(not _HEAVY_OK, reason="SAM2 assets unavailable on this host")
+def test_empty_rank_losses_tuple_contract_and_refiner_graph():
+    # F1 regression: the host hook returns (losses, telemetry) despite its
+    # stale "-> dict" annotation; the override must keep that tuple contract
+    # and keep the refiner in the DDP graph on empty-positive ranks.
+    os.environ.setdefault("SAM2_REPO", _SAM2_REPO)
+    import mmdet.models  # noqa: F401
+    from mmengine.config import Config
+    from mmengine.registry import MODELS as MMENGINE_MODELS
+    from mmdet.models.data_preprocessors import DetDataPreprocessor
+    from mmdet.registry import MODELS
+
+    if "DetDataPreprocessor" not in MMENGINE_MODELS:
+        MMENGINE_MODELS.register_module(
+            name="DetDataPreprocessor", module=DetDataPreprocessor
+        )
+    import rsprompter  # noqa: F401
+
+    cfg = Config.fromfile(str(PKG / "configs/ablations/vhr10_ubr_matrix300_20261114.py"))
+    model = MODELS.build(cfg.model)
+    install_native_ubr_tail(model)
+
+    x = (torch.zeros(1, 512, 8, 8),)
+    out = model.roi_head._empty_rank_losses(x)
+    assert isinstance(out, tuple) and len(out) == 2
+    losses, telemetry = out
+    assert "loss_mask" in losses and torch.is_tensor(losses["loss_mask"])
+    losses["loss_mask"].backward()
+    refiner_grads = [
+        p.grad for p in model.roi_head.mask_head.native_refiner.parameters()
+    ]
+    assert any(grad is not None for grad in refiner_grads)
