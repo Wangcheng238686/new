@@ -103,6 +103,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--prompt-encoder-lr-mult", type=float, default=0.1)
     parser.add_argument("--shape-prior-lr-mult", type=float, default=1.0)
     parser.add_argument("--decoder-tail-lr-mult", type=float, default=1.0)
+    parser.add_argument("--native-ubr", action="store_true",
+                        help="install the S-arm zero-evidence native UBR tail "
+                             "(rsprompter/native_ubr_integration.py) after model "
+                             "build; requires decoder_tail_refiner_cfg.enabled=False "
+                             "in the config. Recorded into training_args as the "
+                             "inference-side install marker.")
     parser.add_argument("--decoupled-aux-clip", action="store_true",
                         help="clip base params and each aux head separately at "
                              "max_norm 0.5 instead of one global clip; keeps the "

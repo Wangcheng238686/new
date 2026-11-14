@@ -75,6 +75,13 @@ def parse_args() -> argparse.Namespace:
         help="Allow missing/unexpected model keys. Strict loading is the default.",
     )
     parser.add_argument(
+        "--native-ubr",
+        action="store_true",
+        help="Install the S-arm zero-evidence native UBR tail before loading "
+             "(auto-detected from config_snapshot.training_args.native_ubr; "
+             "this flag forces it on).",
+    )
+    parser.add_argument(
         "--max-per-img",
         type=int,
         default=None,
@@ -172,6 +179,33 @@ def main() -> None:
     model_config, config_source = _resolve_model_config(args, snapshot)
     device = _resolve_device(args.device)
     model = _register_and_build(model_config)
+    # Native-UBR marker branch: checkpoints trained with --native-ubr carry
+    # shimmed decoder keys (mask_decoder.base.*) plus native_refiner.*. The
+    # rebuild above produces the plain layout, so install the same tail BEFORE
+    # the strict load; without it the load fails on unexpected/missing keys.
+    training_args = snapshot.get("training_args") or {}
+    native_ubr_marker = bool(training_args.get("native_ubr")) or args.native_ubr
+    selected_state = _select_state_dict(checkpoint, args.weights)
+    has_refiner_keys = any(
+        ".native_refiner." in str(key) for key in selected_state.keys()
+    )
+    if native_ubr_marker and has_refiner_keys:
+        from rsprompter.native_ubr_integration import install_native_ubr_tail
+
+        ubr_receipt = install_native_ubr_tail(model)
+        logging.info(
+            "native UBR installed for inference: arch=%s params=%d mode=%s",
+            ubr_receipt["architecture"],
+            ubr_receipt["params"],
+            ubr_receipt["coordinate_mode"],
+        )
+    elif native_ubr_marker != has_refiner_keys:
+        raise RuntimeError(
+            "native UBR marker/keys mismatch: marker="
+            f"{native_ubr_marker} refiner_keys={has_refiner_keys}. Refusing to "
+            "load a tail-mismatched checkpoint non-strictly; retrain or "
+            "re-check --weights/--native-ubr."
+        )
     mask_head = model.roi_head.mask_head
     final_mask_coordinate_mode = getattr(
         mask_head, "final_mask_coordinate_mode", None

@@ -106,10 +106,12 @@ refined logits 进原 roi_balanced_dice 监督、零初始化恒等不变。
 
 - EXP-ID：**EXP-0046（WHU）/ EXP-0047（NWPU）**——全局下一个空位（双流
   登记册最大 EXP-0045；已查本地与 origin 均无 exp/EXP-0046、exp/EXP-0047）。
-- 工件：`/data2/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/`
-  `<RUN_TAG>_tr1.0_va1.0`（数据盘，不进 git）；结论 MD 回填本档 +
-  `docs/EXP_REGISTRY.md` 登记；分支纪律按 `docs/machine_sync_protocol.md`
-  （machine2/fast-whu150 共用分支，小步提交，push 前 fetch/rebase）。
+- 工件：本机 environment.local.sh 默认
+  `/data1/wangcheng/checkpoint/portable_sam2_explicit_coarse/ablations/`
+  `<RUN_TAG>_tr1.0_va1.0`（数据盘，余 254G 足够两个 run，不进 git）；结论 MD
+  回填本档 + `docs/EXP_REGISTRY.md` 登记；分支纪律按
+  `docs/machine_sync_protocol.md`（machine2/fast-whu150 共用分支，小步提交，
+  push 前 fetch/rebase）。
 
 ## 风险预案
 

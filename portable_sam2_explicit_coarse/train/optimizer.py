@@ -208,6 +208,10 @@ def _set_norm_eval(model: torch.nn.Module):
 # heat-start passes both gates.  P2/renderer lineages keep the legacy clip.
 _AUX_CLIP_MODULE_PREFIXES = (
     "roi_head.mask_head.decoder_tail_refiner.",
+    # UDPR->native UBR swap (EXP-0046/0047 reruns): the zero-init residual tail
+    # is the aux head now; --decoupled-aux-clip keeps its original separate
+    # 0.5 budget semantics for whichever tail module is actually present.
+    "roi_head.mask_head.native_refiner.",
 )
 
 

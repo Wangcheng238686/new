@@ -179,6 +179,25 @@ def main():
     model = MODELS.build(cfg.model)
     model.to(device)
 
+    if getattr(args, "native_ubr", False):
+        # Opt-in S-arm zero-evidence native UBR tail (paper-protocol reruns).
+        # Runs before DDP wrap and optimizer build; verified UDPR-disabled and
+        # coordinate-contract-valid inside the installer. The receipt is logged
+        # here; args.native_ubr lands in config_snapshot.training_args and is
+        # the inference-side rebuild marker.
+        from rsprompter.native_ubr_integration import install_native_ubr_tail
+
+        ubr_receipt = install_native_ubr_tail(model)
+        if is_main:
+            logger.info(
+                "native UBR installed: arch=%s params=%d mode=%s seed=%d keys=%d",
+                ubr_receipt["architecture"],
+                ubr_receipt["params"],
+                ubr_receipt["coordinate_mode"],
+                ubr_receipt["seed"],
+                len(ubr_receipt["keys"]),
+            )
+
     model_for_preproc = model.module if hasattr(model, "module") else model
     data_preprocessor = model_for_preproc.data_preprocessor
     evaluation_mask_head = model_for_preproc.roi_head.mask_head
