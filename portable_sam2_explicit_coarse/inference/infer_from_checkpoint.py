@@ -47,6 +47,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--max-batches", type=int, default=0)
     parser.add_argument(
+        "--skip-batches", type=int, default=0,
+        help="Shard-mode resume: drop the first N batches of this shard's "
+             "subset (records for them must already exist as chunk files).")
+    parser.add_argument(
+        "--shard-index", type=int, default=0,
+        help="Multi-GPU sharded inference: process dataset images "
+             "[shard_index::shard_count] (round-robin, disjoint, "
+             "order-preserving). Shard mode skips evaluation and writes "
+             "per-shard record files for later --merge-shards.")
+    parser.add_argument(
+        "--shard-count", type=int, default=1,
+        help="Total number of disjoint shards (1 = unsharded legacy path).")
+    parser.add_argument(
+        "--merge-shards", type=int, default=0,
+        help="Merge N per-shard record files from --output-dir and run the "
+             "standard evaluation on the union. No inference happens; run "
+             "with --device cpu to keep GPUs free.")
+    parser.add_argument(
         "--device",
         default="auto",
         help="'auto', 'cpu', 'cuda', or a concrete device such as cuda:1.",
@@ -273,61 +291,187 @@ def main() -> None:
 
     contract = _resolve_dataset_contract(args, snapshot)
     loader = _build_loader(contract, args.num_workers)
+    if args.merge_shards and (args.shard_count > 1 or args.shard_index):
+        raise SystemExit("--merge-shards cannot be combined with shard inference")
+    if args.shard_count > 1:
+        if not 0 <= args.shard_index < args.shard_count:
+            raise SystemExit("--shard-index must be in [0, --shard-count)")
+        base = loader.dataset
+        shard_indices = list(range(args.shard_index, len(base), args.shard_count))
+        if args.skip_batches:
+            if args.merge_shards:
+                raise SystemExit("--skip-batches cannot be combined with --merge-shards")
+            shard_indices = shard_indices[args.skip_batches * loader.batch_size:]
+            logger.info(
+                "Shard resume: skipping first %d batches (%d images remain)",
+                args.skip_batches, len(shard_indices),
+            )
+        from torch.utils.data import DataLoader as _ShardLoader, Subset
+
+        loader = _ShardLoader(
+            Subset(base, shard_indices),
+            batch_size=loader.batch_size,
+            shuffle=False,
+            num_workers=args.num_workers,
+            collate_fn=loader.collate_fn,
+        )
+        logger.info(
+            "Sharded inference: shard %d/%d over %d/%d images",
+            args.shard_index, args.shard_count, len(shard_indices), len(base),
+        )
     data_preprocessor = model.data_preprocessor
     all_gt: List[dict] = []
     all_dt: List[dict] = []
     all_metas: List[dict] = []
     prediction_records: List[dict] = []
 
-    with torch.inference_mode():
-        for batch_index, batch in enumerate(loader):
-            if args.max_batches > 0 and batch_index >= args.max_batches:
-                break
-            imgs, data_samples = _build_data_samples(batch, device)
-            processed = data_preprocessor(
-                {"inputs": imgs, "data_samples": data_samples},
-                training=False,
-            )
-            outputs = model.predict(
-                processed["inputs"],
-                processed["data_samples"],
-                rescale=False,
-            )
-            for index, output in enumerate(outputs):
-                meta = batch["img_metas"][index]
-                shape = meta["img_shape"]
-                gt = _extract_instances_numpy(
-                    processed["data_samples"][index].gt_instances,
-                    shape,
-                )
-                pred_instances = (
-                    output.pred_instances
-                    if hasattr(output, "pred_instances")
-                    else output
-                )
-                prediction = _filter_predictions(
-                    _extract_instances_numpy(pred_instances, shape),
-                    args.score_thr,
-                )
-                all_gt.append(gt)
-                all_dt.append(prediction)
-                all_metas.append(meta)
-                prediction_records.extend(_prediction_records(prediction, meta))
-            logger.info(
-                "Processed batch %d/%d (%d images)",
-                batch_index + 1,
-                len(loader),
-                len(all_metas),
-            )
-
-    if not all_metas:
-        raise RuntimeError("No test images were processed")
-
     output_dir = (
         Path(args.output_dir).expanduser().resolve()
         if args.output_dir
         else checkpoint_path.parent / f"inference_{args.split}"
     )
+
+    if args.merge_shards:
+        # Merge mode: no inference; the model above was rebuilt only to keep
+        # the score-contract derivation identical to the legacy path. Records
+        # come from the per-batch chunk files (kill-resume safe).
+        import pickle
+
+        shard_image_ids = []
+        for shard in range(args.merge_shards):
+            chunk_paths = sorted(
+                output_dir.glob(f"shard{shard}_chunk*.pkl")
+            )
+            if not chunk_paths:
+                raise SystemExit(
+                    f"no chunk records for shard {shard} in {output_dir}"
+                )
+            for chunk_path in chunk_paths:
+                with chunk_path.open("rb") as handle:
+                    batch_gt, batch_dt, batch_metas, batch_records = pickle.load(handle)
+                all_gt.extend(batch_gt)
+                all_dt.extend(batch_dt)
+                all_metas.extend(batch_metas)
+                prediction_records.extend(batch_records)
+                shard_image_ids.extend(
+                    int(meta.get("image_id", meta.get("scene_id", 0)))
+                    for meta in batch_metas
+                )
+        if len(set(shard_image_ids)) != len(shard_image_ids):
+            raise RuntimeError("shard merge found overlapping image coverage")
+        total_images = len(loader.dataset)
+        if shard_image_ids and len(set(shard_image_ids)) != total_images:
+            raise RuntimeError(
+                f"shard merge covered {len(set(shard_image_ids))} images "
+                f"but the split has {total_images}; rerun missing chunks"
+            )
+        logger.info(
+            "Merged %d shards: %d/%d images, %d detections",
+            args.merge_shards, len(all_metas), total_images,
+            len(prediction_records),
+        )
+    else:
+        import pickle as _pickle
+
+        def _chunk_path(absolute_batch):
+            return output_dir / (
+                f"shard{args.shard_index}_chunk{absolute_batch:04d}.pkl"
+            )
+
+        with torch.inference_mode():
+            for batch_index, batch in enumerate(loader):
+                if args.max_batches > 0 and batch_index >= args.max_batches:
+                    break
+                imgs, data_samples = _build_data_samples(batch, device)
+                processed = data_preprocessor(
+                    {"inputs": imgs, "data_samples": data_samples},
+                    training=False,
+                )
+                outputs = model.predict(
+                    processed["inputs"],
+                    processed["data_samples"],
+                    rescale=False,
+                )
+                batch_gt, batch_dt, batch_metas, batch_records = [], [], [], []
+                for index, output in enumerate(outputs):
+                    meta = batch["img_metas"][index]
+                    shape = meta["img_shape"]
+                    gt = _extract_instances_numpy(
+                        processed["data_samples"][index].gt_instances,
+                        shape,
+                    )
+                    pred_instances = (
+                        output.pred_instances
+                        if hasattr(output, "pred_instances")
+                        else output
+                    )
+                    prediction = _filter_predictions(
+                        _extract_instances_numpy(pred_instances, shape),
+                        args.score_thr,
+                    )
+                    batch_gt.append(gt)
+                    batch_dt.append(prediction)
+                    batch_metas.append(meta)
+                    batch_records.extend(_prediction_records(prediction, meta))
+                all_gt.extend(batch_gt)
+                all_dt.extend(batch_dt)
+                all_metas.extend(batch_metas)
+                prediction_records.extend(batch_records)
+                if args.shard_count > 1:
+                    # Kill-resume contract: one atomic chunk file per batch
+                    # (tmp + rename). A killed run loses at most the batch in
+                    # flight; --skip-batches resumes from existing chunks and
+                    # the merge pass replays the standard evaluation over the
+                    # union of all chunks (one code path, unsharded-equal).
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    chunk = _chunk_path(args.skip_batches + batch_index)
+                    tmp = chunk.with_suffix(".tmp")
+                    with tmp.open("wb") as handle:
+                        _pickle.dump(
+                            (batch_gt, batch_dt, batch_metas, batch_records),
+                            handle,
+                        )
+                    tmp.replace(chunk)
+                logger.info(
+                    "Processed batch %d/%d (%d images)",
+                    batch_index + 1,
+                    len(loader),
+                    len(all_metas),
+                )
+
+        if not all_metas:
+            raise RuntimeError("No test images were processed")
+
+        if args.shard_count > 1:
+            chunks = sorted(
+                path.name for path in output_dir.glob(
+                    f"shard{args.shard_index}_chunk*.pkl"
+                )
+            )
+            _write_json(
+                output_dir / f"shard{args.shard_index}_manifest.json",
+                {
+                    "shard_index": args.shard_index,
+                    "shard_count": args.shard_count,
+                    "skip_batches": args.skip_batches,
+                    "batches_this_run": (
+                        (args.max_batches or len(loader))
+                        if all_metas else 0
+                    ),
+                    "chunk_files": len(chunks),
+                    "processed_image_ids": sorted({
+                        int(meta.get("image_id", meta.get("scene_id", 0)))
+                        for meta in all_metas
+                    }),
+                },
+            )
+            print(
+                f"shard {args.shard_index}/{args.shard_count}: "
+                f"{len(chunks)} chunk files, {len(all_metas)} images this run "
+                f"-> {output_dir}"
+            )
+            return
+
     output_dir.mkdir(parents=True, exist_ok=True)
     predictions_path = output_dir / "predictions.json"
     _write_json(predictions_path, prediction_records)
