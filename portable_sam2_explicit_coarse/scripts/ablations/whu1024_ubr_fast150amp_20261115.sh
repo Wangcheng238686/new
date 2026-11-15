@@ -16,6 +16,7 @@
 set -Eeuo pipefail
 # AMP 默认开启（本家族唯一协议差分）
 export AMP="${AMP:-1}"
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MAINLINE="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -26,6 +27,7 @@ export RUN_TAG="${RUN_TAG:-whu1024_a3sgm_ubr_fast150amp_20261115}"
 # --- fast150 数据/调度策略（与历史 run 完全一致）---
 export MAX_EPOCHS=150
 export VAL_EVERY_N_EPOCHS=1
+export VAL_SHARD_ACROSS_RANKS=1  # 分卡验证继承规则（工程等价，见预登记文档）
 export WARMUP_ITERS=100
 export CUDNN_BENCHMARK=1
 export EARLY_STOPPING_PATIENCE=20
@@ -85,4 +87,5 @@ exec "${PYTHON}" -m torch.distributed.run \
   --weight-decay 0.05 \
   --prompt-debug-stats 1 --prompt-debug-stats-interval 50 \
   --native-ubr \
+  --mask-roi-chunk-size 16 \
   "${RESUME_ARGS[@]}"

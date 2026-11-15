@@ -109,6 +109,11 @@ def _parse_args() -> argparse.Namespace:
                              "build; requires decoder_tail_refiner_cfg.enabled=False "
                              "in the config. Recorded into training_args as the "
                              "inference-side install marker.")
+    parser.add_argument("--mask-roi-chunk-size", type=int, default=0,
+                        help="RoI head mask-path chunking override (memory "
+                             "engineering only, per-RoI numerics unchanged; "
+                             "0 = keep the default 32, 0 with chunking off "
+                             "is not exposed).")
     parser.add_argument("--decoupled-aux-clip", action="store_true",
                         help="clip base params and each aux head separately at "
                              "max_norm 0.5 instead of one global clip; keeps the "

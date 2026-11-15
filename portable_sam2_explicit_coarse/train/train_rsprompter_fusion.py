@@ -198,6 +198,13 @@ def main():
                 len(ubr_receipt["keys"]),
             )
 
+    if getattr(args, "mask_roi_chunk_size", 0):
+        # Pure memory lever (anchor_roi_head.py getattr default 32): the
+        # chunked loop keeps per-RoI numerics identical, only peak VRAM drops.
+        model.roi_head.mask_roi_chunk_size = int(args.mask_roi_chunk_size)
+        if is_main:
+            logger.info("mask_roi_chunk_size overridden to %d", int(args.mask_roi_chunk_size))
+
     model_for_preproc = model.module if hasattr(model, "module") else model
     data_preprocessor = model_for_preproc.data_preprocessor
     evaluation_mask_head = model_for_preproc.roi_head.mask_head
