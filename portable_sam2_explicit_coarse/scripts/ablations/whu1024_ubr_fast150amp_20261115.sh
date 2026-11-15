@@ -87,5 +87,5 @@ exec "${PYTHON}" -m torch.distributed.run \
   --weight-decay 0.05 \
   --prompt-debug-stats 1 --prompt-debug-stats-interval 50 \
   --native-ubr \
-  --mask-roi-chunk-size 16 \
+  --mask-roi-chunk-size 8 \
   "${RESUME_ARGS[@]}"
