@@ -42,3 +42,4 @@ portable_sam2_explicit_coarse/refactor_golden/
 *.fdb_latexmk
 *.synctex.gz
 *.out
+*.blg
