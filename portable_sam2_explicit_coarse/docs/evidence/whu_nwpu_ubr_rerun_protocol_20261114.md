@@ -173,3 +173,21 @@ refined logits 进原 roi_balanced_dice 监督、零初始化恒等不变。
   （AMP 实测 ~12.5G/卡、1.5-2x/步，~42h）；不 resume E22（混合精度中断
   不入合同；且 fast150-AMP 全程统一精度更干净）。
 - E22-fp32 的 test 行保留为独立数据点（15% 调度量未退火参考）。
+
+## UBR 模块消融（EXP-0050，2026-11-16 用户立项）
+
+- **路由**：模块消融、冻结协议全量重训。实现面 = 纯 config/wrapper（零共享代码
+  改动），默认路径（无 --native-ubr）为论文 P/B 系 Tail-less 历史路径，其
+  "无旗标零行为变化"已被既有独立审计覆盖；本臂预注册门为三道自动化检查：
+  ①指纹 restore-check（delta==paper+UDPR-off，PASS，fp c2c3cefe…）②CPU build
+  无尾形态（decoder_tail_enabled=False/refiner=None/三元组契约/full_image/
+  无 native_refiner 与 shim 键，PASS）③aux-clip 分组为空（decoupled 退化
+  全局，与 EXP-0047 base-only 语义对齐，PASS）。
+- **唯一变量**：vs EXP-0047（正在跑）= 尾模块缺席（UDPR 关停且不装 UBR）；
+  其余逐参一致（matrix300/AMP/4×1×2/seed44/A系增强/分卡验证/PE 0.1）。
+- **预注册四要素**：主指标=val(==test) segm 与 bbox AP 双主指标（best-composite
+  选模，同 EXP-0047）；伴随=AP50/AP75/mask AP75/AR@100；显著性=两臂逐图配对
+  bootstrap（130 图，10k 重采样 95% CI，同 seed 同协议）；判定=完整跑完 +
+  (EXP-0047 − EXP-0050) 差值如实报告，不设方向门槛（UBR 也可能为负贡献）。
+- 共租风险登记：与 EXP-0047 稠密峰偶发相撞可致单方 OOM，RESUME_OWN 可恢复，
+  监视器唤醒人工接力；allocator expandable_segments 已开。
