@@ -191,3 +191,20 @@ refined logits 进原 roi_balanced_dice 监督、零初始化恒等不变。
   (EXP-0047 − EXP-0050) 差值如实报告，不设方向门槛（UBR 也可能为负贡献）。
 - 共租风险登记：与 EXP-0047 稠密峰偶发相撞可致单方 OOM，RESUME_OWN 可恢复，
   监视器唤醒人工接力；allocator expandable_segments 已开。
+
+## NWPU prompt 消融臂（EXP-0051/0052/0053，2026-11-16 用户立项，queued-prepared）
+
+- **设计依据（用户勘误确认）**：论文 NWPU 消融表四行（P/B/P+B/P+B+M）
+  **全部无尾**（vhr10_{point_only,box_only,point_box,point_box_dense}.py 均
+  `decoder_tail_refiner=_delete_`，prompt 轴在无尾形态下隔离；完整模型
+  P+B+M+UDPR 为表上终行）。镜像结构：新表四行 = 无尾 prompt 臂，其中
+  **P+B+M 行 = EXP-0050 一臂两用**；尾轴 = 0050(无尾) vs 0047(P+B+M+UBR)。
+- **接线**：三臂 config = 论文消融行 + SAM2 路径本机化（仅此）；wrapper =
+  无尾 wrapper（EXP-0050 同款，不传 --native-ubr）换 config/RUN_TAG/port
+  （32811-13）；独立 checkpoint 目录与日志。
+- **门（已过）**：指纹==论文消融行（22b2387e/c36f5012/78b62b40，路径归一化
+  证毕）+ CPU build 无尾形态（无 decoder_tail/native_refiner/三元组契约）。
+- **预注册四要素**：主指标=val(==test) segm 与 bbox AP（best-composite，同
+  家族选模）；伴随=AP50/75；显著性=与论文对应行绝对差对照 + 消融表内配对
+  bootstrap（同机同 seed，130 图）；判定=完整跑完如实报告。
+- **排程**：串行链 0047 → 0050 → 0051/0052/0053（顺序届时可调）。
