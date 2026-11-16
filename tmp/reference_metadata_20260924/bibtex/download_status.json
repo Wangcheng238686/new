@@ -1,0 +1,92 @@
+[
+  {
+    "key": "rs4d",
+    "doi": "10.1109/TGRS.2026.3696104",
+    "downloaded": true
+  },
+  {
+    "key": "mask2former",
+    "doi": "10.1109/CVPR52688.2022.00135",
+    "downloaded": true
+  },
+  {
+    "key": "msrcnn",
+    "doi": "10.1109/CVPR.2019.00658",
+    "downloaded": true
+  },
+  {
+    "key": "p2pformer",
+    "doi": "10.1109/tgrs.2024.3459011",
+    "downloaded": true
+  },
+  {
+    "key": "directsamrs",
+    "doi": "10.1109/ICASSP49660.2025.10889192",
+    "downloaded": true
+  },
+  {
+    "key": "maskdino",
+    "doi": "10.1109/CVPR52729.2023.00297",
+    "downloaded": true
+  },
+  {
+    "key": "maskrcnn",
+    "doi": "10.1109/ICCV.2017.322",
+    "downloaded": true
+  },
+  {
+    "key": "rsprompter",
+    "doi": "10.1109/TGRS.2024.3356074",
+    "downloaded": true
+  },
+  {
+    "key": "nwpu",
+    "doi": "10.1016/j.isprsjprs.2014.10.002",
+    "downloaded": true
+  },
+  {
+    "key": "samref",
+    "doi": "10.1109/CVPR52734.2025.01803",
+    "downloaded": true
+  },
+  {
+    "key": "htc",
+    "doi": "10.1109/CVPR.2019.00513",
+    "downloaded": true
+  },
+  {
+    "key": "sam",
+    "doi": "10.1109/ICCV51070.2023.00371",
+    "downloaded": true
+  },
+  {
+    "key": "condinst",
+    "doi": "10.1007/978-3-030-58568-6_17",
+    "downloaded": true
+  },
+  {
+    "key": "pasam",
+    "doi": "10.1109/ICME57554.2024.10687602",
+    "downloaded": true
+  },
+  {
+    "key": "nwpu_instance",
+    "doi": "10.1109/IGARSS.2019.8898573",
+    "downloaded": true
+  },
+  {
+    "key": "rsiisn",
+    "doi": "10.1016/j.eswa.2023.121007",
+    "downloaded": true
+  },
+  {
+    "key": "aopsam",
+    "doi": "10.1609/aaai.v39i2.32228",
+    "downloaded": true
+  },
+  {
+    "key": "airwaysam",
+    "doi": "10.1109/ICASSP49660.2025.10889207",
+    "downloaded": true
+  }
+]

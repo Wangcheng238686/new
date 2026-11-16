@@ -30,3 +30,15 @@ portable_sam2_explicit_coarse/refactor_golden/
 /.zcode/
 /tools/zcode-mcp-bridge.mjs
 /.zcodeignore
+
+# Vendored tool bundles / dependency dirs must never be committed (a 357MB
+# codex distribution and CVAT source once blocked the push entirely).
+.tmp-*/
+**/node_modules/
+
+# LaTeX build artifacts, any paper directory (2026-11 cleanup: bloat purge).
+*.aux
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.out
